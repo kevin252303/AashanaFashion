@@ -1,126 +1,135 @@
 @model IEnumerable<AashanaFashion.Models.BatchDashboardViewModel>
 @{
-    ViewData["Title"] = "Production Dashboard";
+    ViewData["Title"] = "Production Orders";
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h4 class="mb-0 fw-bold">Production Dashboard</h4>
-        <small class="text-muted">All active and completed production orders</small>
-    </div>
-</div>
-
-<!-- Stats Cards -->
+<!-- Stats -->
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm text-center p-3">
-            <div class="fs-2 fw-bold text-primary">@ViewBag.Total</div>
-            <div class="text-muted small">Total Orders</div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-blue">📦</div>
+            <div><div class="stat-val">@ViewBag.Total</div><div class="stat-lbl">Total Orders</div></div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm text-center p-3">
-            <div class="fs-2 fw-bold text-warning">@ViewBag.InProgress</div>
-            <div class="text-muted small">In Progress</div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-yellow">⚙️</div>
+            <div><div class="stat-val">@ViewBag.InProgress</div><div class="stat-lbl">In Progress</div></div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm text-center p-3">
-            <div class="fs-2 fw-bold text-success">@ViewBag.ReadyToDispatch</div>
-            <div class="text-muted small">Ready to Dispatch</div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-green">✅</div>
+            <div><div class="stat-val">@ViewBag.ReadyToDispatch</div><div class="stat-lbl">Ready to Dispatch</div></div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm text-center p-3">
-            <div class="fs-2 fw-bold text-secondary">@ViewBag.Dispatched</div>
-            <div class="text-muted small">Dispatched</div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-gray">🚚</div>
+            <div><div class="stat-val">@ViewBag.Dispatched</div><div class="stat-lbl">Dispatched</div></div>
         </div>
     </div>
 </div>
 
-<!-- Orders Table -->
-<div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
-        @if (!Model.Any())
+<!-- Table -->
+<div class="data-card">
+    <div class="data-card-header">
+        <span class="data-card-title">All Production Orders</span>
+        @if (role == "Admin")
         {
-            <div class="text-center py-5 text-muted">
-                <div class="fs-1">📦</div>
-                <p class="mt-2">No production orders found.</p>
-            </div>
-        }
-        else
-        {
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>#</th>
-                            <th>Design No.</th>
-                            <th>Fabric Type</th>
-                            <th>Qty (Pcs)</th>
-                            <th>Pieces (G-C-D)</th>
-                            <th>Stage</th>
-                            <th>Progress</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var item in Model)
-                        {
-                            <tr>
-                                <td class="text-muted small">@item.Id</td>
-                                <td><strong>@item.DesignNumber</strong></td>
-                                <td>@(string.IsNullOrEmpty(item.CurrentStage) ? "-" : item.CurrentStage)</td>
-                                <td>@item.TotalQuantity</td>
-                                <td>
-                                    <span class="badge rounded-pill @(item.IsGhagraDone ? "bg-success" : "bg-light text-dark border")">G</span>
-                                    <span class="badge rounded-pill @(item.IsCholiDone ? "bg-success" : "bg-light text-dark border")">C</span>
-                                    <span class="badge rounded-pill @(item.IsDupattaDone ? "bg-success" : "bg-light text-dark border")">D</span>
-                                </td>
-                                <td>
-                                    <span class="badge @GetStageBadge(item.Status)">@item.CurrentStage</span>
-                                </td>
-                                <td style="min-width:120px">
-                                    <div class="progress" style="height:8px;">
-                                        <div class="progress-bar @(item.ProgressPercentage == 100 ? "bg-success" : "bg-primary")"
-                                             role="progressbar"
-                                             style="width:@item.ProgressPercentage%">
-                                        </div>
-                                    </div>
-                                    <small class="text-muted">@item.ProgressPercentage%</small>
-                                </td>
-                                <td>
-                                    @if (item.Status == AashanaFashion.Models.OrderStatus.Dispatched)
-                                    {
-                                        <span class="badge bg-secondary">Dispatched</span>
-                                    }
-                                    else if (item.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch)
-                                    {
-                                        <span class="badge bg-success">Ready</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-warning text-dark">In Progress</span>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            <a asp-action="Create" class="btn-af btn-af-primary btn-af-sm">+ New Order</a>
         }
     </div>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon">📦</div>
+            <p>No production orders found.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th class="ps-4">#</th>
+                        <th>Design No.</th>
+                        <th>Fabric</th>
+                        <th>Qty</th>
+                        <th>Pieces</th>
+                        <th>Stage</th>
+                        <th>Progress</th>
+                        <th>Status</th>
+                        @if (role == "Admin" || role == "Manager")
+                        {
+                            <th>Actions</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="ps-4 text-muted">@item.Id</td>
+                            <td><span style="font-weight:600;color:#0f172a;">@item.DesignNumber</span></td>
+                            <td style="color:#64748b;">@item.CurrentStage</td>
+                            <td>@item.TotalQuantity <span style="color:#94a3b8;font-size:.75rem;">pcs</span></td>
+                            <td>
+                                <span class="af-badge @(item.IsGhagraDone ? "b-green" : "b-gray")" style="margin-right:3px;">G</span>
+                                <span class="af-badge @(item.IsCholiDone  ? "b-green" : "b-gray")" style="margin-right:3px;">C</span>
+                                <span class="af-badge @(item.IsDupattaDone ? "b-green" : "b-gray")">D</span>
+                            </td>
+                            <td><span class="af-badge @GetStageBadge(item.Status)">@item.CurrentStage</span></td>
+                            <td style="min-width:120px;">
+                                <div class="af-progress mb-1">
+                                    <div class="af-progress-bar"
+                                         style="width:@item.ProgressPercentage%; background:@(item.ProgressPercentage==100?"#22c55e":"#6366f1");"></div>
+                                </div>
+                                <span style="font-size:.72rem;color:#94a3b8;">@item.ProgressPercentage%</span>
+                            </td>
+                            <td>
+                                @if (item.Status == AashanaFashion.Models.OrderStatus.Dispatched)
+                                { <span class="af-badge b-gray">Dispatched</span> }
+                                else if (item.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch)
+                                { <span class="af-badge b-green">Ready</span> }
+                                else
+                                { <span class="af-badge b-yellow">In Progress</span> }
+                            </td>
+                            @if (role == "Admin" || role == "Manager")
+                            {
+                                <td>
+                                    <div style="display:flex;gap:.4rem;">
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                                        @if (role == "Admin")
+                                        {
+                                            <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline"
+                                                  onsubmit="return confirm('Delete this order?')">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn-af btn-af-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;">Delete</button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 </div>
 
 @functions {
-    string GetStageBadge(AashanaFashion.Models.OrderStatus status) => status switch
-    {
-        AashanaFashion.Models.OrderStatus.RawMaterialArrived => "bg-secondary",
-        AashanaFashion.Models.OrderStatus.AtDying            => "bg-info text-dark",
-        AashanaFashion.Models.OrderStatus.AtHandwork         => "bg-warning text-dark",
-        AashanaFashion.Models.OrderStatus.AtStitching        => "bg-primary",
-        AashanaFashion.Models.OrderStatus.ReadyToDispatch    => "bg-success",
-        AashanaFashion.Models.OrderStatus.Dispatched         => "bg-dark",
-        _                                                    => "bg-light text-dark"
+    string GetStageBadge(AashanaFashion.Models.OrderStatus s) => s switch {
+        AashanaFashion.Models.OrderStatus.RawMaterialArrived => "b-gray",
+        AashanaFashion.Models.OrderStatus.AtDying            => "b-cyan",
+        AashanaFashion.Models.OrderStatus.AtHandwork         => "b-yellow",
+        AashanaFashion.Models.OrderStatus.AtStitching        => "b-purple",
+        AashanaFashion.Models.OrderStatus.ReadyToDispatch    => "b-green",
+        AashanaFashion.Models.OrderStatus.Dispatched         => "b-gray",
+        _                                                    => "b-gray"
     };
 }

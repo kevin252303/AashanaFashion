@@ -1,0 +1,90 @@
+@model AashanaFashion.Models.ProductionOrder
+@{
+    ViewData["Title"] = "Edit Order";
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-xl-5">
+        <div class="data-card">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Edit Order — @Model.DesignNumber</div>
+                    <div style="font-size:.75rem;color:#94a3b8;margin-top:.2rem;">ID #@Model.Id · Created @Model.CreatedDate.ToString("dd MMM yyyy")</div>
+                </div>
+                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+            </div>
+            <div style="padding:1.5rem;">
+                <form asp-action="Edit" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="CreatedDate" />
+
+                    @if (role == "Admin")
+                    {
+                        <div class="af-form-group">
+                            <label asp-for="DesignNumber" class="af-label">Design Number</label>
+                            <input asp-for="DesignNumber" class="af-input" />
+                        </div>
+                        <div class="af-form-group">
+                            <label asp-for="FabricType" class="af-label">Fabric Type</label>
+                            <input asp-for="FabricType" class="af-input" />
+                        </div>
+                        <div class="af-form-group">
+                            <label asp-for="TotalQuantity" class="af-label">Total Quantity</label>
+                            <input asp-for="TotalQuantity" class="af-input" type="number" />
+                        </div>
+                    }
+                    else
+                    {
+                        <input type="hidden" asp-for="DesignNumber" />
+                        <input type="hidden" asp-for="FabricType" />
+                        <input type="hidden" asp-for="TotalQuantity" />
+                        <div class="af-form-group">
+                            <label class="af-label">Design Number</label>
+                            <input class="af-input" value="@Model.DesignNumber" disabled style="background:#f8fafc;color:#94a3b8;" />
+                        </div>
+                    }
+
+                    <div class="af-form-group">
+                        <label asp-for="Status" class="af-label">Status</label>
+                        <select asp-for="Status" class="af-input af-select"
+                                asp-items="Html.GetEnumSelectList<AashanaFashion.Models.OrderStatus>()"></select>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label class="af-label">Verification Checklist</label>
+                        <div style="background:#f8fafc;border-radius:10px;padding:1rem;display:flex;flex-direction:column;gap:.75rem;">
+                            @foreach (var (field, label) in new[] {
+                                ("IsRawMaterialVerified","Raw Material Verified"),
+                                ("IsDyingVerified","Dying Verified"),
+                                ("IsHandworkVerified","Handwork Verified"),
+                                ("IsStitchingVerified","Stitching Verified")
+                            })
+                            {
+                                <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.83rem;color:#374151;">
+                                    <input type="checkbox" name="@field"
+                                           @(field == "IsRawMaterialVerified" && Model.IsRawMaterialVerified ? "checked" :
+                                             field == "IsDyingVerified"       && Model.IsDyingVerified       ? "checked" :
+                                             field == "IsHandworkVerified"    && Model.IsHandworkVerified    ? "checked" :
+                                             field == "IsStitchingVerified"   && Model.IsStitchingVerified   ? "checked" : "")
+                                           style="accent-color:#6366f1;width:16px;height:16px;" />
+                                    @label
+                                </label>
+                            }
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+                        <button type="submit" class="btn-af btn-af-primary">Save Changes</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

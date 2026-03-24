@@ -1,63 +1,86 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - AashanaFashion</title>
+    <title>@ViewData["Title"] — Aashana Fashion</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/AashanaFashion.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">AashanaFashion</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Production" asp-action="Index">Production Orders</a>
-                        </li>
-                    </ul>
-                    @if (User.Identity?.IsAuthenticated == true)
-                    {
-                        <ul class="navbar-nav">
-                            <li class="nav-item">
-                                <span class="nav-link text-dark">👤 @User.Identity.Name</span>
-                            </li>
-                            <li class="nav-item">
-                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger ms-2">Logout</button>
-                                </form>
-                            </li>
-                        </ul>
-                    }
-                </div>
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    var role     = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    var fullName = User.FindFirst("FullName")?.Value ?? User.Identity.Name ?? "";
+    var initials = string.Concat(fullName.Split(' ').Take(2).Select(w => w.Length > 0 ? w[0].ToString() : "")).ToUpper();
+    var ctrl     = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var action   = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">AF</div>
+            <div>
+                <div class="brand-name">Aashana Fashion</div>
+                <div class="brand-sub">Production System</div>
             </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-label">Main</div>
+            <a class="s-link @(ctrl == "Production" && action == "Index" ? "active" : "")"
+               asp-controller="Production" asp-action="Index">
+                <span class="ico">📦</span> Production Orders
+            </a>
+
+            @if (role == "Admin" || role == "Manager")
+            {
+                <a class="s-link @(ctrl == "Production" && action == "Create" ? "active" : "")"
+                   asp-controller="Production" asp-action="Create">
+                    <span class="ico">➕</span> New Order
+                </a>
+            }
+
+            <div class="nav-label">Users</div>
+            <a class="s-link @(ctrl == "UserManagement" ? "active" : "")"
+               asp-controller="UserManagement" asp-action="Index">
+                <span class="ico">👥</span> User Management
+            </a>
         </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+
+        <div class="role-pill rp-@role">@role</div>
+    </aside>
+
+    <div class="topbar">
+        <div class="topbar-left">
+            <span class="page-title">@(ViewData["Title"] ?? "Dashboard")</span>
+        </div>
+        <div class="user-chip">
+            <div class="u-avatar">@initials</div>
+            <div>
+                <div class="u-name">@fullName</div>
+                <div class="u-role">@role</div>
+            </div>
+            <form asp-controller="Account" asp-action="Logout" method="post" class="mb-0 ms-2">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn-af btn-af-ghost btn-af-sm">Logout</button>
+            </form>
+        </div>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - AashanaFashion - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+    <div class="main-wrap">
+        <div class="page-body">
+            @RenderBody()
         </div>
-    </footer>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
+    </div>
+}
+else
+{
+    @RenderBody()
+}
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

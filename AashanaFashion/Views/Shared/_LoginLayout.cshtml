@@ -3,86 +3,86 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Aashana Fashion</title>
+    <title>@ViewData["Title"] — Aashana Fashion</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <style>
         body {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0;
+            min-height: 100vh; margin: 0;
+            display: flex; background: #f8fafc;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        .login-left {
+            flex: 1; background: linear-gradient(145deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%);
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 3rem; position: relative; overflow: hidden;
+        }
+        .login-left::before {
+            content: ''; position: absolute; inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .login-left-content { position: relative; z-index: 1; }
+        .ll-logo {
+            width: 56px; height: 56px; border-radius: 14px;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; color: #fff; font-size: 1.2rem;
+            box-shadow: 0 8px 24px rgba(99,102,241,.4); margin-bottom: 2rem;
+        }
+        .ll-title { color: #fff; font-size: 1.8rem; font-weight: 800; line-height: 1.2; margin-bottom: .75rem; }
+        .ll-sub   { color: rgba(255,255,255,.5); font-size: .9rem; line-height: 1.6; max-width: 320px; }
+        .ll-features { margin-top: 2.5rem; display: flex; flex-direction: column; gap: .75rem; }
+        .ll-feat {
+            display: flex; align-items: center; gap: .75rem;
+            color: rgba(255,255,255,.7); font-size: .83rem;
+        }
+        .ll-feat-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #6366f1; flex-shrink: 0;
         }
 
-        .login-wrapper {
-            width: 100%;
-            max-width: 420px;
-            padding: 1rem;
-        }
-
-        .login-card {
+        .login-right {
+            width: 480px; display: flex; align-items: center;
+            justify-content: center; padding: 2rem;
             background: #fff;
-            border-radius: 16px;
-            padding: 2.5rem 2rem;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
         }
+        .login-box { width: 100%; max-width: 380px; }
+        .lb-header { margin-bottom: 2rem; }
+        .lb-title { font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-bottom: .3rem; }
+        .lb-sub   { color: #94a3b8; font-size: .83rem; }
 
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
+        .lb-input-wrap { position: relative; margin-bottom: 1rem; }
+        .lb-input {
+            width: 100%; padding: .7rem 1rem; border-radius: 10px;
+            border: 1.5px solid #e2e8f0; font-size: .88rem; color: #1e293b;
+            outline: none; transition: border-color .15s, box-shadow .15s;
         }
+        .lb-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+        .lb-label { font-size: .78rem; font-weight: 600; color: #374151; margin-bottom: .4rem; display: block; }
 
-        .brand-logo {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, #e94560, #c0392b);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #fff;
-            margin: 0 auto 1rem;
-            letter-spacing: 1px;
+        .lb-btn {
+            width: 100%; padding: .75rem; border-radius: 10px;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff; font-weight: 700; font-size: .9rem;
+            border: none; cursor: pointer; transition: opacity .15s;
+            box-shadow: 0 4px 14px rgba(99,102,241,.35);
         }
+        .lb-btn:hover { opacity: .92; }
 
-        .login-header h2 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #1a1a2e;
-            margin-bottom: 0.25rem;
-        }
+        .lb-remember { display: flex; align-items: center; gap: .5rem; margin-bottom: 1.25rem; }
+        .lb-remember input { accent-color: #6366f1; }
+        .lb-remember label { font-size: .8rem; color: #64748b; cursor: pointer; }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #e94560, #c0392b);
-            border: none;
-            padding: 0.65rem;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            border-radius: 8px;
-        }
+        .lb-error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 8px; padding: .6rem .9rem; font-size: .8rem; margin-bottom: 1rem; }
 
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #c0392b, #a93226);
-        }
-
-        .form-control {
-            border-radius: 8px;
-            padding: 0.6rem 0.9rem;
-        }
-
-        .form-control:focus {
-            border-color: #e94560;
-            box-shadow: 0 0 0 0.2rem rgba(233, 69, 96, 0.2);
+        @@media (max-width: 768px) {
+            .login-left { display: none; }
+            .login-right { width: 100%; }
         }
     </style>
 </head>
 <body>
     @RenderBody()
-
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     @await RenderSectionAsync("Scripts", required: false)

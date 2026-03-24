@@ -1,0 +1,140 @@
+@model IEnumerable<AashanaFashion.Models.AppUser>
+@{
+    ViewData["Title"] = "User Management";
+    var isAdmin = User.IsInRole("Admin");
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success">✅ @TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="af-alert af-alert-danger">⚠️ @TempData["Error"]</div>
+}
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-purple">👤</div>
+            <div><div class="stat-val">@Model.Count()</div><div class="stat-lbl">Total Users</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-red">🔑</div>
+            <div><div class="stat-val">@Model.Count(u => u.Role == "Admin")</div><div class="stat-lbl">Admins</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-yellow">🛠️</div>
+            <div><div class="stat-val">@Model.Count(u => u.Role == "Manager")</div><div class="stat-lbl">Managers</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-green">✅</div>
+            <div><div class="stat-val">@Model.Count(u => u.IsActive)</div><div class="stat-lbl">Active</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="data-card">
+    <div class="data-card-header">
+        <span class="data-card-title">All Users</span>
+        @if (isAdmin)
+        {
+            <a asp-action="Create" class="btn-af btn-af-primary btn-af-sm">+ Add User</a>
+        }
+    </div>
+    <div class="table-responsive">
+        <table class="af-table">
+            <thead>
+                <tr>
+                    <th class="ps-4">#</th>
+                    <th>Full Name</th>
+                    <th>Username</th>
+                    <th>Password</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model)
+                {
+                    <tr>
+                        <td class="ps-4" style="color:#94a3b8;">@user.Id</td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:.6rem;">
+                                <div class="av-sm">@string.Concat(user.FullName.Split(' ').Take(2).Select(w => w.Length > 0 ? w[0].ToString() : "")).ToUpper()</div>
+                                <span style="font-weight:600;color:#0f172a;">@user.FullName</span>
+                            </div>
+                        </td>
+                        <td>
+                            <code style="background:#f1f5f9;color:#4f46e5;padding:.2rem .55rem;border-radius:6px;font-size:.78rem;">@user.Username</code>
+                        </td>
+                        <td>
+                            <span style="font-size:.8rem;color:#94a3b8;">
+                                <span class="pw-mask" data-id="@user.Id">••••••••</span>
+                                <span class="pw-hash d-none" data-id="@user.Id" style="font-family:monospace;font-size:.7rem;">@user.PasswordHash.Substring(0,20)…</span>
+                                <button type="button" class="toggle-pw" data-id="@user.Id"
+                                        style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:0 .3rem;font-size:.8rem;">👁</button>
+                            </span>
+                        </td>
+                        <td>
+                            @{
+                                var rc = user.Role switch { "Admin" => "b-red", "Manager" => "b-yellow", _ => "b-purple" };
+                            }
+                            <span class="af-badge @rc">@user.Role</span>
+                        </td>
+                        <td>
+                            @if (user.IsActive)
+                            { <span class="af-badge b-green">Active</span> }
+                            else
+                            { <span class="af-badge b-gray">Inactive</span> }
+                        </td>
+                        <td>
+                            @if (isAdmin)
+                            {
+                                <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+                                    <a asp-action="Edit" asp-route-id="@user.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                                    <form asp-action="ToggleActive" asp-route-id="@user.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-af btn-af-sm @(user.IsActive ? "btn-af-warn" : "btn-af-success")">
+                                            @(user.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                    </form>
+                                    <form asp-action="Delete" asp-route-id="@user.Id" method="post" class="d-inline"
+                                          onsubmit="return confirm('Delete @user.Username?')">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-af btn-af-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;">Delete</button>
+                                    </form>
+                                </div>
+                            }
+                            else
+                            {
+                                <span style="font-size:.75rem;color:#cbd5e1;">View only</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.toggle-pw').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const id = this.dataset.id;
+                document.querySelector(`.pw-mask[data-id="${id}"]`).classList.toggle('d-none');
+                document.querySelector(`.pw-hash[data-id="${id}"]`).classList.toggle('d-none');
+            });
+        });
+    </script>
+}

@@ -1,0 +1,62 @@
+@model AashanaFashion.Models.ProductionOrder
+@{
+    ViewData["Title"] = "New Production Order";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-xl-5">
+        <div class="data-card">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Create Production Order</div>
+                    <div style="font-size:.75rem;color:#94a3b8;margin-top:.2rem;">Fill in the details below to add a new order</div>
+                </div>
+                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+            </div>
+            <div style="padding:1.5rem;">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="af-alert af-alert-danger mb-3">
+                            @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            { <div>@e.ErrorMessage</div> }
+                        </div>
+                    }
+
+                    <div class="af-form-group">
+                        <label asp-for="DesignNumber" class="af-label">Design Number</label>
+                        <input asp-for="DesignNumber" class="af-input" placeholder="e.g. AF-006" />
+                        <span asp-validation-for="DesignNumber" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="FabricType" class="af-label">Fabric Type</label>
+                        <input asp-for="FabricType" class="af-input" placeholder="e.g. Silk, Cotton, Chiffon" />
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="TotalQuantity" class="af-label">Total Quantity (pcs)</label>
+                        <input asp-for="TotalQuantity" class="af-input" type="number" min="1" placeholder="0" />
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="Status" class="af-label">Initial Status</label>
+                        <select asp-for="Status" class="af-input af-select"
+                                asp-items="Html.GetEnumSelectList<AashanaFashion.Models.OrderStatus>()"></select>
+                    </div>
+
+                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+                        <button type="submit" class="btn-af btn-af-primary">Create Order</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

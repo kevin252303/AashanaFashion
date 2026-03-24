@@ -8,6 +8,7 @@ namespace AashanaFashion.Data
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<ProductionOrder> ProductionOrders { get; set; }
+        public DbSet<AppUser> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -16,6 +17,10 @@ namespace AashanaFashion.Data
             modelBuilder.Entity<ProductionOrder>()
                 .Property(p => p.DesignNumber)
                 .IsRequired();
+
+            modelBuilder.Entity<AppUser>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
         }
     }
 }
