@@ -1,11 +1,11 @@
-﻿namespace AashanaFashion.Models
+namespace AashanaFashion.Models
 {
     public class ProductionOrder
     {
         public int Id { get; set; }
-        public string OrderNumber { get; set; }
-        public string FabricType { get; set; }
-        public double Quantity { get; set; }
+        public string DesignNumber { get; set; } = string.Empty;
+        public string FabricType { get; set; } = string.Empty;
+        public int TotalQuantity { get; set; }
         public OrderStatus Status { get; set; }
         public bool IsRawMaterialVerified { get; set; }
         public bool IsDyingVerified { get; set; }

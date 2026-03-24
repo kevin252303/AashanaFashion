@@ -1,29 +1,126 @@
-﻿<table class="table table-hover">
-    <thead>
-        <tr>
-            <th>Design #</th>
-            <th>Batch Size</th>
-            <th>Set Composition (G-C-D)</th>
-            <th>Current Stage</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
+@model IEnumerable<AashanaFashion.Models.BatchDashboardViewModel>
+@{
+    ViewData["Title"] = "Production Dashboard";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0 fw-bold">Production Dashboard</h4>
+        <small class="text-muted">All active and completed production orders</small>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-2 fw-bold text-primary">@ViewBag.Total</div>
+            <div class="text-muted small">Total Orders</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-2 fw-bold text-warning">@ViewBag.InProgress</div>
+            <div class="text-muted small">In Progress</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-2 fw-bold text-success">@ViewBag.ReadyToDispatch</div>
+            <div class="text-muted small">Ready to Dispatch</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-2 fw-bold text-secondary">@ViewBag.Dispatched</div>
+            <div class="text-muted small">Dispatched</div>
+        </div>
+    </div>
+</div>
+
+<!-- Orders Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        @if (!Model.Any())
         {
-            <tr>
-                <td><strong>@item.DesignNumber</strong></td>
-                <td>@item.TotalQuantity Pcs</td>
-                <td>
-                    <span class="badge @(item.IsGhagraDone ? "bg-success" : "bg-light text-dark border")">G</span>
-                    <span class="badge @(item.IsCholiDone ? "bg-success" : "bg-light text-dark border")">C</span>
-                    <span class="badge @(item.IsDupattaDone ? "bg-success" : "bg-light text-dark border")">D</span>
-                </td>
-                <td><span class="badge bg-info">@item.CurrentStage</span></td>
-                <td>
-                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Update Status</a>
-                </td>
-            </tr>
+            <div class="text-center py-5 text-muted">
+                <div class="fs-1">📦</div>
+                <p class="mt-2">No production orders found.</p>
+            </div>
         }
-    </tbody>
-</table>
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#</th>
+                            <th>Design No.</th>
+                            <th>Fabric Type</th>
+                            <th>Qty (Pcs)</th>
+                            <th>Pieces (G-C-D)</th>
+                            <th>Stage</th>
+                            <th>Progress</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="text-muted small">@item.Id</td>
+                                <td><strong>@item.DesignNumber</strong></td>
+                                <td>@(string.IsNullOrEmpty(item.CurrentStage) ? "-" : item.CurrentStage)</td>
+                                <td>@item.TotalQuantity</td>
+                                <td>
+                                    <span class="badge rounded-pill @(item.IsGhagraDone ? "bg-success" : "bg-light text-dark border")">G</span>
+                                    <span class="badge rounded-pill @(item.IsCholiDone ? "bg-success" : "bg-light text-dark border")">C</span>
+                                    <span class="badge rounded-pill @(item.IsDupattaDone ? "bg-success" : "bg-light text-dark border")">D</span>
+                                </td>
+                                <td>
+                                    <span class="badge @GetStageBadge(item.Status)">@item.CurrentStage</span>
+                                </td>
+                                <td style="min-width:120px">
+                                    <div class="progress" style="height:8px;">
+                                        <div class="progress-bar @(item.ProgressPercentage == 100 ? "bg-success" : "bg-primary")"
+                                             role="progressbar"
+                                             style="width:@item.ProgressPercentage%">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">@item.ProgressPercentage%</small>
+                                </td>
+                                <td>
+                                    @if (item.Status == AashanaFashion.Models.OrderStatus.Dispatched)
+                                    {
+                                        <span class="badge bg-secondary">Dispatched</span>
+                                    }
+                                    else if (item.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch)
+                                    {
+                                        <span class="badge bg-success">Ready</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">In Progress</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@functions {
+    string GetStageBadge(AashanaFashion.Models.OrderStatus status) => status switch
+    {
+        AashanaFashion.Models.OrderStatus.RawMaterialArrived => "bg-secondary",
+        AashanaFashion.Models.OrderStatus.AtDying            => "bg-info text-dark",
+        AashanaFashion.Models.OrderStatus.AtHandwork         => "bg-warning text-dark",
+        AashanaFashion.Models.OrderStatus.AtStitching        => "bg-primary",
+        AashanaFashion.Models.OrderStatus.ReadyToDispatch    => "bg-success",
+        AashanaFashion.Models.OrderStatus.Dispatched         => "bg-dark",
+        _                                                    => "bg-light text-dark"
+    };
+}
