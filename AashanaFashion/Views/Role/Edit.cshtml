@@ -1,0 +1,60 @@
+@model AashanaFashion.Models.UserRole
+@{
+    ViewData["Title"] = "Edit Role";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-5">
+        <div class="data-card">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Edit Role — @Model.RoleName</div>
+                    <div style="font-size:.75rem;color:#94a3b8;">ID #@Model.Id</div>
+                </div>
+                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+            </div>
+            <div style="padding:1.5rem;">
+                <form asp-action="Edit" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="CreatedDate" />
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="af-alert af-alert-danger mb-3">
+                            @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            { <div>@e.ErrorMessage</div> }
+                        </div>
+                    }
+
+                    <div class="af-form-group">
+                        <label asp-for="RoleName" class="af-label">Role Name</label>
+                        <input asp-for="RoleName" class="af-input" />
+                        <span asp-validation-for="RoleName" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="Description" class="af-label">Description</label>
+                        <input asp-for="Description" class="af-input" />
+                    </div>
+
+                    <div class="af-form-group">
+                        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.83rem;color:#374151;">
+                            <input asp-for="IsActive" type="checkbox" style="accent-color:#6366f1;width:16px;height:16px;" />
+                            Active
+                        </label>
+                    </div>
+
+                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+                        <button type="submit" class="btn-af btn-af-primary">Save Changes</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

@@ -1,0 +1,77 @@
+@model IEnumerable<AashanaFashion.Models.UserRole>
+@{
+    ViewData["Title"] = "Role List";
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3">✅ @TempData["Success"]</div>
+}
+
+<div class="data-card">
+    <div class="data-card-header">
+        <span class="data-card-title">User Role List</span>
+        <a asp-action="Create" class="btn-af btn-af-primary btn-af-sm">+ New Role</a>
+    </div>
+    <div class="table-responsive">
+        <table class="af-table">
+            <thead>
+                <tr>
+                    <th class="ps-4">#</th>
+                    <th>Role Name</th>
+                    <th>Description</th>
+                    <th>Modules Assigned</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var role in Model)
+                {
+                    <tr>
+                        <td class="ps-4" style="color:#94a3b8;">@role.Id</td>
+                        <td><strong style="color:#0f172a;">@role.RoleName</strong></td>
+                        <td style="color:#64748b;font-size:.9rem;">@(role.Description ?? "—")</td>
+                        <td>
+                            @if (role.Permissions.Any())
+                            {
+                                @foreach (var p in role.Permissions)
+                                {
+                                    <span class="af-badge b-blue" style="margin:1px;">@p.Module</span>
+                                }
+                            }
+                            else
+                            {
+                                <span style="color:#cbd5e1;font-size:.85rem;">No permissions assigned</span>
+                            }
+                        </td>
+                        <td>
+                            @if (role.IsActive)
+                            { <span class="af-badge b-green">Active</span> }
+                            else
+                            { <span class="af-badge b-gray">Inactive</span> }
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+                                <a asp-action="Permissions" asp-route-id="@role.Id" class="btn-af btn-af-primary btn-af-sm">🔐 Assign Permissions</a>
+                                <a asp-action="Edit" asp-route-id="@role.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                                <form asp-action="Delete" asp-route-id="@role.Id" method="post" class="d-inline"
+                                      onsubmit="return confirm('Delete role @role.RoleName?')">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn-af btn-af-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <div class="es-icon">🔐</div>
+                <p>No roles found. <a asp-action="Create">Create the first one</a>.</p>
+            </div>
+        }
+    </div>
+</div>

@@ -33,11 +33,13 @@ $(document).ready(function () {
         currentSizes = sizes.split(',').map(s => s.trim()).filter(s => s);
 
         generateMatrix();
-        //updateVerificationSteps(steps, true);
+        updateVerificationSteps(steps, true);
     }
 
     $('#designSelect').change(function () {
+        var steps = $(this).find(':selected').data('steps') || '';
         init();
+        updateVerificationSteps(steps, false);
     });
 
     function generateMatrix() {

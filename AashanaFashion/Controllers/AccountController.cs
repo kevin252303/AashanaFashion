@@ -49,6 +49,14 @@ namespace AashanaFashion.Controllers
                 new Claim("UserId", user.Id.ToString())
             };
 
+            // SuperAdmin gets all roles as claims so every [Authorize(Roles=...)] passes
+            if (user.Role == "SuperAdmin")
+            {
+                claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+                claims.Add(new Claim(ClaimTypes.Role, "Manager"));
+                claims.Add(new Claim(ClaimTypes.Role, "Viewer"));
+            }
+
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var authProperties = new AuthenticationProperties { IsPersistent = model.RememberMe };
 

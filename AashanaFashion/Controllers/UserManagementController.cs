@@ -22,7 +22,11 @@ namespace AashanaFashion.Controllers
 
         // GET: /UserManagement/Create — Admin only
         [Authorize(Roles = "Admin")]
-        public IActionResult Create() => View(new UserFormViewModel());
+        public async Task<IActionResult> Create()
+        {
+            var roles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
+            return View(new UserFormViewModel { AvailableRoles = roles });
+        }
 
         // POST: /UserManagement/Create — Admin only
         [Authorize(Roles = "Admin")]
@@ -33,18 +37,29 @@ namespace AashanaFashion.Controllers
             if (string.IsNullOrWhiteSpace(model.Password))
                 ModelState.AddModelError("Password", "Password is required for new users.");
 
-            if (!ModelState.IsValid) return View(model);
+            if (!ModelState.IsValid)
+            {
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
+                return View(model);
+            }
 
             if (await _context.Users.AnyAsync(u => u.Username == model.Username))
             {
                 ModelState.AddModelError("Username", "Username already exists.");
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
                 return View(model);
             }
 
             var user = new AppUser
             {
-                FullName = model.FullName,
+                FirstName = model.FirstName,
+                MiddleName = model.MiddleName,
+                LastName = model.LastName,
+                DisplayName = model.DisplayName,
                 Username = model.Username,
+                Email = model.Email,
+                ContactNumber = model.ContactNumber,
+                Address = model.Address,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password!),
                 Role = model.Role,
                 IsActive = model.IsActive
@@ -63,13 +78,21 @@ namespace AashanaFashion.Controllers
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound();
 
+            var roles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
             return View(new UserFormViewModel
             {
                 Id = user.Id,
-                FullName = user.FullName,
+                FirstName = user.FirstName,
+                MiddleName = user.MiddleName,
+                LastName = user.LastName,
+                DisplayName = user.DisplayName,
                 Username = user.Username,
+                Email = user.Email,
+                ContactNumber = user.ContactNumber,
+                Address = user.Address,
                 Role = user.Role,
-                IsActive = user.IsActive
+                IsActive = user.IsActive,
+                AvailableRoles = roles
             });
         }
 
@@ -79,7 +102,11 @@ namespace AashanaFashion.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(UserFormViewModel model)
         {
-            if (!ModelState.IsValid) return View(model);
+            if (!ModelState.IsValid)
+            {
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
+                return View(model);
+            }
 
             var user = await _context.Users.FindAsync(model.Id);
             if (user == null) return NotFound();
@@ -87,11 +114,18 @@ namespace AashanaFashion.Controllers
             if (await _context.Users.AnyAsync(u => u.Username == model.Username && u.Id != model.Id))
             {
                 ModelState.AddModelError("Username", "Username already taken.");
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
                 return View(model);
             }
 
-            user.FullName = model.FullName;
+            user.FirstName = model.FirstName;
+            user.MiddleName = model.MiddleName;
+            user.LastName = model.LastName;
+            user.DisplayName = model.DisplayName;
             user.Username = model.Username;
+            user.Email = model.Email;
+            user.ContactNumber = model.ContactNumber;
+            user.Address = model.Address;
             user.Role = model.Role;
             user.IsActive = model.IsActive;
 

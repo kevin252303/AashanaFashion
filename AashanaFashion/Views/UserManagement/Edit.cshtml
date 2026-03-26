@@ -4,7 +4,7 @@
 }
 
 <div class="row justify-content-center">
-    <div class="col-lg-6 col-xl-5">
+    <div class="col-lg-7 col-xl-6">
         <div class="data-card">
             <div class="data-card-header">
                 <div>
@@ -20,44 +20,101 @@
 
                     @if (!ViewData.ModelState.IsValid)
                     {
-                        <div class="af-alert af-alert-danger">
+                        <div class="af-alert af-alert-danger mb-3">
                             @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
                             { <div>@e.ErrorMessage</div> }
                         </div>
                     }
 
-                    <div class="af-form-group">
-                        <label asp-for="FullName" class="af-label">Full Name</label>
-                        <input asp-for="FullName" class="af-input" />
-                        <span asp-validation-for="FullName" class="af-error"></span>
-                    </div>
-
-                    <div class="af-form-group">
-                        <label asp-for="Username" class="af-label">Username</label>
-                        <input asp-for="Username" class="af-input" />
-                        <span asp-validation-for="Username" class="af-error"></span>
-                    </div>
-
-                    <div class="af-form-group">
-                        <label asp-for="Password" class="af-label">
-                            New Password
-                            <span style="font-weight:400;color:#94a3b8;">(leave blank to keep current)</span>
-                        </label>
-                        <div style="position:relative;">
-                            <input asp-for="Password" class="af-input" id="pwInput" placeholder="Enter new password" style="padding-right:2.5rem;" />
-                            <button type="button" id="togglePw"
-                                    style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;">👁</button>
+                    <div class="row">
+                        <div class="col-md-4 af-form-group">
+                            <label asp-for="FirstName" class="af-label">First Name</label>
+                            <input asp-for="FirstName" class="af-input" />
+                            <span asp-validation-for="FirstName" class="af-error"></span>
                         </div>
-                        <span asp-validation-for="Password" class="af-error"></span>
+                        <div class="col-md-4 af-form-group">
+                            <label asp-for="MiddleName" class="af-label">Middle Name</label>
+                            <input asp-for="MiddleName" class="af-input" />
+                        </div>
+                        <div class="col-md-4 af-form-group">
+                            <label asp-for="LastName" class="af-label">Last Name</label>
+                            <input asp-for="LastName" class="af-input" />
+                            <span asp-validation-for="LastName" class="af-error"></span>
+                        </div>
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="Role" class="af-label">Role</label>
-                        <select asp-for="Role" class="af-input af-select">
-                            <option value="Admin">Admin — Full access</option>
-                            <option value="Manager">Manager — View + Edit status</option>
-                            <option value="Viewer">Viewer — Read only</option>
-                        </select>
+                        <label asp-for="DisplayName" class="af-label">Display Name</label>
+                        <input asp-for="DisplayName" class="af-input" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="Username" class="af-label">Username</label>
+                            <input asp-for="Username" class="af-input" />
+                            <span asp-validation-for="Username" class="af-error"></span>
+                        </div>
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="Email" class="af-label">Email</label>
+                            <input asp-for="Email" class="af-input" />
+                            <span asp-validation-for="Email" class="af-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="ContactNumber" class="af-label">Contact Number</label>
+                            <input asp-for="ContactNumber" class="af-input" />
+                        </div>
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="Role" class="af-label">Role</label>
+                            <select asp-for="Role" class="af-input af-select">
+                                <option value="">— Select Role —</option>
+                                @foreach (var r in Model.AvailableRoles)
+                                {
+                                    if (Model.Role == r.RoleName)
+                                    {
+                                        <option value="@r.RoleName" selected>@r.RoleName @(r.Description != null ? $"— {r.Description}" : "")</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@r.RoleName">@r.RoleName @(r.Description != null ? $"— {r.Description}" : "")</option>
+                                    }
+                                }
+                            </select>
+                            <span asp-validation-for="Role" class="af-error"></span>
+                            @if (!Model.AvailableRoles.Any())
+                            {
+                                <div style="font-size:.78rem;color:#f59e0b;margin-top:.3rem;">⚠️ No roles found. <a asp-controller="Role" asp-action="Create">Create a role first</a>.</div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="Address" class="af-label">Address</label>
+                        <input asp-for="Address" class="af-input" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="Password" class="af-label">
+                                New Password
+                                <span style="font-weight:400;color:#94a3b8;">(leave blank to keep current)</span>
+                            </label>
+                            <div style="position:relative;">
+                                <input asp-for="Password" class="af-input" id="pwInput" placeholder="Enter new password" style="padding-right:2.5rem;" />
+                                <button type="button" id="togglePw" style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;">👁</button>
+                            </div>
+                            <span asp-validation-for="Password" class="af-error"></span>
+                        </div>
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="ConfirmPassword" class="af-label">Confirm Password</label>
+                            <div style="position:relative;">
+                                <input asp-for="ConfirmPassword" class="af-input" id="cpwInput" placeholder="Re-enter new password" style="padding-right:2.5rem;" />
+                                <button type="button" id="toggleCpw" style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;">👁</button>
+                            </div>
+                            <span asp-validation-for="ConfirmPassword" class="af-error"></span>
+                        </div>
                     </div>
 
                     <div class="af-form-group">
@@ -79,5 +136,14 @@
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
-    <script src="~/js/user-form.js"></script>
+    <script>
+        document.getElementById('togglePw').onclick = function () {
+            var i = document.getElementById('pwInput');
+            i.type = i.type === 'password' ? 'text' : 'password';
+        };
+        document.getElementById('toggleCpw').onclick = function () {
+            var i = document.getElementById('cpwInput');
+            i.type = i.type === 'password' ? 'text' : 'password';
+        };
+    </script>
 }

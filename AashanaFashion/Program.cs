@@ -18,6 +18,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.LogoutPath = "/Account/Logout";
         options.AccessDeniedPath = "/Account/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.None;
+        options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
     });
 
 var app = builder.Build();
@@ -28,7 +30,6 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();
@@ -45,15 +46,34 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 
     // Seed users
-    if (!db.Users.Any())
+    var usersToSeed = new[]
     {
-        db.Users.AddRange(
-            new AppUser { Username = "admin",   PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),   Role = "Admin",   FullName = "Admin User",   IsActive = true },
-            new AppUser { Username = "manager", PasswordHash = BCrypt.Net.BCrypt.HashPassword("manager123"), Role = "Manager", FullName = "Production Manager", IsActive = true },
-            new AppUser { Username = "viewer",  PasswordHash = BCrypt.Net.BCrypt.HashPassword("viewer123"),  Role = "Viewer",  FullName = "Floor Viewer", IsActive = true }
-        );
-        db.SaveChanges();
+        new { Username = "superadmin", Password = "superadmin123", Role = "SuperAdmin", First = "Super",      Last = "Admin"   },
+        new { Username = "admin",       Password = "admin123",       Role = "Admin",      First = "Admin",      Last = "User"    },
+        new { Username = "manager",     Password = "manager123",     Role = "Manager",    First = "Production", Last = "Manager" },
+        new { Username = "viewer",      Password = "viewer123",      Role = "Viewer",     First = "Floor",      Last = "Viewer"  },
+    };
+    foreach (var u in usersToSeed)
+    {
+        var existing = db.Users.FirstOrDefault(x => x.Username == u.Username);
+        if (existing == null)
+        {
+            db.Users.Add(new AppUser
+            {
+                Username     = u.Username,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(u.Password),
+                Role         = u.Role,
+                FirstName    = u.First,
+                LastName     = u.Last,
+                IsActive     = true
+            });
+        }
+        else if (existing.Role != u.Role)
+        {
+            existing.Role = u.Role;
+        }
     }
+    db.SaveChanges();
 
     // Seed designs
     if (!db.Designs.Any())

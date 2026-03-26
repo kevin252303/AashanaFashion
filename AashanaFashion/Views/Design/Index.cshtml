@@ -1,6 +1,7 @@
 @model IEnumerable<AashanaFashion.Models.Design>
 @{
     ViewData["Title"] = "Design Master";
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
 }
 
 <div class="page-header">
@@ -8,7 +9,10 @@
         <h1 class="page-title">Design Master</h1>
         <p class="page-sub">Manage all dress designs</p>
     </div>
-    <a asp-action="Create" class="btn-af btn-af-primary">+ New Design</a>
+    @if (role == "Admin")
+    {
+        <a asp-action="Create" class="btn-af btn-af-primary">+ New Design</a>
+    }
 </div>
 
 @if (TempData["Success"] != null)
@@ -25,25 +29,28 @@
                 <th>Sizes</th>
                 <th>Price</th>
                 <th>Creation Flow</th>
-                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var item in Model)
             {
                 <tr>
-                    <td><strong>@item.DesignNumber</strong></td>
+                    <td>
+                        @if (role == "Admin")
+                        {
+                            <span class="ctx-trigger" style="font-weight:600;color:#6366f1;cursor:pointer;text-decoration:underline dotted;"
+                                  data-id="@item.Id"
+                                  data-edit="@Url.Action("Edit", "Design", new { id = item.Id })">@item.DesignNumber</span>
+                        }
+                        else
+                        {
+                            <strong>@item.DesignNumber</strong>
+                        }
+                    </td>
                     <td>@item.Colours</td>
                     <td>@item.Sizes</td>
                     <td>₹@item.Price.ToString("N2")</td>
                     <td>@item.CreationFlow</td>
-                    <td>
-                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
-                        <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete this design?')">Delete</button>
-                        </form>
-                    </td>
                 </tr>
             }
         </tbody>
@@ -53,3 +60,59 @@
         <div class="text-center p-4 text-muted">No designs found. <a asp-action="Create">Create the first one</a>.</div>
     }
 </div>
+
+<!-- Context Menu -->
+<ul id="ctxMenu" style="
+    display:none; position:fixed; z-index:9999;
+    background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,.12); padding:.4rem 0; min-width:140px; list-style:none; margin:0;">
+    <li>
+        <a id="ctxEdit" href="#" style="display:flex;align-items:center;gap:.6rem;padding:.55rem 1rem;color:#1e293b;text-decoration:none;font-size:.95rem;font-weight:500;">
+            ✏️ Edit
+        </a>
+    </li>
+    <li id="ctxDeleteItem">
+        <hr style="margin:.3rem 0;border-color:#f1f5f9;">
+        <a id="ctxDelete" href="#" style="display:flex;align-items:center;gap:.6rem;padding:.55rem 1rem;color:#dc2626;text-decoration:none;font-size:.95rem;font-weight:500;">
+            🗑️ Delete
+        </a>
+    </li>
+</ul>
+
+<form id="ctxDeleteForm" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+<script>
+    var menu = document.getElementById('ctxMenu');
+    var ctxEdit = document.getElementById('ctxEdit');
+    var ctxDeleteForm = document.getElementById('ctxDeleteForm');
+
+    document.querySelectorAll('.ctx-trigger').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+            e.stopPropagation();
+            ctxEdit.href = el.dataset.edit;
+            ctxDeleteForm.action = '/Design/Delete/' + el.dataset.id;
+            document.getElementById('ctxDelete').onclick = function (ev) {
+                ev.preventDefault();
+                if (confirm('Delete this design?')) ctxDeleteForm.submit();
+                hideMenu();
+            };
+            menu.style.display = 'block';
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+        });
+    });
+
+    document.addEventListener('click', hideMenu);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideMenu(); });
+
+    function hideMenu() { menu.style.display = 'none'; }
+
+    menu.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('mouseenter', function () { this.style.background = '#f8fafc'; });
+        a.addEventListener('mouseleave', function () { this.style.background = ''; });
+    });
+</script>
+}

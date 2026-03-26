@@ -12,6 +12,8 @@ namespace AashanaFashion.Data
         public DbSet<AppUser> Users { get; set; }
         public DbSet<Design> Designs { get; set; }
         public DbSet<Vendor> Vendors { get; set; }
+        public DbSet<UserRole> UserRoles { get; set; }
+        public DbSet<RolePermission> RolePermissions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -38,6 +40,15 @@ namespace AashanaFashion.Data
             modelBuilder.Entity<AppUser>()
                 .HasIndex(u => u.Username)
                 .IsUnique();
+
+            modelBuilder.Entity<AppUser>()
+                .ToTable("UserList");
+
+            modelBuilder.Entity<UserRole>()
+                .HasMany(r => r.Permissions)
+                .WithOne(p => p.UserRole)
+                .HasForeignKey(p => p.UserRoleId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
