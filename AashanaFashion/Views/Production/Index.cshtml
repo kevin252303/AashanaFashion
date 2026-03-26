@@ -57,11 +57,10 @@
                     <tr>
                         <th class="ps-4">#</th>
                         <th>Design No.</th>
-                        <th>Fabric</th>
                         <th>Qty</th>
-                        <th>Pieces</th>
+                        @* <th>Pieces</th> *@
                         <th>Stage</th>
-                        <th>Progress</th>
+                        @* <th>Progress</th> *@
                         <th>Status</th>
                         @if (role == "Admin" || role == "Manager")
                         {
@@ -74,22 +73,27 @@
                     {
                         <tr>
                             <td class="ps-4 text-muted">@item.Id</td>
-                            <td><span style="font-weight:600;color:#0f172a;">@item.DesignNumber</span></td>
-                            <td style="color:#64748b;">@item.CurrentStage</td>
-                            <td>@item.TotalQuantity <span style="color:#94a3b8;font-size:.75rem;">pcs</span></td>
                             <td>
-                                <span class="af-badge @(item.IsGhagraDone ? "b-green" : "b-gray")" style="margin-right:3px;">G</span>
-                                <span class="af-badge @(item.IsCholiDone  ? "b-green" : "b-gray")" style="margin-right:3px;">C</span>
-                                <span class="af-badge @(item.IsDupattaDone ? "b-green" : "b-gray")">D</span>
+                                <span style="font-weight:600;color:#0f172a;">@item.DesignNumber</span>
+                                <br><span style="font-size:.75rem;color:#94a3b8;">@item.LotNo</span>
                             </td>
+                            <td>@item.TotalQuantity <span style="color:#94a3b8;font-size:.75rem;">pcs</span></td>
+                            @* <td>
+                                @foreach (var step in item.CreationSteps)
+                                {
+                                    var stepKey = step.Trim();
+                                    var isDone = item.VerificationStatus.ContainsKey(stepKey) && item.VerificationStatus[stepKey];
+                                    <span class="af-badge @(isDone ? "b-green" : "b-gray")" style="margin-right:3px;" title="@step">@step.Substring(0, Math.Min(3, step.Length)).ToUpper()</span>
+                                }
+                            </td> *@
                             <td><span class="af-badge @GetStageBadge(item.Status)">@item.CurrentStage</span></td>
-                            <td style="min-width:120px;">
+                            @* <td style="min-width:120px;">
                                 <div class="af-progress mb-1">
                                     <div class="af-progress-bar"
                                          style="width:@item.ProgressPercentage%; background:@(item.ProgressPercentage==100?"#22c55e":"#6366f1");"></div>
                                 </div>
                                 <span style="font-size:.72rem;color:#94a3b8;">@item.ProgressPercentage%</span>
-                            </td>
+                            </td> *@
                             <td>
                                 @if (item.Status == AashanaFashion.Models.OrderStatus.Dispatched)
                                 { <span class="af-badge b-gray">Dispatched</span> }

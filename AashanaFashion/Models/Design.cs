@@ -10,4 +10,9 @@ public class Design
     public decimal Price { get; set; }
     public string CreationFlow { get; set; } = string.Empty;
     public DateTime CreatedDate { get; set; } = DateTime.Now;
+
+    public List<string> GetCreationSteps() =>
+        CreationFlow.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => s.Trim())
+            .ToList();
 }

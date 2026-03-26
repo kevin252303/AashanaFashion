@@ -3,6 +3,8 @@
     ViewData["Title"] = "Edit Order";
     var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
     var designs = ViewBag.Designs as List<AashanaFashion.Models.Design> ?? new List<AashanaFashion.Models.Design>();
+    var currentDesign = designs.FirstOrDefault(d => d.Id == Model.DesignId);
+    var creationSteps = currentDesign?.GetCreationSteps() ?? new List<string>();
     var statusOptions = string.Join("", Enum.GetValues<AashanaFashion.Models.OrderStatus>()
         .Select(s => $"<option value=\"{s}\" {(s == Model.Status ? "selected" : "")}>{s}</option>"));
 }
@@ -16,7 +18,7 @@
 </div>
 
 <div class="row">
-    <div class="col-lg-5">
+    <div class="col-lg-4">
         <div class="data-card mb-3">
             <div class="data-card-header">
                 <div class="data-card-title">Order Details</div>
@@ -33,16 +35,12 @@
                             <label class="af-label">Design</label>
                             <select name="DesignId" class="af-input af-select" id="designSelect">
                                 @Html.Raw(string.Join("", designs.Select(d => 
-                                    $"<option value=\"{d.Id}\" data-colours=\"{d.Colours}\" data-sizes=\"{d.Sizes}\" {(d.Id == Model.DesignId ? "selected" : "")}>{d.DesignNumber}</option>")))
+                                    $"<option value=\"{d.Id}\" data-colours=\"{d.Colours}\" data-sizes=\"{d.Sizes}\" data-steps=\"{d.CreationFlow}\" {(d.Id == Model.DesignId ? "selected" : "")}>{d.DesignNumber}</option>")))
                             </select>
                         </div>
                         <div class="af-form-group">
                             <label class="af-label">Lot No</label>
                             <input type="text" name="LotNo" class="af-input" value="@Model.LotNo" />
-                        </div>
-                        <div class="af-form-group">
-                            <label class="af-label">Fabric Type</label>
-                            <input type="text" name="FabricType" class="af-input" value="@Model.FabricType" />
                         </div>
                     }
                     else
@@ -65,60 +63,44 @@
                         </select>
                     </div>
 
-                    <div class="af-form-group">
-                        <label class="af-label">Verification Checklist</label>
-                        <div style="background:#f8fafc;border-radius:10px;padding:1rem;display:flex;flex-direction:column;gap:.75rem;">
-                            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
-                                <input type="checkbox" name="IsRawMaterialVerified" @(Model.IsRawMaterialVerified ? "checked" : "") style="accent-color:#6366f1;width:16px;height:16px;" />
-                                Raw Material Verified
-                            </label>
-                            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
-                                <input type="checkbox" name="IsDyingVerified" @(Model.IsDyingVerified ? "checked" : "") style="accent-color:#6366f1;width:16px;height:16px;" />
-                                Dying Verified
-                            </label>
-                            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
-                                <input type="checkbox" name="IsHandworkVerified" @(Model.IsHandworkVerified ? "checked" : "") style="accent-color:#6366f1;width:16px;height:16px;" />
-                                Handwork Verified
-                            </label>
-                            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
-                                <input type="checkbox" name="IsStitchingVerified" @(Model.IsStitchingVerified ? "checked" : "") style="accent-color:#6366f1;width:16px;height:16px;" />
-                                Stitching Verified
-                            </label>
+                    <div class="af-form-group" id="verificationSection" style="display:none;">
+                        <label class="af-label">Verification Checklist <span class="text-muted" style="font-weight:normal;">(based on: @currentDesign?.CreationFlow)</span></label>
+                        <div style="background:#f8fafc;border-radius:10px;padding:1rem;display:flex;flex-direction:column;gap:.75rem;" id="verificationContainer">
                         </div>
                     </div>
 
                     <input type="hidden" id="totalQuantity" name="TotalQuantity" value="@Model.TotalQuantity" />
+
+                    <div style="display:flex;gap:.75rem;margin-top:1rem;">
+                        <button type="submit" form="orderForm" class="btn-af btn-af-primary">Save Changes</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <div class="col-lg-7">
+    <div class="col-lg-8">
         <div class="data-card">
             <div class="data-card-header">
                 <div class="data-card-title">Colour & Size Matrix</div>
                 <span class="af-badge b-blue" id="totalPieces">Total: @Model.TotalQuantity pcs</span>
             </div>
-            <div style="padding:1.5rem;">
+            <div style="padding:1rem;">
                 <div id="matrixContainer">
                     <div class="text-center p-4 text-muted" id="matrixPlaceholder" style="display:none;">
                         Select a design to see colour/size matrix
                     </div>
-                    <div id="matrixGrid">
-                        <table class="af-table" id="matrixTable">
+                    <div id="matrixGrid" style="overflow-x:auto;">
+                        <table class="af-table" id="matrixTable" style="min-width:100%;">
                             <thead>
-                                <tr>
-                                    <th>Colour</th>
+                                <tr id="matrixHeader">
+                                    <th style="min-width:100px;">Colour ↓ / Size →</th>
                                 </tr>
                             </thead>
                             <tbody id="matrixBody"></tbody>
                         </table>
                     </div>
-                </div>
-
-                <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
-                    <button type="submit" form="orderForm" class="btn-af btn-af-primary">Save Changes</button>
-                    <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
                 </div>
             </div>
         </div>

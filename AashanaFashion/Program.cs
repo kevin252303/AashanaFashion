@@ -74,9 +74,9 @@ using (var scope = app.Services.CreateScope())
         var design3 = db.Designs.First(d => d.DesignNumber == "AF-003");
 
         db.ProductionOrders.AddRange(
-            new ProductionOrder { DesignId = design1.Id, LotNo = "LOT-001", FabricType = "Silk", TotalQuantity = 50, Status = OrderStatus.AtStitching, IsRawMaterialVerified = true, IsDyingVerified = true, IsHandworkVerified = true, IsStitchingVerified = false },
-            new ProductionOrder { DesignId = design2.Id, LotNo = "LOT-002", FabricType = "Cotton", TotalQuantity = 30, Status = OrderStatus.AtHandwork, IsRawMaterialVerified = true, IsDyingVerified = true, IsHandworkVerified = false, IsStitchingVerified = false },
-            new ProductionOrder { DesignId = design3.Id, LotNo = "LOT-003", FabricType = "Chiffon", TotalQuantity = 75, Status = OrderStatus.ReadyToDispatch, IsRawMaterialVerified = true, IsDyingVerified = true, IsHandworkVerified = true, IsStitchingVerified = true }
+            new ProductionOrder { DesignId = design1.Id, LotNo = "LOT-001", TotalQuantity = 50, Status = OrderStatus.AtStitching, IsRawMaterialVerified = true, IsDyingVerified = true, IsHandworkVerified = true, IsStitchingVerified = false },
+            new ProductionOrder { DesignId = design2.Id, LotNo = "LOT-002", TotalQuantity = 30, Status = OrderStatus.AtHandwork, IsRawMaterialVerified = true, IsDyingVerified = true, IsHandworkVerified = false, IsStitchingVerified = false },
+            new ProductionOrder { DesignId = design3.Id, LotNo = "LOT-003", TotalQuantity = 75, Status = OrderStatus.ReadyToDispatch, IsRawMaterialVerified = true, IsDyingVerified = true, IsHandworkVerified = true, IsStitchingVerified = true }
         );
         db.SaveChanges();
 

@@ -32,13 +32,17 @@ namespace AashanaFashion.Controllers
                 DesignNumber = b.Design?.DesignNumber ?? "",
                 LotNo = b.LotNo,
                 TotalQuantity = b.TotalQuantity,
-                IsGhagraDone = b.IsHandworkVerified,
-                IsCholiDone = b.IsStitchingVerified,
                 CurrentStage = b.Status.ToString(),
-                IsHandworkVerified = b.IsHandworkVerified,
-                IsStitchingVerified = b.IsStitchingVerified,
                 Status = b.Status,
-                ProgressPercentage = CalculateProgress(b)
+                CreationSteps = b.Design?.GetCreationSteps() ?? new List<string>(),
+                VerificationStatus = new Dictionary<string, bool>
+                {
+                    { "RawMaterial", b.IsRawMaterialVerified },
+                    { "Dying", b.IsDyingVerified },
+                    { "Handwork", b.IsHandworkVerified },
+                    { "Stitching", b.IsStitchingVerified }
+                },
+                //ProgressPercentage = CalculateProgress(b)
             }).ToList();
 
             return View(batches);
@@ -123,8 +127,6 @@ namespace AashanaFashion.Controllers
                     order.DesignId = int.Parse(Request.Form["DesignId"]!);
                 if (Request.Form["LotNo"].Count > 0)
                     order.LotNo = Request.Form["LotNo"]!;
-                if (Request.Form["FabricType"].Count > 0)
-                    order.FabricType = Request.Form["FabricType"]!;
             }
 
             if (Details != null && Details.Any())
@@ -161,14 +163,31 @@ namespace AashanaFashion.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        private static int CalculateProgress(ProductionOrder o)
-        {
-            int steps = 0;
-            if (o.IsRawMaterialVerified) steps++;
-            if (o.IsDyingVerified) steps++;
-            if (o.IsHandworkVerified) steps++;
-            if (o.IsStitchingVerified) steps++;
-            return (steps * 100) / 4;
-        }
+        //private static int CalculateProgress(ProductionOrder o)
+        //{
+        //    var steps = o.Design?.GetCreationSteps() ?? new List<string>();
+        //    if (!steps.Any()) return 0;
+
+        //    int completed = 0;
+        //    foreach (var step in steps)
+        //    {
+        //        switch (step.Trim().ToLower())
+        //        {
+        //            case "raw material":
+        //                if (o.IsRawMaterialVerified) completed++;
+        //                break;
+        //            case "dying":
+        //                if (o.IsDyingVerified) completed++;
+        //                break;
+        //            case "handwork":
+        //                if (o.IsHandworkVerified) completed++;
+        //                break;
+        //            case "stitching":
+        //                if (o.IsStitchingVerified) completed++;
+        //                break;
+        //        }
+        //    }
+        //    return (completed * 100) / steps.Count;
+        //}
     }
 }

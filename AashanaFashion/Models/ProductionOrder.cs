@@ -6,7 +6,6 @@ namespace AashanaFashion.Models
         public int DesignId { get; set; }
         public Design? Design { get; set; }
         public string LotNo { get; set; } = string.Empty;
-        public string FabricType { get; set; } = string.Empty;
         public int TotalQuantity { get; set; }
         public OrderStatus Status { get; set; }
         public bool IsRawMaterialVerified { get; set; }
