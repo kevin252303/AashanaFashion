@@ -75,10 +75,5 @@
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
-    <script>
-        document.getElementById('togglePw').addEventListener('click', function () {
-            const i = document.getElementById('pwInput');
-            i.type = i.type === 'password' ? 'text' : 'password';
-        });
-    </script>
+    <script src="~/js/user-form.js"></script>
 }

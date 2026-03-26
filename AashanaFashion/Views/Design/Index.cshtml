@@ -1,0 +1,55 @@
+@model IEnumerable<AashanaFashion.Models.Design>
+@{
+    ViewData["Title"] = "Design Master";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Design Master</h1>
+        <p class="page-sub">Manage all dress designs</p>
+    </div>
+    <a asp-action="Create" class="btn-af btn-af-primary">+ New Design</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3">@TempData["Success"]</div>
+}
+
+<div class="data-card">
+    <table class="af-table">
+        <thead>
+            <tr>
+                <th>Design No</th>
+                <th>Colours</th>
+                <th>Sizes</th>
+                <th>Price</th>
+                <th>Creation Flow</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td><strong>@item.DesignNumber</strong></td>
+                    <td>@item.Colours</td>
+                    <td>@item.Sizes</td>
+                    <td>₹@item.Price.ToString("N2")</td>
+                    <td>@item.CreationFlow</td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                        <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete this design?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (!Model.Any())
+    {
+        <div class="text-center p-4 text-muted">No designs found. <a asp-action="Create">Create the first one</a>.</div>
+    }
+</div>

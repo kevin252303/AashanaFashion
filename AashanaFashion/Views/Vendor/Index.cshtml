@@ -1,0 +1,69 @@
+@model IEnumerable<AashanaFashion.Models.Vendor>
+@{
+    ViewData["Title"] = "Vendor Master";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Vendor Master</h1>
+        <p class="page-sub">Manage all vendors</p>
+    </div>
+    <a asp-action="Create" class="btn-af btn-af-primary">+ New Vendor</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3">@TempData["Success"]</div>
+}
+
+<div class="data-card">
+    <table class="af-table">
+        <thead>
+            <tr>
+                <th>Vendor Name</th>
+                <th>GST No</th>
+                <th>Contact Person</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>City</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td><strong>@item.VendorName</strong></td>
+                    <td>@item.GstNumber</td>
+                    <td>@item.ContactPerson</td>
+                    <td>@item.Phone</td>
+                    <td>@item.Email</td>
+                    <td>@item.City</td>
+                    <td>
+                        <span class="af-badge @(item.IsActive ? "b-green" : "b-gray")">
+                            @(item.IsActive ? "Active" : "Inactive")
+                        </span>
+                    </td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                        <form asp-action="ToggleActive" asp-route-id="@item.Id" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn-af @(item.IsActive ? "btn-af-warn" : "btn-af-success") btn-af-sm">
+                                @(item.IsActive ? "Deactivate" : "Activate")
+                            </button>
+                        </form>
+                        <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete this vendor?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (!Model.Any())
+    {
+        <div class="text-center p-4 text-muted">No vendors found. <a asp-action="Create">Add the first one</a>.</div>
+    }
+</div>

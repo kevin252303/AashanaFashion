@@ -33,6 +33,18 @@
                 <span class="ico">📦</span> Production Orders
             </a>
 
+            @if (role == "Admin")
+            {
+                <a class="s-link @(ctrl == "Design" ? "active" : "")"
+                   asp-controller="Design" asp-action="Index">
+                    <span class="ico">🎨</span> Design Master
+                </a>
+                <a class="s-link @(ctrl == "Vendor" ? "active" : "")"
+                   asp-controller="Vendor" asp-action="Index">
+                    <span class="ico">🏢</span> Vendor Master
+                </a>
+            }
+
             @if (role == "Admin" || role == "Manager")
             {
                 <a class="s-link @(ctrl == "Production" && action == "Create" ? "active" : "")"

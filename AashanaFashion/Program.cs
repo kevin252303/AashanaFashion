@@ -7,8 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 
+var activeConnection = builder.Configuration.GetValue<string>("ActiveConnection") ?? "DefaultConnection";
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString(activeConnection)));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -54,15 +55,38 @@ using (var scope = app.Services.CreateScope())
         db.SaveChanges();
     }
 
+    // Seed designs
+    if (!db.Designs.Any())
+    {
+        db.Designs.AddRange(
+            new Design { DesignNumber = "AF-001", Colours = "Red,Blue,Green", Sizes = "S,M,L,XL", Price = 1500, CreationFlow = "Dying → Handwork → Stitching" },
+            new Design { DesignNumber = "AF-002", Colours = "Yellow,Pink", Sizes = "M,L,XL", Price = 2000, CreationFlow = "Dying → Handwork → Stitching" },
+            new Design { DesignNumber = "AF-003", Colours = "Red,Black,White", Sizes = "S,M,L", Price = 1800, CreationFlow = "Dying → Handwork → Stitching" }
+        );
+        db.SaveChanges();
+    }
+
     // Seed production orders
     if (!db.ProductionOrders.Any())
     {
+        var design1 = db.Designs.First(d => d.DesignNumber == "AF-001");
+        var design2 = db.Designs.First(d => d.DesignNumber == "AF-002");
+        var design3 = db.Designs.First(d => d.DesignNumber == "AF-003");
+
         db.ProductionOrders.AddRange(
-            new ProductionOrder { DesignNumber = "AF-001", FabricType = "Silk",      TotalQuantity = 50,  Status = OrderStatus.AtStitching,      IsRawMaterialVerified = true,  IsDyingVerified = true,  IsHandworkVerified = true,  IsStitchingVerified = false },
-            new ProductionOrder { DesignNumber = "AF-002", FabricType = "Cotton",    TotalQuantity = 30,  Status = OrderStatus.AtHandwork,        IsRawMaterialVerified = true,  IsDyingVerified = true,  IsHandworkVerified = false, IsStitchingVerified = false },
-            new ProductionOrder { DesignNumber = "AF-003", FabricType = "Chiffon",   TotalQuantity = 75,  Status = OrderStatus.ReadyToDispatch,   IsRawMaterialVerified = true,  IsDyingVerified = true,  IsHandworkVerified = true,  IsStitchingVerified = true  },
-            new ProductionOrder { DesignNumber = "AF-004", FabricType = "Lawn",      TotalQuantity = 100, Status = OrderStatus.Dispatched,        IsRawMaterialVerified = true,  IsDyingVerified = true,  IsHandworkVerified = true,  IsStitchingVerified = true  },
-            new ProductionOrder { DesignNumber = "AF-005", FabricType = "Georgette", TotalQuantity = 20,  Status = OrderStatus.AtDying,           IsRawMaterialVerified = true,  IsDyingVerified = false, IsHandworkVerified = false, IsStitchingVerified = false }
+            new ProductionOrder { DesignId = design1.Id, LotNo = "LOT-001", FabricType = "Silk", TotalQuantity = 50, Status = OrderStatus.AtStitching, IsRawMaterialVerified = true, IsDyingVerified = true, IsHandworkVerified = true, IsStitchingVerified = false },
+            new ProductionOrder { DesignId = design2.Id, LotNo = "LOT-002", FabricType = "Cotton", TotalQuantity = 30, Status = OrderStatus.AtHandwork, IsRawMaterialVerified = true, IsDyingVerified = true, IsHandworkVerified = false, IsStitchingVerified = false },
+            new ProductionOrder { DesignId = design3.Id, LotNo = "LOT-003", FabricType = "Chiffon", TotalQuantity = 75, Status = OrderStatus.ReadyToDispatch, IsRawMaterialVerified = true, IsDyingVerified = true, IsHandworkVerified = true, IsStitchingVerified = true }
+        );
+        db.SaveChanges();
+
+        // Seed order details
+        var order1 = db.ProductionOrders.First();
+        db.ProductionOrderDetails.AddRange(
+            new ProductionOrderDetail { ProductionOrderId = order1.Id, Colour = "Red", Size = "S", Quantity = 10 },
+            new ProductionOrderDetail { ProductionOrderId = order1.Id, Colour = "Red", Size = "M", Quantity = 15 },
+            new ProductionOrderDetail { ProductionOrderId = order1.Id, Colour = "Blue", Size = "L", Quantity = 12 },
+            new ProductionOrderDetail { ProductionOrderId = order1.Id, Colour = "Green", Size = "XL", Quantity = 13 }
         );
         db.SaveChanges();
     }

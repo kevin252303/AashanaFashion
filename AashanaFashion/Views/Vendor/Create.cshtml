@@ -1,0 +1,175 @@
+@model AashanaFashion.Models.VendorViewModel
+@{
+    ViewData["Title"] = "New Vendor";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">New Vendor</h1>
+        <p class="page-sub">Add a new vendor</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+</div>
+
+<div class="row">
+    <!-- GST Fetch Section -->
+    <div class="col-lg-5">
+        <div class="data-card mb-3">
+            <div class="data-card-header">
+                <div class="data-card-title">Fetch via GST</div>
+            </div>
+            <div style="padding:1.5rem;">
+                <div class="af-form-group">
+                    <label class="af-label">Enter GST Number</label>
+                    <div style="display:flex;gap:.5rem;">
+                        <input type="text" id="gstInput" class="af-input" placeholder="e.g. 27AABCU9603R1ZM" maxlength="15" style="text-transform:uppercase;" />
+                        <button type="button" id="fetchGstBtn" class="btn-af btn-af-primary">Fetch</button>
+                    </div>
+                    <span class="af-hint">Enter 15-digit GST number</span>
+                </div>
+                <div id="gstError" class="af-alert af-alert-danger" style="display:none;"></div>
+                <div id="gstSuccess" class="af-alert af-alert-success" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Entry Section -->
+    <div class="col-lg-7">
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">Vendor Details</div>
+            </div>
+            <div style="padding:1.5rem;">
+                <form asp-action="Create" method="post" id="vendorForm">
+                    @Html.AntiForgeryToken()
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="af-alert af-alert-danger mb-3">
+                            @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            { <div>@e.ErrorMessage</div> }
+                        </div>
+                    }
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="VendorName" class="af-label">Vendor Name *</label>
+                                <input asp-for="VendorName" class="af-input" id="VendorName" />
+                                <span asp-validation-for="VendorName" class="af-error"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="GstNumber" class="af-label">GST Number</label>
+                                <input asp-for="GstNumber" class="af-input" id="GstNumber" style="text-transform:uppercase;" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="ContactPerson" class="af-label">Contact Person</label>
+                                <input asp-for="ContactPerson" class="af-input" id="ContactPerson" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="Phone" class="af-label">Phone</label>
+                                <input asp-for="Phone" class="af-input" id="Phone" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="Email" class="af-label">Email</label>
+                                <input asp-for="Email" class="af-input" type="email" id="Email" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="PanNumber" class="af-label">PAN Number</label>
+                                <input asp-for="PanNumber" class="af-input" id="PanNumber" style="text-transform:uppercase;" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="Address" class="af-label">Address</label>
+                        <input asp-for="Address" class="af-input" id="Address" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="City" class="af-label">City</label>
+                                <input asp-for="City" class="af-input" id="City" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="State" class="af-label">State</label>
+                                <input asp-for="State" class="af-input" id="State" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="PinCode" class="af-label">Pin Code</label>
+                                <input asp-for="PinCode" class="af-input" id="PinCode" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr style="margin:1.5rem 0;border-color:#e2e8f0;" />
+                    <div class="data-card-title mb-3">Bank Details</div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="BankName" class="af-label">Bank Name</label>
+                                <input asp-for="BankName" class="af-input" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="AccountNumber" class="af-label">Account Number</label>
+                                <input asp-for="AccountNumber" class="af-input" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="IfscCode" class="af-label">IFSC Code</label>
+                                <input asp-for="IfscCode" class="af-input" style="text-transform:uppercase;" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="IsActive" class="af-label">Status</label>
+                                <select asp-for="IsActive" class="af-input af-select">
+                                    <option value="true">Active</option>
+                                    <option value="false">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+                        <button type="submit" class="btn-af btn-af-primary">Save Vendor</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script src="~/js/vendor.js"></script>
+}

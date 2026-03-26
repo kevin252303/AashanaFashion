@@ -1,20 +1,27 @@
 @model AashanaFashion.Models.ProductionOrder
 @{
     ViewData["Title"] = "New Production Order";
+    var designs = ViewBag.Designs as List<AashanaFashion.Models.Design> ?? new List<AashanaFashion.Models.Design>();
+    var designOptions = string.Join("", designs.Select(d => 
+        $"<option value=\"{d.Id}\" data-colours=\"{d.Colours}\" data-sizes=\"{d.Sizes}\">{d.DesignNumber}</option>"));
 }
 
-<div class="row justify-content-center">
-    <div class="col-lg-6 col-xl-5">
-        <div class="data-card">
+<div class="page-header">
+    <div>
+        <h1 class="page-title">New Production Order</h1>
+        <p class="page-sub">Create a new production order</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+</div>
+
+<div class="row">
+    <div class="col-lg-5">
+        <div class="data-card mb-3">
             <div class="data-card-header">
-                <div>
-                    <div class="data-card-title">Create Production Order</div>
-                    <div style="font-size:.75rem;color:#94a3b8;margin-top:.2rem;">Fill in the details below to add a new order</div>
-                </div>
-                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+                <div class="data-card-title">Order Details</div>
             </div>
             <div style="padding:1.5rem;">
-                <form asp-action="Create" method="post">
+                <form asp-action="Create" method="post" id="orderForm">
                     @Html.AntiForgeryToken()
 
                     @if (!ViewData.ModelState.IsValid)
@@ -26,19 +33,23 @@
                     }
 
                     <div class="af-form-group">
-                        <label asp-for="DesignNumber" class="af-label">Design Number</label>
-                        <input asp-for="DesignNumber" class="af-input" placeholder="e.g. AF-006" />
-                        <span asp-validation-for="DesignNumber" class="af-error"></span>
+                        <label class="af-label">Design *</label>
+                        <select asp-for="DesignId" class="af-input af-select" id="designSelect" required>
+                            <option value="">— Select Design —</option>
+                            @Html.Raw(designOptions)
+                        </select>
+                        <span asp-validation-for="DesignId" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="LotNo" class="af-label">Lot No *</label>
+                        <input asp-for="LotNo" class="af-input" placeholder="e.g. LOT-001" required />
+                        <span asp-validation-for="LotNo" class="af-error"></span>
                     </div>
 
                     <div class="af-form-group">
                         <label asp-for="FabricType" class="af-label">Fabric Type</label>
-                        <input asp-for="FabricType" class="af-input" placeholder="e.g. Silk, Cotton, Chiffon" />
-                    </div>
-
-                    <div class="af-form-group">
-                        <label asp-for="TotalQuantity" class="af-label">Total Quantity (pcs)</label>
-                        <input asp-for="TotalQuantity" class="af-input" type="number" min="1" placeholder="0" />
+                        <input asp-for="FabricType" class="af-input" placeholder="e.g. Silk, Cotton" />
                     </div>
 
                     <div class="af-form-group">
@@ -47,11 +58,39 @@
                                 asp-items="Html.GetEnumSelectList<AashanaFashion.Models.OrderStatus>()"></select>
                     </div>
 
-                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
-                        <button type="submit" class="btn-af btn-af-primary">Create Order</button>
-                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
-                    </div>
+                    <input type="hidden" id="totalQuantity" name="TotalQuantity" value="0" />
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">Colour & Size Matrix</div>
+                <span class="af-badge b-blue" id="totalPieces">Total: 0 pcs</span>
+            </div>
+            <div style="padding:1.5rem;">
+                <div id="matrixContainer">
+                    <div class="text-center p-4 text-muted" id="matrixPlaceholder">
+                        Select a design to see colour/size matrix
+                    </div>
+                    <div id="matrixGrid" style="display:none;">
+                        <table class="af-table" id="matrixTable">
+                            <thead>
+                                <tr>
+                                    <th>Colour</th>
+                                </tr>
+                            </thead>
+                            <tbody id="matrixBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+                    <button type="submit" form="orderForm" class="btn-af btn-af-primary">Create Order</button>
+                    <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                </div>
             </div>
         </div>
     </div>
@@ -59,4 +98,5 @@
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script src="~/js/production-create.js"></script>
 }
