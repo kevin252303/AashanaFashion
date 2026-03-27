@@ -3,6 +3,7 @@ using AashanaFashion.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace AashanaFashion.Controllers
@@ -55,6 +56,22 @@ namespace AashanaFashion.Controllers
                 claims.Add(new Claim(ClaimTypes.Role, "Admin"));
                 claims.Add(new Claim(ClaimTypes.Role, "Manager"));
                 claims.Add(new Claim(ClaimTypes.Role, "Viewer"));
+            }
+
+            // Load role permissions from UserRoleList and add as claims
+            var roleRecord = await _context.UserRoles
+                .Include(r => r.Permissions)
+                .FirstOrDefaultAsync(r => r.RoleName == user.Role && r.IsActive);
+
+            if (roleRecord != null)
+            {
+                foreach (var perm in roleRecord.Permissions)
+                {
+                    if (perm.CanView)   claims.Add(new Claim($"Permission.{perm.Module}.CanView",   "true"));
+                    if (perm.CanCreate) claims.Add(new Claim($"Permission.{perm.Module}.CanCreate", "true"));
+                    if (perm.CanEdit)   claims.Add(new Claim($"Permission.{perm.Module}.CanEdit",   "true"));
+                    if (perm.CanDelete) claims.Add(new Claim($"Permission.{perm.Module}.CanDelete", "true"));
+                }
             }
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

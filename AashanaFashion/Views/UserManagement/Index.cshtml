@@ -1,7 +1,11 @@
 @model IEnumerable<AashanaFashion.Models.AppUser>
 @{
     ViewData["Title"] = "User List";
-    var isAdmin = User.IsInRole("Admin");
+    var role       = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    bool isAdmin   = role == "Admin" || role == "SuperAdmin";
+    bool canCreate = isAdmin || User.HasClaim("Permission.UserManagement.CanCreate", "true");
+    bool canEdit   = isAdmin || User.HasClaim("Permission.UserManagement.CanEdit",   "true");
+    bool canDelete = isAdmin || User.HasClaim("Permission.UserManagement.CanDelete", "true");
 }
 
 @if (TempData["Success"] != null)
@@ -45,7 +49,7 @@
 <div class="data-card">
     <div class="data-card-header">
         <span class="data-card-title">All Users</span>
-        @if (isAdmin)
+        @if (canCreate)
         {
             <a asp-action="Create" class="btn-af btn-af-primary btn-af-sm">+ Add User</a>
         }
@@ -94,21 +98,27 @@
                             { <span class="af-badge b-gray">Inactive</span> }
                         </td>
                         <td>
-                            @if (isAdmin)
+                            @if (canEdit || canDelete)
                             {
                                 <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-                                    <a asp-action="Edit" asp-route-id="@user.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
-                                    <form asp-action="ToggleActive" asp-route-id="@user.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn-af btn-af-sm @(user.IsActive ? "btn-af-warn" : "btn-af-success")">
-                                            @(user.IsActive ? "Deactivate" : "Activate")
-                                        </button>
-                                    </form>
-                                    <form asp-action="Delete" asp-route-id="@user.Id" method="post" class="d-inline"
-                                          onsubmit="return confirm('Delete @user.Username?')">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn-af btn-af-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;">Delete</button>
-                                    </form>
+                                    @if (canEdit)
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@user.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                                        <form asp-action="ToggleActive" asp-route-id="@user.Id" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-af btn-af-sm @(user.IsActive ? "btn-af-warn" : "btn-af-success")">
+                                                @(user.IsActive ? "Deactivate" : "Activate")
+                                            </button>
+                                        </form>
+                                    }
+                                    @if (canDelete)
+                                    {
+                                        <form asp-action="Delete" asp-route-id="@user.Id" method="post" class="d-inline"
+                                              onsubmit="return confirm('Delete @user.Username?')">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-af btn-af-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;">Delete</button>
+                                        </form>
+                                    }
                                 </div>
                             }
                             else

@@ -17,6 +17,15 @@
     var ctrl     = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
     var action   = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
 
+    bool isSuperAdmin = role == "SuperAdmin";
+    bool isAdmin      = role == "Admin" || isSuperAdmin;
+
+    // Permission helpers — check claims for custom roles
+    bool canViewDesign      = isAdmin || User.HasClaim("Permission.DesignMaster.CanView",    "true");
+    bool canViewVendor      = isAdmin || User.HasClaim("Permission.VendorMaster.CanView",    "true");
+    bool canCreateOrder     = isAdmin || User.HasClaim("Permission.ProductionOrder.CanCreate", "true");
+    bool canViewUserMgmt    = isAdmin || User.HasClaim("Permission.UserManagement.CanView",  "true");
+
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
             <div class="brand-icon">AF</div>
@@ -33,19 +42,22 @@
                 <span class="ico">📦</span> Production Orders
             </a>
 
-            @if (role == "Admin" || role == "SuperAdmin")
+            @if (canViewDesign)
             {
                 <a class="s-link @(ctrl == "Design" ? "active" : "")"
                    asp-controller="Design" asp-action="Index">
                     <span class="ico">🎨</span> Design Master
                 </a>
+            }
+            @if (canViewVendor)
+            {
                 <a class="s-link @(ctrl == "Vendor" ? "active" : "")"
                    asp-controller="Vendor" asp-action="Index">
                     <span class="ico">🏢</span> Vendor Master
                 </a>
             }
 
-            @if (role == "Admin" || role == "Manager" || role == "SuperAdmin")
+            @if (canCreateOrder)
             {
                 <a class="s-link @(ctrl == "Production" && action == "Create" ? "active" : "")"
                    asp-controller="Production" asp-action="Create">
@@ -53,21 +65,27 @@
                 </a>
             }
 
-            <div class="nav-label">Users</div>
-            <a class="s-link s-link-toggle @(ctrl == "UserManagement" || ctrl == "Role" ? "open" : "")" onclick="toggleNav(this)">
-                <span class="ico">👥</span> User Management
-                <span class="nav-arrow">▾</span>
-            </a>
-            <div class="s-submenu @(ctrl == "UserManagement" || ctrl == "Role" ? "" : "d-none")">
-                <a class="s-link s-sublink @(ctrl == "UserManagement" && action == "Index" ? "active" : "")"
-                   asp-controller="UserManagement" asp-action="Index">
-                    <span class="ico">📋</span> User List
+            @if (canViewUserMgmt)
+            {
+                <div class="nav-label">Users</div>
+                <a class="s-link s-link-toggle @(ctrl == "UserManagement" || ctrl == "Role" ? "open" : "")" onclick="toggleNav(this)">
+                    <span class="ico">👥</span> User Management
+                    <span class="nav-arrow">▾</span>
                 </a>
-                <a class="s-link s-sublink @(ctrl == "Role" ? "active" : "")"
-                   asp-controller="Role" asp-action="Index">
-                    <span class="ico">🔐</span> Role List
-                </a>
-            </div>
+                <div class="s-submenu @(ctrl == "UserManagement" || ctrl == "Role" ? "" : "d-none")">
+                    <a class="s-link s-sublink @(ctrl == "UserManagement" && action == "Index" ? "active" : "")"
+                       asp-controller="UserManagement" asp-action="Index">
+                        <span class="ico">📋</span> User List
+                    </a>
+                    @if (isAdmin)
+                    {
+                        <a class="s-link s-sublink @(ctrl == "Role" ? "active" : "")"
+                           asp-controller="Role" asp-action="Index">
+                            <span class="ico">🔐</span> Role List
+                        </a>
+                    }
+                </div>
+            }
         </nav>
 
         <div class="role-pill rp-@role">@role</div>

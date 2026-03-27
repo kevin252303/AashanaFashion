@@ -59,40 +59,28 @@
                                        class="perm-check" data-col="view"
                                        @(Model.Modules[i].CanView ? "checked" : "")
                                        style="accent-color:#6366f1;width:18px;height:18px;" />
-                                @if (!Model.Modules[i].CanView)
-                                {
-                                    <input type="hidden" name="Modules[@i].CanView" value="false" />
-                                }
+                                <input type="hidden" name="Modules[@i].CanView" value="false" />
                             </td>
                             <td class="text-center">
                                 <input type="checkbox" name="Modules[@i].CanCreate" value="true"
                                        class="perm-check" data-col="create"
                                        @(Model.Modules[i].CanCreate ? "checked" : "")
                                        style="accent-color:#6366f1;width:18px;height:18px;" />
-                                @if (!Model.Modules[i].CanCreate)
-                                {
-                                    <input type="hidden" name="Modules[@i].CanCreate" value="false" />
-                                }
+                                <input type="hidden" name="Modules[@i].CanCreate" value="false" />
                             </td>
                             <td class="text-center">
                                 <input type="checkbox" name="Modules[@i].CanEdit" value="true"
                                        class="perm-check" data-col="edit"
                                        @(Model.Modules[i].CanEdit ? "checked" : "")
                                        style="accent-color:#6366f1;width:18px;height:18px;" />
-                                @if (!Model.Modules[i].CanEdit)
-                                {
-                                    <input type="hidden" name="Modules[@i].CanEdit" value="false" />
-                                }
+                                <input type="hidden" name="Modules[@i].CanEdit" value="false" />
                             </td>
                             <td class="text-center">
                                 <input type="checkbox" name="Modules[@i].CanDelete" value="true"
                                        class="perm-check" data-col="delete"
                                        @(Model.Modules[i].CanDelete ? "checked" : "")
                                        style="accent-color:#6366f1;width:18px;height:18px;" />
-                                @if (!Model.Modules[i].CanDelete)
-                                {
-                                    <input type="hidden" name="Modules[@i].CanDelete" value="false" />
-                                }
+                                <input type="hidden" name="Modules[@i].CanDelete" value="false" />
                             </td>
                         </tr>
                     }

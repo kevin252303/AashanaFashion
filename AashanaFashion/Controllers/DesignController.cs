@@ -1,8 +1,8 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
+using AashanaFashion.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 namespace AashanaFashion.Controllers;
@@ -20,11 +20,11 @@ public class DesignController : Controller
         return View(designs);
     }
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("DesignMaster", "CanCreate")]
     [HttpGet]
     public IActionResult Create() => View(new Design());
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("DesignMaster", "CanCreate")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Design design)
@@ -45,7 +45,7 @@ public class DesignController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("DesignMaster", "CanEdit")]
     [HttpGet]
     public async Task<IActionResult> Edit(int id)
     {
@@ -54,7 +54,7 @@ public class DesignController : Controller
         return View(design);
     }
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("DesignMaster", "CanEdit")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(Design design)
@@ -74,7 +74,7 @@ public class DesignController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("DesignMaster", "CanDelete")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)

@@ -1,5 +1,6 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
+using AashanaFashion.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -49,7 +50,7 @@ namespace AashanaFashion.Controllers
         }
 
         // Admin only — Create
-        [Authorize(Roles = "Admin")]
+        [PermissionAuthorize("ProductionOrder", "CanCreate")]
         [HttpGet]
         public IActionResult Create()
         {
@@ -58,7 +59,7 @@ namespace AashanaFashion.Controllers
             return View(new ProductionOrder());
         }
 
-        [Authorize(Roles = "Admin")]
+        [PermissionAuthorize("ProductionOrder", "CanCreate")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ProductionOrder order, [FromForm] List<ProductionOrderDetail> Details)
@@ -84,7 +85,7 @@ namespace AashanaFashion.Controllers
         }
 
         // Admin + Manager — Update Status
-        [Authorize(Roles = "Admin,Manager")]
+        [PermissionAuthorize("ProductionOrder", "CanEdit")]
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
@@ -99,7 +100,7 @@ namespace AashanaFashion.Controllers
             return View(order);
         }
 
-        [Authorize(Roles = "Admin,Manager")]
+        [PermissionAuthorize("ProductionOrder", "CanEdit")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [FromForm] List<ProductionOrderDetail> Details)
@@ -149,7 +150,7 @@ namespace AashanaFashion.Controllers
         }
 
         // Admin only — Delete
-        [Authorize(Roles = "Admin")]
+        [PermissionAuthorize("ProductionOrder", "CanDelete")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)

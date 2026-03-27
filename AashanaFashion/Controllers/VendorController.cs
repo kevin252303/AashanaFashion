@@ -1,5 +1,6 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
+using AashanaFashion.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,11 +20,11 @@ public class VendorController : Controller
         return View(vendors);
     }
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("VendorMaster", "CanCreate")]
     [HttpGet]
     public IActionResult Create() => View(new VendorViewModel());
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("VendorMaster", "CanCreate")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(VendorViewModel model)
@@ -55,7 +56,7 @@ public class VendorController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("VendorMaster", "CanEdit")]
     [HttpGet]
     public async Task<IActionResult> Edit(int id)
     {
@@ -83,7 +84,7 @@ public class VendorController : Controller
         return View(model);
     }
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("VendorMaster", "CanEdit")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(VendorViewModel model)
@@ -113,7 +114,7 @@ public class VendorController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("VendorMaster", "CanDelete")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
@@ -128,7 +129,7 @@ public class VendorController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("VendorMaster", "CanEdit")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleActive(int id)

@@ -1,5 +1,6 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
+using AashanaFashion.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +22,7 @@ namespace AashanaFashion.Controllers
         }
 
         // GET: /UserManagement/Create — Admin only
-        [Authorize(Roles = "Admin")]
+        [PermissionAuthorize("UserManagement", "CanCreate")]
         public async Task<IActionResult> Create()
         {
             var roles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
@@ -29,7 +30,7 @@ namespace AashanaFashion.Controllers
         }
 
         // POST: /UserManagement/Create — Admin only
-        [Authorize(Roles = "Admin")]
+        [PermissionAuthorize("UserManagement", "CanCreate")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(UserFormViewModel model)
@@ -72,7 +73,7 @@ namespace AashanaFashion.Controllers
         }
 
         // GET: /UserManagement/Edit/5 — Admin only
-        [Authorize(Roles = "Admin")]
+        [PermissionAuthorize("UserManagement", "CanEdit")]
         public async Task<IActionResult> Edit(int id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -97,7 +98,7 @@ namespace AashanaFashion.Controllers
         }
 
         // POST: /UserManagement/Edit/5 — Admin only
-        [Authorize(Roles = "Admin")]
+        [PermissionAuthorize("UserManagement", "CanEdit")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(UserFormViewModel model)
@@ -138,7 +139,7 @@ namespace AashanaFashion.Controllers
         }
 
         // POST: /UserManagement/Delete/5 — Admin only
-        [Authorize(Roles = "Admin")]
+        [PermissionAuthorize("UserManagement", "CanDelete")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
@@ -161,7 +162,7 @@ namespace AashanaFashion.Controllers
         }
 
         // POST: /UserManagement/ToggleActive/5 — Admin only
-        [Authorize(Roles = "Admin")]
+        [PermissionAuthorize("UserManagement", "CanEdit")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ToggleActive(int id)

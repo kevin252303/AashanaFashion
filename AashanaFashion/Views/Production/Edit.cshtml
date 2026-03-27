@@ -1,11 +1,12 @@
 @model AashanaFashion.Models.ProductionOrder
 @{
     ViewData["Title"] = "Edit Order";
-    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
-    var designs = ViewBag.Designs as List<AashanaFashion.Models.Design> ?? new List<AashanaFashion.Models.Design>();
-    var currentDesign = designs.FirstOrDefault(d => d.Id == Model.DesignId);
-    var creationSteps = currentDesign?.GetCreationSteps() ?? new List<string>();
-    var statusOptions = string.Join("", Enum.GetValues<AashanaFashion.Models.OrderStatus>()
+    var role       = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    bool isAdmin   = role == "Admin" || role == "SuperAdmin";
+    var designs    = ViewBag.Designs as List<AashanaFashion.Models.Design> ?? new List<AashanaFashion.Models.Design>();
+    var currentDesign  = designs.FirstOrDefault(d => d.Id == Model.DesignId);
+    var creationSteps  = currentDesign?.GetCreationSteps() ?? new List<string>();
+    var statusOptions  = string.Join("", Enum.GetValues<AashanaFashion.Models.OrderStatus>()
         .Select(s => $"<option value=\"{s}\" {(s == Model.Status ? "selected" : "")}>{s}</option>"));
 }
 
@@ -30,7 +31,7 @@
             </div>
             <div style="padding:1.5rem;">
 
-                    @if (role == "Admin")
+                    @if (isAdmin)
                     {
                         <div class="af-form-group">
                             <label class="af-label">Design</label>

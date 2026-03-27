@@ -1,7 +1,11 @@
 @model IEnumerable<AashanaFashion.Models.Design>
 @{
     ViewData["Title"] = "Design Master";
-    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    var role       = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    bool isAdmin   = role == "Admin" || role == "SuperAdmin";
+    bool canCreate = isAdmin || User.HasClaim("Permission.DesignMaster.CanCreate", "true");
+    bool canEdit   = isAdmin || User.HasClaim("Permission.DesignMaster.CanEdit",   "true");
+    bool canDelete = isAdmin || User.HasClaim("Permission.DesignMaster.CanDelete", "true");
 }
 
 <div class="page-header">
@@ -9,7 +13,7 @@
         <h1 class="page-title">Design Master</h1>
         <p class="page-sub">Manage all dress designs</p>
     </div>
-    @if (role == "Admin")
+    @if (canCreate)
     {
         <a asp-action="Create" class="btn-af btn-af-primary">+ New Design</a>
     }
@@ -36,11 +40,12 @@
             {
                 <tr>
                     <td>
-                        @if (role == "Admin")
+                        @if (canEdit)
                         {
                             <span class="ctx-trigger" style="font-weight:600;color:#6366f1;cursor:pointer;text-decoration:underline dotted;"
                                   data-id="@item.Id"
-                                  data-edit="@Url.Action("Edit", "Design", new { id = item.Id })">@item.DesignNumber</span>
+                                  data-edit="@Url.Action("Edit", "Design", new { id = item.Id })"
+                                  data-can-delete="@canDelete.ToString().ToLower()">@item.DesignNumber</span>
                         }
                         else
                         {
@@ -92,13 +97,19 @@
     document.querySelectorAll('.ctx-trigger').forEach(function (el) {
         el.addEventListener('click', function (e) {
             e.stopPropagation();
+            var canDel = el.dataset.canDelete === 'true';
             ctxEdit.href = el.dataset.edit;
-            ctxDeleteForm.action = '/Design/Delete/' + el.dataset.id;
-            document.getElementById('ctxDelete').onclick = function (ev) {
-                ev.preventDefault();
-                if (confirm('Delete this design?')) ctxDeleteForm.submit();
-                hideMenu();
-            };
+            if (canDel) {
+                ctxDeleteForm.action = '/Design/Delete/' + el.dataset.id;
+                document.getElementById('ctxDeleteItem').style.display = 'block';
+                document.getElementById('ctxDelete').onclick = function (ev) {
+                    ev.preventDefault();
+                    if (confirm('Delete this design?')) ctxDeleteForm.submit();
+                    hideMenu();
+                };
+            } else {
+                document.getElementById('ctxDeleteItem').style.display = 'none';
+            }
             menu.style.display = 'block';
             menu.style.left = e.clientX + 'px';
             menu.style.top = e.clientY + 'px';

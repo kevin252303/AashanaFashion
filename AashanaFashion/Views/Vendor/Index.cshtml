@@ -1,6 +1,11 @@
 @model IEnumerable<AashanaFashion.Models.Vendor>
 @{
     ViewData["Title"] = "Vendor Master";
+    var role       = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    bool isAdmin   = role == "Admin" || role == "SuperAdmin";
+    bool canCreate = isAdmin || User.HasClaim("Permission.VendorMaster.CanCreate", "true");
+    bool canEdit   = isAdmin || User.HasClaim("Permission.VendorMaster.CanEdit",   "true");
+    bool canDelete = isAdmin || User.HasClaim("Permission.VendorMaster.CanDelete", "true");
 }
 
 <div class="page-header">
@@ -8,7 +13,10 @@
         <h1 class="page-title">Vendor Master</h1>
         <p class="page-sub">Manage all vendors</p>
     </div>
-    <a asp-action="Create" class="btn-af btn-af-primary">+ New Vendor</a>
+    @if (canCreate)
+    {
+        <a asp-action="Create" class="btn-af btn-af-primary">+ New Vendor</a>
+    }
 </div>
 
 @if (TempData["Success"] != null)
@@ -46,17 +54,32 @@
                         </span>
                     </td>
                     <td>
-                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
-                        <form asp-action="ToggleActive" asp-route-id="@item.Id" method="post" style="display:inline;">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn-af @(item.IsActive ? "btn-af-warn" : "btn-af-success") btn-af-sm">
-                                @(item.IsActive ? "Deactivate" : "Activate")
-                            </button>
-                        </form>
-                        <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete this vendor?')">Delete</button>
-                        </form>
+                        @if (canEdit || canDelete)
+                        {
+                            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+                                @if (canEdit)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                                    <form asp-action="ToggleActive" asp-route-id="@item.Id" method="post" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-af @(item.IsActive ? "btn-af-warn" : "btn-af-success") btn-af-sm">
+                                            @(item.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                    </form>
+                                }
+                                @if (canDelete)
+                                {
+                                    <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete this vendor?')">Delete</button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <span style="font-size:.75rem;color:#cbd5e1;">View only</span>
+                        }
                     </td>
                 </tr>
             }
