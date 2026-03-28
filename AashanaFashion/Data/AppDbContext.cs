@@ -12,6 +12,7 @@ namespace AashanaFashion.Data
         public DbSet<AppUser> Users { get; set; }
         public DbSet<Design> Designs { get; set; }
         public DbSet<Vendor> Vendors { get; set; }
+        public DbSet<DyingEntry> DyingEntries { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
 
@@ -32,6 +33,8 @@ namespace AashanaFashion.Data
                 .HasOne(d => d.ProductionOrder)
                 .WithMany(p => p.Details)
                 .HasForeignKey(d => d.ProductionOrderId);
+
+
 
             modelBuilder.Entity<Design>()
                 .Property(d => d.Price)

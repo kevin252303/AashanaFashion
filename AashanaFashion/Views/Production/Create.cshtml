@@ -14,24 +14,24 @@
     <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
 </div>
 
-<div class="row">
-    <div class="col-lg-4">
-        <div class="data-card mb-3">
-            <div class="data-card-header">
-                <div class="data-card-title">Order Details</div>
-            </div>
-            <div style="padding:1.5rem;">
-                <form asp-action="Create" method="post" id="orderForm">
-                    @Html.AntiForgeryToken()
+<form asp-action="Create" method="post" id="orderForm">
+    @Html.AntiForgeryToken()
 
-                    @if (!ViewData.ModelState.IsValid)
-                    {
-                        <div class="af-alert af-alert-danger mb-3">
-                            @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-                            { <div>@e.ErrorMessage</div> }
-                        </div>
-                    }
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="af-alert af-alert-danger mb-3">
+            @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            { <div>@e.ErrorMessage</div> }
+        </div>
+    }
 
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="data-card mb-3">
+                <div class="data-card-header">
+                    <div class="data-card-title">Order Details</div>
+                </div>
+                <div style="padding:1.5rem;">
                     <div class="af-form-group">
                         <label class="af-label">Design *</label>
                         <select asp-for="DesignId" class="af-input af-select" id="designSelect" required>
@@ -65,37 +65,37 @@
                         <button type="submit" class="btn-af btn-af-primary">Create Order</button>
                         <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-lg-8">
-        <div class="data-card">
-            <div class="data-card-header">
-                <div class="data-card-title">Colour & Size Matrix</div>
-                <span class="af-badge b-blue" id="totalPieces">Total: 0 pcs</span>
-            </div>
-            <div style="padding:1rem;">
-                <div id="matrixContainer">
-                    <div class="text-center p-4 text-muted" id="matrixPlaceholder">
-                        Select a design to see colour/size matrix
-                    </div>
-                    <div id="matrixGrid" style="display:none;overflow-x:auto;">
-                        <table class="af-table" id="matrixTable" style="min-width:100%;">
-                            <thead>
-                                <tr id="matrixHeader">
-                                    <th style="min-width:100px;">Colour ↓ / Size →</th>
-                                </tr>
-                            </thead>
-                            <tbody id="matrixBody"></tbody>
-                        </table>
+        <div class="col-lg-8">
+            <div class="data-card">
+                <div class="data-card-header">
+                    <div class="data-card-title">Colour & Size Matrix</div>
+                    <span class="af-badge b-blue" id="totalPieces">Total: 0 pcs</span>
+                </div>
+                <div style="padding:1rem;">
+                    <div id="matrixContainer">
+                        <div class="text-center p-4 text-muted" id="matrixPlaceholder">
+                            Select a design to see colour/size matrix
+                        </div>
+                        <div id="matrixGrid" style="overflow-x:auto;">
+                            <table class="af-table" id="matrixTable" style="min-width:100%;">
+                                <thead>
+                                    <tr id="matrixHeader">
+                                        <th style="min-width:100px;">Colour ↓ / Size →</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="matrixBody"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</form>
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }

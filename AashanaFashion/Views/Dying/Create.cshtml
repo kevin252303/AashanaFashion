@@ -1,0 +1,62 @@
+@model AashanaFashion.Models.DyingEntry
+@{
+    ViewData["Title"] = "Add Dying Entry";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Add Dying Entry</h1>
+        <p class="page-sub">Record cloth sent for dying</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-5 col-xl-4">
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">Dying Entry</div>
+            </div>
+            <div style="padding:1.5rem;">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="af-alert af-alert-danger mb-3">
+                            @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            { <div>@e.ErrorMessage</div> }
+                        </div>
+                    }
+
+                    <div class="af-form-group">
+                        <label asp-for="LotNo" class="af-label">Lot No *</label>
+                        <input asp-for="LotNo" class="af-input" placeholder="e.g. LOT-001" required />
+                        <span asp-validation-for="LotNo" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="EntryDate" class="af-label">Date *</label>
+                        <input asp-for="EntryDate" class="af-input" type="date" required />
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="Meters" class="af-label">Meters *</label>
+                        <input asp-for="Meters" class="af-input" type="number" step="0.01" min="0.01" placeholder="0.00" required />
+                        <span asp-validation-for="Meters" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="Remarks" class="af-label">Remarks</label>
+                        <input asp-for="Remarks" class="af-input" placeholder="Optional notes" />
+                    </div>
+
+                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+                        <button type="submit" class="btn-af btn-af-primary">Save Entry</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

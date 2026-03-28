@@ -65,6 +65,14 @@
                 </a>
             }
 
+            @if (role == "Admin" || role == "Manager")
+            {
+                <a class="s-link @(ctrl == "Dying" ? "active" : "")"
+                   asp-controller="Dying" asp-action="Index">
+                    <span class="ico">🎨</span> Dying Entry
+                </a>
+            }
+
             @if (canViewUserMgmt)
             {
                 <div class="nav-label">Users</div>
