@@ -71,6 +71,10 @@
                    asp-controller="Dying" asp-action="Index">
                     <span class="ico">🎨</span> Dying Entry
                 </a>
+                <a class="s-link @(ctrl == "RollPress" ? "active" : "")"
+                   asp-controller="RollPress" asp-action="Index">
+                    <span class="ico">🧵</span> Roll Press Entry
+                </a>
             }
 
             @if (canViewUserMgmt)

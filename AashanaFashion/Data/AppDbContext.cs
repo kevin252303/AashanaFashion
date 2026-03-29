@@ -13,6 +13,7 @@ namespace AashanaFashion.Data
         public DbSet<Design> Designs { get; set; }
         public DbSet<Vendor> Vendors { get; set; }
         public DbSet<DyingEntry> DyingEntries { get; set; }
+        public DbSet<RollPressEntry> RollPressEntries { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
 

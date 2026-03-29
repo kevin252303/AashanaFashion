@@ -1,0 +1,73 @@
+@model AashanaFashion.Models.RollPressEntry
+@{
+    ViewData["Title"] = "Add Roll Press Entry";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Add Roll Press Entry</h1>
+        <p class="page-sub">Record cloth sent for roll press</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-5 col-xl-4">
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">Roll Press Entry</div>
+            </div>
+            <div style="padding:1.5rem;">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="af-alert af-alert-danger mb-3">
+                            @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            { <div>@e.ErrorMessage</div> }
+                        </div>
+                    }
+
+                    <div class="af-form-group">
+                        <label asp-for="LotNo" class="af-label">Lot No *</label>
+                        <input asp-for="LotNo" class="af-input" placeholder="e.g. LOT-001" required />
+                        <span asp-validation-for="LotNo" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="DesignNo" class="af-label">Design No *</label>
+                        <input asp-for="DesignNo" class="af-input" placeholder="e.g. AF-001" required />
+                        <span asp-validation-for="DesignNo" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="GivenDate" class="af-label">Given Date *</label>
+                        <input asp-for="GivenDate" class="af-input" type="date" required />
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="ArrivalDate" class="af-label">Arrival Date *</label>
+                        <input asp-for="ArrivalDate" class="af-input" type="date" required />
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="NumberOfPieces" class="af-label">Number of Pieces *</label>
+                        <input asp-for="NumberOfPieces" class="af-input" type="number" min="1" placeholder="0" required />
+                        <span asp-validation-for="NumberOfPieces" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="Remarks" class="af-label">Remarks</label>
+                        <input asp-for="Remarks" class="af-input" placeholder="Optional notes" />
+                    </div>
+
+                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+                        <button type="submit" class="btn-af btn-af-primary">Save Entry</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
