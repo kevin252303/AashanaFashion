@@ -21,7 +21,7 @@
 
 @if (TempData["Success"] != null)
 {
-    <div class="af-alert af-alert-success mb-3">@TempData["Success"]</div>
+    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
 }
 
 <div class="data-card">

@@ -1,0 +1,172 @@
+@model IEnumerable<AashanaFashion.Models.ProductionEntity>
+@{
+    ViewData["Title"] = "Production Entities";
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    var orders = ViewBag.Orders as List<AashanaFashion.Models.ProductionOrder> ?? new();
+    var entityTypes = ViewBag.EntityTypes as string[] ?? Array.Empty<string>();
+    var statuses = ViewBag.Statuses as string[] ?? Array.Empty<string>();
+    var colours = ViewBag.Colours as List<string> ?? new();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Production Entities</h1>
+        <p class="page-sub">Track individual items through production</p>
+    </div>
+    @if (Model.Any())
+    {
+        <a asp-action="ExportEntities" 
+           asp-route-orderId="@ViewBag.SelectedOrderId"
+           asp-route-entityType="@ViewBag.SelectedEntityType"
+           asp-route-status="@ViewBag.SelectedStatus"
+           asp-route-colour="@ViewBag.SelectedColour"
+           class="btn-af btn-af-primary">📥 Download CSV</a>
+    }
+</div>
+
+<!-- Filters -->
+<div class="data-card mb-4">
+    <div style="padding:1rem;">
+        <form asp-action="ProductionEntities" method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="af-label">Order</label>
+                <select name="orderId" class="af-input af-select">
+                    <option value="">All Orders</option>
+                    @foreach (var order in orders)
+                    {
+                        <option value="@order.Id" selected="@(ViewBag.SelectedOrderId == order.Id)">@order.LotNo - @order.Design?.DesignNumber</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="af-label">Entity Type</label>
+                <select name="entityType" class="af-input af-select">
+                    <option value="All">All</option>
+                    @foreach (var type in entityTypes)
+                    {
+                        <option value="@type" selected="@(ViewBag.SelectedEntityType == type)">@type</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="af-label">Status</label>
+                <select name="status" class="af-input af-select">
+                    <option value="All">All</option>
+                    @foreach (var s in statuses)
+                    {
+                        <option value="@s" selected="@(ViewBag.SelectedStatus == s)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="af-label">Colour</label>
+                <select name="colour" class="af-input af-select">
+                    <option value="All">All</option>
+                    @foreach (var c in colours)
+                    {
+                        <option value="@c" selected="@(ViewBag.SelectedColour == c)">@c</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3" style="display:flex;align-items:end;gap:.5rem;">
+                <button type="submit" class="btn-af btn-af-primary">Filter</button>
+                <a asp-action="ProductionEntities" class="btn-af btn-af-ghost">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-blue">🔢</div>
+            <div><div class="stat-val">@Model.Count()</div><div class="stat-lbl">Total Entities</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-purple">🎨</div>
+            <div><div class="stat-val">@Model.Count(e => e.Status == "AtDying")</div><div class="stat-lbl">At Dying</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-cyan">🧵</div>
+            <div><div class="stat-val">@Model.Count(e => e.Status == "AtRoll")</div><div class="stat-lbl">At Roll</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-green">✅</div>
+            <div><div class="stat-val">@Model.Count(e => e.Status == "Completed")</div><div class="stat-lbl">Completed</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Entities Table -->
+<div class="data-card">
+    <div class="data-card-header">
+        <span class="data-card-title">All Entities</span>
+    </div>
+    
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon">🔢</div>
+            <p>No entities found. Generate entities from Production Orders.</p>
+        </div>
+    }
+    else
+    {
+        <table class="af-table">
+            <thead>
+                <tr>
+                    <th>Sl No</th>
+                    <th>Lot No</th>
+                    <th>Design</th>
+                    <th>Type</th>
+                    <th>Colour</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Processes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entity in Model)
+                {
+                    <tr>
+                        <td><strong>@entity.SlNo</strong></td>
+                        <td>@entity.ProductionOrder?.LotNo</td>
+                        <td>@entity.ProductionOrder?.Design?.DesignNumber</td>
+                        <td>@entity.EntityType</td>
+                        <td>@entity.Colour</td>
+                        <td>@entity.Size</td>
+                        <td><span class="af-badge @GetStatusBadge(entity.Status)">@entity.Status</span></td>
+                        <td>
+                            @{
+                                var completed = entity.ProcessTrackings.Count(t => t.IsComplete);
+                                var total = entity.ProcessTrackings.Count;
+                            }
+                            @completed/@total
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@functions {
+    string GetStatusBadge(string status) => status switch
+    {
+        "Created" => "b-gray",
+        "AtDying" => "b-purple",
+        "AtRoll" => "b-cyan",
+        "AtHandwork" => "b-yellow",
+        "AtStitching" => "b-blue",
+        "Completed" => "b-green",
+        "Dispatched" => "b-gray",
+        _ => "b-gray"
+    };
+}

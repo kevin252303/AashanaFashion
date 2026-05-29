@@ -10,11 +10,11 @@
 
 @if (TempData["Success"] != null)
 {
-    <div class="af-alert af-alert-success">✅ @TempData["Success"]</div>
+    <div class="af-alert af-alert-success"><span class="alert-body">✅ @TempData["Success"]</span><button class="alert-close">&times;</button></div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="af-alert af-alert-danger">⚠️ @TempData["Error"]</div>
+    <div class="af-alert af-alert-danger"><span class="alert-body">⚠️ @TempData["Error"]</span><button class="alert-close">&times;</button></div>
 }
 
 <!-- Stats -->
@@ -87,9 +87,11 @@
                         <td style="font-size:.85rem;color:#64748b;">@(user.ContactNumber ?? "—")</td>
                         <td>
                             @{
+                                var roleDict = ViewBag.UserRoles as Dictionary<string, int> ?? new();
+                                var roleId = roleDict.TryGetValue(user.Role, out var rid) ? rid : 0;
                                 var rc = user.Role switch { "Admin" => "b-red", "Manager" => "b-yellow", _ => "b-purple" };
                             }
-                            <span class="af-badge @rc">@user.Role</span>
+                            <span class="af-badge @rc">#@roleId @user.Role</span>
                         </td>
                         <td>
                             @if (user.IsActive)

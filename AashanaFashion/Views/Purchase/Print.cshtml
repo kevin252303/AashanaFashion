@@ -1,0 +1,129 @@
+@model AashanaFashion.Models.PurchaseOrder
+@{
+    ViewData["Title"] = Model.PoNumber;
+    Layout = null;
+    int? delayDays = null;
+    if (Model.ExpectedReceivingDate.HasValue && Model.Status != PurchaseOrderStatus.Received && Model.Status != PurchaseOrderStatus.Cancelled)
+    {
+        delayDays = (DateTime.Now.Date - Model.ExpectedReceivingDate.Value.Date).Days;
+        if (delayDays < 0) delayDays = 0;
+    }
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>@Model.PoNumber</title>
+    <style>
+        @@page { margin:15mm; }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:'Segoe UI',Arial,sans-serif; font-size:12px; color:#1e293b; padding:20px; }
+        .header { text-align:center; margin-bottom:20px; }
+        .header h1 { font-size:20px; margin-bottom:4px; }
+        .header p { color:#64748b; }
+        .hr { border:none; border-top:2px solid #1e293b; margin:12px 0; }
+        .row { display:flex; justify-content:space-between; margin-bottom:8px; }
+        .col { flex:1; }
+        .col + .col { margin-left:20px; }
+        table { width:100%; border-collapse:collapse; margin:12px 0; font-size:11px; }
+        th, td { border:1px solid #cbd5e1; padding:6px 8px; text-align:left; }
+        th { background:#f1f5f9; font-weight:600; }
+        .text-end { text-align:right; }
+        .text-center { text-align:center; }
+        .fw-bold { font-weight:700; }
+        .summary { margin-top:12px; width:300px; margin-left:auto; }
+        .summary tr td { border:none; padding:4px 8px; text-align:right; }
+        .summary tr td:first-child { text-align:left; color:#64748b; }
+        .overdue { color:#dc2626; font-weight:700; }
+        .footer { margin-top:30px; font-size:10px; color:#94a3b8; text-align:center; }
+        .info-row { display:flex; padding:3px 0; }
+        .info-row .lbl { color:#64748b; min-width:120px; }
+        .info-row .val { font-weight:500; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>@Model.Vendor?.VendorName</h1>
+        <p>Purchase Order — @Model.PoNumber</p>
+    </div>
+
+    <hr class="hr" />
+
+    <div class="row">
+        <div class="col">
+            <div class="info-row"><span class="lbl">PO Number:</span><span class="val">@Model.PoNumber</span></div>
+            <div class="info-row"><span class="lbl">Order Date:</span><span class="val">@Model.OrderDate.ToString("dd-MMM-yyyy")</span></div>
+            <div class="info-row"><span class="lbl">Expected Receiving:</span><span class="val @(delayDays > 0 ? "overdue" : "")">@(Model.ExpectedReceivingDate?.ToString("dd-MMM-yyyy") ?? "—")@(delayDays > 0 ? $" ({delayDays}d overdue)" : "")</span></div>
+            <div class="info-row"><span class="lbl">Agent:</span><span class="val">@Model.AgentName</span></div>
+        </div>
+        <div class="col">
+            <div class="info-row"><span class="lbl">Vendor:</span><span class="val">@Model.Vendor?.VendorName</span></div>
+            <div class="info-row"><span class="lbl">GST No:</span><span class="val">@Model.Vendor?.GstNumber</span></div>
+            <div class="info-row"><span class="lbl">Transport:</span><span class="val">@Model.CourierServiceName</span></div>
+            <div class="info-row"><span class="lbl">Status:</span><span class="val">@Model.Status</span></div>
+        </div>
+    </div>
+
+    <hr class="hr" />
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:30px;">Sr</th>
+                <th>Product</th>
+                <th>Design No</th>
+                <th>HSN</th>
+                <th>Unit</th>
+                <th class="text-center">Ordered</th>
+                <th class="text-center">Received</th>
+                <th class="text-center">Pending</th>
+                <th class="text-end">Rate</th>
+                <th class="text-end">Total</th>
+                <th class="text-end">Disc %</th>
+                <th class="text-end">GST %</th>
+                <th class="text-end">Gross</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var d in Model.Details.OrderBy(d => d.SrNo))
+            {
+                var pending = d.Quantity - d.ReceivedQuantity;
+                <tr>
+                    <td class="text-center">@d.SrNo</td>
+                    <td>@d.ProductName</td>
+                    <td>@d.ProductDesignNo</td>
+                    <td>@d.HsnCode</td>
+                    <td class="text-center">@d.Unit</td>
+                    <td class="text-center">@d.Quantity</td>
+                    <td class="text-center">@d.ReceivedQuantity</td>
+                    <td class="text-center">@pending</td>
+                    <td class="text-end">@d.UnitPrice.ToString("N2")</td>
+                    <td class="text-end">@d.TotalPrice.ToString("N2")</td>
+                    <td class="text-end">@(d.DiscountPercentage > 0 ? d.DiscountPercentage.ToString("N2") + "%" : "-")</td>
+                    <td class="text-end">@(d.GstPercentage > 0 ? d.GstPercentage.ToString("N2") + "%" : "-")</td>
+                    <td class="text-end">@d.NetAmount.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <table class="summary">
+        <tr><td>Subtotal (gross of items)</td><td>₹@Model.Details.Sum(d => d.NetAmount).ToString("N2")</td></tr>
+        <tr><td>Transport Charge</td><td>₹@Model.TransportCharge.ToString("N2")</td></tr>
+        <tr><td>Round Off</td><td>₹@Model.RoundOff.ToString("N2")</td></tr>
+        <tr style="font-weight:700;font-size:14px;"><td>Net Amount</td><td>₹@Model.TotalAmount.ToString("N2")</td></tr>
+    </table>
+
+    @if (!string.IsNullOrEmpty(Model.Notes))
+    {
+        <div style="margin-top:16px;"><strong>Notes:</strong> @Model.Notes</div>
+    }
+
+    <div class="footer">
+        Generated on @DateTime.Now.ToString("dd-MMM-yyyy HH:mm") — Aashana Fashion
+    </div>
+
+    <script>window.print();</script>
+</body>
+</html>

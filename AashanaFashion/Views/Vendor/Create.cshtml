@@ -27,8 +27,8 @@
                     </div>
                     <span class="af-hint">Enter 15-digit GST number</span>
                 </div>
-                <div id="gstError" class="af-alert af-alert-danger" style="display:none;"></div>
-                <div id="gstSuccess" class="af-alert af-alert-success" style="display:none;"></div>
+                <div id="gstError" class="af-alert af-alert-danger" style="display:none;"><div class="alert-body"></div><button class="alert-close" onclick="this.parentElement.style.display='none'">&times;</button></div>
+                <div id="gstSuccess" class="af-alert af-alert-success" style="display:none;"><div class="alert-body"></div><button class="alert-close" onclick="this.parentElement.style.display='none'">&times;</button></div>
             </div>
         </div>
     </div>
@@ -46,8 +46,11 @@
                     @if (!ViewData.ModelState.IsValid)
                     {
                         <div class="af-alert af-alert-danger mb-3">
-                            @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-                            { <div>@e.ErrorMessage</div> }
+                            <div class="alert-body">
+                                @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                                { <div>@e.ErrorMessage</div> }
+                            </div>
+                            <button class="alert-close">&times;</button>
                         </div>
                     }
 

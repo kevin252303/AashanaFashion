@@ -25,6 +25,7 @@
     bool canViewVendor      = isAdmin || User.HasClaim("Permission.VendorMaster.CanView",    "true");
     bool canCreateOrder     = isAdmin || User.HasClaim("Permission.ProductionOrder.CanCreate", "true");
     bool canViewUserMgmt    = isAdmin || User.HasClaim("Permission.UserManagement.CanView",  "true");
+    bool canViewPurchase    = isAdmin || User.HasClaim("Permission.Purchase.CanView",      "true");
 
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
@@ -42,40 +43,73 @@
                 <span class="ico">📦</span> Production Orders
             </a>
 
-            @if (canViewDesign)
+            @if (canViewPurchase)
             {
-                <a class="s-link @(ctrl == "Design" ? "active" : "")"
-                   asp-controller="Design" asp-action="Index">
-                    <span class="ico">🎨</span> Design Master
-                </a>
-            }
-            @if (canViewVendor)
-            {
-                <a class="s-link @(ctrl == "Vendor" ? "active" : "")"
-                   asp-controller="Vendor" asp-action="Index">
-                    <span class="ico">🏢</span> Vendor Master
+                <a class="s-link @(ctrl == "Purchase" ? "active" : "")"
+                   asp-controller="Purchase" asp-action="Index">
+                    <span class="ico">🛒</span> Purchase Orders
                 </a>
             }
 
-            @if (canCreateOrder)
+            @if (canViewDesign || canViewVendor)
             {
-                <a class="s-link @(ctrl == "Production" && action == "Create" ? "active" : "")"
-                   asp-controller="Production" asp-action="Create">
-                    <span class="ico">➕</span> New Order
+                <a class="s-link s-link-toggle @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "RawMaterial" ? "open" : "")" onclick="toggleNav(this)">
+                    <span class="ico">⚙️</span> Admin Master
+                    <span class="nav-arrow">▾</span>
                 </a>
+                <div class="s-submenu @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "RawMaterial" ? "" : "d-none")">
+                    @if (canViewDesign)
+                    {
+                        <a class="s-link s-sublink @(ctrl == "Design" ? "active" : "")"
+                           asp-controller="Design" asp-action="Index">
+                            <span class="ico">🎨</span> Design Master
+                        </a>
+                    }
+                    @if (canViewVendor)
+                    {
+                        <a class="s-link s-sublink @(ctrl == "Vendor" ? "active" : "")"
+                           asp-controller="Vendor" asp-action="Index">
+                            <span class="ico">🏢</span> Vendor Master
+                        </a>
+                    }
+                    <a class="s-link s-sublink @(ctrl == "RawMaterial" ? "active" : "")"
+                       asp-controller="RawMaterial" asp-action="Index">
+                        <span class="ico">🧵</span> Raw Material
+                    </a>
+                </div>
             }
 
             @if (role == "Admin" || role == "Manager")
             {
-                <a class="s-link @(ctrl == "Dying" ? "active" : "")"
-                   asp-controller="Dying" asp-action="Index">
-                    <span class="ico">🎨</span> Dying Entry
+                <a class="s-link s-link-toggle @(ctrl == "Dying" || ctrl == "RollPress" ? "open" : "")" onclick="toggleNav(this)">
+                    <span class="ico">🏭</span> Job Work Entry
+                    <span class="nav-arrow">▾</span>
                 </a>
-                <a class="s-link @(ctrl == "RollPress" ? "active" : "")"
-                   asp-controller="RollPress" asp-action="Index">
-                    <span class="ico">🧵</span> Roll Press Entry
-                </a>
+                <div class="s-submenu @(ctrl == "Dying" || ctrl == "RollPress" ? "" : "d-none")">
+                    <a class="s-link s-sublink @(ctrl == "Dying" ? "active" : "")"
+                       asp-controller="Dying" asp-action="Index">
+                        <span class="ico">🎨</span> Dying Entry
+                    </a>
+                    <a class="s-link s-sublink @(ctrl == "RollPress" ? "active" : "")"
+                       asp-controller="RollPress" asp-action="Index">
+                        <span class="ico">🧵</span> Roll Press Entry
+                    </a>
+                </div>
             }
+
+            <div class="nav-label">Production</div>
+            <a class="s-link @(ctrl == "PMS" ? "active" : "")"
+               asp-controller="PMS" asp-action="Index">
+                <span class="ico">📊</span> PMS Dashboard
+            </a>
+            <a class="s-link @(ctrl == "PMS" && action == "ProductionEntities" ? "active" : "")"
+               asp-controller="PMS" asp-action="ProductionEntities">
+                <span class="ico">🔢</span> Production Entities
+            </a>
+            <a class="s-link @(ctrl == "PMS" && action == "ProcessTracking" ? "active" : "")"
+               asp-controller="PMS" asp-action="ProcessTracking">
+                <span class="ico">📋</span> Process Tracking
+            </a>
 
             @if (canViewUserMgmt)
             {
@@ -139,6 +173,11 @@ else
         var sub = el.nextElementSibling;
         sub.classList.toggle('d-none');
     }
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.alert-close')) {
+            e.target.closest('.af-alert').remove();
+        }
+    });
 </script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>

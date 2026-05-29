@@ -4,6 +4,7 @@ using AashanaFashion.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AashanaFashion.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260403110751_AddPMS")]
+    partial class AddPMS
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -292,108 +295,6 @@ namespace AashanaFashion.Migrations
                     b.ToTable("ProductionOrderDetails");
                 });
 
-            modelBuilder.Entity("AashanaFashion.Models.PurchaseOrder", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AgentName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CourierServiceName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ExpectedReceivingDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("OrderDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("PoNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("RoundOff")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("TransportCharge")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("VendorId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("VendorId");
-
-                    b.ToTable("PurchaseOrders");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.PurchaseOrderDetail", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("DiscountPercentage")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("GstPercentage")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("HsnCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ProductDesignNo")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ProductName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("PurchaseOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ReceivedQuantity")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SrNo")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PurchaseOrderId");
-
-                    b.ToTable("PurchaseOrderDetails");
-                });
-
             modelBuilder.Entity("AashanaFashion.Models.RawMaterial", b =>
                 {
                     b.Property<int>("Id")
@@ -666,28 +567,6 @@ namespace AashanaFashion.Migrations
                     b.Navigation("ProductionOrder");
                 });
 
-            modelBuilder.Entity("AashanaFashion.Models.PurchaseOrder", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.Vendor", "Vendor")
-                        .WithMany()
-                        .HasForeignKey("VendorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Vendor");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.PurchaseOrderDetail", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.PurchaseOrder", "PurchaseOrder")
-                        .WithMany("Details")
-                        .HasForeignKey("PurchaseOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PurchaseOrder");
-                });
-
             modelBuilder.Entity("AashanaFashion.Models.RolePermission", b =>
                 {
                     b.HasOne("AashanaFashion.Models.UserRole", "UserRole")
@@ -705,11 +584,6 @@ namespace AashanaFashion.Migrations
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.ProductionOrder", b =>
-                {
-                    b.Navigation("Details");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.PurchaseOrder", b =>
                 {
                     b.Navigation("Details");
                 });

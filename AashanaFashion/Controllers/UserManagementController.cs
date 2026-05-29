@@ -18,6 +18,7 @@ namespace AashanaFashion.Controllers
         public async Task<IActionResult> Index()
         {
             var users = await _context.Users.ToListAsync();
+            ViewBag.UserRoles = await _context.UserRoles.ToDictionaryAsync(r => r.RoleName, r => r.Id);
             return View(users);
         }
 

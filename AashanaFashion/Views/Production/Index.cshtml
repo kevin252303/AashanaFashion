@@ -10,11 +10,11 @@
 
 @if (TempData["Success"] != null)
 {
-    <div class="af-alert af-alert-success mb-3">@TempData["Success"]</div>
+    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="af-alert af-alert-danger mb-3">@TempData["Error"]</div>
+    <div class="af-alert af-alert-danger mb-3"><span class="alert-body">@TempData["Error"]</span><button class="alert-close">&times;</button></div>
 }
 
 <!-- Stats -->

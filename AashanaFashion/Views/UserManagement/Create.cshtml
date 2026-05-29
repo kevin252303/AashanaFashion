@@ -20,8 +20,11 @@
                     @if (!ViewData.ModelState.IsValid)
                     {
                         <div class="af-alert af-alert-danger mb-3">
-                            @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-                            { <div>@e.ErrorMessage</div> }
+                            <div class="alert-body">
+                                @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                                { <div>@e.ErrorMessage</div> }
+                            </div>
+                            <button class="alert-close">&times;</button>
                         </div>
                     }
 
