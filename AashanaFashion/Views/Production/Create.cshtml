@@ -1,0 +1,106 @@
+@model AashanaFashion.Models.ProductionOrder
+@{
+    ViewData["Title"] = "New Production Order";
+    var designs = ViewBag.Designs as List<AashanaFashion.Models.Design> ?? new List<AashanaFashion.Models.Design>();
+    var designOptions = string.Join("", designs.Select(d => 
+        $"<option value=\"{d.Id}\" data-colours=\"{d.Colours}\" data-sizes=\"{d.Sizes}\" data-steps=\"{d.CreationFlow}\">{d.DesignNumber}</option>"));
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">New Production Order</h1>
+        <p class="page-sub">Create a new production order</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+</div>
+
+<form asp-action="Create" method="post" id="orderForm">
+    @Html.AntiForgeryToken()
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="af-alert af-alert-danger mb-3">
+            <div class="alert-body">
+                @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                { <div>@e.ErrorMessage</div> }
+            </div>
+            <button class="alert-close">&times;</button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="data-card mb-3">
+                <div class="data-card-header">
+                    <div class="data-card-title">Order Details</div>
+                </div>
+                <div style="padding:1.5rem;">
+                    <div class="af-form-group">
+                        <label class="af-label">Design *</label>
+                        <select asp-for="DesignId" class="af-input af-select" id="designSelect" required>
+                            <option value="">— Select Design —</option>
+                            @Html.Raw(designOptions)
+                        </select>
+                        <span asp-validation-for="DesignId" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="LotNo" class="af-label">Lot No *</label>
+                        <input asp-for="LotNo" class="af-input" placeholder="e.g. LOT-001" required />
+                        <span asp-validation-for="LotNo" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="Status" class="af-label">Initial Status</label>
+                        <select asp-for="Status" class="af-input af-select"
+                                asp-items="Html.GetEnumSelectList<AashanaFashion.Models.OrderStatus>()"></select>
+                    </div>
+
+                    <div class="af-form-group" id="verificationSection" style="display:none;">
+                        <label class="af-label">Verification Checklist</label>
+                        <div style="background:#f8fafc;border-radius:10px;padding:1rem;display:flex;flex-direction:column;gap:.75rem;" id="verificationContainer">
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="totalQuantity" name="TotalQuantity" value="0" />
+
+                    <div style="display:flex;gap:.75rem;margin-top:1rem;">
+                        <button type="submit" class="btn-af btn-af-primary">Create Order</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="data-card">
+                <div class="data-card-header">
+                    <div class="data-card-title">Colour & Size Matrix</div>
+                    <span class="af-badge b-blue" id="totalPieces">Total: 0 pcs</span>
+                </div>
+                <div style="padding:1rem;">
+                    <div id="matrixContainer">
+                        <div class="text-center p-4 text-muted" id="matrixPlaceholder">
+                            Select a design to see colour/size matrix
+                        </div>
+                        <div id="matrixGrid" style="overflow-x:auto;">
+                            <table class="af-table" id="matrixTable" style="min-width:100%;">
+                                <thead>
+                                    <tr id="matrixHeader">
+                                        <th style="min-width:100px;">Colour ↓ / Size →</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="matrixBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script src="~/js/production-create.js"></script>
+}

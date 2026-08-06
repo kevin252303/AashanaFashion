@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  web:
+    image: aashana_web
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aashana_web
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://0.0.0.0:5000
+      - ASPNETCORE_HTTP_PORTS=5000
+      - ConnectionStrings__DockerSqlConnection=Server=host.docker.internal,1433;Database=AashanaFashionDb;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=True;MultipleActiveResultSets=true
+    ports:
+      - "5000:5000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+

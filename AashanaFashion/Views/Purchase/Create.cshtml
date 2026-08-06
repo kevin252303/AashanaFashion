@@ -1,0 +1,172 @@
+@model AashanaFashion.Models.PurchaseOrderViewModel
+@{
+    ViewData["Title"] = "New Purchase Order";
+    var vendors = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new();
+    var nextPo = ViewBag.NextPoNumber as string ?? "PO-0001";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">New Purchase Order</h1>
+        <p class="page-sub">Create a new purchase order</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+</div>
+
+<form asp-action="Create" method="post" id="poForm">
+    @Html.AntiForgeryToken()
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="af-alert af-alert-danger mb-3">
+            <div class="alert-body">
+                @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                { <div>@e.ErrorMessage</div> }
+            </div>
+            <button class="alert-close">&times;</button>
+        </div>
+    }
+
+    <div class="data-card">
+        <div class="data-card-header">
+            <div class="data-card-title">Purchase Order</div>
+            <span class="af-badge b-blue" id="grandTotal">Net Amount: ₹0.00</span>
+        </div>
+        <div style="padding:1.5rem;">
+
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="af-form-group">
+                        <label asp-for="PoNumber" class="af-label">PO Number *</label>
+                        <input asp-for="PoNumber" class="af-input" value="@nextPo" readonly style="background:#f1f5f9;" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="af-form-group">
+                        <label asp-for="OrderDate" class="af-label">Order Date</label>
+                        <input asp-for="OrderDate" class="af-input" type="date" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="af-form-group">
+                        <label asp-for="ExpectedReceivingDate" class="af-label">Expected Receiving Date</label>
+                        <input asp-for="ExpectedReceivingDate" class="af-input" type="date" id="expectedReceivingDate" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="af-form-group">
+                        <label class="af-label">&nbsp;</label>
+                        <div id="delayWarning" style="display:none;padding:.5rem .75rem;border-radius:6px;font-weight:600;"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="af-form-group">
+                        <label asp-for="VendorId" class="af-label">Vendor *</label>
+                        <select asp-for="VendorId" class="af-input af-select" required>
+                            <option value="">— Select Vendor —</option>
+                            @foreach (var v in vendors)
+                            {
+                                <option value="@v.Id">@v.VendorName — @v.GstNumber</option>
+                            }
+                        </select>
+                        <span asp-validation-for="VendorId" class="af-error"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="af-form-group">
+                        <label asp-for="AgentName" class="af-label">Agent Name</label>
+                        <input asp-for="AgentName" class="af-input" placeholder="Agent name" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="af-form-group">
+                        <label asp-for="CourierServiceName" class="af-label">Transport Name</label>
+                        <input asp-for="CourierServiceName" class="af-input" placeholder="Courier / transport service" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="af-form-group">
+                        <label asp-for="Notes" class="af-label">Notes</label>
+                        <input asp-for="Notes" class="af-input" placeholder="Any notes" />
+                    </div>
+                </div>
+            </div>
+
+            <hr style="margin:1rem 0;border-color:#e2e8f0;" />
+
+            <div style="overflow-x:auto;">
+                <table class="af-table" id="itemsTable" style="min-width:1100px;">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">Sr</th>
+                            <th style="min-width:150px;">Product *</th>
+                            <th style="width:110px;">Design No</th>
+                            <th style="width:100px;">HSN Code</th>
+                            <th style="width:100px;">Unit</th>
+                            <th style="width:90px;">Qty</th>
+                            <th style="width:120px;">Rate</th>
+                            <th style="width:100px;">Disc %</th>
+                            <th style="width:100px;">GST %</th>
+                            <th style="width:110px;">Gross</th>
+                            <th style="width:36px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody">
+                        <tr class="item-row">
+                            <td class="text-center sr-no">1</td>
+                            <td><input name="Details[0].ProductName" class="af-input" placeholder="Product" required /></td>
+                            <td><input name="Details[0].ProductDesignNo" class="af-input" placeholder="Design #" /></td>
+                            <td><input name="Details[0].HsnCode" class="af-input" placeholder="HSN" /></td>
+                            <td>
+                                <select name="Details[0].Unit" class="af-input af-select unit-select">
+                                    <option value="Piece" selected>Piece</option>
+                                    <option value="Meter">Meter</option>
+                                </select>
+                            </td>
+                            <td><input name="Details[0].Quantity" class="af-input item-qty" type="number" min="1" value="1" required /></td>
+                            <td><input name="Details[0].UnitPrice" class="af-input item-rate" type="number" step="0.01" min="0" value="0" required /></td>
+                            <td><input name="Details[0].DiscountPercentage" class="af-input item-disc" type="number" step="0.01" min="0" max="100" value="0" /></td>
+                            <td><input name="Details[0].GstPercentage" class="af-input item-gst" type="number" step="0.01" min="0" max="100" value="0" /></td>
+                            <td><span class="item-net">₹0.00</span></td>
+                            <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-row" style="display:none;">×</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" id="addRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Item</button>
+            <input type="hidden" id="detailCount" name="DetailCount" value="1" />
+
+            <hr style="margin:1rem 0;border-color:#e2e8f0;" />
+
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="af-form-group">
+                        <label asp-for="TransportCharge" class="af-label">Transport Charge</label>
+                        <input asp-for="TransportCharge" class="af-input" type="number" step="0.01" min="0" id="transportCharge" value="0" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="af-form-group">
+                        <label asp-for="RoundOff" class="af-label">Round Off</label>
+                        <input asp-for="RoundOff" class="af-input" type="number" step="0.01" id="roundOff" value="0" />
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <div style="display:flex;gap:.75rem;padding-bottom:.5rem;">
+                        <button type="submit" class="btn-af btn-af-primary">Save Purchase Order</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script src="~/js/purchase.js"></script>
+}

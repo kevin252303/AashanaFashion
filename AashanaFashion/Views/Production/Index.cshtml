@@ -1,0 +1,193 @@
+@model IEnumerable<AashanaFashion.Models.BatchDashboardViewModel>
+@{
+    ViewData["Title"] = "Production Orders";
+    var role        = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    bool isAdmin    = role == "Admin" || role == "SuperAdmin";
+    bool canCreate  = isAdmin || User.HasClaim("Permission.ProductionOrder.CanCreate", "true");
+    bool canEdit    = isAdmin || User.HasClaim("Permission.ProductionOrder.CanEdit",   "true");
+    bool canDelete  = isAdmin || User.HasClaim("Permission.ProductionOrder.CanDelete", "true");
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="af-alert af-alert-danger mb-3"><span class="alert-body">@TempData["Error"]</span><button class="alert-close">&times;</button></div>
+}
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-blue">📦</div>
+            <div><div class="stat-val">@ViewBag.Total</div><div class="stat-lbl">Total Orders</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-yellow">⚙️</div>
+            <div><div class="stat-val">@ViewBag.InProgress</div><div class="stat-lbl">In Progress</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-green">✅</div>
+            <div><div class="stat-val">@ViewBag.ReadyToDispatch</div><div class="stat-lbl">Ready to Dispatch</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-gray">🚚</div>
+            <div><div class="stat-val">@ViewBag.Dispatched</div><div class="stat-lbl">Dispatched</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="data-card">
+    <div class="data-card-header">
+        <span class="data-card-title">All Production Orders</span>
+        @if (canCreate)
+        {
+            <a asp-action="Create" class="btn-af btn-af-primary btn-af-sm">+ New Order</a>
+        }
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon">📦</div>
+            <p>No production orders found.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th class="ps-4">#</th>
+                        <th>Design No.</th>
+                        <th>Qty</th>
+                        <th>Stage</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="ps-4 text-muted">@item.Id</td>
+                            <td>
+                                @if (canEdit)
+                                {
+                                    <span class="ctx-trigger" style="font-weight:600;color:#6366f1;cursor:pointer;text-decoration:underline dotted;"
+                                          data-id="@item.Id"
+                                          data-edit="@Url.Action("Edit", "Production", new { id = item.Id })"
+                                          data-can-delete="@canDelete.ToString().ToLower()">@item.DesignNumber</span>
+                                }
+                                else
+                                {
+                                    <span style="font-weight:600;color:#0f172a;">@item.DesignNumber</span>
+                                }
+                                <br><span style="font-size:.75rem;color:#94a3b8;">@item.LotNo</span>
+                            </td>
+                            <td>@item.TotalQuantity <span style="color:#94a3b8;font-size:.75rem;">pcs</span></td>
+                            <td><span class="af-badge @GetStageBadge(item.Status)">@item.CurrentStage</span></td>
+                            <td>
+                                @if (item.Status == AashanaFashion.Models.OrderStatus.Dispatched)
+                                { <span class="af-badge b-gray">Dispatched</span> }
+                                else if (item.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch)
+                                { <span class="af-badge b-green">Ready</span> }
+                                else
+                                { <span class="af-badge b-yellow">In Progress</span> }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@functions {
+    string GetStageBadge(AashanaFashion.Models.OrderStatus s) => s switch {
+        AashanaFashion.Models.OrderStatus.RawMaterialArrived => "b-gray",
+        AashanaFashion.Models.OrderStatus.AtDying            => "b-cyan",
+        AashanaFashion.Models.OrderStatus.AtHandwork         => "b-yellow",
+        AashanaFashion.Models.OrderStatus.AtStitching        => "b-purple",
+        AashanaFashion.Models.OrderStatus.ReadyToDispatch    => "b-green",
+        AashanaFashion.Models.OrderStatus.Dispatched         => "b-gray",
+        _                                                    => "b-gray"
+    };
+}
+
+<!-- Context Menu -->
+<ul id="ctxMenu" style="
+    display:none; position:fixed; z-index:9999;
+    background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,.12); padding:.4rem 0; min-width:140px; list-style:none; margin:0;">
+    <li>
+        <a id="ctxEdit" href="#" style="display:flex;align-items:center;gap:.6rem;padding:.55rem 1rem;color:#1e293b;text-decoration:none;font-size:.95rem;font-weight:500;">
+            ✏️ Edit
+        </a>
+    </li>
+    <li id="ctxDeleteItem">
+        <hr style="margin:.3rem 0;border-color:#f1f5f9;">
+        <a id="ctxDelete" href="#" style="display:flex;align-items:center;gap:.6rem;padding:.55rem 1rem;color:#dc2626;text-decoration:none;font-size:.95rem;font-weight:500;">
+            🗑️ Delete
+        </a>
+    </li>
+</ul>
+
+<form id="ctxDeleteForm" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+<script>
+    var menu = document.getElementById('ctxMenu');
+    var ctxEdit = document.getElementById('ctxEdit');
+    var ctxDeleteItem = document.getElementById('ctxDeleteItem');
+    var ctxDeleteForm = document.getElementById('ctxDeleteForm');
+
+    document.querySelectorAll('.ctx-trigger').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var id        = el.dataset.id;
+            var canDel    = el.dataset.canDelete === 'true';
+
+            ctxEdit.href = el.dataset.edit;
+
+            if (canDel) {
+                ctxDeleteForm.action = '/Production/Delete/' + id;
+                ctxDeleteItem.style.display = 'block';
+                document.getElementById('ctxDelete').onclick = function (ev) {
+                    ev.preventDefault();
+                    if (confirm('Delete this order?')) ctxDeleteForm.submit();
+                    hideMenu();
+                };
+            } else {
+                ctxDeleteItem.style.display = 'none';
+            }
+
+            menu.style.display = 'block';
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+        });
+    });
+
+    document.addEventListener('click', hideMenu);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideMenu(); });
+
+    function hideMenu() { menu.style.display = 'none'; }
+
+    // Hover highlight
+    menu.querySelectorAll('a').forEach(function(a) {
+        a.addEventListener('mouseenter', function() { this.style.background = '#f8fafc'; });
+        a.addEventListener('mouseleave', function() { this.style.background = ''; });
+    });
+</script>
+}

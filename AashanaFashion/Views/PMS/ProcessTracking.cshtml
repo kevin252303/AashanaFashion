@@ -1,0 +1,223 @@
+@model AashanaFashion.Controllers.ProcessTrackingViewModel
+@{
+    ViewData["Title"] = "Process Tracking";
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    var entities = ViewBag.Entities as List<AashanaFashion.Models.ProductionEntity> ?? new();
+    var processNames = ViewBag.ProcessNames as string[] ?? Array.Empty<string>();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Process Tracking</h1>
+        <p class="page-sub">Monitor processes and delays</p>
+    </div>
+    @if (Model.Trackings.Any())
+    {
+        <a asp-action="ExportProcessTracking" 
+           asp-route-orderId="@ViewBag.SelectedOrderId"
+           asp-route-processName="@ViewBag.SelectedProcessName"
+           class="btn-af btn-af-primary">📥 Download CSV</a>
+    }
+</div>
+
+<!-- Filters -->
+<div class="data-card mb-4">
+    <div style="padding:1rem;">
+        <form asp-action="ProcessTracking" method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="af-label">Order</label>
+                <select name="orderId" class="af-input af-select">
+                    <option value="">All Orders</option>
+                    @foreach (var entity in entities.DistinctBy(e => e.ProductionOrderId))
+                    {
+                        <option value="@entity.ProductionOrderId" selected="@(ViewBag.SelectedOrderId == entity.ProductionOrderId)">
+                            @entity.ProductionOrder?.LotNo
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="af-label">Process</label>
+                <select name="processName" class="af-input af-select">
+                    <option value="All">All</option>
+                    @foreach (var p in processNames)
+                    {
+                        <option value="@p" selected="@(ViewBag.SelectedProcessName == p)">@p</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3" style="display:flex;align-items:end;gap:.5rem;">
+                <button type="submit" class="btn-af btn-af-primary">Filter</button>
+                <a asp-action="ProcessTracking" class="btn-af btn-af-ghost">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-blue">📋</div>
+            <div><div class="stat-val">@Model.Trackings.Count</div><div class="stat-lbl">Total Trackings</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-green">✅</div>
+            <div><div class="stat-val">@Model.Trackings.Count(t => t.IsComplete)</div><div class="stat-lbl">Completed</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon si-yellow">⏳</div>
+            <div><div class="stat-val">@Model.Trackings.Count(t => !t.IsComplete && t.DaysLate > 0)</div><div class="stat-lbl">Delayed</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card" style="border-left:4px solid #ef4444;">
+            <div class="stat-icon si-red">⚠️</div>
+            <div><div class="stat-val">@(Model.Trackings.Where(t => t.DaysLate > 0).Sum(t => t.DaysLate) ?? 0)</div><div class="stat-lbl">Total Days Late</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Delayed Items -->
+@if (Model.DelayedTrackings.Any())
+{
+    <div class="data-card mb-4" style="border-left:4px solid #ef4444;">
+        <div class="data-card-header" style="background:#fef2f2;">
+            <span class="data-card-title">⚠️ Delayed Items</span>
+            <span class="af-badge b-red">@Model.DelayedTrackings.Count</span>
+        </div>
+        <table class="af-table">
+            <thead>
+                <tr>
+                    <th>Entity</th>
+                    <th>Process</th>
+                    <th>Given Date</th>
+                    <th>Expected Return</th>
+                    <th>Days Late</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var tracking in Model.DelayedTrackings)
+                {
+                    <tr style="background:#fef2f2;">
+                        <td>
+                            <strong>@tracking.ProductionEntity?.ProductionOrder?.LotNo</strong>
+                            <br><span style="font-size:.75rem;color:#94a3b8;">@tracking.ProductionEntity?.EntityType - @tracking.ProductionEntity?.Colour</span>
+                        </td>
+                        <td>@tracking.ProcessName</td>
+                        <td>@tracking.GivenDate?.ToString("dd MMM")</td>
+                        <td>@tracking.ExpectedReturnDate?.ToString("dd MMM")</td>
+                        <td><span class="af-badge b-red">@tracking.DaysLate days</span></td>
+                        <td>
+                            @if (role == "Admin" || role == "Manager")
+                            {
+                                <form asp-action="MarkReturned" asp-route-trackingId="@tracking.Id" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn-af btn-af-success btn-af-sm">Mark Returned</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<!-- All Trackings -->
+<div class="data-card">
+    <div class="data-card-header">
+        <span class="data-card-title">All Process Trackings</span>
+    </div>
+    
+    @if (!Model.Trackings.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon">📋</div>
+            <p>No process trackings found</p>
+        </div>
+    }
+    else
+    {
+        <table class="af-table">
+            <thead>
+                <tr>
+                    <th>Entity</th>
+                    <th>Process</th>
+                    <th>Given Date</th>
+                    <th>Expected Return</th>
+                    <th>Actual Return</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var tracking in Model.Trackings)
+                {
+                    <tr class="@(tracking.DaysLate > 0 ? "delayed-row" : "")">
+                        <td>
+                            <strong>@tracking.ProductionEntity?.ProductionOrder?.LotNo</strong>
+                            <br><span style="font-size:.75rem;color:#94a3b8;">@tracking.ProductionEntity?.EntityType - @tracking.ProductionEntity?.Colour / @tracking.ProductionEntity?.Size</span>
+                        </td>
+                        <td><span class="af-badge @GetProcessBadge(tracking.ProcessName)">@tracking.ProcessName</span></td>
+                        <td>@tracking.GivenDate?.ToString("dd MMM yyyy")</td>
+                        <td>@tracking.ExpectedReturnDate?.ToString("dd MMM yyyy")</td>
+                        <td>
+                            @if (tracking.ActualReturnDate.HasValue)
+                            {
+                                @tracking.ActualReturnDate?.ToString("dd MMM yyyy")
+                            }
+                            else
+                            {
+                                <span style="color:#94a3b8;">-</span>
+                            }
+                        </td>
+                        <td>
+                            @if (tracking.IsComplete)
+                            {
+                                <span class="af-badge b-green">✓ Complete</span>
+                            }
+                            else if (tracking.DaysLate > 0)
+                            {
+                                <span class="af-badge b-red">@tracking.DaysLate days late</span>
+                            }
+                            else
+                            {
+                                <span class="af-badge b-yellow">Pending</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!tracking.IsComplete && (role == "Admin" || role == "Manager"))
+                            {
+                                <form asp-action="MarkReturned" asp-route-trackingId="@tracking.Id" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn-af btn-af-success btn-af-sm">✓ Return</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+<style>
+    .delayed-row { background: #fef2f2; }
+</style>
+
+@functions {
+    string GetProcessBadge(string process) => process switch
+    {
+        "Dying" => "b-purple",
+        "Roll" => "b-cyan",
+        "Handwork" => "b-yellow",
+        "Stitching" => "b-blue",
+        _ => "b-gray"
+    };
+}
