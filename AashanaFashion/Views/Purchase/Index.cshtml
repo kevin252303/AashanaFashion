@@ -31,6 +31,7 @@
                 <th>PO No</th>
                 <th>Vendor</th>
                 <th>Agent</th>
+                <th>Invoice No</th>
                 <th>Order Date</th>
                 <th>Expected Receiving</th>
                 <th>Items</th>
@@ -51,6 +52,7 @@
                     <td><strong>@item.PoNumber</strong></td>
                     <td>@item.Vendor?.VendorName</td>
                     <td>@item.AgentName</td>
+                    <td>@item.InvoiceNumber</td>
                     <td>@item.OrderDate.ToString("dd-MMM-yyyy")</td>
                     <td style="@(isOverdue ? "color:#dc2626;font-weight:700;" : "")">
                         @if (item.ExpectedReceivingDate.HasValue)

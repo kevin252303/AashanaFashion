@@ -44,4 +44,37 @@ $(document).ready(function () {
     $('#gstInput').on('input', function () {
         this.value = this.value.toUpperCase();
     });
+
+    // Contact row management
+    function reindexContactRows() {
+        $('#contactBody .contact-row').each(function (idx) {
+            $(this).find('input').each(function () {
+                var name = $(this).attr('name');
+                if (name) {
+                    name = name.replace(/^Contacts\[\d+\]/, 'Contacts[' + idx + ']');
+                    $(this).attr('name', name);
+                }
+            });
+            $(this).find('.remove-contact-row').toggle(idx > 0);
+        });
+    }
+
+    $('#addContactRow').click(function () {
+        var $last = $('#contactBody .contact-row').last();
+        var $clone = $last.clone();
+        $clone.find('input').val('');
+        $clone.find('.remove-contact-row').show();
+        $('#contactBody').append($clone);
+        reindexContactRows();
+    });
+
+    $(document).on('click', '.remove-contact-row', function () {
+        if ($('#contactBody .contact-row').length > 1) {
+            $(this).closest('tr').remove();
+            reindexContactRows();
+        }
+    });
+
+    // Initial reindex to ensure contiguous indices
+    reindexContactRows();
 });

@@ -90,6 +90,12 @@
                 </div>
                 <div class="col-md-4">
                     <div class="af-form-group">
+                        <label asp-for="InvoiceNumber" class="af-label">Invoice No.</label>
+                        <input asp-for="InvoiceNumber" class="af-input" placeholder="Invoice number" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="af-form-group">
                         <label asp-for="Notes" class="af-label">Notes</label>
                         <input asp-for="Notes" class="af-input" />
                     </div>
@@ -176,19 +182,31 @@
             <hr style="margin:1rem 0;border-color:#e2e8f0;" />
 
             <div class="row">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="af-form-group">
                         <label asp-for="TransportCharge" class="af-label">Transport Charge</label>
                         <input asp-for="TransportCharge" class="af-input" type="number" step="0.01" min="0" id="transportCharge" />
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <div class="af-form-group">
+                        <label asp-for="TransportChargeGST" class="af-label">GST(Transport) %</label>
+                        <input asp-for="TransportChargeGST" class="af-input" type="number" step="0.01" min="0" id="transportChargeGST" />
+                    </div>
+                </div>
+                <div class="col-md-2">
                     <div class="af-form-group">
                         <label asp-for="RoundOff" class="af-label">Round Off</label>
                         <input asp-for="RoundOff" class="af-input" type="number" step="0.01" id="roundOff" />
                     </div>
                 </div>
-                <div class="col-md-6 d-flex align-items-end">
+                <div class="col-md-3">
+                    <div class="af-form-group">
+                        <label class="af-label">Effective Transport</label>
+                        <span id="effectiveTransportDisplay" style="display:block;padding:.5rem .75rem;background:#f1f5f9;border-radius:6px;font-weight:600;">₹0.00</span>
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
                     <div style="display:flex;gap:.75rem;padding-bottom:.5rem;">
                         <button type="submit" class="btn-af btn-af-primary">Update Purchase Order</button>
                         <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>

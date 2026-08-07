@@ -54,14 +54,26 @@
         <div class="col">
             <div class="info-row"><span class="lbl">PO Number:</span><span class="val">@Model.PoNumber</span></div>
             <div class="info-row"><span class="lbl">Order Date:</span><span class="val">@Model.OrderDate.ToString("dd-MMM-yyyy")</span></div>
-            <div class="info-row"><span class="lbl">Expected Receiving:</span><span class="val @(delayDays > 0 ? "overdue" : "")">@(Model.ExpectedReceivingDate?.ToString("dd-MMM-yyyy") ?? "—")@(delayDays > 0 ? $" ({delayDays}d overdue)" : "")</span></div>
-            <div class="info-row"><span class="lbl">Agent:</span><span class="val">@Model.AgentName</span></div>
+            
+            @if (!string.IsNullOrEmpty(Model.AgentName))
+            {
+                <div class="info-row"><span class="lbl">Agent:</span><span class="val">@Model.AgentName</span></div>
+            }
         </div>
         <div class="col">
             <div class="info-row"><span class="lbl">Vendor:</span><span class="val">@Model.Vendor?.VendorName</span></div>
-            <div class="info-row"><span class="lbl">GST No:</span><span class="val">@Model.Vendor?.GstNumber</span></div>
-            <div class="info-row"><span class="lbl">Transport:</span><span class="val">@Model.CourierServiceName</span></div>
-            <div class="info-row"><span class="lbl">Status:</span><span class="val">@Model.Status</span></div>
+            @if (!string.IsNullOrEmpty(Model.Vendor?.GstNumber))
+            {
+                <div class="info-row"><span class="lbl">GST No:</span><span class="val">@Model.Vendor.GstNumber</span></div>
+            }
+            @if (!string.IsNullOrEmpty(Model.CourierServiceName))
+            {
+                <div class="info-row"><span class="lbl">Transport:</span><span class="val">@Model.CourierServiceName</span></div>
+            }
+            @if (!string.IsNullOrEmpty(Model.InvoiceNumber))
+            {
+                <div class="info-row"><span class="lbl">Invoice No:</span><span class="val">@Model.InvoiceNumber</span></div>
+            }
         </div>
     </div>
 
@@ -75,9 +87,7 @@
                 <th>Design No</th>
                 <th>HSN</th>
                 <th>Unit</th>
-                <th class="text-center">Ordered</th>
-                <th class="text-center">Received</th>
-                <th class="text-center">Pending</th>
+                <th class="text-center">Qty</th>
                 <th class="text-end">Rate</th>
                 <th class="text-end">Total</th>
                 <th class="text-end">Disc %</th>
@@ -88,7 +98,6 @@
         <tbody>
             @foreach (var d in Model.Details.OrderBy(d => d.SrNo))
             {
-                var pending = d.Quantity - d.ReceivedQuantity;
                 <tr>
                     <td class="text-center">@d.SrNo</td>
                     <td>@d.ProductName</td>
@@ -96,8 +105,6 @@
                     <td>@d.HsnCode</td>
                     <td class="text-center">@d.Unit</td>
                     <td class="text-center">@d.Quantity</td>
-                    <td class="text-center">@d.ReceivedQuantity</td>
-                    <td class="text-center">@pending</td>
                     <td class="text-end">@d.UnitPrice.ToString("N2")</td>
                     <td class="text-end">@d.TotalPrice.ToString("N2")</td>
                     <td class="text-end">@(d.DiscountPercentage > 0 ? d.DiscountPercentage.ToString("N2") + "%" : "-")</td>
@@ -109,8 +116,12 @@
     </table>
 
     <table class="summary">
-        <tr><td>Subtotal (gross of items)</td><td>₹@Model.Details.Sum(d => d.NetAmount).ToString("N2")</td></tr>
+        <tr><td>Subtotal</td><td>₹@Model.Details.Sum(d => d.NetAmount).ToString("N2")</td></tr>
         <tr><td>Transport Charge</td><td>₹@Model.TransportCharge.ToString("N2")</td></tr>
+        @if (Model.TransportChargeGST > 0)
+        {
+            <tr><td>Transport GST (@Model.TransportChargeGST.ToString("N2")%)</td><td>₹@((Model.TransportCharge * Model.TransportChargeGST / 100m).ToString("N2"))</td></tr>
+        }
         <tr><td>Round Off</td><td>₹@Model.RoundOff.ToString("N2")</td></tr>
         <tr style="font-weight:700;font-size:14px;"><td>Net Amount</td><td>₹@Model.TotalAmount.ToString("N2")</td></tr>
     </table>
@@ -119,10 +130,6 @@
     {
         <div style="margin-top:16px;"><strong>Notes:</strong> @Model.Notes</div>
     }
-
-    <div class="footer">
-        Generated on @DateTime.Now.ToString("dd-MMM-yyyy HH:mm") — Aashana Fashion
-    </div>
 
     <script>window.print();</script>
 </body>

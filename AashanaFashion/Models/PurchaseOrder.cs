@@ -16,6 +16,8 @@ public class PurchaseOrder
 
     public string? CourierServiceName { get; set; }
 
+    public string? InvoiceNumber { get; set; }
+
     public DateTime OrderDate { get; set; } = DateTime.Now;
 
     public DateTime? ExpectedReceivingDate { get; set; }
@@ -27,6 +29,8 @@ public class PurchaseOrder
 
     [DataType(DataType.Currency)]
     public decimal TransportCharge { get; set; }
+
+    public decimal TransportChargeGST { get; set; }
 
     [DataType(DataType.Currency)]
     public decimal RoundOff { get; set; }

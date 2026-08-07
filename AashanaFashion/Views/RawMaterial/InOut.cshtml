@@ -1,0 +1,178 @@
+@model AashanaFashion.Models.RawMaterialInOutViewModel
+@{
+    ViewData["Title"] = "Stock Entry";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Stock Entry</h1>
+        <p class="page-sub">Inward / Outward entry for raw materials</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
+}
+
+<div class="row">
+    <div class="col-lg-7">
+        <form asp-action="InOut" method="post" id="inoutForm">
+            @Html.AntiForgeryToken()
+
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="af-alert af-alert-danger mb-3">
+                    <div class="alert-body">
+                        @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                        { <div>@e.ErrorMessage</div> }
+                    </div>
+                    <button class="alert-close">&times;</button>
+                </div>
+            }
+
+            <div class="data-card mb-3">
+                <div class="data-card-header">
+                    <span class="data-card-title">Select Material</span>
+                </div>
+                <div style="padding:1.5rem;">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label class="af-label">Material *</label>
+                                <select name="MaterialId" class="af-input af-select" id="materialSelect" required>
+                                    <option value="">— Select Material —</option>
+                                    @foreach (var m in Model.AvailableMaterials)
+                                    {
+                                        <option value="@m.Id" selected="@(m.Id == Model.MaterialId ? "selected" : null)">
+                                            @m.Name
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label class="af-label">Current Stock</label>
+                                <input class="af-input" id="currentStockDisplay" value="@Model.CurrentStock @Model.Unit" readonly style="background:#f1f5f9;font-weight:700;" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label class="af-label">Min Stock</label>
+                                <input class="af-input" id="minStockDisplay" value="@Model.MinimumStock @Model.Unit" readonly style="background:#f1f5f9;" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-card mb-3">
+                <div class="data-card-header">
+                    <span class="data-card-title">Entries</span>
+                    <button type="button" id="addRow" class="btn-af btn-af-ghost btn-af-sm">+ Add Row</button>
+                </div>
+                <div style="padding:1rem;">
+                    <div style="overflow-x:auto;">
+                        <table class="af-table" id="entriesTable" style="min-width:650px;">
+                            <thead>
+                                <tr>
+                                    <th style="width:30px;">#</th>
+                                    <th style="width:150px;">Type</th>
+                                    <th style="width:120px;">Quantity *</th>
+                                    <th style="min-width:120px;">Remarks</th>
+                                    <th style="width:36px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="entriesBody">
+                                @if (Model.Lines.Any())
+                                {
+                                    var i = 0;
+                                    foreach (var line in Model.Lines)
+                                    {
+                                        <tr class="entry-row">
+                                            <td class="text-center sr-no">@(i + 1)</td>
+                                            <td>
+                                                <select name="Lines[@i].Type" class="af-input af-select entry-type">
+                                                    <option value="Inward" selected="@(line.Type == "Inward" ? "selected" : null)">Inward</option>
+                                                    <option value="Outward" selected="@(line.Type == "Outward" ? "selected" : null)">Outward</option>
+                                                </select>
+                                            </td>
+                                            <td><input name="Lines[@i].Quantity" class="af-input entry-qty" type="number" step="0.01" min="0" value="@line.Quantity" required /></td>
+                                            <td><input name="Lines[@i].Remarks" class="af-input" value="@line.Remarks" placeholder="Optional" /></td>
+                                            <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-row">×</button></td>
+                                        </tr>
+                                        i++;
+                                    }
+                                }
+                                else
+                                {
+                                    <tr class="entry-row">
+                                        <td class="text-center sr-no">1</td>
+                                        <td>
+                                            <select name="Lines[0].Type" class="af-input af-select entry-type">
+                                                <option value="Inward">Inward</option>
+                                                <option value="Outward">Outward</option>
+                                            </select>
+                                        </td>
+                                        <td><input name="Lines[0].Quantity" class="af-input entry-qty" type="number" step="0.01" min="0" value="" required /></td>
+                                        <td><input name="Lines[0].Remarks" class="af-input" placeholder="Optional" /></td>
+                                        <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-row" style="display:none;">×</button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="submit" class="btn-af btn-af-primary mt-3">Save Entries</button>
+                    <a asp-action="Index" class="btn-af btn-af-ghost mt-3">Cancel</a>
+                    <input type="hidden" id="entryCount" name="EntryCount" value="@(Model.Lines.Any() ? Model.Lines.Count : 1)" />
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="data-card">
+            <div class="data-card-header">
+                <span class="data-card-title">Recent Transactions</span>
+            </div>
+            <div style="padding:1rem;">
+                @if (!Model.RecentTransactions.Any())
+                {
+                    <p style="text-align:center;color:#94a3b8;padding:2rem 0;">No transactions yet. Select a material and add entries.</p>
+                }
+                else
+                {
+                    <table class="af-table" style="font-size:.875rem;">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th class="text-end">Qty</th>
+                                <th class="text-end">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var t in Model.RecentTransactions)
+                            {
+                                <tr>
+                                    <td style="font-size:.8rem;">@t.CreatedDate.ToString("dd-MMM HH:mm")</td>
+                                    <td>
+                                        <span class="af-badge @(t.Type == "Inward" ? "b-green" : "b-red")">@t.Type</span>
+                                    </td>
+                                    <td class="text-end">@t.Quantity.ToString("N2")</td>
+                                    <td class="text-end" style="font-weight:600;">@t.BalanceAfter.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/rawmaterial.js"></script>
+}

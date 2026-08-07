@@ -2,6 +2,9 @@
 @{
     ViewData["Title"] = "Raw Material";
     var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    bool isAdmin = role == "Admin" || role == "SuperAdmin";
+    bool canRaise = isAdmin || User.HasClaim("Permission.RawMaterial.CanCreate", "true");
+    bool canApprove = isAdmin || User.HasClaim("Permission.RawMaterial.CanEdit", "true");
 }
 
 <div class="page-header">
@@ -19,7 +22,7 @@
                 <span class="data-card-title">Inventory</span>
                 @if (role == "Admin")
                 {
-                    <button type="button" class="btn-af btn-af-primary btn-af-sm" data-bs-toggle="modal" data-bs-target="#addMaterialModal">+ Add Material</button>
+                    <a asp-action="CreateMaterial" class="btn-af btn-af-primary btn-af-sm">+ Add Material</a>
                 }
             </div>
             
@@ -58,17 +61,14 @@
                                 @if (role == "Admin")
                                 {
                                     <td>
-                                        <form asp-action="UpdateStock" method="post" style="display:inline;">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="id" value="@m.Id" />
-                                            <input type="hidden" name="quantity" value="1" />
-                                            <input type="hidden" name="isAddition" value="true" />
-                                            <button type="submit" class="btn-af btn-af-sm" title="Add Stock">+</button>
-                                        </form>
-                                        <form asp-action="DeleteMaterial" asp-route-id="@m.Id" method="post" style="display:inline;">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete?')">×</button>
-                                        </form>
+                                        <div style="display:flex;gap:.3rem;flex-wrap:wrap;">
+                                            <a asp-action="InOut" asp-route-materialId="@m.Id" class="btn-af btn-af-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;" title="Stock Entry">In/Out</a>
+                                            <a asp-action="EditMaterial" asp-route-id="@m.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                                            <form asp-action="DeleteMaterial" asp-route-id="@m.Id" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete?')">×</button>
+                                            </form>
+                                        </div>
                                     </td>
                                 }
                             </tr>
@@ -84,7 +84,7 @@
         <div class="data-card">
             <div class="data-card-header">
                 <span class="data-card-title">Requirements</span>
-                @if (role == "Admin" || role == "Manager")
+                @if (canRaise)
                 {
                     <button type="button" class="btn-af btn-af-primary btn-af-sm" data-bs-toggle="modal" data-bs-target="#raiseRequirementModal">+ Raise Requirement</button>
                 }
@@ -106,7 +106,7 @@
                             <th>Qty</th>
                             <th>Required By</th>
                             <th>Status</th>
-                            @if (role == "Admin")
+                            @if (canApprove || canRaise)
                             {
                                 <th>Actions</th>
                             }
@@ -120,10 +120,10 @@
                                 <td>@r.Quantity @r.Unit</td>
                                 <td>@r.RequiredDate.ToString("dd MMM")</td>
                                 <td><span class="af-badge @GetStatusBadge(r.Status)">@r.Status</span></td>
-                                @if (role == "Admin")
+                                @if (canApprove || canRaise)
                                 {
                                     <td>
-                                        @if (r.Status == "Pending")
+                                        @if (r.Status == "Pending" && canApprove)
                                         {
                                             <form asp-action="UpdateRequirementStatus" method="post" style="display:inline;">
                                                 @Html.AntiForgeryToken()
@@ -200,6 +200,9 @@
         </div>
     </div>
 
+}
+@if (canRaise)
+{
     <!-- Raise Requirement Modal -->
     <div class="modal fade" id="raiseRequirementModal" tabindex="-1">
         <div class="modal-dialog">

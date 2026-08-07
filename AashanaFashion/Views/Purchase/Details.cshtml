@@ -70,6 +70,13 @@
                     <span class="info-label">Transport</span>
                     <span class="info-value">@Model.CourierServiceName</span>
                 </div>
+                @if (!string.IsNullOrEmpty(Model.InvoiceNumber))
+                {
+                    <div class="info-row">
+                        <span class="info-label">Invoice No.</span>
+                        <span class="info-value">@Model.InvoiceNumber</span>
+                    </div>
+                }
                 <div class="info-row">
                     <span class="info-label">Order Date</span>
                     <span class="info-value">@Model.OrderDate.ToString("dd-MMM-yyyy")</span>
@@ -230,6 +237,13 @@
                     <span class="info-label">Transport Charge</span>
                     <span class="info-value">₹@Model.TransportCharge.ToString("N2")</span>
                 </div>
+                @if (Model.TransportChargeGST > 0)
+                {
+                    <div class="info-row">
+                        <span class="info-label">Transport GST (@Model.TransportChargeGST.ToString("N2")%)</span>
+                        <span class="info-value">₹@((Model.TransportCharge * Model.TransportChargeGST / 100m).ToString("N2"))</span>
+                    </div>
+                }
                 <div class="info-row">
                     <span class="info-label">Round Off</span>
                     <span class="info-value">₹@Model.RoundOff.ToString("N2")</span>

@@ -14,7 +14,7 @@ namespace AashanaFashion.Controllers
         private static readonly List<(string Key, string Display)> Modules = new()
         {
             ("ProductionOrder", "Production Orders"),
-            ("DesignMaster",    "Design Master"),
+            ("DesignMaster",    "Product Master"),
             ("VendorMaster",    "Vendor Master"),
             ("Purchase",        "Purchase Orders"),
             ("Dying",           "Dying Entry"),

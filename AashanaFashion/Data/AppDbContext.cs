@@ -16,12 +16,18 @@ namespace AashanaFashion.Data
         public DbSet<RollPressEntry> RollPressEntries { get; set; }
         public DbSet<RawMaterial> RawMaterials { get; set; }
         public DbSet<RawMaterialRequirement> RawMaterialRequirements { get; set; }
+        public DbSet<RawMaterialTransaction> RawMaterialTransactions { get; set; }
         public DbSet<ProductionEntity> ProductionEntities { get; set; }
         public DbSet<ProcessTracking> ProcessTrackings { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
         public DbSet<PurchaseOrder> PurchaseOrders { get; set; }
         public DbSet<PurchaseOrderDetail> PurchaseOrderDetails { get; set; }
+        public DbSet<ProductAttributeLine> ProductAttributeLines { get; set; }
+        public DbSet<ProductPricelist> ProductPricelists { get; set; }
+        public DbSet<ProductVendor> ProductVendors { get; set; }
+        public DbSet<ProductPackaging> ProductPackagings { get; set; }
+        public DbSet<VendorContact> VendorContacts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -41,10 +47,20 @@ namespace AashanaFashion.Data
                 .WithMany(p => p.Details)
                 .HasForeignKey(d => d.ProductionOrderId);
 
-
-
             modelBuilder.Entity<Design>()
                 .Property(d => d.Price)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Design>()
+                .Property(d => d.SalesPrice)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Design>()
+                .Property(d => d.QuantityOnHand)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Design>()
+                .Property(d => d.SafetyFactor)
                 .HasColumnType("decimal(18,2)");
 
             modelBuilder.Entity<AppUser>()
@@ -84,6 +100,18 @@ namespace AashanaFashion.Data
                 .Property(p => p.TotalAmount)
                 .HasColumnType("decimal(18,2)");
 
+            modelBuilder.Entity<PurchaseOrder>()
+                .Property(p => p.TransportCharge)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<PurchaseOrder>()
+                .Property(p => p.RoundOff)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<PurchaseOrder>()
+                .Property(p => p.TransportChargeGST)
+                .HasColumnType("decimal(18,2)");
+
             modelBuilder.Entity<PurchaseOrderDetail>()
                 .Property(d => d.UnitPrice)
                 .HasColumnType("decimal(18,2)");
@@ -96,13 +124,128 @@ namespace AashanaFashion.Data
                 .Property(d => d.DiscountPercentage)
                 .HasColumnType("decimal(18,2)");
 
-            modelBuilder.Entity<PurchaseOrder>()
-                .Property(p => p.TransportCharge)
+            modelBuilder.Entity<RawMaterialTransaction>()
+                .HasOne(t => t.RawMaterial)
+                .WithMany()
+                .HasForeignKey(t => t.RawMaterialId);
+
+            modelBuilder.Entity<RawMaterialTransaction>()
+                .Property(t => t.Quantity)
                 .HasColumnType("decimal(18,2)");
 
-            modelBuilder.Entity<PurchaseOrder>()
-                .Property(p => p.RoundOff)
+            modelBuilder.Entity<RawMaterialTransaction>()
+                .Property(t => t.BalanceAfter)
                 .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<RawMaterial>()
+                .Property(m => m.CurrentStock)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<RawMaterial>()
+                .Property(m => m.MinimumStock)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<RawMaterial>()
+                .Property(m => m.Rate)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<RawMaterialRequirement>()
+                .Property(r => r.Quantity)
+                .HasColumnType("decimal(18,2)");
+
+            // ——— New Product-related entities ———
+
+            modelBuilder.Entity<ProductAttributeLine>()
+                .HasOne(a => a.Design)
+                .WithMany(d => d.AttributeLines)
+                .HasForeignKey(a => a.DesignId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProductPricelist>()
+                .HasOne(p => p.Design)
+                .WithMany(d => d.Pricelists)
+                .HasForeignKey(p => p.DesignId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProductPricelist>()
+                .Property(p => p.Price)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<ProductPricelist>()
+                .Property(p => p.MinQuantity)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<ProductVendor>()
+                .HasOne(p => p.Design)
+                .WithMany(d => d.ProductVendors)
+                .HasForeignKey(p => p.DesignId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProductVendor>()
+                .HasOne(p => p.Vendor)
+                .WithMany()
+                .HasForeignKey(p => p.VendorId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<ProductVendor>()
+                .Property(p => p.Quantity)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<ProductVendor>()
+                .Property(p => p.UnitPrice)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<ProductPackaging>()
+                .HasOne(p => p.Design)
+                .WithMany(d => d.Packagings)
+                .HasForeignKey(p => p.DesignId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProductPackaging>()
+                .Property(p => p.Quantity)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<VendorContact>()
+                .HasOne(c => c.Vendor)
+                .WithMany(v => v.Contacts)
+                .HasForeignKey(c => c.VendorId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Vendor>()
+                .Property(v => v.Distance)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Vendor>()
+                .Property(v => v.TotalReceivable)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Vendor>()
+                .Property(v => v.DaysSalesOutstanding)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Vendor>()
+                .Property(v => v.PartnerLimit)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Vendor>()
+                .Property(v => v.SM1CommissionPct)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Vendor>()
+                .Property(v => v.SM2CommissionPct)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Vendor>()
+                .Property(v => v.SM3CommissionPct)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Vendor>()
+                .Property(v => v.GeoLatitude)
+                .HasColumnType("decimal(18,8)");
+
+            modelBuilder.Entity<Vendor>()
+                .Property(v => v.GeoLongitude)
+                .HasColumnType("decimal(18,8)");
         }
     }
 }

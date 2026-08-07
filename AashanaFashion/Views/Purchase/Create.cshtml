@@ -150,11 +150,23 @@
                 </div>
                 <div class="col-md-3">
                     <div class="af-form-group">
+                        <label asp-for="TransportChargeGST" class="af-label">GST(Transport)</label>
+                        <input asp-for="TransportChargeGST" class="af-input" type="number" step="0.01" min="0" id="transportChargeGST" value="0" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="af-form-group">
                         <label asp-for="RoundOff" class="af-label">Round Off</label>
                         <input asp-for="RoundOff" class="af-input" type="number" step="0.01" id="roundOff" value="0" />
                     </div>
                 </div>
-                <div class="col-md-6 d-flex align-items-end">
+                <div class="col-md-3">
+                    <div class="af-form-group">
+                        <label class="af-label">Effective Transport</label>
+                        <span id="effectiveTransportDisplay" style="display:block;padding:.5rem .75rem;background:#f1f5f9;border-radius:6px;font-weight:600;">₹0.00</span>
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
                     <div style="display:flex;gap:.75rem;padding-bottom:.5rem;">
                         <button type="submit" class="btn-af btn-af-primary">Save Purchase Order</button>
                         <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>

@@ -4,7 +4,10 @@
     const subtotalLabel = document.getElementById('subtotalLabel');
     const grandTotal = document.getElementById('grandTotal');
     const transportCharge = document.getElementById('transportCharge');
+    const transportChargeGST = document.getElementById('transportChargeGST');
     const roundOff = document.getElementById('roundOff');
+    const effectiveTransportDisplay = document.getElementById('effectiveTransportDisplay');
+
 
     function fmt(n) {
         return '\u20B9' + n.toFixed(2);
@@ -27,13 +30,26 @@
         return net;
     }
 
+    function calcEffectiveTransport() {
+        const tc = parseFloat(transportCharge?.value) || 0;
+        const gst = parseFloat(transportChargeGST?.value) || 0;
+        return tc + (tc * gst / 100);
+    }
+
+    function updateEffectiveDisplay() {
+        if (!effectiveTransportDisplay) return;
+        const eff = calcEffectiveTransport();
+        effectiveTransportDisplay.textContent = '\u20B9' + eff.toFixed(2);
+    }
+
     function recalcAll() {
         let subtotal = 0;
         document.querySelectorAll('.item-row').forEach(row => {
             subtotal += recalcRow(row);
         });
 
-        const tc = parseFloat(transportCharge?.value) || 0;
+        updateEffectiveDisplay();
+        const tc = calcEffectiveTransport();
         const ro = parseFloat(roundOff?.value) || 0;
         const total = subtotal + tc + ro;
 
@@ -112,6 +128,7 @@
     document.querySelectorAll('.item-row').forEach(bindRow);
 
     if (transportCharge) transportCharge.addEventListener('input', recalcAll);
+    if (transportChargeGST) transportChargeGST.addEventListener('blur', recalcAll);
     if (roundOff) roundOff.addEventListener('input', recalcAll);
 
     // Delay warning for ExpectedReceivingDate

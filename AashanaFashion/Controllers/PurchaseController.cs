@@ -52,11 +52,13 @@ public class PurchaseController : Controller
             VendorId = model.VendorId,
             AgentName = model.AgentName,
             CourierServiceName = model.CourierServiceName,
+            InvoiceNumber = model.InvoiceNumber,
             OrderDate = model.OrderDate,
             ExpectedReceivingDate = model.ExpectedReceivingDate,
             Status = PurchaseOrderStatus.Pending,
             Notes = model.Notes,
             TransportCharge = model.TransportCharge,
+            TransportChargeGST = model.TransportChargeGST,
             RoundOff = model.RoundOff,
             CreatedDate = DateTime.Now
         };
@@ -78,7 +80,8 @@ public class PurchaseController : Controller
             });
         }
 
-        order.TotalAmount = order.Details.Sum(d => d.NetAmount) + order.TransportCharge + order.RoundOff;
+        var effectiveTransport = model.TransportCharge + (model.TransportCharge * model.TransportChargeGST / 100m);
+        order.TotalAmount = order.Details.Sum(d => d.NetAmount) + effectiveTransport + order.RoundOff;
 
         _context.PurchaseOrders.Add(order);
         await _context.SaveChangesAsync();
@@ -104,11 +107,13 @@ public class PurchaseController : Controller
             VendorId = order.VendorId,
             AgentName = order.AgentName,
             CourierServiceName = order.CourierServiceName,
+            InvoiceNumber = order.InvoiceNumber,
             OrderDate = order.OrderDate,
             ExpectedReceivingDate = order.ExpectedReceivingDate,
             Status = order.Status,
             Notes = order.Notes,
             TransportCharge = order.TransportCharge,
+            TransportChargeGST = order.TransportChargeGST,
             RoundOff = order.RoundOff,
             TotalAmount = order.TotalAmount,
             Details = order.Details.Select(d => new PurchaseOrderDetailViewModel
@@ -152,10 +157,12 @@ public class PurchaseController : Controller
         order.VendorId = model.VendorId;
         order.AgentName = model.AgentName;
         order.CourierServiceName = model.CourierServiceName;
+        order.InvoiceNumber = model.InvoiceNumber;
         order.OrderDate = model.OrderDate;
         order.ExpectedReceivingDate = model.ExpectedReceivingDate;
         order.Notes = model.Notes;
         order.TransportCharge = model.TransportCharge;
+        order.TransportChargeGST = model.TransportChargeGST;
         order.RoundOff = model.RoundOff;
 
         var receivedQtyMap = order.Details.ToDictionary(d => d.Id, d => d.ReceivedQuantity);
@@ -182,7 +189,8 @@ public class PurchaseController : Controller
             order.Details.Add(newDetail);
         }
 
-        order.TotalAmount = order.Details.Sum(d => d.NetAmount) + order.TransportCharge + order.RoundOff;
+        var effectiveTransport = order.TransportCharge + (order.TransportCharge * order.TransportChargeGST / 100m);
+        order.TotalAmount = order.Details.Sum(d => d.NetAmount) + effectiveTransport + order.RoundOff;
 
         await _context.SaveChangesAsync();
         TempData["Success"] = $"Purchase Order '{order.PoNumber}' updated successfully.";

@@ -1,71 +1,459 @@
 @model AashanaFashion.Models.Design
 @{
-    ViewData["Title"] = "New Design";
+    ViewData["Title"] = "New Product";
+    var vendors = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new();
 }
 
-<div class="row justify-content-center">
-    <div class="col-lg-6 col-xl-5">
-        <div class="data-card">
-            <div class="data-card-header">
-                <div>
-                    <div class="data-card-title">Create Design</div>
-                    <div style="font-size:.75rem;color:#94a3b8;margin-top:.2rem;">Add a new dress design</div>
-                </div>
-                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">New Product</h1>
+        <p class="page-sub">Add a new product with all details</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+</div>
+
+<form asp-action="Create" method="post" id="productForm">
+    @Html.AntiForgeryToken()
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="af-alert af-alert-danger mb-3">
+            <div class="alert-body">
+                @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                { <div>@e.ErrorMessage</div> }
             </div>
-            <div style="padding:1.5rem;">
-                <form asp-action="Create" method="post">
-                    @Html.AntiForgeryToken()
+            <button class="alert-close">&times;</button>
+        </div>
+    }
 
-                    @if (!ViewData.ModelState.IsValid)
-                    {
-                        <div class="af-alert af-alert-danger mb-3">
-                            <div class="alert-body">
-                                @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-                                { <div>@e.ErrorMessage</div> }
+    <div class="data-card">
+        <div class="data-card-header">
+            <div class="data-card-title">Product Details</div>
+        </div>
+        <div style="padding:0;">
+
+            <!-- Tabs -->
+            <ul class="nav nav-tabs" id="productTabs" role="tablist" style="padding:0 1.5rem;border-bottom:2px solid #e2e8f0;">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">General Information</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="attributes-tab" data-bs-toggle="tab" data-bs-target="#attributes" type="button" role="tab">Attributes & Variants</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales" type="button" role="tab">Sales</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="prices-tab" data-bs-toggle="tab" data-bs-target="#prices" type="button" role="tab">Prices</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="purchase-tab" data-bs-toggle="tab" data-bs-target="#purchase" type="button" role="tab">Purchase</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button" role="tab">Inventory</button>
+                </li>
+            </ul>
+
+            <div class="tab-content" style="padding:1.5rem;">
+
+                <!-- ===== TAB 1: GENERAL INFORMATION ===== -->
+                <div class="tab-pane fade show active" id="general" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label class="af-label">Product Type</label>
+                                <div style="display:flex;gap:1rem;padding:.5rem 0;">
+                                    <label><input type="radio" name="ProductType" value="Goods" checked="@(Model.ProductType == "Goods")" /> Goods</label>
+                                    <label><input type="radio" name="ProductType" value="Service" checked="@(Model.ProductType == "Service")" /> Service</label>
+                                    <label><input type="radio" name="ProductType" value="Combo" checked="@(Model.ProductType == "Combo")" /> Combo</label>
+                                </div>
                             </div>
-                            <button class="alert-close">&times;</button>
                         </div>
-                    }
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="InvoicingPolicy" class="af-label">Invoicing Policy</label>
+                                <input asp-for="InvoicingPolicy" class="af-input" placeholder="Invoicing policy" />
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-center" style="gap:1.5rem;padding-top:1.8rem;">
+                            <label><input asp-for="TrackInventory" /> Track Inventory</label>
+                            <label><input asp-for="Discontinued" /> Discontinued</label>
+                        </div>
+                    </div>
 
-                    <div class="af-form-group">
-                        <label asp-for="DesignNumber" class="af-label">Design Number</label>
-                        <input asp-for="DesignNumber" class="af-input" placeholder="e.g. AF-001" />
-                        <span asp-validation-for="DesignNumber" class="af-error"></span>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="DesignNumber" class="af-label">Design Number *</label>
+                                <input asp-for="DesignNumber" class="af-input" placeholder="e.g. AF-001" required />
+                                <span asp-validation-for="DesignNumber" class="af-error"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="CommonDNo" class="af-label">Common D No</label>
+                                <input asp-for="CommonDNo" class="af-input" placeholder="Common design number" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="SalesPrice" class="af-label">Sales Price (₹)</label>
+                                <input asp-for="SalesPrice" class="af-input" type="number" step="0.01" min="0" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="QuantityOnHand" class="af-label">Quantity On Hand</label>
+                                <input asp-for="QuantityOnHand" class="af-input" type="number" step="1" min="0" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="Category" class="af-label">Category</label>
+                                <input asp-for="Category" class="af-input" placeholder="Product category" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="HsnSacCode" class="af-label">HSN/SAC Code</label>
+                                <input asp-for="HsnSacCode" class="af-input" placeholder="HSN/SAC" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="SalesTaxes" class="af-label">Sales Taxes</label>
+                                <input asp-for="SalesTaxes" class="af-input" placeholder="Sales taxes" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="PurchaseTaxes" class="af-label">Purchase Taxes</label>
+                                <input asp-for="PurchaseTaxes" class="af-input" placeholder="Purchase taxes" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="Company" class="af-label">Company</label>
+                                <input asp-for="Company" class="af-input" placeholder="Company" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="Property1" class="af-label">Property 1</label>
+                                <input asp-for="Property1" class="af-input" placeholder="Property" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="Colours" class="af-label">Colours</label>
+                                <input asp-for="Colours" class="af-input" placeholder="e.g. Red,Blue,Green" />
+                                <span style="font-size:.75rem;color:#94a3b8;">Comma-separated</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="Sizes" class="af-label">Sizes</label>
+                                <input asp-for="Sizes" class="af-input" placeholder="e.g. S,M,L,XL" />
+                                <span style="font-size:.75rem;color:#94a3b8;">Comma-separated</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="af-form-group">
+                                <label asp-for="CreationFlow" class="af-label">Creation Flow</label>
+                                <input asp-for="CreationFlow" class="af-input" placeholder="e.g. Dying,Handwork,Stitching" />
+                                <span style="font-size:.75rem;color:#94a3b8;">Comma-separated list of production steps</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="Colours" class="af-label">Colours</label>
-                        <input asp-for="Colours" class="af-input" placeholder="e.g. Red,Blue,Green" />
-                        <span style="font-size:.75rem;color:#94a3b8;">Comma-separated list</span>
+                        <label asp-for="InternalNotes" class="af-label">Internal Notes</label>
+                        <textarea asp-for="InternalNotes" class="af-input" rows="3" placeholder="Internal notes"></textarea>
+                    </div>
+                </div>
+
+                <!-- ===== TAB 2: ATTRIBUTES & VARIANTS ===== -->
+                <div class="tab-pane fade" id="attributes" role="tabpanel">
+                    <div style="overflow-x:auto;">
+                        <table class="af-table" id="attrTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:200px;">Attribute</th>
+                                    <th style="width:300px;">Values</th>
+                                    <th style="width:120px;">Colour Check</th>
+                                    <th style="width:40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="attrBody">
+                                <tr class="attr-row">
+                                    <td><input name="AttributeLines[0].Attribute" class="af-input" placeholder="e.g. Size, Color" /></td>
+                                    <td><input name="AttributeLines[0].Values" class="af-input" placeholder="e.g. S,M,L / Red,Blue" /></td>
+                                    <td class="text-center"><input name="AttributeLines[0].ColourCheck" type="checkbox" value="true" /><input type="hidden" name="AttributeLines[0].ColourCheck" value="false" /></td>
+                                    <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-attr-row" style="display:none;">×</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" id="addAttrRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Attribute</button>
+                </div>
+
+                <!-- ===== TAB 3: SALES ===== -->
+                <div class="tab-pane fade" id="sales" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="VisibilityOfProducts" class="af-label">Visibility Of Products</label>
+                                <input asp-for="VisibilityOfProducts" class="af-input" placeholder="Visibility" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="Website" class="af-label">Website</label>
+                                <input asp-for="Website" class="af-input" placeholder="Website URL" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="Tags" class="af-label">Tags</label>
+                                <input asp-for="Tags" class="af-input" placeholder="Tags" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="Ribbon" class="af-label">Ribbon</label>
+                                <input asp-for="Ribbon" class="af-input" placeholder="Ribbon text" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="OutOfStockMessage" class="af-label">Out-of-Stock Message</label>
+                                <input asp-for="OutOfStockMessage" class="af-input" placeholder="Message" />
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-center" style="gap:1.5rem;padding-top:1.8rem;">
+                            <label><input asp-for="IsPublished" /> Is Published</label>
+                            <label><input asp-for="SellWhenOutOfStock" /> Sell when Out-of-Stock</label>
+                            <label><input asp-for="ShowAvailableQty" /> Show Available Qty</label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label class="af-label">Re-Invoice Costs</label>
+                                <div style="display:flex;gap:1rem;padding:.5rem 0;">
+                                    <label><input type="radio" name="ReInvoiceCosts" value="" checked="@(string.IsNullOrEmpty(Model.ReInvoiceCosts))" /> No</label>
+                                    <label><input type="radio" name="ReInvoiceCosts" value="At cost" checked="@(Model.ReInvoiceCosts == "At cost")" /> At cost</label>
+                                    <label><input type="radio" name="ReInvoiceCosts" value="Sales price" checked="@(Model.ReInvoiceCosts == "Sales price")" /> Sales price</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="Sizes" class="af-label">Sizes</label>
-                        <input asp-for="Sizes" class="af-input" placeholder="e.g. S,M,L,XL" />
-                        <span style="font-size:.75rem;color:#94a3b8;">Comma-separated list</span>
+                        <label class="af-label">Ecommerce Description</label>
+                        <textarea asp-for="EcommerceDescription" class="af-input" rows="3" placeholder="Ecommerce description"></textarea>
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="Price" class="af-label">Price (₹)</label>
-                        <input asp-for="Price" class="af-input" type="number" step="0.01" min="0" placeholder="0.00" />
+                        <label class="af-label">Quotation Description</label>
+                        <textarea asp-for="QuotationDescription" class="af-input" rows="2" placeholder="Quotation description"></textarea>
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="CreationFlow" class="af-label">Creation Flow</label>
-                        <input asp-for="CreationFlow" class="af-input" placeholder="e.g. Dying → Handwork → Stitching" />
+                        <label class="af-label">Warning On Sales Orders</label>
+                        <textarea asp-for="WarningOnSalesOrders" class="af-input" rows="2" placeholder="Warning message"></textarea>
                     </div>
 
-                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
-                        <button type="submit" class="btn-af btn-af-primary">Create Design</button>
-                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    <!-- Packaging (child table on Sales tab) -->
+                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
+                    <label class="af-label" style="font-weight:700;font-size:.95rem;">Packagings</label>
+                    <div style="overflow-x:auto;margin-top:.5rem;">
+                        <table class="af-table" id="pkgTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:200px;">Packaging Name</th>
+                                    <th style="width:150px;">Quantity</th>
+                                    <th style="width:40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="pkgBody">
+                                <tr class="pkg-row">
+                                    <td><input name="Packagings[0].PackagingName" class="af-input" placeholder="Packaging" /></td>
+                                    <td><input name="Packagings[0].Quantity" class="af-input" type="number" step="1" min="0" value="1" /></td>
+                                    <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-pkg-row" style="display:none;">×</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                </form>
+                    <button type="button" id="addPkgRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Packaging</button>
+                </div>
+
+                <!-- ===== TAB 4: PRICES ===== -->
+                <div class="tab-pane fade" id="prices" role="tabpanel">
+                    <div style="overflow-x:auto;">
+                        <table class="af-table" id="priceTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:180px;">Pricelist</th>
+                                    <th style="width:180px;">Applied On</th>
+                                    <th style="width:150px;">Price (₹)</th>
+                                    <th style="width:150px;">Min. Quantity</th>
+                                    <th style="width:40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="priceBody">
+                                <tr class="price-row">
+                                    <td><input name="Pricelists[0].Pricelist" class="af-input" placeholder="Pricelist name" /></td>
+                                    <td><input name="Pricelists[0].AppliedOn" class="af-input" placeholder="e.g. Product, Category" /></td>
+                                    <td><input name="Pricelists[0].Price" class="af-input" type="number" step="0.01" min="0" value="0" /></td>
+                                    <td><input name="Pricelists[0].MinQuantity" class="af-input" type="number" step="1" min="0" value="1" /></td>
+                                    <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-price-row" style="display:none;">×</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" id="addPriceRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Pricelist</button>
+                </div>
+
+                <!-- ===== TAB 5: PURCHASE ===== -->
+                <div class="tab-pane fade" id="purchase" role="tabpanel">
+                    <div style="overflow-x:auto;">
+                        <table class="af-table" id="vendorTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:180px;">Vendor</th>
+                                    <th style="width:100px;">Quantity</th>
+                                    <th style="width:100px;">Unit</th>
+                                    <th style="width:120px;">Unit Price (₹)</th>
+                                    <th style="width:100px;">Lead Time (Days)</th>
+                                    <th style="width:40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendorBody">
+                                <tr class="vendor-row">
+                                    <td>
+                                        <select name="ProductVendors[0].VendorId" class="af-input af-select">
+                                            <option value="">— Select —</option>
+                                            @foreach (var v in vendors)
+                                            {
+                                                <option value="@v.Id">@v.VendorName</option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td><input name="ProductVendors[0].Quantity" class="af-input" type="number" step="1" min="0" value="1" /></td>
+                                    <td>
+                                        <select name="ProductVendors[0].Unit" class="af-input af-select">
+                                            <option value="Piece">Piece</option>
+                                            <option value="Meter">Meter</option>
+                                        </select>
+                                    </td>
+                                    <td><input name="ProductVendors[0].UnitPrice" class="af-input" type="number" step="0.01" min="0" value="0" /></td>
+                                    <td><input name="ProductVendors[0].LeadTime" class="af-input" type="number" min="0" value="0" /></td>
+                                    <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-vendor-row" style="display:none;">×</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" id="addVendorRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Vendor</button>
+
+                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label class="af-label">Control Policy</label>
+                                <div style="display:flex;gap:1rem;padding:.5rem 0;">
+                                    <label><input type="radio" name="ControlPolicy" value="On ordered quantities" checked="@(Model.ControlPolicy == "On ordered quantities")" /> On ordered quantities</label>
+                                    <label><input type="radio" name="ControlPolicy" value="On received quantities" checked="@(Model.ControlPolicy == "On received quantities")" /> On received quantities</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="PurchaseDescription" class="af-label">Purchase Description</label>
+                        <textarea asp-for="PurchaseDescription" class="af-input" rows="2" placeholder="Purchase description"></textarea>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="WarningOnPurchaseOrders" class="af-label">Warning On Purchase Orders</label>
+                        <textarea asp-for="WarningOnPurchaseOrders" class="af-input" rows="2" placeholder="Warning message"></textarea>
+                    </div>
+                </div>
+
+                <!-- ===== TAB 6: INVENTORY ===== -->
+                <div class="tab-pane fade" id="inventory" role="tabpanel">
+                    <div class="af-form-group">
+                        <label class="af-label">Routes</label>
+                        <div style="display:flex;flex-wrap:wrap;gap:1rem;padding:.5rem 0;">
+                            <label><input asp-for="RouteBuy" /> Buy</label>
+                            <label><input asp-for="RouteManufacture" /> Manufacture</label>
+                            <label><input asp-for="RouteResupplySubcontractor" /> Aashana: Resupply Subcontractor</label>
+                            <label><input asp-for="RouteResupplySubcontractorOnOrder" /> Resupply Subcontractor on Order</label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="Responsible" class="af-label">Responsible</label>
+                                <input asp-for="Responsible" class="af-input" placeholder="Person responsible" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="CustomerLeadTime" class="af-label">Customer Lead Time (Days)</label>
+                                <input asp-for="CustomerLeadTime" class="af-input" type="number" min="0" placeholder="0" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="SafetyFactor" class="af-label">Safety Factor</label>
+                                <input asp-for="SafetyFactor" class="af-input" type="number" step="0.01" min="0" placeholder="0.00" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="DescriptionForReceipts" class="af-label">Description For Receipts</label>
+                        <textarea asp-for="DescriptionForReceipts" class="af-input" rows="2" placeholder="Description for receipts"></textarea>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="DescriptionForInternalTransfers" class="af-label">Description For Internal Transfers</label>
+                        <textarea asp-for="DescriptionForInternalTransfers" class="af-input" rows="2" placeholder="Description for internal transfers"></textarea>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="DescriptionForDeliveryOrders" class="af-label">Description For Delivery Orders</label>
+                        <textarea asp-for="DescriptionForDeliveryOrders" class="af-input" rows="2" placeholder="Description for delivery orders"></textarea>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
-</div>
+
+    <div style="display:flex;gap:.75rem;margin-top:1rem;">
+        <button type="submit" class="btn-af btn-af-primary">Create Product</button>
+        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+    </div>
+</form>
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script src="~/js/product.js"></script>
 }

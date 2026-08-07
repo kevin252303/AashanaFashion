@@ -4,6 +4,7 @@ using AashanaFashion.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AashanaFashion.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260609134523_AddInvoiceNumber")]
+    partial class AddInvoiceNumber
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -84,20 +87,8 @@ namespace AashanaFashion.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Category")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Colours")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CommonDNo")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Company")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ControlPolicy")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedDate")
@@ -107,44 +98,8 @@ namespace AashanaFashion.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("CustomerLeadTime")
-                        .HasColumnType("int");
-
-                    b.Property<string>("DescriptionForDeliveryOrders")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("DescriptionForInternalTransfers")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("DescriptionForReceipts")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("DesignNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("Discontinued")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("EcommerceDescription")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("HsnSacCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("InternalNotes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("InvoicingPolicy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsPublished")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("OutOfStockMessage")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhotoPath")
@@ -153,81 +108,8 @@ namespace AashanaFashion.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("ProductType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Property1")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PurchaseDescription")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PurchaseTaxes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("QuantityOnHand")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("QuotationDescription")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ReInvoiceCosts")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Responsible")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Ribbon")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("RouteBuy")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("RouteManufacture")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("RouteResupplySubcontractor")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("RouteResupplySubcontractorOnOrder")
-                        .HasColumnType("bit");
-
-                    b.Property<decimal?>("SafetyFactor")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("SalesPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("SalesTaxes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("SellWhenOutOfStock")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("ShowAvailableQty")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Sizes")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Tags")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("TrackInventory")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("VisibilityOfProducts")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("WarningOnPurchaseOrders")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("WarningOnSalesOrders")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Website")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -299,128 +181,6 @@ namespace AashanaFashion.Migrations
                     b.HasIndex("ProductionEntityId");
 
                     b.ToTable("ProcessTrackings");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductAttributeLine", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Attribute")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("ColourCheck")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("DesignId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Values")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DesignId");
-
-                    b.ToTable("ProductAttributeLines");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductPackaging", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("DesignId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("PackagingName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DesignId");
-
-                    b.ToTable("ProductPackagings");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductPricelist", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AppliedOn")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("DesignId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("MinQuantity")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Pricelist")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DesignId");
-
-                    b.ToTable("ProductPricelists");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductVendor", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("DesignId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("LeadTime")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("VendorId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DesignId");
-
-                    b.HasIndex("VendorId");
-
-                    b.ToTable("ProductVendors");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.ProductionEntity", b =>
@@ -857,53 +617,14 @@ namespace AashanaFashion.Migrations
                     b.Property<string>("AccountNumber")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("AccountPayable")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AccountReceivable")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AccountingResponsible")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("Activation")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("AddDesignOnScan")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Address")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AnalyticDistribution")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("AutoPostBills")
-                        .HasColumnType("bit");
 
                     b.Property<string>("BankName")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Box1099")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Buyer")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("City")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("CommissionEndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("CommissionStartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CompanyId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("ComputeBasedOnAddress")
-                        .HasColumnType("bit");
 
                     b.Property<string>("ContactPerson")
                         .HasColumnType("nvarchar(max)");
@@ -911,38 +632,8 @@ namespace AashanaFashion.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CustomerInvoices")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("DaysSalesOutstanding")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("DeliveryMethod")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("Distance")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FiscalPosition")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FollowUpLevel")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FollowUpStatus")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("GeoLatitude")
-                        .HasColumnType("decimal(18,8)");
-
-                    b.Property<decimal?>("GeoLongitude")
-                        .HasColumnType("decimal(18,8)");
-
-                    b.Property<bool>("GroupRFQ")
-                        .HasColumnType("bit");
 
                     b.Property<string>("GstNumber")
                         .HasColumnType("nvarchar(max)");
@@ -950,43 +641,10 @@ namespace AashanaFashion.Migrations
                     b.Property<string>("IfscCode")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Industry")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("InvoiceReport")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<string>("JournalItems")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("LatestReview")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("LevelWeight")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("NextReminder")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("NextReview")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("PanNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PartnerId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("PartnerLimit")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("PartnershipDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("PeppolId")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Phone")
@@ -995,107 +653,16 @@ namespace AashanaFashion.Migrations
                     b.Property<string>("PinCode")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Pricelist")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PurchasePaymentMethod")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PurchasePaymentTerms")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ReceiptReminder")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Reference")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Reminders")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("SM1CommissionPct")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("SM1Name")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("SM2CommissionPct")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("SM2Name")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("SM3CommissionPct")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("SM3Name")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SalesPaymentMethod")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SalesPaymentTerms")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Salesperson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Send")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("State")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("TotalReceivable")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Transporter")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("VendorCompany")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("VendorName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Website")
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
 
                     b.ToTable("Vendors");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.VendorContact", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ContactEmail")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ContactName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ContactPhone")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ContactRole")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("VendorId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("VendorId");
-
-                    b.ToTable("VendorContacts");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.ProcessTracking", b =>
@@ -1107,58 +674,6 @@ namespace AashanaFashion.Migrations
                         .IsRequired();
 
                     b.Navigation("ProductionEntity");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductAttributeLine", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.Design", "Design")
-                        .WithMany("AttributeLines")
-                        .HasForeignKey("DesignId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Design");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductPackaging", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.Design", "Design")
-                        .WithMany("Packagings")
-                        .HasForeignKey("DesignId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Design");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductPricelist", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.Design", "Design")
-                        .WithMany("Pricelists")
-                        .HasForeignKey("DesignId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Design");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductVendor", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.Design", "Design")
-                        .WithMany("ProductVendors")
-                        .HasForeignKey("DesignId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AashanaFashion.Models.Vendor", "Vendor")
-                        .WithMany()
-                        .HasForeignKey("VendorId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Design");
-
-                    b.Navigation("Vendor");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.ProductionEntity", b =>
@@ -1238,28 +753,6 @@ namespace AashanaFashion.Migrations
                     b.Navigation("UserRole");
                 });
 
-            modelBuilder.Entity("AashanaFashion.Models.VendorContact", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.Vendor", "Vendor")
-                        .WithMany("Contacts")
-                        .HasForeignKey("VendorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Vendor");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.Design", b =>
-                {
-                    b.Navigation("AttributeLines");
-
-                    b.Navigation("Packagings");
-
-                    b.Navigation("Pricelists");
-
-                    b.Navigation("ProductVendors");
-                });
-
             modelBuilder.Entity("AashanaFashion.Models.ProductionEntity", b =>
                 {
                     b.Navigation("ProcessTrackings");
@@ -1278,11 +771,6 @@ namespace AashanaFashion.Migrations
             modelBuilder.Entity("AashanaFashion.Models.UserRole", b =>
                 {
                     b.Navigation("Permissions");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.Vendor", b =>
-                {
-                    b.Navigation("Contacts");
                 });
 #pragma warning restore 612, 618
         }

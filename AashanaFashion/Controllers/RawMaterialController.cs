@@ -1,3 +1,4 @@
+using AashanaFashion.Authorization;
 using AashanaFashion.Data;
 using AashanaFashion.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -30,10 +31,18 @@ public class RawMaterialController : Controller
     }
 
     [Authorize(Roles = "Admin")]
+    [HttpGet]
+    public IActionResult CreateMaterial()
+    {
+        return View(new RawMaterial());
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateMaterial(RawMaterial material)
     {
-        if (!ModelState.IsValid) return RedirectToAction(nameof(Index));
+        if (!ModelState.IsValid) return View(material);
 
         material.CreatedDate = DateTime.Now;
         _context.RawMaterials.Add(material);
@@ -43,8 +52,121 @@ public class RawMaterialController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpGet]
+    public async Task<IActionResult> EditMaterial(int id)
+    {
+        var material = await _context.RawMaterials.FindAsync(id);
+        if (material == null) return NotFound();
+        return View(material);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditMaterial(RawMaterial material)
+    {
+        if (!ModelState.IsValid) return View(material);
+
+        var existing = await _context.RawMaterials.FindAsync(material.Id);
+        if (existing == null) return NotFound();
+
+        existing.Name = material.Name;
+        existing.Description = material.Description;
+        existing.Unit = material.Unit;
+        existing.MinimumStock = material.MinimumStock;
+        existing.Rate = material.Rate;
+
+        await _context.SaveChangesAsync();
+        TempData["Success"] = $"Updated {material.Name}";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [Authorize(Roles = "Admin,Manager")]
+    [HttpGet]
+    public async Task<IActionResult> InOut(int? materialId)
+    {
+        var vm = new RawMaterialInOutViewModel
+        {
+            AvailableMaterials = await _context.RawMaterials.OrderBy(m => m.Name).ToListAsync()
+        };
+
+        if (materialId.HasValue)
+        {
+            var material = await _context.RawMaterials.FindAsync(materialId.Value);
+            if (material != null)
+            {
+                vm.MaterialId = material.Id;
+                vm.MaterialName = material.Name;
+                vm.Unit = material.Unit;
+                vm.CurrentStock = material.CurrentStock;
+                vm.MinimumStock = material.MinimumStock;
+                vm.RecentTransactions = await _context.RawMaterialTransactions
+                    .Where(t => t.RawMaterialId == materialId)
+                    .OrderByDescending(t => t.CreatedDate)
+                    .Take(20)
+                    .ToListAsync();
+            }
+        }
+
+        return View(vm);
+    }
+
     [Authorize(Roles = "Admin,Manager")]
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> InOut(RawMaterialInOutViewModel model)
+    {
+        var material = await _context.RawMaterials.FindAsync(model.MaterialId);
+        if (material == null) return NotFound();
+
+        var validLines = model.Lines?.Where(l => l.Quantity > 0).ToList() ?? new();
+        if (!validLines.Any())
+        {
+            ModelState.AddModelError("", "Add at least one entry with quantity > 0.");
+            model.AvailableMaterials = await _context.RawMaterials.OrderBy(m => m.Name).ToListAsync();
+            model.MaterialName = material.Name;
+            model.Unit = material.Unit;
+            model.CurrentStock = material.CurrentStock;
+            model.MinimumStock = material.MinimumStock;
+            return View(model);
+        }
+
+        foreach (var line in validLines)
+        {
+            if (line.Type == "Outward" && line.Quantity > material.CurrentStock)
+            {
+                ModelState.AddModelError("", $"Cannot issue {line.Quantity} {material.Unit} of '{material.Name}' — only {material.CurrentStock} available.");
+                model.AvailableMaterials = await _context.RawMaterials.OrderBy(m => m.Name).ToListAsync();
+                model.MaterialName = material.Name;
+                model.Unit = material.Unit;
+                model.CurrentStock = material.CurrentStock;
+                model.MinimumStock = material.MinimumStock;
+                return View(model);
+            }
+
+            var adjustment = line.Type == "Inward" ? line.Quantity : -line.Quantity;
+            material.CurrentStock += adjustment;
+
+            _context.RawMaterialTransactions.Add(new RawMaterialTransaction
+            {
+                RawMaterialId = material.Id,
+                Type = line.Type,
+                Quantity = line.Quantity,
+                BalanceAfter = material.CurrentStock,
+                Remarks = line.Remarks,
+                CreatedDate = DateTime.Now
+            });
+        }
+
+        await _context.SaveChangesAsync();
+        TempData["Success"] = $"Stock updated for {material.Name}";
+        return RedirectToAction(nameof(InOut), new { materialId = material.Id });
+    }
+
+    [PermissionAuthorize("RawMaterial", "CanCreate")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> RaiseRequirement(RawMaterialRequirement requirement)
     {
         if (!ModelState.IsValid) return RedirectToAction(nameof(Index));
@@ -58,25 +180,9 @@ public class RawMaterialController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    [Authorize(Roles = "Admin")]
+    [PermissionAuthorize("RawMaterial", "CanEdit")]
     [HttpPost]
-    public async Task<IActionResult> UpdateStock(int id, decimal quantity, bool isAddition)
-    {
-        var material = await _context.RawMaterials.FindAsync(id);
-        if (material == null) return RedirectToAction(nameof(Index));
-
-        if (isAddition)
-            material.CurrentStock += quantity;
-        else
-            material.CurrentStock = Math.Max(0, material.CurrentStock - quantity);
-
-        await _context.SaveChangesAsync();
-        TempData["Success"] = $"Stock updated for {material.Name}";
-        return RedirectToAction(nameof(Index));
-    }
-
-    [Authorize(Roles = "Admin")]
-    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateRequirementStatus(int id, string status)
     {
         var requirement = await _context.RawMaterialRequirements.FindAsync(id);

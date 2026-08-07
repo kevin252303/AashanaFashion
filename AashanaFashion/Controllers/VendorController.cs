@@ -27,31 +27,23 @@ public class VendorController : Controller
     [PermissionAuthorize("VendorMaster", "CanCreate")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(VendorViewModel model)
+    public async Task<IActionResult> Create(VendorViewModel model, List<VendorContact>? Contacts)
     {
         if (!ModelState.IsValid) return View(model);
 
-        var vendor = new Vendor
-        {
-            VendorName = model.VendorName,
-            GstNumber = model.GstNumber,
-            ContactPerson = model.ContactPerson,
-            Phone = model.Phone,
-            Email = model.Email,
-            Address = model.Address,
-            City = model.City,
-            State = model.State,
-            PinCode = model.PinCode,
-            BankName = model.BankName,
-            AccountNumber = model.AccountNumber,
-            IfscCode = model.IfscCode,
-            PanNumber = model.PanNumber,
-            IsActive = model.IsActive,
-            CreatedDate = DateTime.Now
-        };
-
+        var vendor = MapToVendor(model);
+        vendor.CreatedDate = DateTime.Now;
         _context.Vendors.Add(vendor);
         await _context.SaveChangesAsync();
+
+        if (Contacts?.Any() == true)
+            foreach (var c in Contacts.Where(c => !string.IsNullOrWhiteSpace(c.ContactName)))
+            {
+                c.VendorId = vendor.Id;
+                _context.VendorContacts.Add(c);
+            }
+        await _context.SaveChangesAsync();
+
         TempData["Success"] = $"Vendor '{vendor.VendorName}' created successfully.";
         return RedirectToAction(nameof(Index));
     }
@@ -60,54 +52,32 @@ public class VendorController : Controller
     [HttpGet]
     public async Task<IActionResult> Edit(int id)
     {
-        var vendor = await _context.Vendors.FindAsync(id);
+        var vendor = await _context.Vendors.Include(v => v.Contacts).FirstOrDefaultAsync(v => v.Id == id);
         if (vendor == null) return NotFound();
-
-        var model = new VendorViewModel
-        {
-            Id = vendor.Id,
-            VendorName = vendor.VendorName,
-            GstNumber = vendor.GstNumber,
-            ContactPerson = vendor.ContactPerson,
-            Phone = vendor.Phone,
-            Email = vendor.Email,
-            Address = vendor.Address,
-            City = vendor.City,
-            State = vendor.State,
-            PinCode = vendor.PinCode,
-            BankName = vendor.BankName,
-            AccountNumber = vendor.AccountNumber,
-            IfscCode = vendor.IfscCode,
-            PanNumber = vendor.PanNumber,
-            IsActive = vendor.IsActive
-        };
-        return View(model);
+        return View(MapToViewModel(vendor));
     }
 
     [PermissionAuthorize("VendorMaster", "CanEdit")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(VendorViewModel model)
+    public async Task<IActionResult> Edit(VendorViewModel model, List<VendorContact>? Contacts)
     {
         if (!ModelState.IsValid) return View(model);
 
-        var vendor = await _context.Vendors.FindAsync(model.Id);
+        var vendor = await _context.Vendors.Include(v => v.Contacts).FirstOrDefaultAsync(v => v.Id == model.Id);
         if (vendor == null) return NotFound();
 
-        vendor.VendorName = model.VendorName;
-        vendor.GstNumber = model.GstNumber;
-        vendor.ContactPerson = model.ContactPerson;
-        vendor.Phone = model.Phone;
-        vendor.Email = model.Email;
-        vendor.Address = model.Address;
-        vendor.City = model.City;
-        vendor.State = model.State;
-        vendor.PinCode = model.PinCode;
-        vendor.BankName = model.BankName;
-        vendor.AccountNumber = model.AccountNumber;
-        vendor.IfscCode = model.IfscCode;
-        vendor.PanNumber = model.PanNumber;
-        vendor.IsActive = model.IsActive;
+        MapToVendor(model, vendor);
+
+        // Replace contacts
+        _context.VendorContacts.RemoveRange(vendor.Contacts);
+        if (Contacts?.Any() == true)
+            foreach (var c in Contacts.Where(c => !string.IsNullOrWhiteSpace(c.ContactName)))
+            {
+                c.Id = 0;
+                c.VendorId = vendor.Id;
+                _context.VendorContacts.Add(c);
+            }
 
         await _context.SaveChangesAsync();
         TempData["Success"] = $"Vendor '{vendor.VendorName}' updated successfully.";
@@ -119,9 +89,10 @@ public class VendorController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
-        var vendor = await _context.Vendors.FindAsync(id);
+        var vendor = await _context.Vendors.Include(v => v.Contacts).FirstOrDefaultAsync(v => v.Id == id);
         if (vendor != null)
         {
+            _context.VendorContacts.RemoveRange(vendor.Contacts);
             _context.Vendors.Remove(vendor);
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Vendor '{vendor.VendorName}' deleted.";
@@ -143,4 +114,163 @@ public class VendorController : Controller
         }
         return RedirectToAction(nameof(Index));
     }
+
+    private static Vendor MapToVendor(VendorViewModel model, Vendor? existing = null)
+    {
+        var v = existing ?? new Vendor();
+        v.VendorName = model.VendorName;
+        v.GstNumber = model.GstNumber;
+        v.ContactPerson = model.ContactPerson;
+        v.Phone = model.Phone;
+        v.Email = model.Email;
+        v.Address = model.Address;
+        v.City = model.City;
+        v.State = model.State;
+        v.PinCode = model.PinCode;
+        v.PanNumber = model.PanNumber;
+        v.IsActive = model.IsActive;
+
+        v.Salesperson = model.Salesperson;
+        v.AddDesignOnScan = model.AddDesignOnScan;
+        v.SalesPaymentTerms = model.SalesPaymentTerms;
+        v.SalesPaymentMethod = model.SalesPaymentMethod;
+        v.Pricelist = model.Pricelist;
+        v.DeliveryMethod = model.DeliveryMethod;
+        v.Transporter = model.Transporter;
+        v.Distance = model.Distance;
+        v.GroupRFQ = model.GroupRFQ;
+        v.Buyer = model.Buyer;
+        v.PurchasePaymentTerms = model.PurchasePaymentTerms;
+        v.PurchasePaymentMethod = model.PurchasePaymentMethod;
+        v.Box1099 = model.Box1099;
+        v.ReceiptReminder = model.ReceiptReminder;
+        v.FiscalPosition = model.FiscalPosition;
+        v.CompanyId = model.CompanyId;
+        v.Reference = model.Reference;
+        v.VendorCompany = model.VendorCompany;
+        v.Website = model.Website;
+        v.Industry = model.Industry;
+        v.PartnerId = model.PartnerId;
+
+        v.AccountReceivable = model.AccountReceivable;
+        v.AccountPayable = model.AccountPayable;
+        v.AutoPostBills = model.AutoPostBills;
+        v.CustomerInvoices = model.CustomerInvoices;
+        v.InvoiceReport = model.InvoiceReport;
+        v.PeppolId = model.PeppolId;
+        v.FollowUpLevel = model.FollowUpLevel;
+        v.FollowUpStatus = model.FollowUpStatus;
+        v.Reminders = model.Reminders;
+        v.NextReminder = model.NextReminder;
+        v.AccountingResponsible = model.AccountingResponsible;
+        v.JournalItems = model.JournalItems;
+        v.Send = model.Send;
+        v.TotalReceivable = model.TotalReceivable;
+        v.DaysSalesOutstanding = model.DaysSalesOutstanding;
+        v.PartnerLimit = model.PartnerLimit;
+        v.AnalyticDistribution = model.AnalyticDistribution;
+
+        v.BankName = model.BankName;
+        v.AccountNumber = model.AccountNumber;
+        v.IfscCode = model.IfscCode;
+
+        v.SM1Name = model.SM1Name;
+        v.SM1CommissionPct = model.SM1CommissionPct;
+        v.SM2Name = model.SM2Name;
+        v.SM2CommissionPct = model.SM2CommissionPct;
+        v.SM3Name = model.SM3Name;
+        v.SM3CommissionPct = model.SM3CommissionPct;
+        v.CommissionStartDate = model.CommissionStartDate;
+        v.CommissionEndDate = model.CommissionEndDate;
+
+        v.Activation = model.Activation;
+        v.LevelWeight = model.LevelWeight;
+        v.LatestReview = model.LatestReview;
+        v.NextReview = model.NextReview;
+        v.PartnershipDate = model.PartnershipDate;
+        v.GeoLatitude = model.GeoLatitude;
+        v.GeoLongitude = model.GeoLongitude;
+        v.ComputeBasedOnAddress = model.ComputeBasedOnAddress;
+
+        return v;
+    }
+
+    private static VendorViewModel MapToViewModel(Vendor v) => new()
+    {
+        Id = v.Id,
+        VendorName = v.VendorName,
+        GstNumber = v.GstNumber,
+        ContactPerson = v.ContactPerson,
+        Phone = v.Phone,
+        Email = v.Email,
+        Address = v.Address,
+        City = v.City,
+        State = v.State,
+        PinCode = v.PinCode,
+        PanNumber = v.PanNumber,
+        IsActive = v.IsActive,
+
+        Salesperson = v.Salesperson,
+        AddDesignOnScan = v.AddDesignOnScan,
+        SalesPaymentTerms = v.SalesPaymentTerms,
+        SalesPaymentMethod = v.SalesPaymentMethod,
+        Pricelist = v.Pricelist,
+        DeliveryMethod = v.DeliveryMethod,
+        Transporter = v.Transporter,
+        Distance = v.Distance,
+        GroupRFQ = v.GroupRFQ,
+        Buyer = v.Buyer,
+        PurchasePaymentTerms = v.PurchasePaymentTerms,
+        PurchasePaymentMethod = v.PurchasePaymentMethod,
+        Box1099 = v.Box1099,
+        ReceiptReminder = v.ReceiptReminder,
+        FiscalPosition = v.FiscalPosition,
+        CompanyId = v.CompanyId,
+        Reference = v.Reference,
+        VendorCompany = v.VendorCompany,
+        Website = v.Website,
+        Industry = v.Industry,
+        PartnerId = v.PartnerId,
+
+        AccountReceivable = v.AccountReceivable,
+        AccountPayable = v.AccountPayable,
+        AutoPostBills = v.AutoPostBills,
+        CustomerInvoices = v.CustomerInvoices,
+        InvoiceReport = v.InvoiceReport,
+        PeppolId = v.PeppolId,
+        FollowUpLevel = v.FollowUpLevel,
+        FollowUpStatus = v.FollowUpStatus,
+        Reminders = v.Reminders,
+        NextReminder = v.NextReminder,
+        AccountingResponsible = v.AccountingResponsible,
+        JournalItems = v.JournalItems,
+        Send = v.Send,
+        TotalReceivable = v.TotalReceivable,
+        DaysSalesOutstanding = v.DaysSalesOutstanding,
+        PartnerLimit = v.PartnerLimit,
+        AnalyticDistribution = v.AnalyticDistribution,
+
+        BankName = v.BankName,
+        AccountNumber = v.AccountNumber,
+        IfscCode = v.IfscCode,
+
+        SM1Name = v.SM1Name,
+        SM1CommissionPct = v.SM1CommissionPct,
+        SM2Name = v.SM2Name,
+        SM2CommissionPct = v.SM2CommissionPct,
+        SM3Name = v.SM3Name,
+        SM3CommissionPct = v.SM3CommissionPct,
+        CommissionStartDate = v.CommissionStartDate,
+        CommissionEndDate = v.CommissionEndDate,
+
+        Activation = v.Activation,
+        LevelWeight = v.LevelWeight,
+        LatestReview = v.LatestReview,
+        NextReview = v.NextReview,
+        PartnershipDate = v.PartnershipDate,
+        GeoLatitude = v.GeoLatitude,
+        GeoLongitude = v.GeoLongitude,
+        ComputeBasedOnAddress = v.ComputeBasedOnAddress,
+        Contacts = v.Contacts?.ToList() ?? new()
+    };
 }
