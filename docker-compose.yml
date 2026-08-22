@@ -1,0 +1,34 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: aashana_db
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrongPass123!
+    # Mapped to host port 1434 to avoid conflict with mssql-erp (running on 1433)
+    ports:
+      - "1434:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+    restart: always
+
+  web:
+    image: aashana_web
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aashana_web
+    depends_on:
+      - db
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://0.0.0.0:5000
+      - ASPNETCORE_HTTP_PORTS=5000
+      - ActiveConnection=DockerSqlConnection
+      - ConnectionStrings__DockerSqlConnection=Server=db,1433;Database=AashanaFashionDb;User Id=sa;Password=YourStrongPass123!;TrustServerCertificate=True;MultipleActiveResultSets=true
+    ports:
+      - "5000:5000"
+    restart: always
+
+volumes:
+  mssql_data:
