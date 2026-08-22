@@ -21,17 +21,9 @@ public class Vendor
     public bool IsActive { get; set; } = true;
     public DateTime CreatedDate { get; set; } = DateTime.Now;
 
-    // ——— Sales & Purchase ———
-    public string? Salesperson { get; set; }
-    public bool AddDesignOnScan { get; set; }
-    public string? SalesPaymentTerms { get; set; }
-    public string? SalesPaymentMethod { get; set; }
-    public string? Pricelist { get; set; }
-    public string? DeliveryMethod { get; set; }
-    public string? Transporter { get; set; }
-    public decimal? Distance { get; set; }
-    public bool GroupRFQ { get; set; }
+    // ——— Purchase ———
     public string? Buyer { get; set; }
+    public bool GroupRFQ { get; set; }
     public string? PurchasePaymentTerms { get; set; }
     public string? PurchasePaymentMethod { get; set; }
     public string? Box1099 { get; set; }
@@ -45,10 +37,8 @@ public class Vendor
     public string? PartnerId { get; set; }
 
     // ——— Accounting ———
-    public string? AccountReceivable { get; set; }
     public string? AccountPayable { get; set; }
     public bool AutoPostBills { get; set; }
-    public string? CustomerInvoices { get; set; }
     public string? InvoiceReport { get; set; }
     public string? PeppolId { get; set; }
     public string? FollowUpLevel { get; set; }
@@ -58,8 +48,6 @@ public class Vendor
     public string? AccountingResponsible { get; set; }
     public string? JournalItems { get; set; }
     public string? Send { get; set; }
-    public decimal? TotalReceivable { get; set; }
-    public decimal? DaysSalesOutstanding { get; set; }
     public decimal? PartnerLimit { get; set; }
     public string? AnalyticDistribution { get; set; }
 

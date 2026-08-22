@@ -23,6 +23,7 @@
     // Permission helpers — check claims for custom roles
     bool canViewDesign      = isAdmin || User.HasClaim("Permission.DesignMaster.CanView",    "true");
     bool canViewVendor      = isAdmin || User.HasClaim("Permission.VendorMaster.CanView",    "true");
+    bool canViewCustomer    = isAdmin || User.HasClaim("Permission.CustomerMaster.CanView",  "true");
     bool canCreateOrder     = isAdmin || User.HasClaim("Permission.ProductionOrder.CanCreate", "true");
     bool canViewUserMgmt    = isAdmin || User.HasClaim("Permission.UserManagement.CanView",  "true");
     bool canViewPurchase    = isAdmin || User.HasClaim("Permission.Purchase.CanView",      "true");
@@ -51,18 +52,25 @@
                 </a>
             }
 
-            @if (canViewDesign || canViewVendor)
+            @if (canViewDesign || canViewVendor || canViewCustomer)
             {
-                <a class="s-link s-link-toggle @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "RawMaterial" ? "open" : "")" onclick="toggleNav(this)">
+                <a class="s-link s-link-toggle @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" ? "open" : "")" onclick="toggleNav(this)">
                     <span class="ico">⚙️</span> Admin Master
                     <span class="nav-arrow">▾</span>
                 </a>
-                <div class="s-submenu @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "RawMaterial" ? "" : "d-none")">
+                <div class="s-submenu @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" ? "" : "d-none")">
                     @if (canViewDesign)
                     {
                         <a class="s-link s-sublink @(ctrl == "Design" ? "active" : "")"
                            asp-controller="Design" asp-action="Index">
                             <span class="ico">🎨</span> Product Master
+                        </a>
+                    }
+                    @if (canViewCustomer)
+                    {
+                        <a class="s-link s-sublink @(ctrl == "Customer" ? "active" : "")"
+                           asp-controller="Customer" asp-action="Index">
+                            <span class="ico">👥</span> Customer Master
                         </a>
                     }
                     @if (canViewVendor)

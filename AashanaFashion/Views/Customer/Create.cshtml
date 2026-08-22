@@ -1,20 +1,18 @@
-@model AashanaFashion.Models.VendorViewModel
+@model AashanaFashion.Models.CustomerViewModel
 @{
-    ViewData["Title"] = "Edit Vendor";
-    var contactIndex = Model.Contacts?.Count ?? 0;
+    ViewData["Title"] = "New Customer";
 }
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Edit Vendor</h1>
-        <p class="page-sub">Update vendor details</p>
+        <h1 class="page-title">New Customer</h1>
+        <p class="page-sub">Add a new customer with all details</p>
     </div>
     <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
 </div>
 
-<form asp-action="Edit" method="post" id="vendorForm">
+<form asp-action="Create" method="post" id="customerForm">
     @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="Id" />
 
     @if (!ViewData.ModelState.IsValid)
     {
@@ -29,17 +27,17 @@
 
     <div class="data-card">
         <div class="data-card-header">
-            <div class="data-card-title">Vendor Details</div>
+            <div class="data-card-title">Customer Details</div>
         </div>
         <div style="padding:0;">
 
             <!-- Tabs -->
-            <ul class="nav nav-tabs" id="vendorTabs" role="tablist" style="padding:0 1.5rem;border-bottom:2px solid #e2e8f0;">
+            <ul class="nav nav-tabs" id="customerTabs" role="tablist" style="padding:0 1.5rem;border-bottom:2px solid #e2e8f0;">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="contacts-tab" data-bs-toggle="tab" data-bs-target="#contacts" type="button" role="tab">Contacts</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="salespurchase-tab" data-bs-toggle="tab" data-bs-target="#salespurchase" type="button" role="tab">Purchase</button>
+                    <button class="nav-link" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales" type="button" role="tab">Sales</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="accounting-tab" data-bs-toggle="tab" data-bs-target="#accounting" type="button" role="tab">Accounting</button>
@@ -56,9 +54,9 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="af-form-group">
-                                <label asp-for="VendorName" class="af-label">Vendor Name *</label>
-                                <input asp-for="VendorName" class="af-input" required />
-                                <span asp-validation-for="VendorName" class="af-error"></span>
+                                <label asp-for="CustomerName" class="af-label">Customer Name *</label>
+                                <input asp-for="CustomerName" class="af-input" required />
+                                <span asp-validation-for="CustomerName" class="af-error"></span>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -105,8 +103,8 @@
                         </div>
                         <div class="col-md-4">
                             <div class="af-form-group">
-                                <label asp-for="VendorCompany" class="af-label">Company</label>
-                                <input asp-for="VendorCompany" class="af-input" />
+                                <label asp-for="CustomerCompany" class="af-label">Company</label>
+                                <input asp-for="CustomerCompany" class="af-input" />
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -178,58 +176,39 @@
                                 </tr>
                             </thead>
                             <tbody id="contactBody">
-                                @if (Model.Contacts != null && Model.Contacts.Any())
-                                {
-                                    var idx = 0;
-                                    foreach (var c in Model.Contacts)
-                                    {
-                                        <tr class="contact-row">
-                                            <td><input name="Contacts[@idx].ContactName" class="af-input" value="@c.ContactName" placeholder="Contact name" /></td>
-                                            <td><input name="Contacts[@idx].ContactPhone" class="af-input" value="@c.ContactPhone" placeholder="Phone" /></td>
-                                            <td><input name="Contacts[@idx].ContactEmail" class="af-input" value="@c.ContactEmail" placeholder="Email" /></td>
-                                            <td><input name="Contacts[@idx].ContactRole" class="af-input" value="@c.ContactRole" placeholder="Role" /></td>
-                                            <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-contact-row">&times;</button></td>
-                                        </tr>
-                                        idx++;
-                                    }
-                                }
-                                else
-                                {
-                                    <tr class="contact-row">
-                                        <td><input name="Contacts[0].ContactName" class="af-input" placeholder="Contact name" /></td>
-                                        <td><input name="Contacts[0].ContactPhone" class="af-input" placeholder="Phone" /></td>
-                                        <td><input name="Contacts[0].ContactEmail" class="af-input" placeholder="Email" /></td>
-                                        <td><input name="Contacts[0].ContactRole" class="af-input" placeholder="Role" /></td>
-                                        <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-contact-row" style="display:none;">×</button></td>
-                                    </tr>
-                                }
+                                <tr class="contact-row">
+                                    <td><input name="Contacts[0].ContactName" class="af-input" placeholder="Contact name" /></td>
+                                    <td><input name="Contacts[0].ContactPhone" class="af-input" placeholder="Phone" /></td>
+                                    <td><input name="Contacts[0].ContactEmail" class="af-input" placeholder="Email" /></td>
+                                    <td><input name="Contacts[0].ContactRole" class="af-input" placeholder="Role" /></td>
+                                    <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-contact-row" style="display:none;">×</button></td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
                     <button type="button" id="addContactRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Contact</button>
                 </div>
 
-                <!-- ===== TAB 2: PURCHASE ===== -->
-                <div class="tab-pane fade" id="salespurchase" role="tabpanel">
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Purchase</label>
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Purchase</label>
+                <!-- ===== TAB 2: SALES ===== -->
+                <div class="tab-pane fade" id="sales" role="tabpanel">
+                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Sales</label>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
-                                <label asp-for="Buyer" class="af-label">Buyer</label>
-                                <input asp-for="Buyer" class="af-input" />
+                                <label asp-for="Salesperson" class="af-label">Salesperson</label>
+                                <input asp-for="Salesperson" class="af-input" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="af-form-group">
-                                <label asp-for="PurchasePaymentTerms" class="af-label">Payment Terms</label>
-                                <input asp-for="PurchasePaymentTerms" class="af-input" />
+                                <label asp-for="SalesPaymentTerms" class="af-label">Payment Terms</label>
+                                <input asp-for="SalesPaymentTerms" class="af-input" placeholder="e.g. Net 30" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="af-form-group">
-                                <label asp-for="PurchasePaymentMethod" class="af-label">Payment Method</label>
-                                <input asp-for="PurchasePaymentMethod" class="af-input" />
+                                <label asp-for="SalesPaymentMethod" class="af-label">Payment Method</label>
+                                <input asp-for="SalesPaymentMethod" class="af-input" />
                             </div>
                         </div>
                     </div>
@@ -237,33 +216,33 @@
                     <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
-                                <label asp-for="Box1099" class="af-label">1099 Box</label>
-                                <input asp-for="Box1099" class="af-input" />
+                                <label asp-for="Pricelist" class="af-label">Pricelist</label>
+                                <input asp-for="Pricelist" class="af-input" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="af-form-group">
-                                <label asp-for="ReceiptReminder" class="af-label">Receipt Reminder</label>
-                                <input asp-for="ReceiptReminder" class="af-input" />
+                                <label asp-for="DeliveryMethod" class="af-label">Delivery Method</label>
+                                <input asp-for="DeliveryMethod" class="af-input" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="af-form-group">
-                                <label asp-for="FiscalPosition" class="af-label">Fiscal Position</label>
-                                <input asp-for="FiscalPosition" class="af-input" />
+                                <label asp-for="Transporter" class="af-label">Transporter</label>
+                                <input asp-for="Transporter" class="af-input" />
                             </div>
                         </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <div class="af-form-group">
-                                <label asp-for="CompanyId" class="af-label">Company ID</label>
-                                <input asp-for="CompanyId" class="af-input" />
+                                <label asp-for="Distance" class="af-label">Distance (km)</label>
+                                <input asp-for="Distance" class="af-input" type="number" step="0.1" min="0" />
                             </div>
                         </div>
-                        <div class="col-md-3 d-flex align-items-center" style="padding-top:1.8rem;">
-                            <label><input asp-for="GroupRFQ" /> Group RFQ</label>
+                        <div class="col-md-4 d-flex align-items-center" style="padding-top:1.8rem;">
+                            <label><input asp-for="AddDesignOnScan" /> Add Design on Scan?</label>
                         </div>
                     </div>
                 </div>
@@ -274,8 +253,14 @@
                     <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
-                                <label asp-for="AccountPayable" class="af-label">Account Payable</label>
-                                <input asp-for="AccountPayable" class="af-input" />
+                                <label asp-for="AccountReceivable" class="af-label">Account Receivable</label>
+                                <input asp-for="AccountReceivable" class="af-input" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="CustomerInvoices" class="af-label">Customer Invoices</label>
+                                <input asp-for="CustomerInvoices" class="af-input" />
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -299,15 +284,15 @@
                                 <input asp-for="JournalItems" class="af-input" />
                             </div>
                         </div>
-                    </div>
-
-                    <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
                                 <label asp-for="Send" class="af-label">Send</label>
                                 <input asp-for="Send" class="af-input" />
                             </div>
                         </div>
+                    </div>
+
+                    <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
                                 <label asp-for="AnalyticDistribution" class="af-label">Analytic Distribution</label>
@@ -392,6 +377,18 @@
                     <hr style="margin:1rem 0;border-color:#e2e8f0;" />
                     <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Credit Limits</label>
                     <div class="row">
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="TotalReceivable" class="af-label">Total Receivable (₹)</label>
+                                <input asp-for="TotalReceivable" class="af-input" type="number" step="0.01" min="0" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="DaysSalesOutstanding" class="af-label">Days Sales Outstanding (DSO)</label>
+                                <input asp-for="DaysSalesOutstanding" class="af-input" type="number" step="0.01" min="0" />
+                            </div>
+                        </div>
                         <div class="col-md-4">
                             <div class="af-form-group">
                                 <label asp-for="PartnerLimit" class="af-label">Partner Limit (₹)</label>
@@ -534,12 +531,12 @@
     </div>
 
     <div style="display:flex;gap:.75rem;margin-top:1rem;">
-        <button type="submit" class="btn-af btn-af-primary">Save Changes</button>
+        <button type="submit" class="btn-af btn-af-primary">Save Customer</button>
         <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
     </div>
 </form>
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
-    <script src="~/js/vendor.js"></script>
+    <script src="~/js/customer.js"></script>
 }

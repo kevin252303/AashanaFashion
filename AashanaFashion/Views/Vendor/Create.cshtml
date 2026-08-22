@@ -37,7 +37,7 @@
                     <button class="nav-link active" id="contacts-tab" data-bs-toggle="tab" data-bs-target="#contacts" type="button" role="tab">Contacts</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="salespurchase-tab" data-bs-toggle="tab" data-bs-target="#salespurchase" type="button" role="tab">Sales & Purchase</button>
+                    <button class="nav-link" id="salespurchase-tab" data-bs-toggle="tab" data-bs-target="#salespurchase" type="button" role="tab">Purchase</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="accounting-tab" data-bs-toggle="tab" data-bs-target="#accounting" type="button" role="tab">Accounting</button>
@@ -189,64 +189,8 @@
                     <button type="button" id="addContactRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Contact</button>
                 </div>
 
-                <!-- ===== TAB 2: SALES & PURCHASE ===== -->
+                <!-- ===== TAB 2: PURCHASE ===== -->
                 <div class="tab-pane fade" id="salespurchase" role="tabpanel">
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Sales</label>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="af-form-group">
-                                <label asp-for="Salesperson" class="af-label">Salesperson</label>
-                                <input asp-for="Salesperson" class="af-input" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="af-form-group">
-                                <label asp-for="SalesPaymentTerms" class="af-label">Payment Terms</label>
-                                <input asp-for="SalesPaymentTerms" class="af-input" placeholder="e.g. Net 30" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="af-form-group">
-                                <label asp-for="SalesPaymentMethod" class="af-label">Payment Method</label>
-                                <input asp-for="SalesPaymentMethod" class="af-input" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="af-form-group">
-                                <label asp-for="Pricelist" class="af-label">Pricelist</label>
-                                <input asp-for="Pricelist" class="af-input" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="af-form-group">
-                                <label asp-for="DeliveryMethod" class="af-label">Delivery Method</label>
-                                <input asp-for="DeliveryMethod" class="af-input" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="af-form-group">
-                                <label asp-for="Transporter" class="af-label">Transporter</label>
-                                <input asp-for="Transporter" class="af-input" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="af-form-group">
-                                <label asp-for="Distance" class="af-label">Distance (km)</label>
-                                <input asp-for="Distance" class="af-input" type="number" step="0.1" min="0" />
-                            </div>
-                        </div>
-                        <div class="col-md-4 d-flex align-items-center" style="padding-top:1.8rem;">
-                            <label><input asp-for="AddDesignOnScan" /> Add Design on Scan?</label>
-                        </div>
-                    </div>
-
-                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
                     <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Purchase</label>
                     <div class="row">
                         <div class="col-md-4">
@@ -309,12 +253,6 @@
                     <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
-                                <label asp-for="AccountReceivable" class="af-label">Account Receivable</label>
-                                <input asp-for="AccountReceivable" class="af-input" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="af-form-group">
                                 <label asp-for="AccountPayable" class="af-label">Account Payable</label>
                                 <input asp-for="AccountPayable" class="af-input" />
                             </div>
@@ -328,12 +266,6 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4">
-                            <div class="af-form-group">
-                                <label asp-for="CustomerInvoices" class="af-label">Customer Invoices</label>
-                                <input asp-for="CustomerInvoices" class="af-input" />
-                            </div>
-                        </div>
                         <div class="col-md-4">
                             <div class="af-form-group">
                                 <label asp-for="InvoiceReport" class="af-label">Invoice Report</label>
@@ -439,18 +371,6 @@
                     <hr style="margin:1rem 0;border-color:#e2e8f0;" />
                     <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Credit Limits</label>
                     <div class="row">
-                        <div class="col-md-4">
-                            <div class="af-form-group">
-                                <label asp-for="TotalReceivable" class="af-label">Total Receivable (₹)</label>
-                                <input asp-for="TotalReceivable" class="af-input" type="number" step="0.01" min="0" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="af-form-group">
-                                <label asp-for="DaysSalesOutstanding" class="af-label">Days Sales Outstanding (DSO)</label>
-                                <input asp-for="DaysSalesOutstanding" class="af-input" type="number" step="0.01" min="0" />
-                            </div>
-                        </div>
                         <div class="col-md-4">
                             <div class="af-form-group">
                                 <label asp-for="PartnerLimit" class="af-label">Partner Limit (₹)</label>

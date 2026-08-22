@@ -16,6 +16,7 @@ namespace AashanaFashion.Controllers
             ("ProductionOrder", "Production Orders"),
             ("DesignMaster",    "Product Master"),
             ("VendorMaster",    "Vendor Master"),
+            ("CustomerMaster",  "Customer Master"),
             ("Purchase",        "Purchase Orders"),
             ("Dying",           "Dying Entry"),
             ("RollPress",       "Roll Press Entry"),

@@ -130,14 +130,6 @@ public class VendorController : Controller
         v.PanNumber = model.PanNumber;
         v.IsActive = model.IsActive;
 
-        v.Salesperson = model.Salesperson;
-        v.AddDesignOnScan = model.AddDesignOnScan;
-        v.SalesPaymentTerms = model.SalesPaymentTerms;
-        v.SalesPaymentMethod = model.SalesPaymentMethod;
-        v.Pricelist = model.Pricelist;
-        v.DeliveryMethod = model.DeliveryMethod;
-        v.Transporter = model.Transporter;
-        v.Distance = model.Distance;
         v.GroupRFQ = model.GroupRFQ;
         v.Buyer = model.Buyer;
         v.PurchasePaymentTerms = model.PurchasePaymentTerms;
@@ -152,10 +144,8 @@ public class VendorController : Controller
         v.Industry = model.Industry;
         v.PartnerId = model.PartnerId;
 
-        v.AccountReceivable = model.AccountReceivable;
         v.AccountPayable = model.AccountPayable;
         v.AutoPostBills = model.AutoPostBills;
-        v.CustomerInvoices = model.CustomerInvoices;
         v.InvoiceReport = model.InvoiceReport;
         v.PeppolId = model.PeppolId;
         v.FollowUpLevel = model.FollowUpLevel;
@@ -165,8 +155,6 @@ public class VendorController : Controller
         v.AccountingResponsible = model.AccountingResponsible;
         v.JournalItems = model.JournalItems;
         v.Send = model.Send;
-        v.TotalReceivable = model.TotalReceivable;
-        v.DaysSalesOutstanding = model.DaysSalesOutstanding;
         v.PartnerLimit = model.PartnerLimit;
         v.AnalyticDistribution = model.AnalyticDistribution;
 
@@ -210,14 +198,6 @@ public class VendorController : Controller
         PanNumber = v.PanNumber,
         IsActive = v.IsActive,
 
-        Salesperson = v.Salesperson,
-        AddDesignOnScan = v.AddDesignOnScan,
-        SalesPaymentTerms = v.SalesPaymentTerms,
-        SalesPaymentMethod = v.SalesPaymentMethod,
-        Pricelist = v.Pricelist,
-        DeliveryMethod = v.DeliveryMethod,
-        Transporter = v.Transporter,
-        Distance = v.Distance,
         GroupRFQ = v.GroupRFQ,
         Buyer = v.Buyer,
         PurchasePaymentTerms = v.PurchasePaymentTerms,
@@ -232,10 +212,8 @@ public class VendorController : Controller
         Industry = v.Industry,
         PartnerId = v.PartnerId,
 
-        AccountReceivable = v.AccountReceivable,
         AccountPayable = v.AccountPayable,
         AutoPostBills = v.AutoPostBills,
-        CustomerInvoices = v.CustomerInvoices,
         InvoiceReport = v.InvoiceReport,
         PeppolId = v.PeppolId,
         FollowUpLevel = v.FollowUpLevel,
@@ -245,8 +223,6 @@ public class VendorController : Controller
         AccountingResponsible = v.AccountingResponsible,
         JournalItems = v.JournalItems,
         Send = v.Send,
-        TotalReceivable = v.TotalReceivable,
-        DaysSalesOutstanding = v.DaysSalesOutstanding,
         PartnerLimit = v.PartnerLimit,
         AnalyticDistribution = v.AnalyticDistribution,
 

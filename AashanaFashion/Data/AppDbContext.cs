@@ -28,6 +28,8 @@ namespace AashanaFashion.Data
         public DbSet<ProductVendor> ProductVendors { get; set; }
         public DbSet<ProductPackaging> ProductPackagings { get; set; }
         public DbSet<VendorContact> VendorContacts { get; set; }
+        public DbSet<Customer> Customers { get; set; }
+        public DbSet<CustomerContact> CustomerContacts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -212,18 +214,6 @@ namespace AashanaFashion.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Vendor>()
-                .Property(v => v.Distance)
-                .HasColumnType("decimal(18,2)");
-
-            modelBuilder.Entity<Vendor>()
-                .Property(v => v.TotalReceivable)
-                .HasColumnType("decimal(18,2)");
-
-            modelBuilder.Entity<Vendor>()
-                .Property(v => v.DaysSalesOutstanding)
-                .HasColumnType("decimal(18,2)");
-
-            modelBuilder.Entity<Vendor>()
                 .Property(v => v.PartnerLimit)
                 .HasColumnType("decimal(18,2)");
 
@@ -245,6 +235,50 @@ namespace AashanaFashion.Data
 
             modelBuilder.Entity<Vendor>()
                 .Property(v => v.GeoLongitude)
+                .HasColumnType("decimal(18,8)");
+
+            // ——— Customer-related entities ———
+
+            modelBuilder.Entity<CustomerContact>()
+                .HasOne(c => c.Customer)
+                .WithMany(c => c.Contacts)
+                .HasForeignKey(c => c.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Customer>()
+                .Property(c => c.Distance)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Customer>()
+                .Property(c => c.TotalReceivable)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Customer>()
+                .Property(c => c.DaysSalesOutstanding)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Customer>()
+                .Property(c => c.PartnerLimit)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Customer>()
+                .Property(c => c.SM1CommissionPct)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Customer>()
+                .Property(c => c.SM2CommissionPct)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Customer>()
+                .Property(c => c.SM3CommissionPct)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Customer>()
+                .Property(c => c.GeoLatitude)
+                .HasColumnType("decimal(18,8)");
+
+            modelBuilder.Entity<Customer>()
+                .Property(c => c.GeoLongitude)
                 .HasColumnType("decimal(18,8)");
         }
     }

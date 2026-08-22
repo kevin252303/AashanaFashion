@@ -2,12 +2,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AashanaFashion.Models;
 
-public class VendorViewModel
+public class CustomerViewModel
 {
     public int Id { get; set; }
 
     [Required]
-    public string VendorName { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
     public string? GstNumber { get; set; }
     public string? ContactPerson { get; set; }
     public string? Phone { get; set; }
@@ -19,24 +19,27 @@ public class VendorViewModel
     public string? PanNumber { get; set; }
     public bool IsActive { get; set; } = true;
 
-    // Purchase
-    public string? Buyer { get; set; }
-    public bool GroupRFQ { get; set; }
-    public string? PurchasePaymentTerms { get; set; }
-    public string? PurchasePaymentMethod { get; set; }
-    public string? Box1099 { get; set; }
-    public string? ReceiptReminder { get; set; }
-    public string? FiscalPosition { get; set; }
-    public string? CompanyId { get; set; }
-    public string? Reference { get; set; }
-    public string? VendorCompany { get; set; }
+    // Company info
+    public string? CustomerCompany { get; set; }
     public string? Website { get; set; }
     public string? Industry { get; set; }
+    public string? Reference { get; set; }
     public string? PartnerId { get; set; }
 
+    // Sales
+    public string? Salesperson { get; set; }
+    public bool AddDesignOnScan { get; set; }
+    public string? SalesPaymentTerms { get; set; }
+    public string? SalesPaymentMethod { get; set; }
+    public string? Pricelist { get; set; }
+    public string? DeliveryMethod { get; set; }
+    public string? Transporter { get; set; }
+    public decimal? Distance { get; set; }
+
     // Accounting
-    public string? AccountPayable { get; set; }
+    public string? AccountReceivable { get; set; }
     public bool AutoPostBills { get; set; }
+    public string? CustomerInvoices { get; set; }
     public string? InvoiceReport { get; set; }
     public string? PeppolId { get; set; }
     public string? FollowUpLevel { get; set; }
@@ -46,6 +49,8 @@ public class VendorViewModel
     public string? AccountingResponsible { get; set; }
     public string? JournalItems { get; set; }
     public string? Send { get; set; }
+    public decimal? TotalReceivable { get; set; }
+    public decimal? DaysSalesOutstanding { get; set; }
     public decimal? PartnerLimit { get; set; }
     public string? AnalyticDistribution { get; set; }
 
@@ -75,5 +80,5 @@ public class VendorViewModel
     public bool ComputeBasedOnAddress { get; set; }
 
     // Contacts (child table)
-    public List<VendorContact> Contacts { get; set; } = new();
+    public List<CustomerContact> Contacts { get; set; } = new();
 }
