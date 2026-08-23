@@ -130,6 +130,7 @@
                     <th>Size</th>
                     <th>Status</th>
                     <th>Processes</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -150,12 +151,97 @@
                             }
                             @completed/@total
                         </td>
+                        <td>
+                            @if (entity.Status != "Completed" && entity.Status != "Dispatched" && (role == "Admin" || role == "Manager"))
+                            {
+                                <button type="button" class="btn-af btn-af-primary btn-af-sm send-process-btn" 
+                                        data-id="@entity.Id" 
+                                        data-name="@entity.EntityType (Set #@entity.SlNo) — @entity.Colour / @entity.Size">
+                                    Send to Process
+                                </button>
+                            }
+                            else
+                            {
+                                <span style="color:#cbd5e1;">—</span>
+                            }
+                        </td>
                     </tr>
                 }
             </tbody>
         </table>
     }
 </div>
+
+<!-- Send for Process Modal -->
+<div class="modal fade" id="sendProcessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:12px; border:none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+            <div class="modal-header" style="background:#f8fafc; border-bottom:1px solid #e2e8f0; border-top-left-radius:12px; border-top-right-radius:12px;">
+                <h5 class="modal-title" style="font-weight:700; color:#0f172a;">Send Component to Process</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="background:none; border:none; font-size:1.5rem; line-height:1; color:#94a3b8; cursor:pointer;">&times;</button>
+            </div>
+            <form asp-action="SendForProcess" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body" style="padding:1.5rem;">
+                    <input type="hidden" id="modalEntityId" name="entityId" />
+                    
+                    <div class="mb-3">
+                        <label class="af-label" style="font-weight:600; margin-bottom:.4rem; display:block;">Component</label>
+                        <input type="text" id="modalEntityName" class="af-input" readonly style="background:#f1f5f9; cursor:not-allowed;" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="af-label" style="font-weight:600; margin-bottom:.4rem; display:block;">Process Type *</label>
+                        <select name="processName" class="af-input af-select" required>
+                            <option value="">— Select Process —</option>
+                            <option value="Dying">Dying</option>
+                            <option value="Roll">Roll Press</option>
+                            <option value="Handwork">Handwork (Embroidery)</option>
+                            <option value="Stitching">Stitching (Tailoring)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="af-label" style="font-weight:600; margin-bottom:.4rem; display:block;">Subcontractor / Karigar *</label>
+                        <select name="vendorId" class="af-input af-select" required>
+                            <option value="">— Select Karigar —</option>
+                            @foreach (var v in ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new())
+                            {
+                                <option value="@v.Id">@v.VendorName</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="af-label" style="font-weight:600; margin-bottom:.4rem; display:block;">Expected Return Date *</label>
+                        <input name="expectedReturn" type="date" class="af-input" value="@DateTime.Today.AddDays(7).ToString("yyyy-MM-dd")" required />
+                    </div>
+                </div>
+                <div class="modal-footer" style="background:#f8fafc; border-top:1px solid #e2e8f0; border-bottom-left-radius:12px; border-bottom-right-radius:12px; display:flex; justify-content:flex-end; gap:.5rem;">
+                    <button type="button" class="btn-af btn-af-ghost" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-af btn-af-primary">Send to Process</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('.send-process-btn').click(function() {
+                var entityId = $(this).data('id');
+                var entityName = $(this).data('name');
+                
+                $('#modalEntityId').val(entityId);
+                $('#modalEntityName').val(entityName);
+                
+                var modal = new bootstrap.Modal(document.getElementById('sendProcessModal'));
+                modal.show();
+            });
+        });
+    </script>
+}
 
 @functions {
     string GetStatusBadge(string status) => status switch

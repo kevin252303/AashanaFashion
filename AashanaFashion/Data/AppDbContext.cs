@@ -30,6 +30,8 @@ namespace AashanaFashion.Data
         public DbSet<VendorContact> VendorContacts { get; set; }
         public DbSet<Customer> Customers { get; set; }
         public DbSet<CustomerContact> CustomerContacts { get; set; }
+        public DbSet<Colour> Colours { get; set; }
+        public DbSet<Size> Sizes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -87,6 +89,12 @@ namespace AashanaFashion.Data
                 .HasOne(p => p.ProductionEntity)
                 .WithMany(e => e.ProcessTrackings)
                 .HasForeignKey(p => p.ProductionEntityId);
+
+            modelBuilder.Entity<ProcessTracking>()
+                .HasOne(t => t.Vendor)
+                .WithMany()
+                .HasForeignKey(t => t.VendorId)
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<PurchaseOrder>()
                 .HasOne(p => p.Vendor)

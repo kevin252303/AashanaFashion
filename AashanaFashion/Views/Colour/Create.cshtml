@@ -1,0 +1,72 @@
+@model AashanaFashion.Models.Colour
+@{
+    ViewData["Title"] = "New Colour";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">New Colour</h1>
+        <p class="page-sub">Define a new colour choice</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">Colour Details</div>
+            </div>
+            <div style="padding:1.5rem;">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    
+                    <div class="af-form-group">
+                        <label asp-for="ColourName" class="af-label">Colour Name *</label>
+                        <input asp-for="ColourName" class="af-input" placeholder="e.g. Red, Sky Blue" required />
+                        <span asp-validation-for="ColourName" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="ColourCode" class="af-label">Colour Hex Code</label>
+                        <div style="display:flex;gap:.5rem;">
+                            <input asp-for="ColourCode" type="color" style="width:46px;height:46px;padding:0;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;" value="#3b82f6" />
+                            <input type="text" id="colourHexText" class="af-input" placeholder="e.g. #3b82f6" value="#3b82f6" style="flex:1;" />
+                        </div>
+                        <span asp-validation-for="ColourCode" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label class="af-label"><input asp-for="IsActive" /> Active</label>
+                    </div>
+
+                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+                        <button type="submit" class="btn-af btn-af-primary">Create Colour</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script>
+        $(document).ready(function() {
+            var cp = $('input[type="color"]');
+            var txt = $('#colourHexText');
+            
+            cp.on('input', function() {
+                txt.val($(this).val());
+            });
+            
+            txt.on('input', function() {
+                var val = $(this).val();
+                if (val.match(/^#[0-9A-Fa-f]{6}$/)) {
+                    cp.val(val);
+                }
+            });
+        });
+    </script>
+}

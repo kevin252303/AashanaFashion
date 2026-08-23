@@ -100,6 +100,12 @@ public class PurchaseController : Controller
 
         if (order == null) return NotFound();
 
+        if (order.Status == PurchaseOrderStatus.Received)
+        {
+            TempData["Error"] = "Received Purchase Orders cannot be edited.";
+            return RedirectToAction(nameof(Details), new { id = order.Id });
+        }
+
         var model = new PurchaseOrderViewModel
         {
             Id = order.Id,
@@ -111,6 +117,7 @@ public class PurchaseController : Controller
             OrderDate = order.OrderDate,
             ExpectedReceivingDate = order.ExpectedReceivingDate,
             Status = order.Status,
+            ReceivedOnDate = order.ReceivedOnDate,
             Notes = order.Notes,
             TransportCharge = order.TransportCharge,
             TransportChargeGST = order.TransportChargeGST,
@@ -152,6 +159,12 @@ public class PurchaseController : Controller
             .FirstOrDefaultAsync(p => p.Id == model.Id);
 
         if (order == null) return NotFound();
+
+        if (order.Status == PurchaseOrderStatus.Received)
+        {
+            TempData["Error"] = "Received Purchase Orders cannot be edited.";
+            return RedirectToAction(nameof(Details), new { id = order.Id });
+        }
 
         order.PoNumber = model.PoNumber;
         order.VendorId = model.VendorId;
@@ -240,12 +253,18 @@ public class PurchaseController : Controller
     [PermissionAuthorize("Purchase", "CanEdit")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateStatus(int id, PurchaseOrderStatus status, List<PurchaseOrderDetail>? details)
+    public async Task<IActionResult> UpdateStatus(int id, PurchaseOrderStatus status, List<PurchaseOrderDetail>? details, DateTime? receivedOnDate)
     {
         var order = await _context.PurchaseOrders
             .Include(p => p.Details)
             .FirstOrDefaultAsync(p => p.Id == id);
         if (order == null) return NotFound();
+
+        if (order.Status == PurchaseOrderStatus.Received)
+        {
+            TempData["Error"] = "Received Purchase Orders cannot be modified.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
 
         order.Status = status;
 
@@ -253,6 +272,8 @@ public class PurchaseController : Controller
         {
             foreach (var d in order.Details)
                 d.ReceivedQuantity = d.Quantity;
+            
+            order.ReceivedOnDate = receivedOnDate ?? DateTime.Today;
         }
         else if (status == PurchaseOrderStatus.PartiallyReceived && details?.Any() == true)
         {
@@ -262,11 +283,41 @@ public class PurchaseController : Controller
                 if (detail != null)
                     detail.ReceivedQuantity = d.ReceivedQuantity;
             }
+
+            // Auto-promote status to Received if all items are fully received
+            if (order.Details.All(d => d.ReceivedQuantity >= d.Quantity))
+            {
+                order.Status = PurchaseOrderStatus.Received;
+            }
+
+            order.ReceivedOnDate = receivedOnDate ?? DateTime.Today;
+        }
+        else
+        {
+            order.ReceivedOnDate = null;
         }
 
         await _context.SaveChangesAsync();
-        TempData["Success"] = $"Purchase Order '{order.PoNumber}' status updated to {status}.";
+        TempData["Success"] = $"Purchase Order '{order.PoNumber}' status updated to {order.Status}.";
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetVendorDetails(int id)
+    {
+        var vendor = await _context.Vendors.FindAsync(id);
+        if (vendor == null) return NotFound();
+        return Json(new
+        {
+            vendorName = vendor.VendorName,
+            gstNumber = vendor.GstNumber ?? "",
+            phone = vendor.Phone ?? "",
+            email = vendor.Email ?? "",
+            address = vendor.Address ?? "",
+            city = vendor.City ?? "",
+            state = vendor.State ?? "",
+            pinCode = vendor.PinCode ?? ""
+        });
     }
 
     private async Task<string> GeneratePoNumber()

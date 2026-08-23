@@ -95,6 +95,7 @@
                 <tr>
                     <th>Entity</th>
                     <th>Process</th>
+                    <th>Subcontractor</th>
                     <th>Given Date</th>
                     <th>Expected Return</th>
                     <th>Days Late</th>
@@ -110,6 +111,7 @@
                             <br><span style="font-size:.75rem;color:#94a3b8;">@tracking.ProductionEntity?.EntityType - @tracking.ProductionEntity?.Colour</span>
                         </td>
                         <td>@tracking.ProcessName</td>
+                        <td>@(tracking.Vendor?.VendorName ?? "—")</td>
                         <td>@tracking.GivenDate?.ToString("dd MMM")</td>
                         <td>@tracking.ExpectedReturnDate?.ToString("dd MMM")</td>
                         <td><span class="af-badge b-red">@tracking.DaysLate days</span></td>
@@ -149,6 +151,7 @@
                 <tr>
                     <th>Entity</th>
                     <th>Process</th>
+                    <th>Subcontractor</th>
                     <th>Given Date</th>
                     <th>Expected Return</th>
                     <th>Actual Return</th>
@@ -165,6 +168,7 @@
                             <br><span style="font-size:.75rem;color:#94a3b8;">@tracking.ProductionEntity?.EntityType - @tracking.ProductionEntity?.Colour / @tracking.ProductionEntity?.Size</span>
                         </td>
                         <td><span class="af-badge @GetProcessBadge(tracking.ProcessName)">@tracking.ProcessName</span></td>
+                        <td>@(tracking.Vendor?.VendorName ?? "—")</td>
                         <td>@tracking.GivenDate?.ToString("dd MMM yyyy")</td>
                         <td>@tracking.ExpectedReturnDate?.ToString("dd MMM yyyy")</td>
                         <td>

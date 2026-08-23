@@ -22,9 +22,11 @@ public class DesignController : Controller
 
     [PermissionAuthorize("DesignMaster", "CanCreate")]
     [HttpGet]
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
-        ViewBag.Vendors = _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToList();
+        ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+        ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
+        ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
         return View(new Design());
     }
 
@@ -36,11 +38,37 @@ public class DesignController : Controller
         List<ProductAttributeLine>? AttributeLines,
         List<ProductPricelist>? Pricelists,
         List<ProductVendor>? ProductVendors,
-        List<ProductPackaging>? Packagings)
+        List<ProductPackaging>? Packagings,
+        List<int>? selectedColours,
+        List<int>? selectedSizes)
     {
+        if (selectedColours?.Any() == true)
+        {
+            var colourNames = await _context.Colours.Where(c => selectedColours.Contains(c.Id)).Select(c => c.ColourName).ToListAsync();
+            design.Colours = string.Join(",", colourNames);
+        }
+        else
+        {
+            design.Colours = string.Empty;
+        }
+
+        if (selectedSizes?.Any() == true)
+        {
+            var sizeNames = await _context.Sizes.Where(s => selectedSizes.Contains(s.Id)).OrderBy(s => s.DisplayOrder).Select(s => s.SizeName).ToListAsync();
+            design.Sizes = string.Join(",", sizeNames);
+        }
+        else
+        {
+            design.Sizes = string.Empty;
+        }
+
         if (!ModelState.IsValid)
         {
-            ViewBag.Vendors = _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToList();
+            ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+            ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
+            ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+            ViewBag.SelectedColours = design.Colours?.Split(',').Select(c => c.Trim()).ToList() ?? new List<string>();
+            ViewBag.SelectedSizes = design.Sizes?.Split(',').Select(s => s.Trim()).ToList() ?? new List<string>();
             return View(design);
         }
 
@@ -48,7 +76,11 @@ public class DesignController : Controller
         if (existing)
         {
             ModelState.AddModelError("DesignNumber", "Design number already exists.");
-            ViewBag.Vendors = _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToList();
+            ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+            ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
+            ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+            ViewBag.SelectedColours = design.Colours?.Split(',').Select(c => c.Trim()).ToList() ?? new List<string>();
+            ViewBag.SelectedSizes = design.Sizes?.Split(',').Select(s => s.Trim()).ToList() ?? new List<string>();
             return View(design);
         }
 
@@ -102,7 +134,12 @@ public class DesignController : Controller
 
         if (design == null) return NotFound();
 
-        ViewBag.Vendors = _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToList();
+        ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+        ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
+        ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+        ViewBag.SelectedColours = design.Colours?.Split(',').Select(c => c.Trim()).ToList() ?? new List<string>();
+        ViewBag.SelectedSizes = design.Sizes?.Split(',').Select(s => s.Trim()).ToList() ?? new List<string>();
+
         return View(design);
     }
 
@@ -114,11 +151,17 @@ public class DesignController : Controller
         List<ProductAttributeLine>? AttributeLines,
         List<ProductPricelist>? Pricelists,
         List<ProductVendor>? ProductVendors,
-        List<ProductPackaging>? Packagings)
+        List<ProductPackaging>? Packagings,
+        List<int>? selectedColours,
+        List<int>? selectedSizes)
     {
         if (!ModelState.IsValid)
         {
-            ViewBag.Vendors = _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToList();
+            ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+            ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
+            ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+            ViewBag.SelectedColours = selectedColours != null ? (await _context.Colours.Where(c => selectedColours.Contains(c.Id)).Select(c => c.ColourName).ToListAsync()) : new List<string>();
+            ViewBag.SelectedSizes = selectedSizes != null ? (await _context.Sizes.Where(s => selectedSizes.Contains(s.Id)).Select(s => s.SizeName).ToListAsync()) : new List<string>();
             return View(design);
         }
 
@@ -126,7 +169,11 @@ public class DesignController : Controller
         if (existing)
         {
             ModelState.AddModelError("DesignNumber", "Design number already exists.");
-            ViewBag.Vendors = _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToList();
+            ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+            ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
+            ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+            ViewBag.SelectedColours = selectedColours != null ? (await _context.Colours.Where(c => selectedColours.Contains(c.Id)).Select(c => c.ColourName).ToListAsync()) : new List<string>();
+            ViewBag.SelectedSizes = selectedSizes != null ? (await _context.Sizes.Where(s => selectedSizes.Contains(s.Id)).Select(s => s.SizeName).ToListAsync()) : new List<string>();
             return View(design);
         }
 
@@ -184,8 +231,25 @@ public class DesignController : Controller
         dbDesign.WarningOnPurchaseOrders = design.WarningOnPurchaseOrders;
         dbDesign.ControlPolicy = design.ControlPolicy;
 
-        dbDesign.Colours = design.Colours;
-        dbDesign.Sizes = design.Sizes;
+        if (selectedColours?.Any() == true)
+        {
+            var colourNames = await _context.Colours.Where(c => selectedColours.Contains(c.Id)).Select(c => c.ColourName).ToListAsync();
+            dbDesign.Colours = string.Join(",", colourNames);
+        }
+        else
+        {
+            dbDesign.Colours = string.Empty;
+        }
+
+        if (selectedSizes?.Any() == true)
+        {
+            var sizeNames = await _context.Sizes.Where(s => selectedSizes.Contains(s.Id)).OrderBy(s => s.DisplayOrder).Select(s => s.SizeName).ToListAsync();
+            dbDesign.Sizes = string.Join(",", sizeNames);
+        }
+        else
+        {
+            dbDesign.Sizes = string.Empty;
+        }
         dbDesign.Price = design.Price;
         dbDesign.CreationFlow = design.CreationFlow;
         dbDesign.IsActive = design.IsActive;

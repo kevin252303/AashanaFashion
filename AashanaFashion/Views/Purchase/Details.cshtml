@@ -23,7 +23,7 @@
     <div style="display:flex;gap:.5rem;">
         <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
         <a asp-action="Print" asp-route-id="@Model.Id" class="btn-af btn-af-ghost btn-af-sm" target="_blank">🖨 Print</a>
-        @if (canEdit)
+        @if (canEdit && Model.Status != PurchaseOrderStatus.Received)
         {
             <a asp-action="Edit" asp-route-id="@Model.Id" class="btn-af btn-af-primary btn-af-sm">Edit</a>
         }
@@ -102,6 +102,13 @@
                         _ => "b-gray"
                     })">@Model.Status</span>
                 </div>
+                @if (Model.ReceivedOnDate.HasValue)
+                {
+                    <div class="info-row">
+                        <span class="info-label">Received On</span>
+                        <span class="info-value" style="color:#16a34a;font-weight:700;">@Model.ReceivedOnDate.Value.ToString("dd-MMM-yyyy")</span>
+                    </div>
+                }
                 @if (!string.IsNullOrEmpty(Model.Notes))
                 {
                     <div class="info-row">
@@ -112,7 +119,7 @@
             </div>
         </div>
 
-        @if (canEdit)
+        @if (canReceive)
         {
             <div class="data-card">
                 <div class="data-card-header">
@@ -129,6 +136,13 @@
                                 }
                             </select>
                             <button type="submit" class="btn-af btn-af-primary btn-af-sm">Update</button>
+                        </div>
+
+                        <div id="dateSection" style="display:none;margin-bottom:.75rem;">
+                            <div class="af-form-group mb-0">
+                                <label class="af-label">Received Date</label>
+                                <input name="receivedOnDate" type="date" class="af-input" value="@(Model.ReceivedOnDate?.ToString("yyyy-MM-dd") ?? DateTime.Today.ToString("yyyy-MM-dd"))" />
+                            </div>
                         </div>
 
                         <div id="receiveSection" style="display:@(isPartiallyReceived ? "block" : "none");">
@@ -169,6 +183,12 @@
                         </div>
                     </form>
                 </div>
+            </div>
+        }
+        else if (Model.Status == PurchaseOrderStatus.Received)
+        {
+            <div class="af-alert af-alert-success mb-3">
+                <span class="alert-body">✔ This Purchase Order has been received and is closed. No further changes can be made.</span>
             </div>
         }
     </div>
@@ -262,9 +282,12 @@
         (function() {
             var sel = document.getElementById('statusSelect');
             var sec = document.getElementById('receiveSection');
-            if (sel && sec) {
+            var dsec = document.getElementById('dateSection');
+            if (sel) {
                 function toggle() {
-                    sec.style.display = sel.value === 'PartiallyReceived' || sel.value === 'Received' ? 'block' : 'none';
+                    var showReceive = sel.value === 'PartiallyReceived' || sel.value === 'Received';
+                    if (sec) sec.style.display = showReceive ? 'block' : 'none';
+                    if (dsec) dsec.style.display = showReceive ? 'block' : 'none';
                 }
                 sel.addEventListener('change', toggle);
                 toggle();

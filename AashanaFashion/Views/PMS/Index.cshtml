@@ -76,7 +76,13 @@
 <div class="data-card">
     <div class="data-card-header">
         <span class="data-card-title">Production Orders</span>
-        <a asp-controller="Production" asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">View All</a>
+        <div style="display:flex;gap:.5rem;">
+            @if (role == "Admin" || role == "Manager" || User.HasClaim("Permission.ProductionOrder.CanCreate", "true"))
+            {
+                <a asp-controller="Production" asp-action="Create" class="btn-af btn-af-primary btn-af-sm">+ New Order Lot</a>
+            }
+            <a asp-controller="Production" asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">View All</a>
+        </div>
     </div>
     <table class="af-table">
         <thead>

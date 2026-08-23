@@ -33,6 +33,8 @@ public class PurchaseOrderViewModel
 
     public decimal TotalAmount { get; set; }
 
+    public DateTime? ReceivedOnDate { get; set; }
+
     public List<PurchaseOrderDetailViewModel> Details { get; set; } = new();
 }
 

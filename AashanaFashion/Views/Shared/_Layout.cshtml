@@ -39,10 +39,6 @@
 
         <nav class="sidebar-nav">
             <div class="nav-label">Main</div>
-            <a class="s-link @(ctrl == "Production" && action == "Index" ? "active" : "")"
-               asp-controller="Production" asp-action="Index">
-                <span class="ico">📦</span> Production Orders
-            </a>
 
             @if (canViewPurchase)
             {
@@ -54,11 +50,11 @@
 
             @if (canViewDesign || canViewVendor || canViewCustomer)
             {
-                <a class="s-link s-link-toggle @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" ? "open" : "")" onclick="toggleNav(this)">
+                <a class="s-link s-link-toggle @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" || ctrl == "Colour" || ctrl == "Size" ? "open" : "")" onclick="toggleNav(this)">
                     <span class="ico">⚙️</span> Admin Master
                     <span class="nav-arrow">▾</span>
                 </a>
-                <div class="s-submenu @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" ? "" : "d-none")">
+                <div class="s-submenu @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" || ctrl == "Colour" || ctrl == "Size" ? "" : "d-none")">
                     @if (canViewDesign)
                     {
                         <a class="s-link s-sublink @(ctrl == "Design" ? "active" : "")"
@@ -84,6 +80,14 @@
                        asp-controller="RawMaterial" asp-action="Index">
                         <span class="ico">🧵</span> Raw Material
                     </a>
+                    <a class="s-link s-sublink @(ctrl == "Colour" ? "active" : "")"
+                       asp-controller="Colour" asp-action="Index">
+                        <span class="ico">🎨</span> Colour Master
+                    </a>
+                    <a class="s-link s-sublink @(ctrl == "Size" ? "active" : "")"
+                       asp-controller="Size" asp-action="Index">
+                        <span class="ico">📏</span> Size Master
+                    </a>
                 </div>
             }
 
@@ -106,18 +110,28 @@
             }
 
             <div class="nav-label">Production</div>
-            <a class="s-link @(ctrl == "PMS" ? "active" : "")"
-               asp-controller="PMS" asp-action="Index">
-                <span class="ico">📊</span> PMS Dashboard
+            <a class="s-link s-link-toggle @(ctrl == "Production" || ctrl == "PMS" ? "open" : "")" onclick="toggleNav(this)">
+                <span class="ico">📦</span> Production Work
+                <span class="nav-arrow">▾</span>
             </a>
-            <a class="s-link @(ctrl == "PMS" && action == "ProductionEntities" ? "active" : "")"
-               asp-controller="PMS" asp-action="ProductionEntities">
-                <span class="ico">🔢</span> Production Entities
-            </a>
-            <a class="s-link @(ctrl == "PMS" && action == "ProcessTracking" ? "active" : "")"
-               asp-controller="PMS" asp-action="ProcessTracking">
-                <span class="ico">📋</span> Process Tracking
-            </a>
+            <div class="s-submenu @(ctrl == "Production" || ctrl == "PMS" ? "" : "d-none")">
+                <a class="s-link s-sublink @(ctrl == "PMS" && action == "Index" ? "active" : "")"
+                   asp-controller="PMS" asp-action="Index">
+                    <span class="ico">📊</span> Dashboard (WIP)
+                </a>
+                <a class="s-link s-sublink @(ctrl == "Production" ? "active" : "")"
+                   asp-controller="Production" asp-action="Index">
+                    <span class="ico">📋</span> Order Lots (Plans)
+                </a>
+                <a class="s-link s-sublink @(ctrl == "PMS" && action == "ProductionEntities" ? "active" : "")"
+                   asp-controller="PMS" asp-action="ProductionEntities">
+                    <span class="ico">🔢</span> Tracking Entities
+                </a>
+                <a class="s-link s-sublink @(ctrl == "PMS" && action == "ProcessTracking" ? "active" : "")"
+                   asp-controller="PMS" asp-action="ProcessTracking">
+                    <span class="ico">📋</span> Process Tracking
+                </a>
+            </div>
 
             @if (canViewUserMgmt)
             {

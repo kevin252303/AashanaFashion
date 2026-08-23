@@ -62,7 +62,7 @@
                 <div class="col-md-6">
                     <div class="af-form-group">
                         <label asp-for="VendorId" class="af-label">Vendor *</label>
-                        <select asp-for="VendorId" class="af-input af-select" required>
+                        <select asp-for="VendorId" id="VendorId" class="af-input af-select" required>
                             <option value="">— Select Vendor —</option>
                             @foreach (var v in vendors)
                             {
@@ -70,6 +70,19 @@
                             }
                         </select>
                         <span asp-validation-for="VendorId" class="af-error"></span>
+                    </div>
+                </div>
+                <div class="col-md-6" id="vendorDetailsCol" style="display:none;">
+                    <div class="af-form-group">
+                        <label class="af-label">Vendor Information</label>
+                        <div style="padding:.75rem 1rem;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;font-size:.875rem;">
+                            <div class="row">
+                                <div class="col-6 mb-2"><strong>GSTIN:</strong> <span id="vendorGST">—</span></div>
+                                <div class="col-6 mb-2"><strong>Phone:</strong> <span id="vendorPhone">—</span></div>
+                                <div class="col-6"><strong>Email:</strong> <span id="vendorEmail">—</span></div>
+                                <div class="col-6"><strong>Address:</strong> <span id="vendorAddress">—</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

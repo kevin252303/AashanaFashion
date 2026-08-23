@@ -20,6 +20,8 @@ public class ProcessTracking
     public int ProductionEntityId { get; set; }
     public ProductionEntity? ProductionEntity { get; set; }
     public string ProcessName { get; set; } = string.Empty; // Dying, Roll, Handwork, Stitching
+    public int? VendorId { get; set; }
+    public Vendor? Vendor { get; set; }
     public DateTime? GivenDate { get; set; }
     public DateTime? ExpectedReturnDate { get; set; }
     public DateTime? ActualReturnDate { get; set; }

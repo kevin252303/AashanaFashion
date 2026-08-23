@@ -39,6 +39,7 @@ public class PMSController : Controller
             .Include(e => e.ProductionOrder)
             .ThenInclude(p => p!.Design)
             .Include(e => e.ProcessTrackings)
+            .ThenInclude(t => t.Vendor)
             .AsQueryable();
 
         if (orderId.HasValue)
@@ -62,6 +63,7 @@ public class PMSController : Controller
         ViewBag.Colours = colours;
         ViewBag.EntityTypes = new[] { "Chaniya", "Choli", "Blouse", "Duppata" };
         ViewBag.Statuses = new[] { "Created", "AtDying", "AtRoll", "AtHandwork", "AtStitching", "Completed", "Dispatched" };
+        ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
 
         return View(entities);
     }
@@ -72,6 +74,7 @@ public class PMSController : Controller
             .Include(p => p.ProductionEntity)
             .ThenInclude(e => e!.ProductionOrder)
             .ThenInclude(o => o!.Design)
+            .Include(p => p.Vendor)
             .AsQueryable();
 
         if (entityId.HasValue)
@@ -109,43 +112,51 @@ public class PMSController : Controller
 
         if (order == null) return NotFound();
 
-        var creationSteps = order.Design?.GetCreationSteps() ?? new List<string>();
+        // Remove any existing entities for this order to allow regeneration cleanly
+        var existingEntities = await _context.ProductionEntities
+            .Where(e => e.ProductionOrderId == orderId)
+            .ToListAsync();
+        if (existingEntities.Any())
+        {
+            var existingTrackings = await _context.ProcessTrackings
+                .Where(t => existingEntities.Select(e => e.Id).Contains(t.ProductionEntityId))
+                .ToListAsync();
+            _context.ProcessTrackings.RemoveRange(existingTrackings);
+            _context.ProductionEntities.RemoveRange(existingEntities);
+        }
+
         int slNo = 1;
+        var componentTypes = new[] { "Chaniya", "Choli", "Duppata" };
 
         foreach (var detail in order.Details)
         {
-            var colours = detail.Colour.Split(',').Select(c => c.Trim()).ToList();
-            var sizes = detail.Size.Split(',').Select(s => s.Trim()).ToList();
-
             for (int i = 0; i < detail.Quantity; i++)
             {
-                foreach (var colour in colours)
+                foreach (var component in componentTypes)
                 {
-                    foreach (var size in sizes)
+                    var entity = new ProductionEntity
                     {
-                        var entity = new ProductionEntity
-                        {
-                            ProductionOrderId = order.Id,
-                            EntityType = "Chaniya", // Default, can be changed
-                            Colour = colour,
-                            Size = size,
-                            SlNo = slNo++,
-                            Status = "Created"
-                        };
-                        _context.ProductionEntities.Add(entity);
-                    }
+                        ProductionOrderId = order.Id,
+                        EntityType = component,
+                        Colour = detail.Colour,
+                        Size = detail.Size,
+                        SlNo = slNo,
+                        Status = "Created"
+                    };
+                    _context.ProductionEntities.Add(entity);
                 }
+                slNo++;
             }
         }
 
         await _context.SaveChangesAsync();
-        TempData["Success"] = $"Generated production entities for order {order.LotNo}";
+        TempData["Success"] = $"Generated production sets (Chaniya, Choli, Dupatta) for Lot {order.LotNo}";
         return RedirectToAction(nameof(ProductionEntities), new { orderId });
     }
 
     [Authorize(Roles = "Admin,Manager")]
     [HttpPost]
-    public async Task<IActionResult> SendForProcess(int entityId, string processName, DateTime expectedReturn)
+    public async Task<IActionResult> SendForProcess(int entityId, string processName, DateTime expectedReturn, int vendorId)
     {
         var entity = await _context.ProductionEntities.FindAsync(entityId);
         if (entity == null) return NotFound();
@@ -155,7 +166,8 @@ public class PMSController : Controller
             ProductionEntityId = entityId,
             ProcessName = processName,
             GivenDate = DateTime.Today,
-            ExpectedReturnDate = expectedReturn
+            ExpectedReturnDate = expectedReturn,
+            VendorId = vendorId
         };
 
         _context.ProcessTrackings.Add(tracking);
@@ -171,6 +183,8 @@ public class PMSController : Controller
         };
 
         await _context.SaveChangesAsync();
+        await SyncOrderStatus(entity.ProductionOrderId);
+
         TempData["Success"] = $"Sent for {processName}";
         return RedirectToAction(nameof(ProcessTracking));
     }
@@ -194,11 +208,67 @@ public class PMSController : Controller
             var allComplete = entity.ProcessTrackings.All(t => t.ActualReturnDate.HasValue);
             if (allComplete)
                 entity.Status = "Completed";
+            
+            await _context.SaveChangesAsync();
+            await SyncOrderStatus(entity.ProductionOrderId);
+        }
+
+        TempData["Success"] = "Marked as returned";
+        return RedirectToAction(nameof(ProcessTracking));
+    }
+
+    private async Task SyncOrderStatus(int orderId)
+    {
+        var order = await _context.ProductionOrders
+            .Include(p => p.Details)
+            .FirstOrDefaultAsync(p => p.Id == orderId);
+
+        if (order == null) return;
+
+        var entities = await _context.ProductionEntities
+            .Include(e => e.ProcessTrackings)
+            .Where(e => e.ProductionOrderId == orderId)
+            .ToListAsync();
+
+        if (!entities.Any()) return;
+
+        // Check completions for each process
+        bool hasDying = entities.Any(e => e.ProcessTrackings.Any(t => t.ProcessName == "Dying"));
+        bool allDyingComplete = entities.Where(e => e.ProcessTrackings.Any(t => t.ProcessName == "Dying"))
+                                        .All(e => e.ProcessTrackings.Where(t => t.ProcessName == "Dying").All(t => t.ActualReturnDate.HasValue));
+
+        bool hasHandwork = entities.Any(e => e.ProcessTrackings.Any(t => t.ProcessName == "Handwork"));
+        bool allHandworkComplete = entities.Where(e => e.ProcessTrackings.Any(t => t.ProcessName == "Handwork"))
+                                           .All(e => e.ProcessTrackings.Where(t => t.ProcessName == "Handwork").All(t => t.ActualReturnDate.HasValue));
+
+        bool hasStitching = entities.Any(e => e.ProcessTrackings.Any(t => t.ProcessName == "Stitching"));
+        bool allStitchingComplete = entities.Where(e => e.ProcessTrackings.Any(t => t.ProcessName == "Stitching"))
+                                            .All(e => e.ProcessTrackings.Where(t => t.ProcessName == "Stitching").All(t => t.ActualReturnDate.HasValue));
+
+        // Update verification flags in order Lot
+        if (hasDying) order.IsDyingVerified = allDyingComplete;
+        if (hasHandwork) order.IsHandworkVerified = allHandworkComplete;
+        if (hasStitching) order.IsStitchingVerified = allStitchingComplete;
+
+        // Auto-promote status
+        if (entities.All(e => e.Status == "Completed"))
+        {
+            order.Status = OrderStatus.ReadyToDispatch;
+        }
+        else if (entities.Any(e => e.Status == "AtStitching"))
+        {
+            order.Status = OrderStatus.AtStitching;
+        }
+        else if (entities.Any(e => e.Status == "AtHandwork"))
+        {
+            order.Status = OrderStatus.AtHandwork;
+        }
+        else if (entities.Any(e => e.Status == "AtDying"))
+        {
+            order.Status = OrderStatus.AtDying;
         }
 
         await _context.SaveChangesAsync();
-        TempData["Success"] = "Marked as returned";
-        return RedirectToAction(nameof(ProcessTracking));
     }
 
     public async Task<IActionResult> ExportEntities(int? orderId, string? entityType, string? status, string? colour)
@@ -235,6 +305,7 @@ public class PMSController : Controller
             .Include(p => p.ProductionEntity)
             .ThenInclude(e => e!.ProductionOrder)
             .ThenInclude(o => o!.Design)
+            .Include(p => p.Vendor)
             .AsQueryable();
 
         if (orderId.HasValue)
@@ -244,10 +315,10 @@ public class PMSController : Controller
 
         var trackings = await query.OrderByDescending(p => p.GivenDate).ToListAsync();
 
-        var csv = "Sl No,Lot No,Design,Entity,Colour,Size,Process,Given Date,Expected Return,Actual Return,Days Late,Status\n";
+        var csv = "Sl No,Lot No,Design,Entity,Colour,Size,Process,Subcontractor,Given Date,Expected Return,Actual Return,Days Late,Status\n";
         foreach (var t in trackings)
         {
-            csv += $"{t.ProductionEntity?.SlNo},{t.ProductionEntity?.ProductionOrder?.LotNo},{t.ProductionEntity?.ProductionOrder?.Design?.DesignNumber},{t.ProductionEntity?.EntityType},{t.ProductionEntity?.Colour},{t.ProductionEntity?.Size},{t.ProcessName},{t.GivenDate?.ToString("dd/MM/yyyy")},{t.ExpectedReturnDate?.ToString("dd/MM/yyyy")},{t.ActualReturnDate?.ToString("dd/MM/yyyy")},{t.DaysLate ?? 0},{(t.IsComplete ? "Complete" : "Pending")}\n";
+            csv += $"{t.ProductionEntity?.SlNo},{t.ProductionEntity?.ProductionOrder?.LotNo},{t.ProductionEntity?.ProductionOrder?.Design?.DesignNumber},{t.ProductionEntity?.EntityType},{t.ProductionEntity?.Colour},{t.ProductionEntity?.Size},{t.ProcessName},{t.Vendor?.VendorName ?? "—"},{t.GivenDate?.ToString("dd/MM/yyyy")},{t.ExpectedReturnDate?.ToString("dd/MM/yyyy")},{t.ActualReturnDate?.ToString("dd/MM/yyyy")},{t.DaysLate ?? 0},{(t.IsComplete ? "Complete" : "Pending")}\n";
         }
 
         return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "ProcessTracking.csv");

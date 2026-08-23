@@ -35,7 +35,6 @@
                 <th>Order Date</th>
                 <th>Expected Receiving</th>
                 <th>Items</th>
-                <th>Received</th>
                 <th>Total Amount</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -70,7 +69,6 @@
                         }
                     </td>
                     <td class="text-center">@item.Details.Count</td>
-                    <td class="text-center" style="color:#16a34a;font-weight:600;">@item.Details.Sum(d => d.ReceivedQuantity)</td>
                     <td>@item.TotalAmount.ToString("N2")</td>
                     <td>
                         <span class="af-badge @(item.Status switch {

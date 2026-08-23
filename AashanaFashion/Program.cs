@@ -1,5 +1,6 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
+using AashanaFashion.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,8 @@ builder.Services.AddControllersWithViews();
 var activeConnection = builder.Configuration.GetValue<string>("ActiveConnection") ?? "DefaultConnection";
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString(activeConnection)));
+
+builder.Services.AddHttpClient<IGstVerificationService, GstVerificationService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -74,6 +77,36 @@ using (var scope = app.Services.CreateScope())
         }
     }
     db.SaveChanges();
+
+    // Seed colours
+    if (!db.Colours.Any())
+    {
+        db.Colours.AddRange(
+            new Colour { ColourName = "Red", ColourCode = "#FF0000" },
+            new Colour { ColourName = "Blue", ColourCode = "#0000FF" },
+            new Colour { ColourName = "Green", ColourCode = "#008000" },
+            new Colour { ColourName = "Yellow", ColourCode = "#FFFF00" },
+            new Colour { ColourName = "Pink", ColourCode = "#FFC0CB" },
+            new Colour { ColourName = "Black", ColourCode = "#000000" },
+            new Colour { ColourName = "White", ColourCode = "#FFFFFF" },
+            new Colour { ColourName = "Orange", ColourCode = "#FFA500" }
+        );
+        db.SaveChanges();
+    }
+
+    // Seed sizes
+    if (!db.Sizes.Any())
+    {
+        db.Sizes.AddRange(
+            new Size { SizeName = "XS", DisplayOrder = 1 },
+            new Size { SizeName = "S", DisplayOrder = 2 },
+            new Size { SizeName = "M", DisplayOrder = 3 },
+            new Size { SizeName = "L", DisplayOrder = 4 },
+            new Size { SizeName = "XL", DisplayOrder = 5 },
+            new Size { SizeName = "XXL", DisplayOrder = 6 }
+        );
+        db.SaveChanges();
+    }
 
     // Seed designs
     if (!db.Designs.Any())

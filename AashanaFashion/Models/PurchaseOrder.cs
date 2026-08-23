@@ -40,6 +40,8 @@ public class PurchaseOrder
 
     public DateTime CreatedDate { get; set; } = DateTime.Now;
 
+    public DateTime? ReceivedOnDate { get; set; }
+
     public List<PurchaseOrderDetail> Details { get; set; } = new();
 }
 

@@ -1,0 +1,90 @@
+@model IEnumerable<AashanaFashion.Models.Colour>
+@{
+    ViewData["Title"] = "Colour Master";
+    var role       = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    bool isAdmin   = role == "Admin" || role == "SuperAdmin";
+    bool canCreate = isAdmin || User.HasClaim("Permission.VendorMaster.CanCreate", "true");
+    bool canEdit   = isAdmin || User.HasClaim("Permission.VendorMaster.CanEdit",   "true");
+    bool canDelete = isAdmin || User.HasClaim("Permission.VendorMaster.CanDelete", "true");
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Colour Master</h1>
+        <p class="page-sub">Manage product colour choices</p>
+    </div>
+    @if (canCreate)
+    {
+        <a asp-action="Create" class="btn-af btn-af-primary">+ New Colour</a>
+    }
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
+}
+
+<div class="data-card">
+    <table class="af-table">
+        <thead>
+            <tr>
+                <th>Colour Name</th>
+                <th>Visual Hex</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td><strong>@item.ColourName</strong></td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(item.ColourCode))
+                        {
+                            <div style="display:flex;align-items:center;gap:.5rem;">
+                                <span style="display:inline-block;width:24px;height:24px;border-radius:4px;background-color:@item.ColourCode;border:1px solid #cbd5e1;"></span>
+                                <code>@item.ColourCode</code>
+                            </div>
+                        }
+                        else
+                        {
+                            <span style="color:#94a3b8;">—</span>
+                        }
+                    </td>
+                    <td>
+                        <span class="af-badge @(item.IsActive ? "b-green" : "b-gray")">
+                            @(item.IsActive ? "Active" : "Inactive")
+                        </span>
+                    </td>
+                    <td>
+                        @if (canEdit || canDelete)
+                        {
+                            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+                                @if (canEdit)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                                }
+                                @if (canDelete)
+                                {
+                                    <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete this colour?')">Delete</button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <span style="font-size:.75rem;color:#cbd5e1;">View only</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (!Model.Any())
+    {
+        <div class="text-center p-4 text-muted">No colours found. <a asp-action="Create">Add the first one</a>.</div>
+    }
+</div>

@@ -155,5 +155,50 @@
         checkDelay();
     }
 
+    // Vendor details fetch logic
+    const vendorSelect = document.getElementById('VendorId');
+    const vendorDetailsCol = document.getElementById('vendorDetailsCol');
+    const vendorGST = document.getElementById('vendorGST');
+    const vendorPhone = document.getElementById('vendorPhone');
+    const vendorEmail = document.getElementById('vendorEmail');
+    const vendorAddress = document.getElementById('vendorAddress');
+
+    function updateVendorDetails(vendorId) {
+        if (!vendorId) {
+            if (vendorDetailsCol) vendorDetailsCol.style.display = 'none';
+            return;
+        }
+
+        fetch('/Purchase/GetVendorDetails?id=' + vendorId)
+            .then(res => {
+                if (!res.ok) throw new Error('Network response was not ok');
+                return res.json();
+            })
+            .then(data => {
+                if (vendorGST) vendorGST.textContent = data.gstNumber || '—';
+                if (vendorPhone) vendorPhone.textContent = data.phone || '—';
+                if (vendorEmail) vendorEmail.textContent = data.email || '—';
+                if (vendorAddress) {
+                    const parts = [data.address, data.city, data.state, data.pinCode].filter(p => !!p);
+                    vendorAddress.textContent = parts.join(', ') || '—';
+                }
+                if (vendorDetailsCol) vendorDetailsCol.style.display = 'block';
+            })
+            .catch(err => {
+                console.error('Error fetching vendor details:', err);
+                if (vendorDetailsCol) vendorDetailsCol.style.display = 'none';
+            });
+    }
+
+    if (vendorSelect) {
+        vendorSelect.addEventListener('change', function () {
+            updateVendorDetails(this.value);
+        });
+        // Initial load for Edit page
+        if (vendorSelect.value) {
+            updateVendorDetails(vendorSelect.value);
+        }
+    }
+
     recalcAll();
 })();

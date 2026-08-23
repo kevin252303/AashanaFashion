@@ -2,97 +2,148 @@
 @{
     ViewData["Title"] = Model.PoNumber;
     Layout = null;
-    int? delayDays = null;
-    if (Model.ExpectedReceivingDate.HasValue && Model.Status != PurchaseOrderStatus.Received && Model.Status != PurchaseOrderStatus.Cancelled)
-    {
-        delayDays = (DateTime.Now.Date - Model.ExpectedReceivingDate.Value.Date).Days;
-        if (delayDays < 0) delayDays = 0;
-    }
 }
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>@Model.PoNumber</title>
+    <title>Purchase Order — @Model.PoNumber</title>
     <style>
-        @@page { margin:15mm; }
-        * { box-sizing:border-box; margin:0; padding:0; }
-        body { font-family:'Segoe UI',Arial,sans-serif; font-size:12px; color:#1e293b; padding:20px; }
-        .header { text-align:center; margin-bottom:20px; }
-        .header h1 { font-size:20px; margin-bottom:4px; }
-        .header p { color:#64748b; }
-        .hr { border:none; border-top:2px solid #1e293b; margin:12px 0; }
-        .row { display:flex; justify-content:space-between; margin-bottom:8px; }
-        .col { flex:1; }
-        .col + .col { margin-left:20px; }
-        table { width:100%; border-collapse:collapse; margin:12px 0; font-size:11px; }
-        th, td { border:1px solid #cbd5e1; padding:6px 8px; text-align:left; }
-        th { background:#f1f5f9; font-weight:600; }
-        .text-end { text-align:right; }
-        .text-center { text-align:center; }
-        .fw-bold { font-weight:700; }
-        .summary { margin-top:12px; width:300px; margin-left:auto; }
-        .summary tr td { border:none; padding:4px 8px; text-align:right; }
-        .summary tr td:first-child { text-align:left; color:#64748b; }
-        .overdue { color:#dc2626; font-weight:700; }
-        .footer { margin-top:30px; font-size:10px; color:#94a3b8; text-align:center; }
-        .info-row { display:flex; padding:3px 0; }
-        .info-row .lbl { color:#64748b; min-width:120px; }
-        .info-row .val { font-weight:500; }
+        @@media print {
+            body { padding: 0; background: #fff; }
+            .no-print { display: none; }
+        }
+        @@page { margin: 15mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; padding: 20px; line-height: 1.4; }
+        .header { display: flex; justify-content: space-between; margin-bottom: 25px; }
+        .company-info h1 { font-size: 24px; color: #0f172a; margin-bottom: 4px; font-weight: 700; letter-spacing: -0.5px; }
+        .company-info p { color: #64748b; font-size: 11px; margin-bottom: 2px; }
+        .po-title { text-align: right; }
+        .po-title h2 { font-size: 20px; color: #0f172a; font-weight: 700; }
+        .po-title p { font-size: 12px; color: #475569; margin-top: 4px; }
+        .po-meta { font-size: 11px; color: #64748b; margin-top: 8px; text-align: right; }
+        .po-meta span { font-weight: 600; color: #1e293b; }
+        .hr { border: none; border-top: 1px solid #cbd5e1; margin: 15px 0; }
+        .double-hr { border: none; border-top: 2px solid #0f172a; margin: 15px 0; }
+        .details-grid { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+        .details-col { flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; }
+        .details-col h3 { font-size: 11px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+        .info-row { display: flex; padding: 3px 0; font-size: 11px; }
+        .info-row .lbl { color: #64748b; width: 90px; flex-shrink: 0; }
+        .info-row .val { font-weight: 500; color: #1e293b; word-break: break-word; }
+        .vendor-name { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 11px; }
+        th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+        th { background: #f1f5f9; font-weight: 600; color: #334155; }
+        .text-end { text-align: right; }
+        .text-center { text-align: center; }
+        .fw-bold { font-weight: 700; }
+        .summary-wrapper { display: flex; justify-content: space-between; margin-top: 15px; }
+        .notes-box { flex: 1; margin-right: 40px; font-size: 11px; color: #475569; }
+        .notes-box strong { color: #1e293b; display: block; margin-bottom: 4px; }
+        .summary-table { width: 280px; margin: 0; }
+        .summary-table td { border: none; padding: 4px 6px; text-align: right; }
+        .summary-table td:first-child { text-align: left; color: #64748b; }
+        .summary-table tr.total-row td { font-weight: 700; font-size: 13px; color: #0f172a; border-top: 1.5px solid #0f172a; padding-top: 8px; }
+        .signature-section { display: flex; justify-content: space-between; margin-top: 50px; font-size: 11px; }
+        .sig-box { text-align: center; width: 180px; }
+        .sig-line { border-top: 1px solid #cbd5e1; margin-top: 40px; padding-top: 6px; color: #64748b; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>@Model.Vendor?.VendorName</h1>
-        <p>Purchase Order — @Model.PoNumber</p>
+        <div class="company-info">
+            <h1>AASHANA FASHION</h1>
+            <p>Plot No. 45, GIDC Industrial Estate, Road No. 3</p>
+            <p>Surat, Gujarat, India — 395003</p>
+            <p>Phone: +91 99887 76655 | Email: purchases@aashanafashion.com</p>
+            <p>GSTIN: 24AAACA1234A1Z5</p>
+        </div>
+        <div class="po-title">
+            <h2>PURCHASE ORDER</h2>
+            <p>PO #: <strong>@Model.PoNumber</strong></p>
+            <div class="po-meta">
+                <div>Date: <span>@Model.OrderDate.ToString("dd-MMM-yyyy")</span></div>
+                <div style="margin-top:2px;">Status: <span>@Model.Status</span></div>
+            </div>
+        </div>
     </div>
 
-    <hr class="hr" />
+    <div class="double-hr"></div>
 
-    <div class="row">
-        <div class="col">
-            <div class="info-row"><span class="lbl">PO Number:</span><span class="val">@Model.PoNumber</span></div>
-            <div class="info-row"><span class="lbl">Order Date:</span><span class="val">@Model.OrderDate.ToString("dd-MMM-yyyy")</span></div>
-            
-            @if (!string.IsNullOrEmpty(Model.AgentName))
+    <div class="details-grid">
+        <div class="details-col">
+            <h3>Supplier / Vendor</h3>
+            <div class="vendor-name">@Model.Vendor?.VendorName</div>
+            @if (!string.IsNullOrEmpty(Model.Vendor?.ContactPerson))
             {
-                <div class="info-row"><span class="lbl">Agent:</span><span class="val">@Model.AgentName</span></div>
+                <div class="info-row"><span class="lbl">Contact:</span><span class="val">@Model.Vendor.ContactPerson</span></div>
             }
-        </div>
-        <div class="col">
-            <div class="info-row"><span class="lbl">Vendor:</span><span class="val">@Model.Vendor?.VendorName</span></div>
+            @if (!string.IsNullOrEmpty(Model.Vendor?.Address))
+            {
+                <div class="info-row">
+                    <span class="lbl">Address:</span>
+                    <span class="val">
+                        @Model.Vendor.Address@(!string.IsNullOrEmpty(Model.Vendor.City) ? ", " + Model.Vendor.City : "")@(!string.IsNullOrEmpty(Model.Vendor.State) ? ", " + Model.Vendor.State : "")@(!string.IsNullOrEmpty(Model.Vendor.PinCode) ? " - " + Model.Vendor.PinCode : "")
+                    </span>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Model.Vendor?.Phone))
+            {
+                <div class="info-row"><span class="lbl">Phone:</span><span class="val">@Model.Vendor.Phone</span></div>
+            }
+            @if (!string.IsNullOrEmpty(Model.Vendor?.Email))
+            {
+                <div class="info-row"><span class="lbl">Email:</span><span class="val">@Model.Vendor.Email</span></div>
+            }
             @if (!string.IsNullOrEmpty(Model.Vendor?.GstNumber))
             {
-                <div class="info-row"><span class="lbl">GST No:</span><span class="val">@Model.Vendor.GstNumber</span></div>
+                <div class="info-row"><span class="lbl">GSTIN:</span><span class="val">@Model.Vendor.GstNumber</span></div>
+            }
+        </div>
+
+        <div class="details-col">
+            <h3>Shipping & Delivery</h3>
+            <div class="info-row"><span class="lbl">Ship To:</span><span class="val">AASHANA FASHION (Surat Warehouse)</span></div>
+            @if (Model.ExpectedReceivingDate.HasValue)
+            {
+                <div class="info-row"><span class="lbl">Expected Date:</span><span class="val">@Model.ExpectedReceivingDate.Value.ToString("dd-MMM-yyyy")</span></div>
+            }
+            @if (Model.ReceivedOnDate.HasValue)
+            {
+                <div class="info-row"><span class="lbl">Received On:</span><span class="val" style="font-weight:700;color:#16a34a;">@Model.ReceivedOnDate.Value.ToString("dd-MMM-yyyy")</span></div>
             }
             @if (!string.IsNullOrEmpty(Model.CourierServiceName))
             {
-                <div class="info-row"><span class="lbl">Transport:</span><span class="val">@Model.CourierServiceName</span></div>
+                <div class="info-row"><span class="lbl">Courier/Trans:</span><span class="val">@Model.CourierServiceName</span></div>
+            }
+            @if (!string.IsNullOrEmpty(Model.AgentName))
+            {
+                <div class="info-row"><span class="lbl">Agent Name:</span><span class="val">@Model.AgentName</span></div>
             }
             @if (!string.IsNullOrEmpty(Model.InvoiceNumber))
             {
-                <div class="info-row"><span class="lbl">Invoice No:</span><span class="val">@Model.InvoiceNumber</span></div>
+                <div class="info-row"><span class="lbl">Ref Invoice:</span><span class="val">@Model.InvoiceNumber</span></div>
             }
         </div>
     </div>
-
-    <hr class="hr" />
 
     <table>
         <thead>
             <tr>
-                <th style="width:30px;">Sr</th>
-                <th>Product</th>
-                <th>Design No</th>
-                <th>HSN</th>
-                <th>Unit</th>
-                <th class="text-center">Qty</th>
-                <th class="text-end">Rate</th>
-                <th class="text-end">Total</th>
-                <th class="text-end">Disc %</th>
-                <th class="text-end">GST %</th>
-                <th class="text-end">Gross</th>
+                <th style="width: 35px;" class="text-center">Sr</th>
+                <th>Product Description</th>
+                <th style="width: 90px;" class="text-center">Design No</th>
+                <th style="width: 80px;" class="text-center">HSN</th>
+                <th style="width: 60px;" class="text-center">Unit</th>
+                <th style="width: 60px;" class="text-center">Qty</th>
+                <th style="width: 90px;" class="text-end">Rate (₹)</th>
+                <th style="width: 100px;" class="text-end">Total (₹)</th>
+                <th style="width: 70px;" class="text-end">Disc %</th>
+                <th style="width: 70px;" class="text-end">GST %</th>
+                <th style="width: 100px;" class="text-end">Gross (₹)</th>
             </tr>
         </thead>
         <tbody>
@@ -100,37 +151,75 @@
             {
                 <tr>
                     <td class="text-center">@d.SrNo</td>
-                    <td>@d.ProductName</td>
-                    <td>@d.ProductDesignNo</td>
-                    <td>@d.HsnCode</td>
+                    <td class="fw-bold">@d.ProductName</td>
+                    <td class="text-center">@(string.IsNullOrEmpty(d.ProductDesignNo) ? "—" : d.ProductDesignNo)</td>
+                    <td class="text-center">@(string.IsNullOrEmpty(d.HsnCode) ? "—" : d.HsnCode)</td>
                     <td class="text-center">@d.Unit</td>
                     <td class="text-center">@d.Quantity</td>
                     <td class="text-end">@d.UnitPrice.ToString("N2")</td>
                     <td class="text-end">@d.TotalPrice.ToString("N2")</td>
-                    <td class="text-end">@(d.DiscountPercentage > 0 ? d.DiscountPercentage.ToString("N2") + "%" : "-")</td>
-                    <td class="text-end">@(d.GstPercentage > 0 ? d.GstPercentage.ToString("N2") + "%" : "-")</td>
-                    <td class="text-end">@d.NetAmount.ToString("N2")</td>
+                    <td class="text-end">@(d.DiscountPercentage > 0 ? d.DiscountPercentage.ToString("N2") + "%" : "—")</td>
+                    <td class="text-end">@(d.GstPercentage > 0 ? d.GstPercentage.ToString("N2") + "%" : "—")</td>
+                    <td class="text-end fw-bold">@d.NetAmount.ToString("N2")</td>
                 </tr>
             }
         </tbody>
     </table>
 
-    <table class="summary">
-        <tr><td>Subtotal</td><td>₹@Model.Details.Sum(d => d.NetAmount).ToString("N2")</td></tr>
-        <tr><td>Transport Charge</td><td>₹@Model.TransportCharge.ToString("N2")</td></tr>
-        @if (Model.TransportChargeGST > 0)
-        {
-            <tr><td>Transport GST (@Model.TransportChargeGST.ToString("N2")%)</td><td>₹@((Model.TransportCharge * Model.TransportChargeGST / 100m).ToString("N2"))</td></tr>
+    <div class="summary-wrapper">
+        <div class="notes-box">
+            @if (!string.IsNullOrEmpty(Model.Notes))
+            {
+                <strong>Notes / Instructions:</strong>
+                <p>@Model.Notes</p>
+            }
+        </div>
+        <div>
+            <table class="summary-table">
+                <tr>
+                    <td>Subtotal</td>
+                    <td class="fw-bold">₹@Model.Details.Sum(d => d.NetAmount).ToString("N2")</td>
+                </tr>
+                <tr>
+                    <td>Transport Charge</td>
+                    <td>₹@Model.TransportCharge.ToString("N2")</td>
+                </tr>
+                @if (Model.TransportChargeGST > 0)
+                {
+                    var transportGstAmt = Model.TransportCharge * Model.TransportChargeGST / 100m;
+                    <tr>
+                        <td>Transport GST (@Model.TransportChargeGST.ToString("N2")%)</td>
+                        <td>₹@transportGstAmt.ToString("N2")</td>
+                    </tr>
+                }
+                @if (Model.RoundOff != 0)
+                {
+                    <tr>
+                        <td>Round Off</td>
+                        <td>₹@Model.RoundOff.ToString("N2")</td>
+                    </tr>
+                }
+                <tr class="total-row">
+                    <td>Net Amount</td>
+                    <td>₹@Model.TotalAmount.ToString("N2")</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="signature-section">
+        <div class="sig-box">
+            <div class="sig-line">Prepared By</div>
+        </div>
+        <div class="sig-box">
+            <div class="sig-line">Authorized Signatory</div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            window.print();
         }
-        <tr><td>Round Off</td><td>₹@Model.RoundOff.ToString("N2")</td></tr>
-        <tr style="font-weight:700;font-size:14px;"><td>Net Amount</td><td>₹@Model.TotalAmount.ToString("N2")</td></tr>
-    </table>
-
-    @if (!string.IsNullOrEmpty(Model.Notes))
-    {
-        <div style="margin-top:16px;"><strong>Notes:</strong> @Model.Notes</div>
-    }
-
-    <script>window.print();</script>
+    </script>
 </body>
 </html>

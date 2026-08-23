@@ -10,31 +10,34 @@ $(document).ready(function () {
         $('#gstError').hide();
         $('#fetchGstBtn').prop('disabled', true).text('Fetching...');
 
-        // Simulated GST API response (replace with actual API call)
-        setTimeout(function () {
-            var customerData = {
-                customerName: 'Sample Customer ' + gst.substring(2, 5),
-                gstNumber: gst,
-                address: '123 Business Park, MG Road',
-                city: 'Mumbai',
-                state: 'Maharashtra',
-                pinCode: '400001',
-                email: 'contact@customer.com',
-                phone: '9876543210'
-            };
+        $.ajax({
+            url: '/Customer/VerifyGSTIN',
+            type: 'GET',
+            data: { gstin: gst },
+            success: function (result) {
+                if (result.success) {
+                    $('#CustomerName').val(result.legalName || result.tradeName);
+                    $('#GstNumber').val(gst);
+                    $('#Address').val(result.address);
+                    $('#City').val(result.city);
+                    $('#State').val(result.state);
+                    $('#PinCode').val(result.pinCode);
+                    $('#PanNumber').val(result.panNumber);
 
-            $('#CustomerName').val(customerData.customerName);
-            $('#GstNumber').val(customerData.gstNumber);
-            $('#Address').val(customerData.address);
-            $('#City').val(customerData.city);
-            $('#State').val(customerData.state);
-            $('#PinCode').val(customerData.pinCode);
-            $('#Email').val(customerData.email);
-            $('#Phone').val(customerData.phone);
-
-            $('#gstSuccess').text('GST details fetched successfully!').show();
-            $('#fetchGstBtn').prop('disabled', false).text('Fetch');
-        }, 1000);
+                    $('#gstSuccess').text(result.message || 'GST details fetched successfully!').show();
+                    $('#fetchGstBtn').prop('disabled', false).text('Fetch');
+                } else {
+                    $('#gstError').text(result.message || 'Failed to verify GSTIN').show();
+                    $('#gstSuccess').hide();
+                    $('#fetchGstBtn').prop('disabled', false).text('Fetch');
+                }
+            },
+            error: function (xhr, status, error) {
+                $('#gstError').text('Error connecting to verification service.').show();
+                $('#gstSuccess').hide();
+                $('#fetchGstBtn').prop('disabled', false).text('Fetch');
+            }
+        });
     });
 
     // Auto-uppercase GST input

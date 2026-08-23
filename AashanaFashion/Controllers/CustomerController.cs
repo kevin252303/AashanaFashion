@@ -1,6 +1,7 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
 using AashanaFashion.Authorization;
+using AashanaFashion.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,17 @@ public class CustomerController : Controller
     private readonly AppDbContext _context;
 
     public CustomerController(AppDbContext context) => _context = context;
+
+    [HttpGet]
+    public async Task<IActionResult> VerifyGSTIN(string gstin)
+    {
+        if (string.IsNullOrWhiteSpace(gstin))
+            return Json(new { success = false, message = "GSTIN is required." });
+
+        var verificationService = HttpContext.RequestServices.GetRequiredService<IGstVerificationService>();
+        var result = await verificationService.VerifyGstAsync(gstin.ToUpper().Trim());
+        return Json(result);
+    }
 
     public async Task<IActionResult> Index()
     {

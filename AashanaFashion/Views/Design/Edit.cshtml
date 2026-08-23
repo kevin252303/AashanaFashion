@@ -153,16 +153,36 @@
                         </div>
                         <div class="col-md-3">
                             <div class="af-form-group">
-                                <label asp-for="Colours" class="af-label">Colours</label>
-                                <input asp-for="Colours" class="af-input" />
-                                <span style="font-size:.75rem;color:#94a3b8;">Comma-separated</span>
+                                <label class="af-label">Colours *</label>
+                                <div style="max-height: 120px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: .5rem; background: #fff;">
+                                    @foreach (var c in ViewBag.Colours as List<AashanaFashion.Models.Colour> ?? new())
+                                    {
+                                        var isChecked = (ViewBag.SelectedColours as List<string>)?.Contains(c.ColourName) == true;
+                                        <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.25rem; font-size:.875rem;">
+                                            <input type="checkbox" name="selectedColours" value="@c.Id" id="colour_@c.Id" checked="@isChecked" />
+                                            @if (!string.IsNullOrEmpty(c.ColourCode))
+                                            {
+                                                <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:@c.ColourCode; border:1px solid #cbd5e1;"></span>
+                                            }
+                                            <label for="colour_@c.Id" style="cursor:pointer; margin-bottom:0;">@c.ColourName</label>
+                                        </div>
+                                    }
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="af-form-group">
-                                <label asp-for="Sizes" class="af-label">Sizes</label>
-                                <input asp-for="Sizes" class="af-input" />
-                                <span style="font-size:.75rem;color:#94a3b8;">Comma-separated</span>
+                                <label class="af-label">Sizes *</label>
+                                <div style="max-height: 120px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: .5rem; background: #fff;">
+                                    @foreach (var s in ViewBag.Sizes as List<AashanaFashion.Models.Size> ?? new())
+                                    {
+                                        var isChecked = (ViewBag.SelectedSizes as List<string>)?.Contains(s.SizeName) == true;
+                                        <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.25rem; font-size:.875rem;">
+                                            <input type="checkbox" name="selectedSizes" value="@s.Id" id="size_@s.Id" checked="@isChecked" />
+                                            <label for="size_@s.Id" style="cursor:pointer; margin-bottom:0;">@s.SizeName</label>
+                                        </div>
+                                    }
+                                </div>
                             </div>
                         </div>
                     </div>

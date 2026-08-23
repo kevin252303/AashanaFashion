@@ -1,0 +1,53 @@
+@model AashanaFashion.Models.Size
+@{
+    ViewData["Title"] = "New Size";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">New Size</h1>
+        <p class="page-sub">Define a new size option</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">Size Details</div>
+            </div>
+            <div style="padding:1.5rem;">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    
+                    <div class="af-form-group">
+                        <label asp-for="SizeName" class="af-label">Size Name *</label>
+                        <input asp-for="SizeName" class="af-input" placeholder="e.g. S, XL, 38, 40" required />
+                        <span asp-validation-for="SizeName" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="DisplayOrder" class="af-label">Display Order</label>
+                        <input asp-for="DisplayOrder" type="number" class="af-input" placeholder="e.g. 1 for S, 2 for M, 3 for L" />
+                        <span style="font-size:.75rem;color:#94a3b8;">Determines logical sorting in tables and matrices</span>
+                        <span asp-validation-for="DisplayOrder" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label class="af-label"><input asp-for="IsActive" /> Active</label>
+                    </div>
+
+                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+                        <button type="submit" class="btn-af btn-af-primary">Create Size</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}
