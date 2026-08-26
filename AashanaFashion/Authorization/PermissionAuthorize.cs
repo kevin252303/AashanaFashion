@@ -36,6 +36,16 @@ namespace AashanaFashion.Authorization
 
             var role = user.FindFirst(ClaimTypes.Role)?.Value;
 
+            // Accounting module is restricted strictly to "System Admin" only
+            if (_module == "Accounting")
+            {
+                if (role == "System Admin")
+                    return;
+
+                context.Result = new ForbidResult();
+                return;
+            }
+
             // SuperAdmin and Admin always have full access
             if (role == "SuperAdmin" || role == "Admin")
                 return;

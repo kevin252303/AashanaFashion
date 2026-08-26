@@ -43,6 +43,8 @@ public class PurchaseOrder
     public DateTime? ReceivedOnDate { get; set; }
 
     public List<PurchaseOrderDetail> Details { get; set; } = new();
+
+    public List<PurchaseOrderBill> Bills { get; set; } = new();
 }
 
 public enum PurchaseOrderStatus

@@ -34,6 +34,10 @@
 {
     <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
 }
+@if (TempData["Error"] != null)
+{
+    <div class="af-alert af-alert-danger mb-3"><span class="alert-body">⚠️ @TempData["Error"]</span><button class="alert-close">&times;</button></div>
+}
 
 @if (delayDays > 0)
 {
@@ -75,6 +79,18 @@
                     <div class="info-row">
                         <span class="info-label">Invoice No.</span>
                         <span class="info-value">@Model.InvoiceNumber</span>
+                    </div>
+                }
+                @if (Model.Bills?.Any() == true)
+                {
+                    <div class="info-row">
+                        <span class="info-label">Bill No(s).</span>
+                        <span class="info-value">
+                            @foreach (var bill in Model.Bills.OrderBy(b => b.CreatedDate))
+                            {
+                                <span class="af-badge b-purple" style="margin-left: 0.2rem; display: inline-block;">@bill.BillNumber</span>
+                            }
+                        </span>
                     </div>
                 }
                 <div class="info-row">
@@ -142,6 +158,13 @@
                             <div class="af-form-group mb-0">
                                 <label class="af-label">Received Date</label>
                                 <input name="receivedOnDate" type="date" class="af-input" value="@(Model.ReceivedOnDate?.ToString("yyyy-MM-dd") ?? DateTime.Today.ToString("yyyy-MM-dd"))" />
+                            </div>
+                        </div>
+
+                        <div id="billSection" style="display:none;margin-bottom:.75rem;">
+                            <div class="af-form-group mb-0">
+                                <label class="af-label">Bill No.</label>
+                                <input name="billNumber" id="billNumberInput" type="text" class="af-input" placeholder="Enter Bill Number" />
                             </div>
                         </div>
 
@@ -283,11 +306,17 @@
             var sel = document.getElementById('statusSelect');
             var sec = document.getElementById('receiveSection');
             var dsec = document.getElementById('dateSection');
+            var billSec = document.getElementById('billSection');
+            var billInput = document.getElementById('billNumberInput');
             if (sel) {
                 function toggle() {
                     var showReceive = sel.value === 'PartiallyReceived' || sel.value === 'Received';
                     if (sec) sec.style.display = showReceive ? 'block' : 'none';
                     if (dsec) dsec.style.display = showReceive ? 'block' : 'none';
+                    if (billSec) billSec.style.display = showReceive ? 'block' : 'none';
+                    if (billInput) {
+                        billInput.required = showReceive;
+                    }
                 }
                 sel.addEventListener('change', toggle);
                 toggle();

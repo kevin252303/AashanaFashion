@@ -23,6 +23,7 @@ namespace AashanaFashion.Controllers
             ("PMS",             "PMS"),
             ("RawMaterial",     "Raw Material"),
             ("UserManagement",  "User Management"),
+            ("Accounting",      "Accounting"),
         };
 
         public RoleController(AppDbContext context) => _context = context;

@@ -48,10 +48,41 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 
+    // Seed roles
+    var systemAdminRole = db.UserRoles.FirstOrDefault(r => r.RoleName == "System Admin");
+    if (systemAdminRole == null)
+    {
+        systemAdminRole = new UserRole
+        {
+            RoleName = "System Admin",
+            Description = "System Administrator with access to the Accounting module",
+            IsActive = true,
+            CreatedDate = DateTime.Now
+        };
+        db.UserRoles.Add(systemAdminRole);
+        db.SaveChanges();
+    }
+
+    // Seed permissions for System Admin
+    if (!db.RolePermissions.Any(p => p.UserRoleId == systemAdminRole.Id && p.Module == "Accounting"))
+    {
+        db.RolePermissions.Add(new RolePermission
+        {
+            UserRoleId = systemAdminRole.Id,
+            Module = "Accounting",
+            CanView = true,
+            CanCreate = true,
+            CanEdit = true,
+            CanDelete = true
+        });
+        db.SaveChanges();
+    }
+
     // Seed users
     var usersToSeed = new[]
     {
         new { Username = "superadmin", Password = "superadmin123", Role = "SuperAdmin", First = "Super",      Last = "Admin"   },
+        new { Username = "sysadmin",    Password = "sysadmin123",    Role = "System Admin", First = "System",     Last = "Admin"   },
         new { Username = "admin",       Password = "admin123",       Role = "Admin",      First = "Admin",      Last = "User"    },
         new { Username = "manager",     Password = "manager123",     Role = "Manager",    First = "Production", Last = "Manager" },
         new { Username = "viewer",      Password = "viewer123",      Role = "Viewer",     First = "Floor",      Last = "Viewer"  },

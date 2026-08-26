@@ -154,6 +154,15 @@
                     }
                 </div>
             }
+
+            @if (role == "System Admin")
+            {
+                <div class="nav-label">Finance</div>
+                <a class="s-link @(ctrl == "Accounting" ? "active" : "")"
+                   asp-controller="Accounting" asp-action="Index">
+                    <span class="ico">💰</span> Accounting
+                </a>
+            }
         </nav>
 
         <div class="role-pill rp-@role">@role</div>

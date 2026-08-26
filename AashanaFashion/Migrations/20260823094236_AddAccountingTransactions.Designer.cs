@@ -4,6 +4,7 @@ using AashanaFashion.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AashanaFashion.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260823094236_AddAccountingTransactions")]
+    partial class AddAccountingTransactions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -897,32 +900,6 @@ namespace AashanaFashion.Migrations
                     b.ToTable("PurchaseOrders");
                 });
 
-            modelBuilder.Entity("AashanaFashion.Models.PurchaseOrderBill", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("BillNumber")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("PurchaseOrderId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PurchaseOrderId");
-
-                    b.ToTable("PurchaseOrderBills");
-                });
-
             modelBuilder.Entity("AashanaFashion.Models.PurchaseOrderDetail", b =>
                 {
                     b.Property<int>("Id")
@@ -1558,17 +1535,6 @@ namespace AashanaFashion.Migrations
                     b.Navigation("Vendor");
                 });
 
-            modelBuilder.Entity("AashanaFashion.Models.PurchaseOrderBill", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.PurchaseOrder", "PurchaseOrder")
-                        .WithMany("Bills")
-                        .HasForeignKey("PurchaseOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PurchaseOrder");
-                });
-
             modelBuilder.Entity("AashanaFashion.Models.PurchaseOrderDetail", b =>
                 {
                     b.HasOne("AashanaFashion.Models.PurchaseOrder", "PurchaseOrder")
@@ -1641,8 +1607,6 @@ namespace AashanaFashion.Migrations
 
             modelBuilder.Entity("AashanaFashion.Models.PurchaseOrder", b =>
                 {
-                    b.Navigation("Bills");
-
                     b.Navigation("Details");
                 });
 

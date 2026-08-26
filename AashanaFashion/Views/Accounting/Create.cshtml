@@ -1,0 +1,111 @@
+@model AashanaFashion.Models.AccountingTransaction
+@{
+    ViewData["Title"] = "Record Transaction";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="data-card">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Record New Transaction</div>
+                    <div style="font-size:.75rem;color:#94a3b8;margin-top:.2rem;">Enter transaction details to update ledger</div>
+                </div>
+                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+            </div>
+            <div style="padding:1.5rem;">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="af-alert af-alert-danger mb-3">
+                            <div class="alert-body">
+                                @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                                { <div>@e.ErrorMessage</div> }
+                            </div>
+                            <button class="alert-close">&times;</button>
+                        </div>
+                    }
+
+                    <div class="row">
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="Date" class="af-label">Transaction Date</label>
+                            <input asp-for="Date" type="date" class="af-input" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                            <span asp-validation-for="Date" class="af-error"></span>
+                        </div>
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="Type" class="af-label">Transaction Type</label>
+                            <select asp-for="Type" class="af-input af-select">
+                                <option value="Income">Income (+)</option>
+                                <option value="Expense">Expense (-)</option>
+                            </select>
+                            <span asp-validation-for="Type" class="af-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="Amount" class="af-label">Amount (₹)</label>
+                            <input asp-for="Amount" type="number" step="0.01" class="af-input" placeholder="0.00" />
+                            <span asp-validation-for="Amount" class="af-error"></span>
+                        </div>
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="Category" class="af-label">Category</label>
+                            <select asp-for="Category" class="af-input af-select" id="categorySelect">
+                                <option value="Sales">Sales</option>
+                                <option value="Purchase">Purchase</option>
+                                <option value="Raw Material">Raw Material</option>
+                                <option value="Dying Work">Dying Work</option>
+                                <option value="Roll Press Work">Roll Press Work</option>
+                                <option value="Salary / Wages">Salary / Wages</option>
+                                <option value="Rent">Rent</option>
+                                <option value="Utilities">Utilities (Electricity, Water, etc.)</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <span asp-validation-for="Category" class="af-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="VendorId" class="af-label">Associated Vendor (Optional)</label>
+                            <select asp-for="VendorId" class="af-input af-select" asp-items="ViewBag.Vendors">
+                                <option value="">— None —</option>
+                            </select>
+                            <span asp-validation-for="VendorId" class="af-error"></span>
+                        </div>
+                        <div class="col-md-6 af-form-group">
+                            <label asp-for="CustomerId" class="af-label">Associated Customer (Optional)</label>
+                            <select asp-for="CustomerId" class="af-input af-select" asp-items="ViewBag.Customers">
+                                <option value="">— None —</option>
+                            </select>
+                            <span asp-validation-for="CustomerId" class="af-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="Reference" class="af-label">Reference Number (Optional)</label>
+                        <input asp-for="Reference" class="af-input" placeholder="e.g. Invoice No, PO Number, Lot ID" />
+                        <span asp-validation-for="Reference" class="af-error"></span>
+                    </div>
+
+                    <div class="af-form-group">
+                        <label asp-for="Description" class="af-label">Description / Remarks</label>
+                        <textarea asp-for="Description" class="af-input" rows="3" placeholder="Describe the transaction..."></textarea>
+                        <span asp-validation-for="Description" class="af-error"></span>
+                    </div>
+
+                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+                        <button type="submit" class="btn-af btn-af-primary">Save Transaction</button>
+                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

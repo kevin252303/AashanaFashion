@@ -216,6 +216,7 @@ public class PurchaseController : Controller
         var order = await _context.PurchaseOrders
             .Include(p => p.Vendor)
             .Include(p => p.Details)
+            .Include(p => p.Bills)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (order == null) return NotFound();
@@ -253,10 +254,11 @@ public class PurchaseController : Controller
     [PermissionAuthorize("Purchase", "CanEdit")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateStatus(int id, PurchaseOrderStatus status, List<PurchaseOrderDetail>? details, DateTime? receivedOnDate)
+    public async Task<IActionResult> UpdateStatus(int id, PurchaseOrderStatus status, List<PurchaseOrderDetail>? details, DateTime? receivedOnDate, string? billNumber)
     {
         var order = await _context.PurchaseOrders
             .Include(p => p.Details)
+            .Include(p => p.Bills)
             .FirstOrDefaultAsync(p => p.Id == id);
         if (order == null) return NotFound();
 
@@ -264,6 +266,15 @@ public class PurchaseController : Controller
         {
             TempData["Error"] = "Received Purchase Orders cannot be modified.";
             return RedirectToAction(nameof(Details), new { id });
+        }
+
+        if (status == PurchaseOrderStatus.PartiallyReceived || status == PurchaseOrderStatus.Received)
+        {
+            if (string.IsNullOrWhiteSpace(billNumber))
+            {
+                TempData["Error"] = "Bill number is required when receiving goods.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
         }
 
         order.Status = status;
@@ -295,6 +306,18 @@ public class PurchaseController : Controller
         else
         {
             order.ReceivedOnDate = null;
+        }
+
+        if ((order.Status == PurchaseOrderStatus.PartiallyReceived || order.Status == PurchaseOrderStatus.Received) && !string.IsNullOrWhiteSpace(billNumber))
+        {
+            var exists = order.Bills.Any(b => b.BillNumber.Equals(billNumber.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (!exists)
+            {
+                order.Bills.Add(new PurchaseOrderBill
+                {
+                    BillNumber = billNumber.Trim()
+                });
+            }
         }
 
         await _context.SaveChangesAsync();

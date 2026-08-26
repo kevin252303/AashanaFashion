@@ -1,0 +1,189 @@
+@model IEnumerable<AashanaFashion.Models.AccountingTransaction>
+@{
+    ViewData["Title"] = "Accounting Ledger";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Accounting</h1>
+        <p class="page-sub">Track cash flows, income, and expenses</p>
+    </div>
+    <a asp-action="Create" class="btn-af btn-af-primary">+ Record Transaction</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3">
+        <span class="alert-body">✅ @TempData["Success"]</span>
+        <button class="alert-close">&times;</button>
+    </div>
+}
+
+<!-- Summary Statistics -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card" style="border-left: 5px solid #22c55e;">
+            <div class="stat-icon si-green">📈</div>
+            <div>
+                <div class="stat-val" style="color: #15803d;">₹@(((decimal)ViewBag.TotalIncome).ToString("N2"))</div>
+                <div class="stat-lbl">Total Income</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="border-left: 5px solid #ef4444;">
+            <div class="stat-icon si-red">📉</div>
+            <div>
+                <div class="stat-val" style="color: #b91c1c;">₹@(((decimal)ViewBag.TotalExpense).ToString("N2"))</div>
+                <div class="stat-lbl">Total Expense</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="border-left: 5px solid #3b82f6;">
+            <div class="stat-icon si-blue">📊</div>
+            <div>
+                @{
+                    var balance = (decimal)ViewBag.NetBalance;
+                    var balanceColor = balance >= 0 ? "#1d4ed8" : "#b91c1c";
+                }
+                <div class="stat-val" style="color: @balanceColor;">₹@balance.ToString("N2")</div>
+                <div class="stat-lbl">Net Balance</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="data-card mb-4" style="padding: 1.25rem;">
+    <form method="get" asp-action="Index" class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label class="af-label" for="startDate">Start Date</label>
+            <input type="date" id="startDate" name="startDate" value="@ViewBag.StartDate" class="af-input" />
+        </div>
+        <div class="col-md-3">
+            <label class="af-label" for="endDate">End Date</label>
+            <input type="date" id="endDate" name="endDate" value="@ViewBag.EndDate" class="af-input" />
+        </div>
+        <div class="col-md-2">
+            <label class="af-label" for="type">Type</label>
+            <select id="type" name="type" class="af-input af-select">
+                <option value="">— All —</option>
+                @if (ViewBag.Type == AashanaFashion.Models.TransactionType.Income)
+                {
+                    <option value="Income" selected>Income</option>
+                    <option value="Expense">Expense</option>
+                }
+                else if (ViewBag.Type == AashanaFashion.Models.TransactionType.Expense)
+                {
+                    <option value="Income">Income</option>
+                    <option value="Expense" selected>Expense</option>
+                }
+                else
+                {
+                    <option value="Income">Income</option>
+                    <option value="Expense">Expense</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="af-label" for="category">Category</label>
+            <select id="category" name="category" class="af-input af-select">
+                <option value="">— All —</option>
+                @foreach (var cat in (List<string>)ViewBag.Categories)
+                {
+                    if (ViewBag.Category == cat)
+                    {
+                        <option value="@cat" selected>@cat</option>
+                    }
+                    else
+                    {
+                        <option value="@cat">@cat</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-md-2" style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn-af btn-af-primary" style="flex: 1;">Filter</button>
+            <a asp-action="Index" class="btn-af btn-af-ghost" style="flex: 1; text-align: center;">Clear</a>
+        </div>
+    </form>
+</div>
+
+<!-- Ledger Table -->
+<div class="data-card">
+    <div class="data-card-header">
+        <span class="data-card-title">Transaction Ledger</span>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="af-table">
+            <thead>
+                <tr>
+                    <th class="ps-4">Date</th>
+                    <th>Type</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Party / Entity</th>
+                    <th>Reference</th>
+                    <th>Description</th>
+                    <th class="pe-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var tx in Model)
+                {
+                    <tr>
+                        <td class="ps-4">@tx.Date.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            @if (tx.Type == AashanaFashion.Models.TransactionType.Income)
+                            {
+                                <span class="af-badge b-green">Income</span>
+                            }
+                            else
+                            {
+                                <span class="af-badge b-red">Expense</span>
+                            }
+                        </td>
+                        <td><span class="af-badge b-purple">@tx.Category</span></td>
+                        <td style="font-weight: 600; color: @(tx.Type == AashanaFashion.Models.TransactionType.Income ? "#16a34a" : "#dc2626")">
+                            @(tx.Type == AashanaFashion.Models.TransactionType.Income ? "+" : "-")₹@tx.Amount.ToString("N2")
+                        </td>
+                        <td>
+                            @if (tx.VendorId.HasValue)
+                            {
+                                <span style="font-size: 0.85rem;"><span style="color: #64748b;">Vendor:</span> @tx.Vendor?.VendorName</span>
+                            }
+                            else if (tx.CustomerId.HasValue)
+                            {
+                                <span style="font-size: 0.85rem;"><span style="color: #64748b;">Customer:</span> @tx.Customer?.CustomerName</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td><code>@(tx.Reference ?? "—")</code></td>
+                        <td style="font-size: 0.85rem; max-width: 250px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="@tx.Description">
+                            @tx.Description
+                        </td>
+                        <td class="pe-4">
+                            <div style="display:flex; gap:.4rem;">
+                                <a asp-action="Edit" asp-route-id="@tx.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                                <form asp-action="Delete" asp-route-id="@tx.Id" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this transaction?')">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn-af btn-af-danger btn-af-sm">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center p-4 text-muted">No transactions found.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

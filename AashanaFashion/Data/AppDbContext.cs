@@ -32,6 +32,8 @@ namespace AashanaFashion.Data
         public DbSet<CustomerContact> CustomerContacts { get; set; }
         public DbSet<Colour> Colours { get; set; }
         public DbSet<Size> Sizes { get; set; }
+        public DbSet<AccountingTransaction> AccountingTransactions { get; set; }
+        public DbSet<PurchaseOrderBill> PurchaseOrderBills { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -288,6 +290,28 @@ namespace AashanaFashion.Data
             modelBuilder.Entity<Customer>()
                 .Property(c => c.GeoLongitude)
                 .HasColumnType("decimal(18,8)");
+
+            modelBuilder.Entity<AccountingTransaction>()
+                .Property(a => a.Amount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<AccountingTransaction>()
+                .HasOne(a => a.Vendor)
+                .WithMany()
+                .HasForeignKey(a => a.VendorId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<AccountingTransaction>()
+                .HasOne(a => a.Customer)
+                .WithMany()
+                .HasForeignKey(a => a.CustomerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PurchaseOrderBill>()
+                .HasOne(b => b.PurchaseOrder)
+                .WithMany(p => p.Bills)
+                .HasForeignKey(b => b.PurchaseOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
