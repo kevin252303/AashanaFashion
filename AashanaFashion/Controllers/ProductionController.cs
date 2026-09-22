@@ -91,6 +91,8 @@ namespace AashanaFashion.Controllers
         {
             var order = await _context.ProductionOrders
                 .Include(p => p.Design)
+                    .ThenInclude(d => d!.BomItems)
+                        .ThenInclude(b => b.RawMaterial)
                 .Include(p => p.Details)
                 .FirstOrDefaultAsync(p => p.Id == id);
             if (order == null) return NotFound();
@@ -98,6 +100,62 @@ namespace AashanaFashion.Controllers
             var designs = _context.Designs.OrderBy(d => d.DesignNumber).ToList();
             ViewBag.Designs = designs;
             return View(order);
+        }
+
+        [PermissionAuthorize("ProductionOrder", "CanEdit")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> IssueMaterials(int id)
+        {
+            var order = await _context.ProductionOrders
+                .Include(p => p.Design)
+                    .ThenInclude(d => d!.BomItems)
+                        .ThenInclude(b => b.RawMaterial)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (order == null) return NotFound();
+
+            if (order.IsMaterialIssued)
+            {
+                TempData["Error"] = "Materials have already been issued for this lot.";
+                return RedirectToAction(nameof(Edit), new { id = order.Id });
+            }
+
+            if (order.Design?.BomItems == null || !order.Design.BomItems.Any())
+            {
+                TempData["Error"] = $"No Bill of Materials (BOM) recipe found for Design '{order.Design?.DesignNumber}'. Please configure BOM first.";
+                return RedirectToAction(nameof(Edit), new { id = order.Id });
+            }
+
+            foreach (var item in order.Design.BomItems)
+            {
+                if (item.RawMaterial != null && item.EffectiveQuantity > 0)
+                {
+                    var totalRequired = order.TotalQuantity * item.EffectiveQuantity;
+                    item.RawMaterial.CurrentStock -= totalRequired;
+
+                    _context.RawMaterialTransactions.Add(new RawMaterialTransaction
+                    {
+                        RawMaterialId = item.RawMaterialId,
+                        Type = "Outward",
+                        Quantity = totalRequired,
+                        BalanceAfter = item.RawMaterial.CurrentStock,
+                        UnitPrice = item.RawMaterial.Rate,
+                        ReferenceType = "ProductionOrder",
+                        ReferenceId = order.Id,
+                        Remarks = $"Issued for Lot #{order.LotNo} ({order.TotalQuantity} pcs of {order.Design.DesignNumber})",
+                        CreatedDate = DateTime.Now
+                    });
+                }
+            }
+
+            order.IsMaterialIssued = true;
+            order.MaterialIssuedDate = DateTime.Now;
+            order.IsRawMaterialVerified = true;
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Raw materials successfully issued from inventory for Lot '{order.LotNo}'. Stock ledger updated.";
+            return RedirectToAction(nameof(Edit), new { id = order.Id });
         }
 
         [PermissionAuthorize("ProductionOrder", "CanEdit")]

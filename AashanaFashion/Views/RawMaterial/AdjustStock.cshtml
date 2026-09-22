@@ -1,0 +1,138 @@
+@model AashanaFashion.Models.RawMaterialAdjustmentViewModel
+@{
+    ViewData["Title"] = "Stock Adjustment & Reconciliation";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="page-title">Stock Adjustment & Reconciliation</h1>
+        <p class="page-sub">Perform physical audit adjustments and stock corrections</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back to Inventory</a>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <form asp-action="AdjustStock" method="post">
+            @Html.AntiForgeryToken()
+
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="af-alert af-alert-danger mb-3">
+                    <div class="alert-body">
+                        @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                        { <div>@e.ErrorMessage</div> }
+                    </div>
+                    <button class="alert-close">&times;</button>
+                </div>
+            }
+
+            <div class="data-card p-4 mb-3">
+                <div class="mb-3">
+                    <label class="af-label">Raw Material *</label>
+                    <select name="MaterialId" class="af-input af-select" id="adjMaterialSelect" required>
+                        <option value="">— Select Material —</option>
+                        @foreach (var m in Model.AvailableMaterials)
+                        {
+                            <option value="@m.Id" data-stock="@m.CurrentStock" data-unit="@m.Unit" selected="@(m.Id == Model.MaterialId ? "selected" : null)">
+                                @m.Name (Current: @m.CurrentStock @m.Unit)
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="af-label">Current Book Stock</label>
+                        <input class="af-input" id="adjCurrentStock" value="@Model.CurrentStock @Model.Unit" readonly style="background:#f1f5f9;font-weight:700;" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="af-label">Adjustment Mode *</label>
+                        <select name="AdjustmentType" id="adjTypeSelect" class="af-input af-select">
+                            <option value="Count" selected>Set Physical Count (Audit)</option>
+                            <option value="Add">Add Quantity (+ Found / Bonus)</option>
+                            <option value="Subtract">Subtract Quantity (- Damage / Loss)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3" id="countSection">
+                    <label class="af-label">Actual Physical Count On-Hand *</label>
+                    <input type="number" step="0.01" min="0" name="NewQuantity" id="adjNewQty" class="af-input" value="@Model.NewQuantity" />
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
+                        The system will automatically record the difference in the Stock Ledger.
+                    </div>
+                </div>
+
+                <div class="mb-3" id="deltaSection" style="display:none;">
+                    <label class="af-label" id="deltaLabel">Adjustment Quantity *</label>
+                    <input type="number" step="0.01" min="0.01" name="Quantity" id="adjDeltaQty" class="af-input" value="@Model.Quantity" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="af-label">Reason / Remarks *</label>
+                    <input type="text" name="Reason" class="af-input" placeholder="e.g., Annual physical audit, damaged fabric discarded, cutting floor scrap" required />
+                </div>
+
+                <div class="d-flex gap-2 justify-content-end mt-4">
+                    <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    <button type="submit" class="btn-af btn-af-primary">Save Adjustment</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="data-card p-4">
+            <h5 style="font-size: 0.95rem; font-weight: 700; color: #0f172a; margin-bottom: 0.75rem;">Inventory Reconciliation Guidelines</h5>
+            <p style="font-size: 0.85rem; color: #64748b; line-height: 1.5;">
+                Use this screen when verifying physical stock in the storeroom or warehouse against the software balance:
+            </p>
+            <ul style="font-size: 0.85rem; color: #64748b; padding-left: 1.2rem; line-height: 1.6;">
+                <li><strong>Physical Count:</strong> Enter the exact meters or units counted. The system computes the +/- variance and updates the ledger.</li>
+                <li><strong>Damage / Scrap:</strong> Use <em>Subtract</em> when rolls are discarded due to color bleeding, tears, or shrinkage.</li>
+                <li><strong>Found Stock:</strong> Use <em>Add</em> when unaccounted material or surplus is returned to storage.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const matSelect = document.getElementById('adjMaterialSelect');
+        const stockDisplay = document.getElementById('adjCurrentStock');
+        const typeSelect = document.getElementById('adjTypeSelect');
+        const countSection = document.getElementById('countSection');
+        const deltaSection = document.getElementById('deltaSection');
+        const newQtyInput = document.getElementById('adjNewQty');
+
+        function updateMaterial() {
+            const opt = matSelect.selectedOptions[0];
+            if (opt && opt.value) {
+                const stock = parseFloat(opt.getAttribute('data-stock')) || 0;
+                const unit = opt.getAttribute('data-unit') || '';
+                stockDisplay.value = stock + ' ' + unit;
+                if (!newQtyInput.value || parseFloat(newQtyInput.value) === 0) {
+                    newQtyInput.value = stock;
+                }
+            } else {
+                stockDisplay.value = '—';
+            }
+        }
+
+        function updateMode() {
+            const mode = typeSelect.value;
+            if (mode === 'Count') {
+                countSection.style.display = '';
+                deltaSection.style.display = 'none';
+            } else {
+                countSection.style.display = 'none';
+                deltaSection.style.display = '';
+            }
+        }
+
+        matSelect.addEventListener('change', updateMaterial);
+        typeSelect.addEventListener('change', updateMode);
+        updateMode();
+    });
+</script>

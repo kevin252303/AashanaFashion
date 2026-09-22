@@ -296,6 +296,82 @@ public class DesignController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [PermissionAuthorize("DesignMaster", "CanView")]
+    [HttpGet]
+    public async Task<IActionResult> Bom(int id)
+    {
+        var design = await _context.Designs
+            .Include(d => d.BomItems)
+                .ThenInclude(b => b.RawMaterial)
+            .Include(d => d.OperationCosts)
+                .ThenInclude(o => o.Vendor)
+            .FirstOrDefaultAsync(d => d.Id == id);
+
+        if (design == null) return NotFound();
+
+        ViewBag.RawMaterials = await _context.RawMaterials.OrderBy(m => m.Name).ToListAsync();
+        ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+        return View(design);
+    }
+
+    [PermissionAuthorize("DesignMaster", "CanEdit")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Bom(
+        int id,
+        decimal SalesPrice,
+        List<DesignBomItem>? BomItems,
+        List<DesignOperationCost>? OperationCosts)
+    {
+        var design = await _context.Designs
+            .Include(d => d.BomItems)
+            .Include(d => d.OperationCosts)
+            .FirstOrDefaultAsync(d => d.Id == id);
+
+        if (design == null) return NotFound();
+
+        design.SalesPrice = SalesPrice;
+
+        // Replace BOM items
+        _context.DesignBomItems.RemoveRange(design.BomItems);
+        if (BomItems?.Any() == true)
+        {
+            foreach (var b in BomItems.Where(x => x.RawMaterialId > 0 && x.QuantityPerPiece > 0))
+            {
+                design.BomItems.Add(new DesignBomItem
+                {
+                    DesignId = design.Id,
+                    RawMaterialId = b.RawMaterialId,
+                    Component = string.IsNullOrWhiteSpace(b.Component) ? "General" : b.Component.Trim(),
+                    QuantityPerPiece = b.QuantityPerPiece,
+                    WastagePercentage = b.WastagePercentage,
+                    Remarks = b.Remarks
+                });
+            }
+        }
+
+        // Replace Operation costs
+        _context.DesignOperationCosts.RemoveRange(design.OperationCosts);
+        if (OperationCosts?.Any() == true)
+        {
+            foreach (var o in OperationCosts.Where(x => !string.IsNullOrWhiteSpace(x.OperationName) && x.EstimatedCost > 0))
+            {
+                design.OperationCosts.Add(new DesignOperationCost
+                {
+                    DesignId = design.Id,
+                    OperationName = o.OperationName.Trim(),
+                    EstimatedCost = o.EstimatedCost,
+                    VendorId = o.VendorId > 0 ? o.VendorId : null,
+                    Remarks = o.Remarks
+                });
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        TempData["Success"] = $"Bill of Materials & Cost Sheet saved for Design '{design.DesignNumber}'.";
+        return RedirectToAction(nameof(Bom), new { id = design.Id });
+    }
+
     [PermissionAuthorize("DesignMaster", "CanDelete")]
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -306,6 +382,8 @@ public class DesignController : Controller
             .Include(d => d.Pricelists)
             .Include(d => d.ProductVendors)
             .Include(d => d.Packagings)
+            .Include(d => d.BomItems)
+            .Include(d => d.OperationCosts)
             .FirstOrDefaultAsync(d => d.Id == id);
 
         if (design != null)
@@ -314,6 +392,8 @@ public class DesignController : Controller
             _context.ProductPricelists.RemoveRange(design.Pricelists);
             _context.ProductVendors.RemoveRange(design.ProductVendors);
             _context.ProductPackagings.RemoveRange(design.Packagings);
+            _context.DesignBomItems.RemoveRange(design.BomItems);
+            _context.DesignOperationCosts.RemoveRange(design.OperationCosts);
             _context.Designs.Remove(design);
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Product '{design.DesignNumber}' deleted.";

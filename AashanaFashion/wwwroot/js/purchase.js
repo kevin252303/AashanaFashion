@@ -66,7 +66,8 @@
         tr.className = 'item-row';
         tr.innerHTML =
             '<td class="text-center sr-no">' + (index + 1) + '</td>' +
-            '<td><input name="Details[' + index + '].ProductName" class="af-input" placeholder="Product" required /></td>' +
+            '<td><input name="Details[' + index + '].ProductName" class="af-input item-product" list="rawMaterialsList" placeholder="Select or enter product" required autocomplete="off" />' +
+            '<input type="hidden" name="Details[' + index + '].RawMaterialId" class="item-rawmaterial-id" /></td>' +
             '<td><input name="Details[' + index + '].ProductDesignNo" class="af-input" placeholder="Design #" /></td>' +
             '<td><input name="Details[' + index + '].HsnCode" class="af-input" placeholder="HSN" /></td>' +
             '<td><select name="Details[' + index + '].Unit" class="af-input af-select unit-select">' +
@@ -104,6 +105,47 @@
         row.querySelector('.item-rate')?.addEventListener('input', recalcAll);
         row.querySelector('.item-disc')?.addEventListener('input', recalcAll);
         row.querySelector('.item-gst')?.addEventListener('input', recalcAll);
+
+        const prodInput = row.querySelector('.item-product');
+        const rawIdInput = row.querySelector('.item-rawmaterial-id');
+        const unitSelect = row.querySelector('.unit-select');
+        const rateInput = row.querySelector('.item-rate');
+
+        if (prodInput) {
+            prodInput.addEventListener('input', function () {
+                const val = (this.value || '').trim();
+                const list = document.getElementById('rawMaterialsList');
+                if (list) {
+                    const opt = Array.from(list.options).find(o => o.value.toLowerCase() === val.toLowerCase());
+                    if (opt) {
+                        if (rawIdInput) rawIdInput.value = opt.getAttribute('data-id') || '';
+                        const unit = opt.getAttribute('data-unit');
+                        if (unit && unitSelect) {
+                            let found = false;
+                            for (let i = 0; i < unitSelect.options.length; i++) {
+                                if (unitSelect.options[i].value.toLowerCase() === unit.toLowerCase()) {
+                                    unitSelect.selectedIndex = i;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                const newOpt = new Option(unit, unit, true, true);
+                                unitSelect.add(newOpt);
+                            }
+                        }
+                        const rate = parseFloat(opt.getAttribute('data-rate'));
+                        if (!isNaN(rate) && rate > 0 && rateInput && (!rateInput.value || parseFloat(rateInput.value) === 0)) {
+                            rateInput.value = rate.toFixed(2);
+                            recalcAll();
+                        }
+                    } else if (rawIdInput) {
+                        rawIdInput.value = '';
+                    }
+                }
+            });
+        }
+
         const removeBtn = row.querySelector('.remove-row');
         if (removeBtn) {
             removeBtn.addEventListener('click', function () {

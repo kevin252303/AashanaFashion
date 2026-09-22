@@ -15,8 +15,23 @@
         <h1 class="page-title">Edit Order — @Model.LotNo</h1>
         <p class="page-sub">Design: @Model.Design?.DesignNumber</p>
     </div>
-    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+    <div class="d-flex gap-2">
+        <a asp-controller="Barcode" asp-action="PrintTags" asp-route-orderId="@Model.Id" target="_blank" class="btn btn-sm btn-outline-dark">🏷️ Barcode Tags</a>
+        <a asp-controller="Barcode" asp-action="PrintLotTag" asp-route-orderId="@Model.Id" target="_blank" class="btn btn-sm btn-outline-dark">Lot Tag</a>
+        <a asp-controller="QualityControl" asp-action="Create" asp-route-orderId="@Model.Id" class="btn btn-sm btn-outline-warning">🔍 Log QC Check</a>
+        <a asp-controller="QualityControl" asp-action="Index" asp-route-orderId="@Model.Id" class="btn btn-sm btn-outline-secondary">QC Logs</a>
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">← Back</a>
+    </div>
 </div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="af-alert af-alert-danger mb-3"><span class="alert-body">@TempData["Error"]</span><button class="alert-close">&times;</button></div>
+}
 
 <form asp-action="Edit" method="post" id="orderForm">
 @Html.AntiForgeryToken()
@@ -108,6 +123,108 @@
     </div>
 </div>
 </form>
+
+@if (Model.Design?.BomItems?.Any() == true)
+{
+    var hasShortage = false;
+    <div class="data-card mt-4">
+        <div class="data-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <span class="data-card-title">Raw Material Requirements (BOM Consumption)</span>
+                <span style="font-size: 0.8rem; color: #64748b; margin-left: 0.5rem;">Calculated for @Model.TotalQuantity pcs based on Design #@Model.Design.DesignNumber recipe</span>
+            </div>
+            <div>
+                @if (Model.IsMaterialIssued)
+                {
+                    <span class="af-badge" style="background:#dcfce7;color:#16a34a;font-size:0.85rem;padding:0.4rem 0.75rem;">
+                        ✔ Materials Issued on @Model.MaterialIssuedDate?.ToString("dd-MMM-yyyy HH:mm")
+                    </span>
+                }
+                else
+                {
+                    <form asp-action="IssueMaterials" asp-route-id="@Model.Id" method="post" style="display:inline;" onsubmit="return confirm('Issue raw materials from stock for this lot? This will deduct the required quantities from inventory.');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn-af btn-af-primary btn-af-sm">
+                            📦 Issue Materials from Stock
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+        <div style="padding: 1rem;">
+            <div style="overflow-x:auto;">
+                <table class="af-table" style="font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Raw Material</th>
+                            <th class="text-end">Per Piece</th>
+                            <th class="text-end">Wastage %</th>
+                            <th class="text-end">Total Required (@Model.TotalQuantity pcs)</th>
+                            <th class="text-end">Current Stock</th>
+                            <th class="text-center">Availability</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var bom in Model.Design.BomItems)
+                        {
+                            var totalReq = Model.TotalQuantity * bom.EffectiveQuantity;
+                            var currentStock = bom.RawMaterial?.CurrentStock ?? 0;
+                            var isShortage = currentStock < totalReq;
+                            if (isShortage) hasShortage = true;
+
+                            <tr>
+                                <td><span class="af-badge b-gray">@bom.Component</span></td>
+                                <td>
+                                    <strong>@(bom.RawMaterial?.Name ?? $"Material #{bom.RawMaterialId}")</strong>
+                                    @if (!string.IsNullOrEmpty(bom.Remarks))
+                                    {
+                                        <span style="font-size: 0.75rem; color: #64748b;">(@bom.Remarks)</span>
+                                    }
+                                </td>
+                                <td class="text-end">@bom.QuantityPerPiece.ToString("N2") @bom.RawMaterial?.Unit</td>
+                                <td class="text-end">@bom.WastagePercentage.ToString("N1")%</td>
+                                <td class="text-end" style="font-weight: 700; color: #0f172a;">@totalReq.ToString("N2") @bom.RawMaterial?.Unit</td>
+                                <td class="text-end" style="font-weight: 600; color: @(isShortage ? "#dc2626" : "#16a34a");">
+                                    @currentStock.ToString("N2") @bom.RawMaterial?.Unit
+                                </td>
+                                <td class="text-center">
+                                    @if (isShortage)
+                                    {
+                                        <span class="af-badge" style="background:#fee2e2;color:#dc2626;">
+                                            Shortage (-@((totalReq - currentStock).ToString("N2")))
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="af-badge" style="background:#dcfce7;color:#16a34a;">
+                                            Available
+                                        </span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (hasShortage && !Model.IsMaterialIssued)
+            {
+                <div class="af-alert af-alert-warning mt-3 mb-0" style="font-size: 0.85rem;">
+                    <span class="alert-body">⚠ Some raw materials have insufficient stock for this lot. You can still issue or create a Purchase Order to replenish stock.</span>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="data-card mt-4 p-4 text-center">
+        <p style="color: #64748b; margin-bottom: 0.75rem;">No Bill of Materials (BOM) recipe configured for Design <strong>@Model.Design?.DesignNumber</strong>.</p>
+        <a asp-controller="Design" asp-action="Bom" asp-route-id="@Model.DesignId" class="btn-af btn-af-ghost btn-af-sm">
+            ⚙ Configure BOM Recipe & Costing Sheet →
+        </a>
+    </div>
+}
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }

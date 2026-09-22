@@ -1,5 +1,6 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
+using AashanaFashion.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -141,6 +142,7 @@ public class PMSController : Controller
                         Colour = detail.Colour,
                         Size = detail.Size,
                         SlNo = slNo,
+                        Barcode = BarcodeService.FormatEntityBarcode(order.Id, slNo, component),
                         Status = "Created"
                     };
                     _context.ProductionEntities.Add(entity);

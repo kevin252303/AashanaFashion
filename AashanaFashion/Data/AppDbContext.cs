@@ -34,6 +34,18 @@ namespace AashanaFashion.Data
         public DbSet<Size> Sizes { get; set; }
         public DbSet<AccountingTransaction> AccountingTransactions { get; set; }
         public DbSet<PurchaseOrderBill> PurchaseOrderBills { get; set; }
+        public DbSet<DesignBomItem> DesignBomItems { get; set; }
+        public DbSet<DesignOperationCost> DesignOperationCosts { get; set; }
+        public DbSet<SalesOrder> SalesOrders { get; set; }
+        public DbSet<SalesOrderDetail> SalesOrderDetails { get; set; }
+        public DbSet<DeliveryChallan> DeliveryChallans { get; set; }
+        public DbSet<DeliveryChallanItem> DeliveryChallanItems { get; set; }
+        public DbSet<QualityInspection> QualityInspections { get; set; }
+        public DbSet<QualityDefect> QualityDefects { get; set; }
+        public DbSet<TaxInvoice> TaxInvoices { get; set; }
+        public DbSet<TaxInvoiceItem> TaxInvoiceItems { get; set; }
+        public DbSet<PaymentReceipt> PaymentReceipts { get; set; }
+        public DbSet<VendorPayment> VendorPayments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -136,6 +148,12 @@ namespace AashanaFashion.Data
                 .Property(d => d.DiscountPercentage)
                 .HasColumnType("decimal(18,2)");
 
+            modelBuilder.Entity<PurchaseOrderDetail>()
+                .HasOne(d => d.RawMaterial)
+                .WithMany()
+                .HasForeignKey(d => d.RawMaterialId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<RawMaterialTransaction>()
                 .HasOne(t => t.RawMaterial)
                 .WithMany()
@@ -147,6 +165,10 @@ namespace AashanaFashion.Data
 
             modelBuilder.Entity<RawMaterialTransaction>()
                 .Property(t => t.BalanceAfter)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<RawMaterialTransaction>()
+                .Property(t => t.UnitPrice)
                 .HasColumnType("decimal(18,2)");
 
             modelBuilder.Entity<RawMaterial>()
@@ -215,6 +237,36 @@ namespace AashanaFashion.Data
 
             modelBuilder.Entity<ProductPackaging>()
                 .Property(p => p.Quantity)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<DesignBomItem>()
+                .HasOne(b => b.Design)
+                .WithMany(d => d.BomItems)
+                .HasForeignKey(b => b.DesignId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<DesignBomItem>()
+                .HasOne(b => b.RawMaterial)
+                .WithMany()
+                .HasForeignKey(b => b.RawMaterialId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DesignBomItem>()
+                .Property(b => b.QuantityPerPiece)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<DesignBomItem>()
+                .Property(b => b.WastagePercentage)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<DesignOperationCost>()
+                .HasOne(o => o.Design)
+                .WithMany(d => d.OperationCosts)
+                .HasForeignKey(o => o.DesignId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<DesignOperationCost>()
+                .Property(o => o.EstimatedCost)
                 .HasColumnType("decimal(18,2)");
 
             modelBuilder.Entity<VendorContact>()
@@ -312,6 +364,156 @@ namespace AashanaFashion.Data
                 .WithMany(p => p.Bills)
                 .HasForeignKey(b => b.PurchaseOrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // ——— Sales Orders & Delivery Challans ———
+            modelBuilder.Entity<SalesOrder>()
+                .HasOne(s => s.Customer)
+                .WithMany()
+                .HasForeignKey(s => s.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<SalesOrder>()
+                .Property(s => s.TransportCharge)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalesOrder>()
+                .Property(s => s.TransportChargeGST)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalesOrder>()
+                .Property(s => s.RoundOff)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalesOrder>()
+                .Property(s => s.TotalAmount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalesOrderDetail>()
+                .HasOne(d => d.SalesOrder)
+                .WithMany(s => s.Details)
+                .HasForeignKey(d => d.SalesOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SalesOrderDetail>()
+                .HasOne(d => d.Design)
+                .WithMany()
+                .HasForeignKey(d => d.DesignId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<SalesOrderDetail>()
+                .Property(d => d.UnitPrice)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalesOrderDetail>()
+                .Property(d => d.DiscountPercentage)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalesOrderDetail>()
+                .Property(d => d.GstPercentage)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<DeliveryChallan>()
+                .HasOne(c => c.SalesOrder)
+                .WithMany(s => s.Challans)
+                .HasForeignKey(c => c.SalesOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<DeliveryChallan>()
+                .HasOne(c => c.Customer)
+                .WithMany()
+                .HasForeignKey(c => c.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DeliveryChallanItem>()
+                .HasOne(i => i.DeliveryChallan)
+                .WithMany(c => c.Items)
+                .HasForeignKey(i => i.DeliveryChallanId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<DeliveryChallanItem>()
+                .HasOne(i => i.SalesOrderDetail)
+                .WithMany()
+                .HasForeignKey(i => i.SalesOrderDetailId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<QualityInspection>()
+                .HasOne(q => q.ProductionOrder)
+                .WithMany()
+                .HasForeignKey(q => q.ProductionOrderId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<QualityInspection>()
+                .HasOne(q => q.ProductionEntity)
+                .WithMany()
+                .HasForeignKey(q => q.ProductionEntityId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<QualityInspection>()
+                .HasOne(q => q.Vendor)
+                .WithMany()
+                .HasForeignKey(q => q.VendorId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<QualityDefect>()
+                .HasOne(d => d.QualityInspection)
+                .WithMany(q => q.Defects)
+                .HasForeignKey(d => d.QualityInspectionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProductionEntity>()
+                .Property(e => e.Barcode)
+                .HasMaxLength(50);
+
+            modelBuilder.Entity<ProductionEntity>()
+                .HasIndex(e => e.Barcode);
+
+            modelBuilder.Entity<TaxInvoice>()
+                .HasOne(i => i.Customer)
+                .WithMany()
+                .HasForeignKey(i => i.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<TaxInvoice>()
+                .HasOne(i => i.SalesOrder)
+                .WithMany()
+                .HasForeignKey(i => i.SalesOrderId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<TaxInvoiceItem>()
+                .HasOne(item => item.TaxInvoice)
+                .WithMany(i => i.Items)
+                .HasForeignKey(item => item.TaxInvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TaxInvoiceItem>()
+                .HasOne(item => item.Design)
+                .WithMany()
+                .HasForeignKey(item => item.DesignId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PaymentReceipt>()
+                .HasOne(r => r.TaxInvoice)
+                .WithMany(i => i.Receipts)
+                .HasForeignKey(r => r.TaxInvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PaymentReceipt>()
+                .HasOne(r => r.Customer)
+                .WithMany()
+                .HasForeignKey(r => r.CustomerId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<VendorPayment>()
+                .HasOne(p => p.Vendor)
+                .WithMany()
+                .HasForeignKey(p => p.VendorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<VendorPayment>()
+                .HasOne(p => p.PurchaseOrder)
+                .WithMany()
+                .HasForeignKey(p => p.PurchaseOrderId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

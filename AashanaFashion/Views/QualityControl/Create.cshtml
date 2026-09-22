@@ -1,0 +1,382 @@
+@model AashanaFashion.Models.CreateInspectionViewModel
+@{
+    ViewData["Title"] = "Log Quality Inspection";
+}
+
+<div class="mb-4">
+    <a asp-action="Index" class="text-decoration-none text-muted small">← Back to Quality Dashboard</a>
+    <h2 class="fw-bold mt-1">Log Quality Inspection</h2>
+    <p class="text-muted">Record quality inspection counts, defect details, and assign rework actions.</p>
+</div>
+
+<form asp-action="Create" method="post" id="qcForm">
+    @Html.AntiForgeryToken()
+
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+    <div class="row g-4">
+        <!-- Main Inspection Details -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold">📋 Inspection Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="InspectionNumber" class="form-label fw-semibold"></label>
+                            <input asp-for="InspectionNumber" class="form-control" />
+                            <span asp-validation-for="InspectionNumber" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="InspectionDate" class="form-label fw-semibold"></label>
+                            <input asp-for="InspectionDate" class="form-control" />
+                            <span asp-validation-for="InspectionDate" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="InspectorName" class="form-label fw-semibold"></label>
+                            <input asp-for="InspectorName" class="form-control" />
+                            <span asp-validation-for="InspectorName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="ProductionOrderId" class="form-label fw-semibold">Production Order / Lot</label>
+                            <select asp-for="ProductionOrderId" class="form-select" id="orderSelect" required>
+                                <option value="">-- Select Production Order --</option>
+                                @foreach (var o in (List<AashanaFashion.Models.ProductionOrder>)ViewBag.Orders)
+                                {
+                                    <option value="@o.Id" data-qty="@o.TotalQuantity" selected="@(Model.ProductionOrderId == o.Id)">
+                                        Lot @o.LotNo — @(o.Design?.DesignNumber ?? "No Design") (@o.TotalQuantity pcs)
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="ProductionOrderId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Stage" class="form-label fw-semibold"></label>
+                            <select asp-for="Stage" class="form-select" asp-items="Html.GetEnumSelectList<AashanaFashion.Models.QcStage>()"></select>
+                            <span asp-validation-for="Stage" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="VendorId" class="form-label fw-semibold">Assigned Vendor / Job Worker</label>
+                            <select asp-for="VendorId" class="form-select">
+                                <option value="">-- None / In-House Production --</option>
+                                @foreach (var v in (List<AashanaFashion.Models.Vendor>)ViewBag.Vendors)
+                                {
+                                    <option value="@v.Id" selected="@(Model.VendorId == v.Id)">@v.VendorName (@(v.Industry ?? "Vendor"))</option>
+                                }
+                            </select>
+                            <span asp-validation-for="VendorId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="ProductionEntityId" class="form-label fw-semibold">Component / Serial Piece (Optional)</label>
+                            <select asp-for="ProductionEntityId" class="form-select" id="entitySelect">
+                                <option value="">-- Whole Lot / All Components --</option>
+                                @foreach (var e in (List<AashanaFashion.Models.ProductionEntity>)ViewBag.Entities)
+                                {
+                                    <option value="@e.Id" selected="@(Model.ProductionEntityId == e.Id)">
+                                        @e.EntityType #@e.SlNo (@e.Colour - @e.Size) [@e.Status]
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="ProductionEntityId" class="text-danger small"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Itemized Defects Table -->
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-0 fw-bold">⚠️ Itemized Defect Classification</h5>
+                        <small class="text-muted">Specify reasons for units sent to rework or scrap</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="addDefectRowBtn">
+                        <span class="me-1">➕</span> Add Defect Reason
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle mb-0" id="defectsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 22%;">Defect Category</th>
+                                    <th style="width: 25%;">Defect Description</th>
+                                    <th style="width: 12%;">Qty (pcs)</th>
+                                    <th style="width: 15%;">Severity</th>
+                                    <th style="width: 20%;">Action Taken</th>
+                                    <th style="width: 6%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="defectTableBody">
+                                @if (Model.Defects != null && Model.Defects.Any())
+                                {
+                                    for (int i = 0; i < Model.Defects.Count; i++)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <select name="Defects[@i].DefectCategory" class="form-select form-select-sm">
+                                                    @foreach (AashanaFashion.Models.DefectCategory c in Enum.GetValues(typeof(AashanaFashion.Models.DefectCategory)))
+                                                    {
+                                                        <option value="@c" selected="@(Model.Defects[i].DefectCategory == c)">@c</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input type="text" name="Defects[@i].DefectReason" class="form-control form-select-sm" value="@Model.Defects[i].DefectReason" placeholder="e.g. Loose thread / stain" required />
+                                            </td>
+                                            <td>
+                                                <input type="number" name="Defects[@i].Quantity" class="form-control form-select-sm defect-qty" value="@Model.Defects[i].Quantity" min="1" />
+                                            </td>
+                                            <td>
+                                                <select name="Defects[@i].Severity" class="form-select form-select-sm">
+                                                    @foreach (AashanaFashion.Models.DefectSeverity s in Enum.GetValues(typeof(AashanaFashion.Models.DefectSeverity)))
+                                                    {
+                                                        <option value="@s" selected="@(Model.Defects[i].Severity == s)">@s</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select name="Defects[@i].Action" class="form-select form-select-sm defect-action">
+                                                    @foreach (AashanaFashion.Models.DefectAction a in Enum.GetValues(typeof(AashanaFashion.Models.DefectAction)))
+                                                    {
+                                                        <option value="@a" selected="@(Model.Defects[i].Action == a)">@a</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm text-danger remove-defect-btn">✕</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="noDefectMsg" class="text-center py-4 text-muted @(Model.Defects != null && Model.Defects.Any() ? "d-none" : "")">
+                        <span>No defects logged yet. Click "Add Defect Reason" if defective or rework units were found.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Quantities Summary & Submission -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold">🔢 Inspection Tally</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="TotalInspected" class="form-label fw-semibold">Total Inspected (pcs)</label>
+                        <input asp-for="TotalInspected" class="form-control form-control-lg fw-bold" id="totalInspected" min="1" />
+                        <span asp-validation-for="TotalInspected" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="TotalPassed" class="form-label fw-semibold text-success">Passed / Accepted (pcs)</label>
+                        <input asp-for="TotalPassed" class="form-control text-success fw-bold" id="totalPassed" min="0" />
+                        <span asp-validation-for="TotalPassed" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="TotalRework" class="form-label fw-semibold text-warning">Sent to Rework / Alteration</label>
+                        <input asp-for="TotalRework" class="form-control text-warning fw-bold" id="totalRework" min="0" />
+                        <span asp-validation-for="TotalRework" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="TotalScrap" class="form-label fw-semibold text-danger">Scrapped / Damage Loss</label>
+                        <input asp-for="TotalScrap" class="form-control text-danger fw-bold" id="totalScrap" min="0" />
+                        <span asp-validation-for="TotalScrap" class="text-danger small"></span>
+                    </div>
+
+                    <div class="p-3 rounded-3 mb-3 bg-light border" id="validationCard">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted">Tally Balance:</span>
+                            <span id="tallyStatus" class="fw-bold small text-success">Balanced</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small text-muted">Pass Rate:</span>
+                            <span id="passRateBadge" class="fw-bold fs-5 text-success">100%</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Remarks" class="form-label fw-semibold">Inspector Remarks</label>
+                        <textarea asp-for="Remarks" class="form-control" rows="3" placeholder="Notes on fabric condition, worker feedback, rework instructions..."></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg fw-bold">💾 Save Quality Inspection</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const categories = [
+            'FabricDefect', 'ColorShadeDefect', 'EmbroideryHandworkDefect', 
+            'StitchingSewingDefect', 'FinishingStainDefect', 'MeasurementDefect', 
+            'TrimsIssue', 'Other'
+        ];
+        const severities = ['Minor', 'Major', 'Critical'];
+        const actions = ['ReworkByVendor', 'ReworkInHouse', 'AcceptAsBGrade', 'ScrapWriteOff'];
+
+        let defectIndex = @(Model.Defects?.Count ?? 0);
+
+        function updateTally() {
+            const inspected = parseInt($('#totalInspected').val()) || 0;
+            const passed = parseInt($('#totalPassed').val()) || 0;
+            const rework = parseInt($('#totalRework').val()) || 0;
+            const scrap = parseInt($('#totalScrap').val()) || 0;
+
+            const sum = passed + rework + scrap;
+            const diff = inspected - sum;
+
+            if (inspected > 0) {
+                const passRate = ((passed / inspected) * 100).toFixed(1);
+                $('#passRateBadge').text(passRate + '%');
+                if (passRate >= 95) {
+                    $('#passRateBadge').removeClass().addClass('fw-bold fs-5 text-success');
+                } else if (passRate >= 85) {
+                    $('#passRateBadge').removeClass().addClass('fw-bold fs-5 text-warning');
+                } else {
+                    $('#passRateBadge').removeClass().addClass('fw-bold fs-5 text-danger');
+                }
+            } else {
+                $('#passRateBadge').text('0%');
+            }
+
+            if (diff === 0 && inspected > 0) {
+                $('#tallyStatus').html('<span class="text-success">✓ Balanced (' + sum + ' / ' + inspected + ')</span>');
+            } else if (diff > 0) {
+                $('#tallyStatus').html('<span class="text-warning">⚠️ ' + diff + ' pcs unaccounted for</span>');
+            } else {
+                $('#tallyStatus').html('<span class="text-danger">❌ Over by ' + Math.abs(diff) + ' pcs</span>');
+            }
+        }
+
+        $('#totalInspected, #totalPassed, #totalRework, #totalScrap').on('input change', updateTally);
+
+        // When order changes, fetch order details and entities via AJAX
+        $('#orderSelect').on('change', function () {
+            const orderId = $(this).val();
+            if (!orderId) return;
+
+            $.getJSON('/QualityControl/GetOrderDetails?orderId=' + orderId, function (data) {
+                if (data && data.quantity) {
+                    $('#totalInspected').val(data.quantity);
+                    $('#totalPassed').val(data.quantity);
+                    $('#totalRework').val(0);
+                    $('#totalScrap').val(0);
+                    updateTally();
+                }
+
+                const entitySelect = $('#entitySelect');
+                entitySelect.empty();
+                entitySelect.append('<option value="">-- Whole Lot / All Components --</option>');
+                if (data && data.entities) {
+                    data.entities.forEach(function (e) {
+                        entitySelect.append('<option value="' + e.id + '">' + e.label + '</option>');
+                    });
+                }
+            });
+        });
+
+        // Add Defect row
+        $('#addDefectRowBtn').on('click', function () {
+            $('#noDefectMsg').addClass('d-none');
+
+            let categoryOptions = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            let severityOptions = severities.map(s => `<option value="${s}" ${s === 'Major' ? 'selected' : ''}>${s}</option>`).join('');
+            let actionOptions = actions.map(a => `<option value="${a}" ${a === 'ReworkInHouse' ? 'selected' : ''}>${a}</option>`).join('');
+
+            const row = `
+                <tr>
+                    <td>
+                        <select name="Defects[${defectIndex}].DefectCategory" class="form-select form-select-sm">
+                            ${categoryOptions}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="text" name="Defects[${defectIndex}].DefectReason" class="form-control form-select-sm" placeholder="e.g. Loose thread / stain" required />
+                    </td>
+                    <td>
+                        <input type="number" name="Defects[${defectIndex}].Quantity" class="form-control form-select-sm defect-qty" value="1" min="1" />
+                    </td>
+                    <td>
+                        <select name="Defects[${defectIndex}].Severity" class="form-select form-select-sm">
+                            ${severityOptions}
+                        </select>
+                    </td>
+                    <td>
+                        <select name="Defects[${defectIndex}].Action" class="form-select form-select-sm defect-action">
+                            ${actionOptions}
+                        </select>
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm text-danger remove-defect-btn">✕</button>
+                    </td>
+                </tr>
+            `;
+
+            $('#defectTableBody').append(row);
+            defectIndex++;
+            recalcDefectTotals();
+        });
+
+        // Remove defect row
+        $(document).on('click', '.remove-defect-btn', function () {
+            $(this).closest('tr').remove();
+            if ($('#defectTableBody tr').length === 0) {
+                $('#noDefectMsg').removeClass('d-none');
+            }
+            recalcDefectTotals();
+        });
+
+        // Auto-recalculate rework & scrap based on defect rows
+        $(document).on('input change', '.defect-qty, .defect-action', function () {
+            recalcDefectTotals();
+        });
+
+        function recalcDefectTotals() {
+            let reworkCount = 0;
+            let scrapCount = 0;
+
+            $('#defectTableBody tr').each(function () {
+                const qty = parseInt($(this).find('.defect-qty').val()) || 0;
+                const action = $(this).find('.defect-action').val();
+
+                if (action === 'ScrapWriteOff') {
+                    scrapCount += qty;
+                } else if (action === 'ReworkByVendor' || action === 'ReworkInHouse') {
+                    reworkCount += qty;
+                }
+            });
+
+            if (reworkCount > 0 || scrapCount > 0) {
+                $('#totalRework').val(reworkCount);
+                $('#totalScrap').val(scrapCount);
+
+                const inspected = parseInt($('#totalInspected').val()) || 0;
+                const passed = Math.max(0, inspected - reworkCount - scrapCount);
+                $('#totalPassed').val(passed);
+                updateTally();
+            }
+        }
+
+        $(document).ready(function () {
+            updateTally();
+        });
+    </script>
+}

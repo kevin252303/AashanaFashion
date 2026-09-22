@@ -9,6 +9,8 @@ namespace AashanaFashion.Models
         public int TotalQuantity { get; set; }
         public OrderStatus Status { get; set; }
         public bool IsRawMaterialVerified { get; set; }
+        public bool IsMaterialIssued { get; set; }
+        public DateTime? MaterialIssuedDate { get; set; }
         public bool IsDyingVerified { get; set; }
         public bool IsHandworkVerified { get; set; }
         public bool IsStitchingVerified { get; set; }

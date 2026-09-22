@@ -1,0 +1,290 @@
+@model AashanaFashion.Models.PrintTagsViewModel
+@{
+    ViewData["Title"] = $"Print Barcode Tags — Lot {Model.Order?.LotNo}";
+    Layout = null; // Clean print layout without sidebar navigation
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        body {
+            background-color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .no-print-bar {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 12px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .labels-container {
+            padding: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        /* Continuous / Thermal Label format (50mm x 28mm) */
+        .thermal-label {
+            width: 50mm;
+            min-height: 28mm;
+            max-height: 32mm;
+            background: #ffffff;
+            border: 1px dashed #cbd5e1;
+            box-sizing: border-box;
+            padding: 2mm 3mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 8pt;
+            line-height: 1.15;
+            color: #0f172a;
+            page-break-after: always;
+            break-after: page;
+        }
+
+        .thermal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid #000000;
+            padding-bottom: 1mm;
+            margin-bottom: 1mm;
+        }
+
+        .thermal-brand {
+            font-size: 7pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .thermal-design {
+            font-size: 9pt;
+            font-weight: 800;
+        }
+
+        .thermal-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 7.5pt;
+            margin-bottom: 1mm;
+        }
+
+        .thermal-component {
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .thermal-codes {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2mm;
+        }
+
+        .thermal-barcode {
+            flex-grow: 1;
+            max-width: 32mm;
+        }
+
+        .thermal-qr {
+            width: 12mm;
+            height: 12mm;
+            flex-shrink: 0;
+        }
+
+        /* A4 Sheet Grid Layout */
+        .a4-sheet {
+            width: 210mm;
+            min-height: 297mm;
+            background: #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            padding: 8mm 6mm;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 3mm;
+            page-break-after: always;
+            break-after: page;
+        }
+
+        .a4-label {
+            border: 1px dashed #cbd5e1;
+            padding: 3mm;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 8.5pt;
+            background: #ffffff;
+        }
+
+        @@media print {
+            body {
+                background: transparent;
+            }
+            .no-print-bar {
+                display: none !important;
+            }
+            .labels-container {
+                padding: 0 !important;
+                gap: 0 !important;
+                display: block !important;
+            }
+            .thermal-label {
+                border: none !important;
+                margin: 0 !important;
+                page-break-inside: avoid;
+                page-break-after: always;
+                break-after: page;
+            }
+            .a4-sheet {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 5mm !important;
+                page-break-after: always;
+                break-after: page;
+            }
+            .a4-label {
+                border: 0.5px dotted #94a3b8 !important;
+            }
+            @@page {
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Controls Header (Hidden in Print) -->
+    <div class="no-print-bar">
+        <div class="d-flex align-items-center gap-3">
+            <a href="/PMS/ProductionEntities?orderId=@Model.Order?.Id" class="btn btn-sm btn-outline-secondary">
+                ← Back to Order
+            </a>
+            <div>
+                <h5 class="mb-0 fw-bold">Garment Barcode Tags — Lot @Model.Order?.LotNo</h5>
+                <small class="text-muted">Total <strong>@Model.Tags.Count</strong> printable tags for Design @(Model.Order?.Design?.DesignNumber ?? "")</small>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <form method="get" class="d-flex gap-2">
+                <input type="hidden" name="orderId" value="@Model.Order?.Id" />
+                <select name="entityType" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Components</option>
+                    <option value="Chaniya" selected="@(Model.FilterEntityType == "Chaniya")">Chaniya Only</option>
+                    <option value="Choli" selected="@(Model.FilterEntityType == "Choli")">Choli Only</option>
+                    <option value="Duppata" selected="@(Model.FilterEntityType == "Duppata")">Dupatta Only</option>
+                </select>
+
+                <select name="format" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="ThermalRoll" selected="@(Model.Format == "ThermalRoll")">Thermal Roll (50x28mm)</option>
+                    <option value="A4Sheet" selected="@(Model.Format == "A4Sheet")">A4 Sticker Sheet (3x8 Grid)</option>
+                </select>
+            </form>
+
+            <button type="button" class="btn btn-sm btn-primary fw-bold px-3" onclick="window.print()">
+                🖨️ Print Labels
+            </button>
+        </div>
+    </div>
+
+    @if (Model.Format == "ThermalRoll")
+    {
+        <!-- Continuous Thermal Label Stream -->
+        <div class="labels-container">
+            @foreach (var tag in Model.Tags)
+            {
+                <div class="thermal-label">
+                    <div class="thermal-header">
+                        <div>
+                            <div class="thermal-brand">Aashana Fashion</div>
+                            <div class="thermal-design">@tag.DesignNumber</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold" style="font-size: 7.5pt;">Lot: @tag.LotNo</div>
+                            <div style="font-size: 7pt; color: #475569;">#@tag.SlNo</div>
+                        </div>
+                    </div>
+
+                    <div class="thermal-meta">
+                        <span class="thermal-component">@tag.EntityType</span>
+                        <span><strong>@tag.Colour</strong> / <strong>@tag.Size</strong></span>
+                    </div>
+
+                    <div class="thermal-codes">
+                        <div class="thermal-barcode">
+                            @Html.Raw(tag.BarcodeSvg)
+                        </div>
+                        <div class="thermal-qr">
+                            @Html.Raw(tag.QrCodeSvg)
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <!-- A4 Sheets (24 per page / 3 columns x 8 rows) -->
+        int pageSize = 24;
+        int pageCount = (int)Math.Ceiling((double)Model.Tags.Count / pageSize);
+
+        for (int p = 0; p < pageCount; p++)
+        {
+            var pageTags = Model.Tags.Skip(p * pageSize).Take(pageSize).ToList();
+            <div class="p-3">
+                <div class="a4-sheet">
+                    @foreach (var tag in pageTags)
+                    {
+                        <div class="a4-label">
+                            <div class="d-flex justify-content-between align-items-start border-bottom pb-1 mb-1">
+                                <div>
+                                    <div style="font-size: 7pt; font-weight: 900; letter-spacing: 0.5px;">AASHANA FASHION</div>
+                                    <div style="font-size: 9.5pt; font-weight: 800;">@tag.DesignNumber</div>
+                                </div>
+                                <div class="text-end">
+                                    <div style="font-size: 8pt; font-weight: 700;">Lot: @tag.LotNo</div>
+                                    <div style="font-size: 7.5pt; color: #64748b;">#@tag.SlNo</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-1" style="font-size: 8pt;">
+                                <strong class="text-uppercase">@tag.EntityType</strong>
+                                <span>@tag.Colour / <strong>@tag.Size</strong></span>
+                            </div>
+
+                            <div class="d-flex align-items-center justify-content-between gap-1">
+                                <div style="flex-grow: 1; max-width: 44mm;">
+                                    @Html.Raw(tag.BarcodeSvg)
+                                </div>
+                                <div style="width: 14mm; height: 14mm; flex-shrink: 0;">
+                                    @Html.Raw(tag.QrCodeSvg)
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+
+</body>
+</html>

@@ -11,6 +11,9 @@ public class PurchaseOrderDetail
 
     public int SrNo { get; set; }
 
+    public int? RawMaterialId { get; set; }
+    public RawMaterial? RawMaterial { get; set; }
+
     [Required]
     public string ProductName { get; set; } = string.Empty;
 

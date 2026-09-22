@@ -1,0 +1,329 @@
+@model AashanaFashion.Models.TaxInvoice
+@{
+    ViewData["Title"] = $"Print Invoice — {Model.InvoiceNumber}";
+    Layout = null;
+
+    // Amount to words converter helper
+    string NumberToWords(decimal number)
+    {
+        long n = (long)Math.Floor(number);
+        if (n == 0) return "Zero Rupees Only";
+        
+        string[] units = { "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
+        string[] tens = { "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
+
+        string ConvertPart(long val)
+        {
+            if (val == 0) return "";
+            if (val < 20) return units[val] + " ";
+            if (val < 100) return tens[val / 10] + " " + units[val % 10] + " ";
+            return units[val / 100] + " Hundred " + ConvertPart(val % 100);
+        }
+
+        string result = "";
+        if (n >= 10000000) { result += ConvertPart(n / 10000000) + "Crore "; n %= 10000000; }
+        if (n >= 100000) { result += ConvertPart(n / 100000) + "Lakh "; n %= 100000; }
+        if (n >= 1000) { result += ConvertPart(n / 1000) + "Thousand "; n %= 1000; }
+        if (n > 0) { result += ConvertPart(n); }
+
+        return "Rupees " + result.Trim() + " Only";
+    }
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #0f172a;
+            margin: 0;
+            padding: 0;
+            font-size: 9.5pt;
+        }
+
+        .no-print-bar {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 12px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .invoice-page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 10mm 12mm;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .tax-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8.5pt;
+        }
+
+        .tax-table th, .tax-table td {
+            border: 1px solid #000000;
+            padding: 4px 6px;
+        }
+
+        .tax-table th {
+            background-color: #f1f5f9;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        @@media print {
+            body { background: transparent; }
+            .no-print-bar { display: none !important; }
+            .invoice-page {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 5mm !important;
+                page-break-inside: avoid;
+            }
+            @@page { margin: 5mm; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print-bar">
+        <div class="d-flex align-items-center gap-3">
+            <a href="/Invoice/Details/@Model.Id" class="btn btn-sm btn-outline-secondary">← Back to Invoice</a>
+            <h5 class="mb-0 fw-bold">GST Tax Invoice — @Model.InvoiceNumber</h5>
+        </div>
+        <button type="button" class="btn btn-primary fw-bold px-4" onclick="window.print()">
+            🖨️ Print Tax Invoice
+        </button>
+    </div>
+
+    <div class="invoice-page">
+        <div>
+            <!-- Top Heading & Copy Type -->
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                <div class="text-muted small">
+                    <strong>GSTIN:</strong> 24AABCA1234F1Z8 &nbsp;|&nbsp; <strong>State:</strong> Gujarat (24)
+                </div>
+                <div class="text-uppercase fw-bold small border px-2 py-1 bg-light">
+                    Tax Invoice / Original for Recipient
+                </div>
+            </div>
+
+            <!-- Company Info Header -->
+            <div class="text-center pb-2 mb-2 border-bottom">
+                <h2 class="fw-bold mb-0 text-uppercase tracking-wide" style="font-size: 18pt;">AASHANA FASHION</h2>
+                <div class="small fw-semibold text-muted">Manufacturer & Wholesaler of Exclusive Designer Ethnic Garments</div>
+                <div class="small">101-104, Surat Textile Market, Ring Road, Surat, Gujarat - 395002</div>
+                <div class="small text-muted">Email: sales@aashanafashion.com | Phone: +91 98765 43210</div>
+            </div>
+
+            <!-- Invoice & Customer Meta Grid -->
+            <div class="row g-0 border mb-2">
+                <div class="col-6 p-2 border-end">
+                    <strong class="d-block mb-1 text-uppercase small text-muted">Billed To (Customer):</strong>
+                    <div class="fw-bold fs-6">@Model.CustomerName</div>
+                    <div class="small">@(Model.BillingAddress ?? "Address not provided")</div>
+                    <div class="small mt-1"><strong>GSTIN:</strong> @(Model.CustomerGstin ?? "Unregistered")</div>
+                    @if (!string.IsNullOrEmpty(Model.CustomerPan))
+                    {
+                        <div class="small"><strong>PAN:</strong> @Model.CustomerPan</div>
+                    }
+                    <div class="small"><strong>Place of Supply:</strong> @Model.PlaceOfSupply</div>
+                </div>
+                <div class="col-6 p-2">
+                    <table class="table table-sm table-borderless mb-0 small">
+                        <tr>
+                            <td class="text-muted" style="width: 45%;">Invoice No:</td>
+                            <td class="fw-bold fs-6 text-dark">@Model.InvoiceNumber</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Invoice Date:</td>
+                            <td class="fw-semibold">@Model.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Due Date:</td>
+                            <td class="fw-semibold">@Model.DueDate.ToString("dd/MM/yyyy")</td>
+                        </tr>
+                        @if (Model.SalesOrder != null)
+                        {
+                            <tr>
+                                <td class="text-muted">Sales Order Ref:</td>
+                                <td class="fw-semibold">@Model.SalesOrder.SoNumber</td>
+                            </tr>
+                        }
+                        <tr>
+                            <td class="text-muted">Reverse Charge:</td>
+                            <td>No</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tax Invoice Items Table -->
+            <table class="tax-table mb-2">
+                <thead>
+                    <tr>
+                        <th style="width: 4%;">#</th>
+                        <th style="width: 34%;">Description of Goods</th>
+                        <th style="width: 8%;">HSN</th>
+                        <th style="width: 6%;">Qty</th>
+                        <th style="width: 10%;">Rate (₹)</th>
+                        <th style="width: 10%;">Taxable (₹)</th>
+                        @if (Model.IsInterState)
+                        {
+                            <th style="width: 14%;">IGST (@Model.IgstRate%)</th>
+                        }
+                        else
+                        {
+                            <th style="width: 8%;">CGST (2.5%)</th>
+                            <th style="width: 8%;">SGST (2.5%)</th>
+                        }
+                        <th style="width: 14%;">Total (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int sl = 1; }
+                    @foreach (var item in Model.Items)
+                    {
+                        decimal lineTax = Math.Round(item.TaxableValue * (item.GstRate / 100m), 2);
+                        <tr>
+                            <td class="text-center">@sl</td>
+                            <td>
+                                <strong>@item.Description</strong>
+                                @if (!string.IsNullOrEmpty(item.Colour) || !string.IsNullOrEmpty(item.Size))
+                                {
+                                    <span class="text-muted small">(@item.Colour - @item.Size)</span>
+                                }
+                            </td>
+                            <td class="text-center">@item.HsnCode</td>
+                            <td class="text-center fw-semibold">@item.Quantity</td>
+                            <td class="text-end">@item.UnitPrice.ToString("N2")</td>
+                            <td class="text-end">@item.TaxableValue.ToString("N2")</td>
+                            @if (Model.IsInterState)
+                            {
+                                <td class="text-end">@lineTax.ToString("N2")</td>
+                            }
+                            else
+                            {
+                                <td class="text-end">@(Math.Round(lineTax / 2m, 2).ToString("N2"))</td>
+                                <td class="text-end">@(Math.Round(lineTax / 2m, 2).ToString("N2"))</td>
+                            }
+                            <td class="text-end fw-bold">@item.TotalAmount.ToString("N2")</td>
+                        </tr>
+                        sl++;
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="text-end fw-bold">Total:</td>
+                        <td class="text-center fw-bold">@Model.Items.Sum(i => i.Quantity)</td>
+                        <td></td>
+                        <td class="text-end fw-bold">₹@Model.TaxableAmount.ToString("N2")</td>
+                        @if (Model.IsInterState)
+                        {
+                            <td class="text-end fw-bold">₹@Model.IgstAmount.ToString("N2")</td>
+                        }
+                        else
+                        {
+                            <td class="text-end fw-bold">₹@Model.CgstAmount.ToString("N2")</td>
+                            <td class="text-end fw-bold">₹@Model.SgstAmount.ToString("N2")</td>
+                        }
+                        <td class="text-end fw-bold fs-6">₹@Model.GrandTotal.ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <!-- Amount in words -->
+            <div class="p-2 border bg-light mb-2">
+                <span class="small text-muted text-uppercase fw-semibold">Amount Chargeable (in words):</span>
+                <div class="fw-bold fs-6">@NumberToWords(Model.GrandTotal)</div>
+            </div>
+
+            <!-- Tax Summary Box -->
+            <div class="row g-0 border mb-2">
+                <div class="col-7 p-2 border-end small">
+                    <strong class="d-block mb-1 text-uppercase text-muted">Bank Details for RTGS / NEFT / IMPS:</strong>
+                    <div><strong>Bank:</strong> @Model.BankName</div>
+                    <div><strong>Account No:</strong> @Model.BankAccountNumber</div>
+                    <div><strong>IFSC Code:</strong> @Model.BankIfsc</div>
+                    <div><strong>Branch:</strong> @Model.BankBranch</div>
+                </div>
+                <div class="col-5 p-2 small">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted">Taxable Value:</td>
+                            <td class="text-end fw-semibold">₹@Model.TaxableAmount.ToString("N2")</td>
+                        </tr>
+                        @if (Model.IsInterState)
+                        {
+                            <tr>
+                                <td class="text-muted">Integrated Tax (IGST):</td>
+                                <td class="text-end fw-semibold">₹@Model.IgstAmount.ToString("N2")</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <td class="text-muted">Central Tax (CGST):</td>
+                                <td class="text-end fw-semibold">₹@Model.CgstAmount.ToString("N2")</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">State Tax (SGST):</td>
+                                <td class="text-end fw-semibold">₹@Model.SgstAmount.ToString("N2")</td>
+                            </tr>
+                        }
+                        @if (Model.RoundOff != 0)
+                        {
+                            <tr>
+                                <td class="text-muted">Round Off:</td>
+                                <td class="text-end">₹@Model.RoundOff.ToString("N2")</td>
+                            </tr>
+                        }
+                        <tr class="border-top">
+                            <td class="fw-bold fs-6">Invoice Total:</td>
+                            <td class="text-end fw-bold fs-6 text-dark">₹@Model.GrandTotal.ToString("N2")</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer / Signatures -->
+        <div class="border-top pt-3 mt-3">
+            <div class="row align-items-end">
+                <div class="col-7 small">
+                    <strong>Declaration:</strong>
+                    <p class="mb-0 text-muted" style="font-size: 7.5pt;">
+                        We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
+                    </p>
+                    <div class="mt-2 text-muted" style="font-size: 7.5pt;">
+                        @Model.TermsAndConditions
+                    </div>
+                </div>
+                <div class="col-5 text-end">
+                    <div class="small fw-bold text-uppercase mb-4">For AASHANA FASHION</div>
+                    <div class="border-top d-inline-block pt-1 px-3 text-muted small" style="min-width: 160px;">
+                        Authorized Signatory
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -117,6 +117,16 @@
 
             <hr style="margin:1rem 0;border-color:#e2e8f0;" />
 
+            <datalist id="rawMaterialsList">
+                @if (ViewBag.RawMaterials != null)
+                {
+                    foreach (var rm in (List<RawMaterial>)ViewBag.RawMaterials)
+                    {
+                        <option value="@rm.Name" data-id="@rm.Id" data-unit="@rm.Unit" data-rate="@rm.Rate">Stock: @rm.CurrentStock @rm.Unit | Rate: ₹@rm.Rate</option>
+                    }
+                }
+            </datalist>
+
             <div style="overflow-x:auto;">
                 <table class="af-table" id="itemsTable" style="min-width:1100px;">
                     <thead>
@@ -143,7 +153,8 @@
                                 <tr class="item-row">
                                     <td class="text-center sr-no">@d.SrNo</td>
                                     <td>
-                                        <input name="Details[@i].ProductName" class="af-input" value="@d.ProductName" required />
+                                        <input name="Details[@i].ProductName" class="af-input item-product" list="rawMaterialsList" value="@d.ProductName" required autocomplete="off" />
+                                        <input type="hidden" name="Details[@i].RawMaterialId" class="item-rawmaterial-id" value="@d.RawMaterialId" />
                                         <input type="hidden" name="Details[@i].Id" value="@d.Id" />
                                         <input type="hidden" name="Details[@i].SrNo" value="@d.SrNo" />
                                     </td>

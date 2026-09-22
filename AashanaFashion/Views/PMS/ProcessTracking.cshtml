@@ -203,6 +203,16 @@
                                     <button type="submit" class="btn-af btn-af-success btn-af-sm">✓ Return</button>
                                 </form>
                             }
+                            @if (tracking.IsComplete && (role == "Admin" || role == "Manager"))
+                            {
+                                <a asp-controller="QualityControl" asp-action="Create" 
+                                   asp-route-orderId="@tracking.ProductionEntity?.ProductionOrderId"
+                                   asp-route-entityId="@tracking.ProductionEntityId"
+                                   asp-route-vendorId="@tracking.VendorId"
+                                   class="btn-af btn-af-secondary btn-af-sm" title="Log Quality Check">
+                                    🔍 QC
+                                </a>
+                            }
                         </td>
                     </tr>
                 }

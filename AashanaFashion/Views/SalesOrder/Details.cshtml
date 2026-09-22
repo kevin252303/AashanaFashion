@@ -1,0 +1,242 @@
+@model AashanaFashion.Models.SalesOrder
+@{
+    ViewData["Title"] = $"Sales Order — {Model.SoNumber}";
+    var totalOrdered = Model.Details.Sum(d => d.Quantity);
+    var totalDispatched = Model.Details.Sum(d => d.DispatchedQuantity);
+    var totalPending = Math.Max(0, totalOrdered - totalDispatched);
+    var fulfillmentPercent = totalOrdered > 0 ? (int)Math.Round((double)totalDispatched / totalOrdered * 100) : 0;
+    var canDispatch = totalPending > 0 && Model.Status != SalesOrderStatus.Cancelled;
+}
+
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <div>
+        <h1 class="page-title">Sales Order — @Model.SoNumber</h1>
+        <p class="page-sub">Customer: <strong>@(Model.Customer?.CustomerName ?? "—")</strong> | Order Date: @Model.OrderDate.ToString("dd-MMM-yyyy")</p>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back to Orders</a>
+        @if (canDispatch)
+        {
+            <a asp-controller="Invoice" asp-action="Create" asp-route-salesOrderId="@Model.Id" class="btn-af btn-af-success btn-af-sm">
+                🧾 Generate Tax Invoice
+            </a>
+            <a asp-action="CreateChallan" asp-route-id="@Model.Id" class="btn-af btn-af-primary btn-af-sm">
+                🚚 Generate Delivery Challan
+            </a>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn-af btn-af-ghost btn-af-sm">Edit Order</a>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="af-alert af-alert-danger mb-3"><span class="alert-body">@TempData["Error"]</span><button class="alert-close">&times;</button></div>
+}
+
+<!-- Fulfillment Progress Bar -->
+<div class="data-card p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <span style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Dispatch Fulfillment Progress</span>
+        <span style="font-size: 0.85rem; font-weight: 700; color: @(fulfillmentPercent == 100 ? "#16a34a" : "#2563eb");">
+            @totalDispatched of @totalOrdered pcs dispatched (@fulfillmentPercent%)
+        </span>
+    </div>
+    <div style="background:#e2e8f0;border-radius:10px;height:12px;overflow:hidden;">
+        <div style="background:@(fulfillmentPercent == 100 ? "#16a34a" : "#3b82f6");width:@fulfillmentPercent%;height:100%;transition:width 0.4s ease;"></div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <!-- Customer & Shipping -->
+    <div class="col-lg-6">
+        <div class="data-card p-4 h-100">
+            <h5 style="font-size: 0.95rem; font-weight: 700; color: #0f172a; margin-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
+                Customer & Consignee Info
+            </h5>
+            <div class="row g-2" style="font-size: 0.85rem;">
+                <div class="col-sm-4 text-muted">Customer Name:</div>
+                <div class="col-sm-8 font-weight-bold"><strong>@Model.Customer?.CustomerName</strong></div>
+
+                <div class="col-sm-4 text-muted">Contact Person:</div>
+                <div class="col-sm-8">@(Model.Customer?.ContactPerson ?? "—")</div>
+
+                <div class="col-sm-4 text-muted">Phone:</div>
+                <div class="col-sm-8">@(Model.Customer?.Phone ?? "—")</div>
+
+                <div class="col-sm-4 text-muted">GSTIN:</div>
+                <div class="col-sm-8"><code>@(Model.Customer?.GstNumber ?? "—")</code></div>
+
+                <div class="col-sm-4 text-muted">Shipping Address:</div>
+                <div class="col-sm-8">@(string.IsNullOrEmpty(Model.ShippingAddress) ? Model.Customer?.Address ?? "—" : Model.ShippingAddress)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Metadata & Logistics -->
+    <div class="col-lg-6">
+        <div class="data-card p-4 h-100">
+            <h5 style="font-size: 0.95rem; font-weight: 700; color: #0f172a; margin-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
+                Order Details & Logistics
+            </h5>
+            <div class="row g-2" style="font-size: 0.85rem;">
+                <div class="col-sm-4 text-muted">SO Number:</div>
+                <div class="col-sm-8"><strong>@Model.SoNumber</strong></div>
+
+                <div class="col-sm-4 text-muted">Status:</div>
+                <div class="col-sm-8">
+                    <span class="af-badge @(Model.Status switch {
+                        SalesOrderStatus.Confirmed => "b-blue",
+                        SalesOrderStatus.InProduction => "b-warn",
+                        SalesOrderStatus.PartiallyDispatched => "b-purple",
+                        SalesOrderStatus.Dispatched => "b-green",
+                        SalesOrderStatus.Cancelled => "b-gray",
+                        _ => "b-gray"
+                    })">@Model.Status</span>
+                </div>
+
+                <div class="col-sm-4 text-muted">Customer PO Ref:</div>
+                <div class="col-sm-8">@(Model.CustomerPoReference ?? "—")</div>
+
+                <div class="col-sm-4 text-muted">Expected Delivery:</div>
+                <div class="col-sm-8">@(Model.ExpectedDeliveryDate?.ToString("dd-MMM-yyyy") ?? "—")</div>
+
+                <div class="col-sm-4 text-muted">Transporter:</div>
+                <div class="col-sm-8">@(Model.TransporterName ?? "—")</div>
+
+                <div class="col-sm-4 text-muted">Payment Terms:</div>
+                <div class="col-sm-8">@(Model.PaymentTerms ?? "—")</div>
+
+                @if (!string.IsNullOrEmpty(Model.Notes))
+                {
+                    <div class="col-sm-4 text-muted">Notes:</div>
+                    <div class="col-sm-8" style="color: #64748b;">@Model.Notes</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Line Items -->
+<div class="data-card mb-4">
+    <div class="data-card-header">
+        <span class="data-card-title">Order Items (@Model.Details.Count lines)</span>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="af-table" style="font-size: 0.85rem;">
+            <thead>
+                <tr>
+                    <th style="width: 40px;" class="text-center">Sr</th>
+                    <th>Design Number</th>
+                    <th>Colour</th>
+                    <th>Size</th>
+                    <th class="text-end">Ordered</th>
+                    <th class="text-end">Dispatched</th>
+                    <th class="text-end">Pending</th>
+                    <th class="text-end">Rate</th>
+                    <th class="text-end">Disc %</th>
+                    <th class="text-end">GST %</th>
+                    <th class="text-end">Net Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var d in Model.Details.OrderBy(x => x.SrNo))
+                {
+                    var isLineFulfilled = d.DispatchedQuantity >= d.Quantity;
+                    <tr>
+                        <td class="text-center text-muted">@d.SrNo</td>
+                        <td>
+                            <strong>@d.DesignNumber</strong>
+                            @if (d.DesignId.HasValue)
+                            {
+                                <a asp-controller="Design" asp-action="Bom" asp-route-id="@d.DesignId.Value" class="af-badge b-blue" style="text-decoration:none;font-size:0.7rem;margin-left:4px;">BOM</a>
+                            }
+                        </td>
+                        <td>@(string.IsNullOrEmpty(d.Colour) ? "—" : d.Colour)</td>
+                        <td>@(string.IsNullOrEmpty(d.Size) ? "—" : d.Size)</td>
+                        <td class="text-end" style="font-weight: 600;">@d.Quantity</td>
+                        <td class="text-end" style="font-weight: 600; color: #16a34a;">@d.DispatchedQuantity</td>
+                        <td class="text-end" style="font-weight: 700; color: @(d.PendingQuantity > 0 ? "#dc2626" : "#64748b");">
+                            @d.PendingQuantity
+                        </td>
+                        <td class="text-end">₹@d.UnitPrice.ToString("N2")</td>
+                        <td class="text-end">@d.DiscountPercentage.ToString("N0")%</td>
+                        <td class="text-end">@d.GstPercentage.ToString("N0")%</td>
+                        <td class="text-end" style="font-weight: 700;">₹@d.NetAmount.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr style="background: #f8fafc; font-weight: 700;">
+                    <td colspan="4" class="text-end">Total Items / Value:</td>
+                    <td class="text-end">@totalOrdered</td>
+                    <td class="text-end" style="color: #16a34a;">@totalDispatched</td>
+                    <td class="text-end" style="color: @(totalPending > 0 ? "#dc2626" : "#16a34a");">@totalPending</td>
+                    <td colspan="3"></td>
+                    <td class="text-end" style="font-size: 1rem; color: #0f172a;">₹@Model.TotalAmount.ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Generated Delivery Challans -->
+<div class="data-card">
+    <div class="data-card-header d-flex justify-content-between align-items-center">
+        <span class="data-card-title">Generated Delivery Challans & Shipments (@Model.Challans.Count)</span>
+        @if (canDispatch)
+        {
+            <a asp-action="CreateChallan" asp-route-id="@Model.Id" class="btn-af btn-af-primary btn-af-sm">
+                + Create New Delivery Challan
+            </a>
+        }
+    </div>
+    
+    @if (!Model.Challans.Any())
+    {
+        <div class="empty-state p-4 text-center">
+            <p style="color: #64748b; margin-bottom: 0;">No delivery challans generated yet for this order.</p>
+        </div>
+    }
+    else
+    {
+        <div style="overflow-x:auto;">
+            <table class="af-table" style="font-size: 0.85rem;">
+                <thead>
+                    <tr>
+                        <th>Challan #</th>
+                        <th>Dispatch Date</th>
+                        <th>Transporter</th>
+                        <th>Vehicle #</th>
+                        <th>LR / Tracking #</th>
+                        <th class="text-center">Boxes</th>
+                        <th class="text-end">Pcs Dispatched</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ch in Model.Challans.OrderByDescending(c => c.ChallanDate))
+                    {
+                        <tr>
+                            <td><strong>@ch.ChallanNumber</strong></td>
+                            <td style="color: #64748b;">@ch.ChallanDate.ToString("dd-MMM-yyyy HH:mm")</td>
+                            <td>@(ch.TransporterName ?? "—")</td>
+                            <td>@(ch.VehicleNumber ?? "—")</td>
+                            <td>@(ch.LrNumber ?? "—")</td>
+                            <td class="text-center">@ch.NumberOfBoxes</td>
+                            <td class="text-end" style="font-weight: 700; color: #16a34a;">@ch.TotalQuantity pcs</td>
+                            <td class="text-end">
+                                <a asp-action="PrintChallan" asp-route-id="@ch.Id" class="btn-af btn-af-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;" target="_blank">
+                                    🖨 Print Challan
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

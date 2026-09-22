@@ -13,15 +13,26 @@
         <h1 class="page-title">Production Entities</h1>
         <p class="page-sub">Track individual items through production</p>
     </div>
-    @if (Model.Any())
-    {
-        <a asp-action="ExportEntities" 
-           asp-route-orderId="@ViewBag.SelectedOrderId"
-           asp-route-entityType="@ViewBag.SelectedEntityType"
-           asp-route-status="@ViewBag.SelectedStatus"
-           asp-route-colour="@ViewBag.SelectedColour"
-           class="btn-af btn-af-primary">📥 Download CSV</a>
-    }
+    <div class="d-flex gap-2 align-items-center">
+        @if (ViewBag.SelectedOrderId != null && (int)ViewBag.SelectedOrderId > 0)
+        {
+            <a asp-controller="Barcode" asp-action="PrintTags" asp-route-orderId="@ViewBag.SelectedOrderId" target="_blank" class="btn btn-sm btn-outline-dark">
+                🏷️ Print Barcode Tags
+            </a>
+            <a asp-controller="Barcode" asp-action="PrintLotTag" asp-route-orderId="@ViewBag.SelectedOrderId" target="_blank" class="btn btn-sm btn-outline-dark">
+                Master Lot Tag
+            </a>
+        }
+        @if (Model.Any())
+        {
+            <a asp-action="ExportEntities" 
+               asp-route-orderId="@ViewBag.SelectedOrderId"
+               asp-route-entityType="@ViewBag.SelectedEntityType"
+               asp-route-status="@ViewBag.SelectedStatus"
+               asp-route-colour="@ViewBag.SelectedColour"
+               class="btn-af btn-af-primary">📥 Download CSV</a>
+        }
+    </div>
 </div>
 
 <!-- Filters -->
@@ -123,6 +134,7 @@
             <thead>
                 <tr>
                     <th>Sl No</th>
+                    <th>Barcode</th>
                     <th>Lot No</th>
                     <th>Design</th>
                     <th>Type</th>
@@ -138,6 +150,16 @@
                 {
                     <tr>
                         <td><strong>@entity.SlNo</strong></td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(entity.Barcode))
+                            {
+                                <code class="small text-dark fw-bold">@entity.Barcode</code>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </td>
                         <td>@entity.ProductionOrder?.LotNo</td>
                         <td>@entity.ProductionOrder?.Design?.DesignNumber</td>
                         <td>@entity.EntityType</td>

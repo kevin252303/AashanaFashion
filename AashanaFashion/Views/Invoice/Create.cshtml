@@ -1,0 +1,404 @@
+@model AashanaFashion.Models.CreateInvoiceViewModel
+@{
+    ViewData["Title"] = "Create GST Tax Invoice";
+}
+
+<div class="mb-4">
+    <a asp-action="Index" class="text-decoration-none text-muted small">← Back to Invoices</a>
+    <h2 class="fw-bold mt-1">Create GST Tax Invoice</h2>
+    <p class="text-muted">Generate an official GST-compliant tax invoice for customer billing.</p>
+</div>
+
+<form asp-action="Create" method="post" id="invoiceForm">
+    @Html.AntiForgeryToken()
+
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+    <div class="row g-4">
+        <!-- Main Form Column -->
+        <div class="col-lg-8">
+            <!-- Header & Customer Information -->
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold">📋 Invoice & Customer Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="InvoiceNumber" class="form-label fw-semibold"></label>
+                            <input asp-for="InvoiceNumber" class="form-control" />
+                            <span asp-validation-for="InvoiceNumber" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="InvoiceDate" class="form-label fw-semibold"></label>
+                            <input asp-for="InvoiceDate" class="form-control" />
+                            <span asp-validation-for="InvoiceDate" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="DueDate" class="form-label fw-semibold"></label>
+                            <input asp-for="DueDate" class="form-control" />
+                            <span asp-validation-for="DueDate" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="SalesOrderId" class="form-label fw-semibold">Link Sales Order (Optional)</label>
+                            <select asp-for="SalesOrderId" class="form-select" id="soSelect">
+                                <option value="">-- Manual Invoice (No Sales Order) --</option>
+                                @foreach (var so in (List<AashanaFashion.Models.SalesOrder>)ViewBag.SalesOrders)
+                                {
+                                    <option value="@so.Id" selected="@(Model.SalesOrderId == so.Id)">
+                                        @so.SoNumber — @(so.Customer?.CustomerName ?? "") (₹@so.TotalAmount.ToString("N0"))
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="CustomerId" class="form-label fw-semibold">Customer</label>
+                            <select asp-for="CustomerId" class="form-select" id="customerSelect" required>
+                                <option value="">-- Select Customer --</option>
+                                @foreach (var c in (List<AashanaFashion.Models.Customer>)ViewBag.Customers)
+                                {
+                                    <option value="@c.Id" selected="@(Model.CustomerId == c.Id)">@c.CustomerName</option>
+                                }
+                            </select>
+                            <span asp-validation-for="CustomerId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="CustomerName" class="form-label fw-semibold"></label>
+                            <input asp-for="CustomerName" class="form-control" id="custName" />
+                            <span asp-validation-for="CustomerName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="CustomerGstin" class="form-label fw-semibold"></label>
+                            <input asp-for="CustomerGstin" class="form-control" id="custGst" placeholder="e.g. 24AAAAA0000A1Z5" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="CustomerPan" class="form-label fw-semibold"></label>
+                            <input asp-for="CustomerPan" class="form-control" id="custPan" placeholder="PAN Number" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="BillingAddress" class="form-label fw-semibold"></label>
+                            <textarea asp-for="BillingAddress" class="form-control" rows="2" id="billAddr"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ShippingAddress" class="form-label fw-semibold"></label>
+                            <textarea asp-for="ShippingAddress" class="form-control" rows="2" id="shipAddr"></textarea>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="PlaceOfSupply" class="form-label fw-semibold"></label>
+                            <input asp-for="PlaceOfSupply" class="form-control" id="placeOfSupply" />
+                        </div>
+                        <div class="col-md-6 d-flex align-items-center mt-4">
+                            <div class="form-check form-switch fs-5">
+                                <input asp-for="IsInterState" class="form-check-input" type="checkbox" id="interStateCheck">
+                                <label class="form-check-label fs-6 fw-bold" for="interStateCheck">
+                                    Inter-State Supply (Apply IGST instead of CGST+SGST)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Line Items Table -->
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-0 fw-bold">📦 Garment Line Items</h5>
+                        <small class="text-muted">HSN Code 6204 for Women's Ethnic Garments</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtn">
+                        ➕ Add Item Row
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle mb-0" id="itemsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 28%;">Description</th>
+                                    <th style="width: 12%;">HSN</th>
+                                    <th style="width: 12%;">Colour / Size</th>
+                                    <th style="width: 10%;">Qty</th>
+                                    <th style="width: 14%;">Rate (₹)</th>
+                                    <th style="width: 10%;">Disc (₹)</th>
+                                    <th style="width: 14%;" class="text-end">Amount (₹)</th>
+                                    <th style="width: 5%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsBody">
+                                @if (Model.Items != null && Model.Items.Any())
+                                {
+                                    for (int i = 0; i < Model.Items.Count; i++)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <input type="text" name="Items[@i].Description" class="form-control form-control-sm" value="@Model.Items[i].Description" required />
+                                            </td>
+                                            <td>
+                                                <input type="text" name="Items[@i].HsnCode" class="form-control form-control-sm" value="@Model.Items[i].HsnCode" />
+                                            </td>
+                                            <td>
+                                                <div class="d-flex gap-1">
+                                                    <input type="text" name="Items[@i].Colour" class="form-control form-control-sm" value="@Model.Items[i].Colour" placeholder="Color" />
+                                                    <input type="text" name="Items[@i].Size" class="form-control form-control-sm" value="@Model.Items[i].Size" placeholder="Size" />
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="number" name="Items[@i].Quantity" class="form-control form-control-sm item-qty text-center" value="@Model.Items[i].Quantity" min="1" />
+                                            </td>
+                                            <td>
+                                                <input type="number" step="0.01" name="Items[@i].UnitPrice" class="form-control form-control-sm item-rate text-end" value="@Model.Items[i].UnitPrice" />
+                                            </td>
+                                            <td>
+                                                <input type="number" step="0.01" name="Items[@i].DiscountAmount" class="form-control form-control-sm item-disc text-end" value="@Model.Items[i].DiscountAmount" />
+                                            </td>
+                                            <td class="text-end fw-bold item-total">
+                                                ₹0.00
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm text-danger remove-item-btn">✕</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bank & Terms -->
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold">🏦 Bank Account & Payment Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="BankName" class="form-label fw-semibold"></label>
+                            <input asp-for="BankName" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BankAccountNumber" class="form-label fw-semibold"></label>
+                            <input asp-for="BankAccountNumber" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BankIfsc" class="form-label fw-semibold"></label>
+                            <input asp-for="BankIfsc" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BankBranch" class="form-label fw-semibold"></label>
+                            <input asp-for="BankBranch" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="TermsAndConditions" class="form-label fw-semibold"></label>
+                            <textarea asp-for="TermsAndConditions" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Tax Calculation & Summary -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-3 mb-4 sticky-top" style="top: 20px;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold">💰 Invoice Bill Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Sub-Total:</span>
+                        <strong id="sumSubTotal">₹0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Discount:</span>
+                        <strong class="text-danger" id="sumDiscount">- ₹0.00</strong>
+                    </div>
+                    <hr />
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="fw-semibold">Taxable Amount:</span>
+                        <strong class="fs-5" id="sumTaxable">₹0.00</strong>
+                    </div>
+
+                    <!-- Tax Breakdown -->
+                    <div id="intraStateTaxSection">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">CGST (@Model.CgstRate%):</span>
+                            <strong id="sumCgst">₹0.00</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">SGST (@Model.SgstRate%):</span>
+                            <strong id="sumSgst">₹0.00</strong>
+                        </div>
+                    </div>
+                    <div id="interStateTaxSection" class="d-none">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">IGST (@Model.IgstRate%):</span>
+                            <strong id="sumIgst">₹0.00</strong>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-2 small text-muted">
+                        <span>Round Off:</span>
+                        <span id="sumRoundOff">₹0.00</span>
+                    </div>
+
+                    <hr />
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="fs-5 fw-bold">Grand Total:</span>
+                        <span class="fs-4 fw-bold text-primary" id="sumGrandTotal">₹0.00</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label fw-semibold">Internal Notes</label>
+                        <textarea asp-for="Notes" class="form-control" rows="2" placeholder="Payment terms, transport reference..."></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg fw-bold">💾 Generate Tax Invoice</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let itemIndex = @(Model.Items?.Count ?? 0);
+
+        function recalcInvoice() {
+            let subtotal = 0;
+            let discount = 0;
+
+            $('#itemsBody tr').each(function () {
+                const qty = parseFloat($(this).find('.item-qty').val()) || 0;
+                const rate = parseFloat($(this).find('.item-rate').val()) || 0;
+                const disc = parseFloat($(this).find('.item-disc').val()) || 0;
+
+                const lineGross = qty * rate;
+                const lineNet = Math.max(0, lineGross - disc);
+
+                subtotal += lineGross;
+                discount += disc;
+
+                $(this).find('.item-total').text('₹' + lineNet.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+            });
+
+            const taxable = Math.max(0, subtotal - discount);
+            const isInterState = $('#interStateCheck').is(':checked');
+
+            let cgst = 0;
+            let sgst = 0;
+            let igst = 0;
+
+            if (isInterState) {
+                $('#intraStateTaxSection').addClass('d-none');
+                $('#interStateTaxSection').removeClass('d-none');
+                igst = taxable * 0.05; // 5% IGST
+                $('#sumIgst').text('₹' + igst.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+            } else {
+                $('#intraStateTaxSection').removeClass('d-none');
+                $('#interStateTaxSection').addClass('d-none');
+                cgst = taxable * 0.025; // 2.5% CGST
+                sgst = taxable * 0.025; // 2.5% SGST
+                $('#sumCgst').text('₹' + cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+                $('#sumSgst').text('₹' + sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+            }
+
+            const rawTotal = taxable + cgst + sgst + igst;
+            const grandTotal = Math.round(rawTotal);
+            const roundOff = grandTotal - rawTotal;
+
+            $('#sumSubTotal').text('₹' + subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+            $('#sumDiscount').text('- ₹' + discount.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+            $('#sumTaxable').text('₹' + taxable.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+            $('#sumRoundOff').text('₹' + roundOff.toFixed(2));
+            $('#sumGrandTotal').text('₹' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+        }
+
+        $(document).on('input change', '.item-qty, .item-rate, .item-disc, #interStateCheck', recalcInvoice);
+
+        // Add Row
+        $('#addItemBtn').on('click', function () {
+            const row = `
+                <tr>
+                    <td>
+                        <input type="text" name="Items[${itemIndex}].Description" class="form-control form-control-sm" placeholder="Garment Description" required />
+                    </td>
+                    <td>
+                        <input type="text" name="Items[${itemIndex}].HsnCode" class="form-control form-control-sm" value="6204" />
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <input type="text" name="Items[${itemIndex}].Colour" class="form-control form-control-sm" placeholder="Color" />
+                            <input type="text" name="Items[${itemIndex}].Size" class="form-control form-control-sm" placeholder="Size" />
+                        </div>
+                    </td>
+                    <td>
+                        <input type="number" name="Items[${itemIndex}].Quantity" class="form-control form-control-sm item-qty text-center" value="1" min="1" />
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" name="Items[${itemIndex}].UnitPrice" class="form-control form-control-sm item-rate text-end" value="0" />
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" name="Items[${itemIndex}].DiscountAmount" class="form-control form-control-sm item-disc text-end" value="0" />
+                    </td>
+                    <td class="text-end fw-bold item-total">₹0.00</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm text-danger remove-item-btn">✕</button>
+                    </td>
+                </tr>
+            `;
+            $('#itemsBody').append(row);
+            itemIndex++;
+            recalcInvoice();
+        });
+
+        // Remove Row
+        $(document).on('click', '.remove-item-btn', function () {
+            $(this).closest('tr').remove();
+            recalcInvoice();
+        });
+
+        // Customer change AJAX autofill
+        $('#customerSelect').on('change', function () {
+            const custId = $(this).val();
+            if (!custId) return;
+
+            $.getJSON('/Invoice/GetCustomerDetails?customerId=' + custId, function (data) {
+                if (data) {
+                    $('#custName').val(data.customerName);
+                    $('#custGst').val(data.gstin);
+                    $('#custPan').val(data.pan);
+                    $('#billAddr').val(data.billingAddress);
+                    $('#shipAddr').val(data.shippingAddress);
+                    $('#placeOfSupply').val(data.placeOfSupply);
+                    $('#interStateCheck').prop('checked', data.isInterState).trigger('change');
+                }
+            });
+        });
+
+        // SO Select trigger redirect to prefill
+        $('#soSelect').on('change', function () {
+            const soId = $(this).val();
+            if (soId) {
+                window.location.href = '/Invoice/Create?salesOrderId=' + soId;
+            }
+        });
+
+        $(document).ready(function () {
+            if ($('#itemsBody tr').length === 0) {
+                $('#addItemBtn').trigger('click');
+            }
+            recalcInvoice();
+        });
+    </script>
+}

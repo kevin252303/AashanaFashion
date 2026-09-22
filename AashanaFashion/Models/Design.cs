@@ -66,6 +66,15 @@ public class Design
     public List<ProductPricelist> Pricelists { get; set; } = new();
     public List<ProductVendor> ProductVendors { get; set; } = new();
     public List<ProductPackaging> Packagings { get; set; } = new();
+    public List<DesignBomItem> BomItems { get; set; } = new();
+    public List<DesignOperationCost> OperationCosts { get; set; } = new();
+
+    // ——— Costing & Profit Margin Helpers ———
+    public decimal TotalMaterialCost => BomItems.Sum(b => b.EffectiveQuantity * (b.RawMaterial?.Rate ?? 0));
+    public decimal TotalLaborCost => OperationCosts.Sum(o => o.EstimatedCost);
+    public decimal TotalProductionCost => TotalMaterialCost + TotalLaborCost;
+    public decimal GrossProfitMargin => SalesPrice - TotalProductionCost;
+    public decimal GrossProfitMarginPercent => SalesPrice > 0 ? (GrossProfitMargin / SalesPrice) * 100m : 0;
 
     public List<string> GetCreationSteps() =>
         CreationFlow.Split(',', StringSplitOptions.RemoveEmptyEntries)

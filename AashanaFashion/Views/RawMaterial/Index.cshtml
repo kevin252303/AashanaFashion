@@ -1,266 +1,280 @@
 @model AashanaFashion.Controllers.RawMaterialViewModel
 @{
-    ViewData["Title"] = "Raw Material";
+    ViewData["Title"] = "Raw Material Inventory";
     var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
     bool isAdmin = role == "Admin" || role == "SuperAdmin";
-    bool canRaise = isAdmin || User.HasClaim("Permission.RawMaterial.CanCreate", "true");
-    bool canApprove = isAdmin || User.HasClaim("Permission.RawMaterial.CanEdit", "true");
+    bool canManage = isAdmin || role == "Manager";
 }
 
-<div class="page-header">
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
     <div>
-        <h1 class="page-title">Raw Material</h1>
-        <p class="page-sub">Manage inventory and requirements</p>
+        <h1 class="page-title">Raw Material Inventory</h1>
+        <p class="page-sub">Real-time stock ledger, valuation & inventory tracking</p>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <a asp-action="Ledger" class="btn-af btn-af-ghost btn-af-sm">
+            <span>📜</span> Stock Ledger
+        </a>
+        @if (canManage)
+        {
+            <a asp-action="InOut" class="btn-af btn-af-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;">
+                <span>⇄</span> Quick In/Out
+            </a>
+            <a asp-action="AdjustStock" class="btn-af btn-af-ghost btn-af-sm" style="border-color:#cbd5e1;">
+                <span>⚖️</span> Audit / Adjust
+            </a>
+        }
+        @if (isAdmin)
+        {
+            <a asp-action="CreateMaterial" class="btn-af btn-af-primary btn-af-sm">+ Add Material</a>
+        }
     </div>
 </div>
 
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3">
+        <span class="alert-body">@TempData["Success"]</span>
+        <button class="alert-close">&times;</button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="af-alert af-alert-danger mb-3">
+        <span class="alert-body">@TempData["Error"]</span>
+        <button class="alert-close">&times;</button>
+    </div>
+}
+
+<!-- KPI Cards -->
 <div class="row g-3 mb-4">
-    <!-- Inventory Summary -->
-    <div class="col-lg-6">
-        <div class="data-card">
-            <div class="data-card-header">
-                <span class="data-card-title">Inventory</span>
-                @if (role == "Admin")
-                {
-                    <a asp-action="CreateMaterial" class="btn-af btn-af-primary btn-af-sm">+ Add Material</a>
-                }
-            </div>
-            
-            @if (!Model.Materials.Any())
-            {
-                <div class="empty-state">
-                    <div class="es-icon">🧵</div>
-                    <p>No materials in inventory</p>
-                </div>
-            }
-            else
-            {
-                <table class="af-table">
-                    <thead>
-                        <tr>
-                            <th>Material</th>
-                            <th>Stock</th>
-                            <th>Unit</th>
-                            <th>Min Stock</th>
-                            <th>Rate</th>
-                            @if (role == "Admin")
-                            {
-                                <th>Actions</th>
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var m in Model.Materials)
-                        {
-                            <tr class="@(m.CurrentStock <= m.MinimumStock ? "low-stock" : "")">
-                                <td><strong>@m.Name</strong></td>
-                                <td><strong>@m.CurrentStock</strong></td>
-                                <td>@m.Unit</td>
-                                <td>@m.MinimumStock</td>
-                                <td>₹@m.Rate</td>
-                                @if (role == "Admin")
-                                {
-                                    <td>
-                                        <div style="display:flex;gap:.3rem;flex-wrap:wrap;">
-                                            <a asp-action="InOut" asp-route-materialId="@m.Id" class="btn-af btn-af-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;" title="Stock Entry">In/Out</a>
-                                            <a asp-action="EditMaterial" asp-route-id="@m.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
-                                            <form asp-action="DeleteMaterial" asp-route-id="@m.Id" method="post" style="display:inline;">
-                                                @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete?')">×</button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                }
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
+    <div class="col-sm-6 col-lg-3">
+        <div class="data-card p-3" style="border-left: 4px solid #3b82f6;">
+            <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Materials</div>
+            <div style="font-size: 1.6rem; font-weight: 700; color: #0f172a; margin-top: 4px;">@Model.Materials.Count</div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">Active catalog items</div>
         </div>
     </div>
-
-    <!-- Requirements -->
-    <div class="col-lg-6">
-        <div class="data-card">
-            <div class="data-card-header">
-                <span class="data-card-title">Requirements</span>
-                @if (canRaise)
-                {
-                    <button type="button" class="btn-af btn-af-primary btn-af-sm" data-bs-toggle="modal" data-bs-target="#raiseRequirementModal">+ Raise Requirement</button>
-                }
-            </div>
-            
-            @if (!Model.Requirements.Any())
-            {
-                <div class="empty-state">
-                    <div class="es-icon">📋</div>
-                    <p>No requirements raised</p>
-                </div>
-            }
-            else
-            {
-                <table class="af-table">
-                    <thead>
-                        <tr>
-                            <th>Material</th>
-                            <th>Qty</th>
-                            <th>Required By</th>
-                            <th>Status</th>
-                            @if (canApprove || canRaise)
-                            {
-                                <th>Actions</th>
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var r in Model.Requirements)
-                        {
-                            <tr>
-                                <td><strong>@r.MaterialName</strong></td>
-                                <td>@r.Quantity @r.Unit</td>
-                                <td>@r.RequiredDate.ToString("dd MMM")</td>
-                                <td><span class="af-badge @GetStatusBadge(r.Status)">@r.Status</span></td>
-                                @if (canApprove || canRaise)
-                                {
-                                    <td>
-                                        @if (r.Status == "Pending" && canApprove)
-                                        {
-                                            <form asp-action="UpdateRequirementStatus" method="post" style="display:inline;">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="id" value="@r.Id" />
-                                                <input type="hidden" name="status" value="Approved" />
-                                                <button type="submit" class="btn-af btn-af-sm" title="Approve">✓</button>
-                                            </form>
-                                            <form asp-action="UpdateRequirementStatus" method="post" style="display:inline;">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="id" value="@r.Id" />
-                                                <input type="hidden" name="status" value="Purchased" />
-                                                <button type="submit" class="btn-af btn-af-success btn-af-sm" title="Mark Purchased">P</button>
-                                            </form>
-                                        }
-                                    </td>
-                                }
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
+    <div class="col-sm-6 col-lg-3">
+        <div class="data-card p-3" style="border-left: 4px solid #10b981;">
+            <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Inventory Valuation</div>
+            <div style="font-size: 1.6rem; font-weight: 700; color: #16a34a; margin-top: 4px;">₹@Model.TotalValuation.ToString("N2")</div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">Total asset value on-hand</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="data-card p-3" style="border-left: 4px solid #f59e0b;">
+            <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Low Stock Warning</div>
+            <div style="font-size: 1.6rem; font-weight: 700; color: #d97706; margin-top: 4px;">@Model.LowStockCount</div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">At or below reorder level</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="data-card p-3" style="border-left: 4px solid #ef4444;">
+            <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Out of Stock</div>
+            <div style="font-size: 1.6rem; font-weight: 700; color: #dc2626; margin-top: 4px;">@Model.OutOfStockCount</div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">Zero or negative quantity</div>
         </div>
     </div>
 </div>
 
-<!-- Add Material Modal -->
-@if (role == "Admin")
-{
-    <div class="modal fade" id="addMaterialModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add Material</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form asp-action="CreateMaterial" method="post">
-                    @Html.AntiForgeryToken()
-                    <div class="modal-body">
-                        <div class="af-form-group">
-                            <label class="af-label">Material Name</label>
-                            <input name="Name" class="af-input" required />
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="af-form-group">
-                                    <label class="af-label">Current Stock</label>
-                                    <input name="CurrentStock" type="number" step="0.01" class="af-input" value="0" />
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="af-form-group">
-                                    <label class="af-label">Unit</label>
-                                    <input name="Unit" class="af-input" placeholder="e.g. meters, kg" required />
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="af-form-group">
-                                    <label class="af-label">Min Stock</label>
-                                    <input name="MinimumStock" type="number" step="0.01" class="af-input" value="0" />
-                                </div>
-                            </div>
-                        </div>
-                        <div class="af-form-group">
-                            <label class="af-label">Rate</label>
-                            <input name="Rate" type="number" step="0.01" class="af-input" />
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn-af btn-af-ghost" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn-af btn-af-primary">Add</button>
-                    </div>
-                </form>
-            </div>
+<!-- Search and Filter Bar -->
+<div class="data-card mb-4">
+    <div class="data-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span class="data-card-title">Current Stock Status</span>
+        <div style="display:flex;gap:.5rem;">
+            <input type="text" id="inventorySearch" class="af-input" placeholder="Search material..." style="width: 220px; font-size: 0.85rem; padding: 0.35rem 0.65rem;" />
+            <select id="stockFilter" class="af-input af-select" style="width: 140px; font-size: 0.85rem; padding: 0.35rem 0.65rem;">
+                <option value="all">All Items</option>
+                <option value="low">Low Stock</option>
+                <option value="out">Out of Stock</option>
+                <option value="in">Healthy Stock</option>
+            </select>
         </div>
     </div>
-
-}
-@if (canRaise)
-{
-    <!-- Raise Requirement Modal -->
-    <div class="modal fade" id="raiseRequirementModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Raise Requirement</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form asp-action="RaiseRequirement" method="post">
-                    @Html.AntiForgeryToken()
-                    <div class="modal-body">
-                        <div class="af-form-group">
-                            <label class="af-label">Material Name</label>
-                            <input name="MaterialName" class="af-input" required />
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="af-form-group">
-                                    <label class="af-label">Quantity</label>
-                                    <input name="Quantity" type="number" step="0.01" class="af-input" required />
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="af-form-group">
-                                    <label class="af-label">Unit</label>
-                                    <input name="Unit" class="af-input" required />
-                                </div>
-                            </div>
-                        </div>
-                        <div class="af-form-group">
-                            <label class="af-label">Required Date</label>
-                            <input name="RequiredDate" type="date" class="af-input" required />
-                        </div>
-                        <div class="af-form-group">
-                            <label class="af-label">Remarks</label>
-                            <input name="Remarks" class="af-input" />
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn-af btn-af-ghost" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn-af btn-af-primary">Raise</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-}
-
-<style>
-    .low-stock { background: #fef2f2; }
-</style>
-
-@functions {
-    string GetStatusBadge(string status) => status switch
+    
+    @if (!Model.Materials.Any())
     {
-        "Pending" => "b-yellow",
-        "Approved" => "b-blue",
-        "Purchased" => "b-green",
-        _ => "b-gray"
-    };
+        <div class="empty-state p-5 text-center">
+            <div class="es-icon" style="font-size: 3rem;">🧵</div>
+            <p style="color: #64748b; margin-top: 1rem;">No materials found in inventory.</p>
+            @if (isAdmin)
+            {
+                <a asp-action="CreateMaterial" class="btn-af btn-af-primary btn-af-sm mt-2">+ Add First Material</a>
+            }
+        </div>
+    }
+    else
+    {
+        <div style="overflow-x:auto;">
+            <table class="af-table" id="materialsTable">
+                <thead>
+                    <tr>
+                        <th>Material Name</th>
+                        <th class="text-end">Current Stock</th>
+                        <th>Unit</th>
+                        <th class="text-end">Min Stock</th>
+                        <th class="text-end">Rate / Cost</th>
+                        <th class="text-end">Asset Value</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in Model.Materials)
+                    {
+                        var isOut = m.CurrentStock <= 0;
+                        var isLow = !isOut && m.CurrentStock <= m.MinimumStock;
+                        var rowCategory = isOut ? "out" : (isLow ? "low" : "in");
+                        var valuation = m.CurrentStock * m.Rate;
+
+                        <tr class="material-row" data-category="@rowCategory" style="@(isOut ? "background:#fff1f2;" : (isLow ? "background:#fffbeb;" : ""))">
+                            <td>
+                                <strong>@m.Name</strong>
+                                @if (!string.IsNullOrEmpty(m.Description))
+                                {
+                                    <div style="font-size: 0.75rem; color: #64748b;">@m.Description</div>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <strong style="font-size: 1rem; color: @(isOut ? "#dc2626" : (isLow ? "#d97706" : "#0f172a"));">
+                                    @m.CurrentStock.ToString("N2")
+                                </strong>
+                            </td>
+                            <td>@m.Unit</td>
+                            <td class="text-end" style="color: #64748b;">@m.MinimumStock.ToString("N2")</td>
+                            <td class="text-end">₹@m.Rate.ToString("N2")</td>
+                            <td class="text-end" style="font-weight: 600;">₹@valuation.ToString("N2")</td>
+                            <td class="text-center">
+                                @if (isOut)
+                                {
+                                    <span class="af-badge" style="background:#fee2e2;color:#dc2626;">Out of Stock</span>
+                                }
+                                else if (isLow)
+                                {
+                                    <span class="af-badge" style="background:#fef3c7;color:#d97706;">Low Stock</span>
+                                }
+                                else
+                                {
+                                    <span class="af-badge" style="background:#dcfce7;color:#16a34a;">In Stock</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <div style="display:inline-flex;gap:.3rem;align-items:center;">
+                                    <a asp-action="Ledger" asp-route-materialId="@m.Id" class="btn-af btn-af-ghost btn-af-sm" title="View Transaction Ledger">📜</a>
+                                    @if (canManage)
+                                    {
+                                        <a asp-action="InOut" asp-route-materialId="@m.Id" class="btn-af btn-af-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;" title="Quick In/Out">In/Out</a>
+                                        <a asp-action="AdjustStock" asp-route-materialId="@m.Id" class="btn-af btn-af-ghost btn-af-sm" title="Stock Adjustment">Adjust</a>
+                                    }
+                                    @if (isAdmin)
+                                    {
+                                        <a asp-action="EditMaterial" asp-route-id="@m.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                                        <form asp-action="DeleteMaterial" asp-route-id="@m.Id" method="post" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete material \'@m.Name\'?')">×</button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- Recent Stock Movements Card -->
+@if (Model.RecentTransactions.Any())
+{
+    <div class="data-card">
+        <div class="data-card-header d-flex justify-content-between align-items-center">
+            <span class="data-card-title">Recent Stock Activity</span>
+            <a asp-action="Ledger" class="btn-af btn-af-ghost btn-af-sm">View Full Ledger →</a>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="af-table" style="font-size: 0.85rem;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Material</th>
+                        <th>Movement</th>
+                        <th class="text-end">Quantity</th>
+                        <th class="text-end">Balance After</th>
+                        <th>Reference</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var tx in Model.RecentTransactions)
+                    {
+                        var isIn = tx.Type == "Inward";
+                        var isAdj = tx.Type == "Adjustment";
+                        <tr>
+                            <td style="color: #64748b;">@tx.CreatedDate.ToString("dd-MMM-yyyy HH:mm")</td>
+                            <td><strong>@(tx.RawMaterial?.Name ?? $"Material #{tx.RawMaterialId}")</strong></td>
+                            <td>
+                                @if (isIn)
+                                {
+                                    <span class="af-badge" style="background:#dcfce7;color:#16a34a;">+ Inward</span>
+                                }
+                                else if (isAdj)
+                                {
+                                    <span class="af-badge" style="background:#e0e7ff;color:#4f46e5;">⚖ Adjustment</span>
+                                }
+                                else
+                                {
+                                    <span class="af-badge" style="background:#fee2e2;color:#dc2626;">- Outward</span>
+                                }
+                            </td>
+                            <td class="text-end" style="font-weight: 600; color: @(isIn ? "#16a34a" : (isAdj ? "#4f46e5" : "#dc2626"));">
+                                @(isIn ? "+" : (isAdj && tx.Quantity > 0 ? "+" : ""))@tx.Quantity.ToString("N2") @tx.RawMaterial?.Unit
+                            </td>
+                            <td class="text-end" style="font-weight: 700;">
+                                @tx.BalanceAfter.ToString("N2") @tx.RawMaterial?.Unit
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(tx.ReferenceType))
+                                {
+                                    <span class="af-badge b-gray">@tx.ReferenceType @(tx.ReferenceId.HasValue ? $"#{tx.ReferenceId}" : "")</span>
+                                }
+                                else
+                                {
+                                    <span style="color: #94a3b8;">—</span>
+                                }
+                            </td>
+                            <td style="color: #475569;">@(tx.Remarks ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
 }
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('inventorySearch');
+        const filterSelect = document.getElementById('stockFilter');
+        const rows = document.querySelectorAll('.material-row');
+
+        function filterTable() {
+            const query = (searchInput?.value || '').toLowerCase().trim();
+            const filter = filterSelect?.value || 'all';
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const category = row.getAttribute('data-category');
+
+                const matchesQuery = !query || text.includes(query);
+                const matchesFilter = (filter === 'all') || (category === filter);
+
+                row.style.display = (matchesQuery && matchesFilter) ? '' : 'none';
+            });
+        }
+
+        if (searchInput) searchInput.addEventListener('input', filterTable);
+        if (filterSelect) filterSelect.addEventListener('change', filterTable);
+    });
+</script>

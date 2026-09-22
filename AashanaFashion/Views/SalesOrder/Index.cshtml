@@ -1,0 +1,173 @@
+@model List<AashanaFashion.Models.SalesOrder>
+@{
+    ViewData["Title"] = "Sales Orders";
+    var totalOrders = Model.Count;
+    var dispatchedCount = Model.Count(o => o.Status == SalesOrderStatus.Dispatched);
+    var partialCount = Model.Count(o => o.Status == SalesOrderStatus.PartiallyDispatched);
+    var pendingCount = Model.Count(o => o.Status == SalesOrderStatus.Confirmed || o.Status == SalesOrderStatus.InProduction || o.Status == SalesOrderStatus.Draft);
+}
+
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <div>
+        <h1 class="page-title">Sales Orders & Fulfillment</h1>
+        <p class="page-sub">Customer orders, dispatch tracking & delivery challans</p>
+    </div>
+    <a asp-action="Create" class="btn-af btn-af-primary btn-af-sm">+ New Sales Order</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="af-alert af-alert-danger mb-3"><span class="alert-body">@TempData["Error"]</span><button class="alert-close">&times;</button></div>
+}
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="data-card p-3" style="border-left: 4px solid #3b82f6;">
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Orders</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a; margin-top: 4px;">@totalOrders</div>
+            <div style="font-size: 0.75rem; color: #94a3b8;">All customer bookings</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="data-card p-3" style="border-left: 4px solid #f59e0b;">
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Pending / In-Prod</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #d97706; margin-top: 4px;">@pendingCount</div>
+            <div style="font-size: 0.75rem; color: #94a3b8;">Awaiting dispatch</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="data-card p-3" style="border-left: 4px solid #8b5cf6;">
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Partial Dispatched</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #7c3aed; margin-top: 4px;">@partialCount</div>
+            <div style="font-size: 0.75rem; color: #94a3b8;">Split shipment in progress</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="data-card p-3" style="border-left: 4px solid #10b981;">
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Fully Dispatched</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #16a34a; margin-top: 4px;">@dispatchedCount</div>
+            <div style="font-size: 0.75rem; color: #94a3b8;">100% fulfilled orders</div>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Filter Bar -->
+<div class="data-card mb-4 p-3">
+    <form method="get" asp-action="Index">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <input type="text" name="search" class="af-input" placeholder="Search SO#, Customer, or PO ref..." value="@ViewBag.Search" style="font-size: 0.85rem;" />
+            </div>
+            <div class="col-md-4">
+                <select name="status" class="af-input af-select" style="font-size: 0.85rem;">
+                    <option value="">— All Statuses —</option>
+                    @foreach (var s in Enum.GetValues<SalesOrderStatus>())
+                    {
+                        <option value="@s" selected="@(ViewBag.SelectedStatus != null && (SalesOrderStatus)ViewBag.SelectedStatus == s ? "selected" : null)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
+                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Sales Orders Table -->
+<div class="data-card">
+    <div class="data-card-header">
+        <span class="data-card-title">Order List</span>
+    </div>
+    
+    @if (!Model.Any())
+    {
+        <div class="empty-state p-5 text-center">
+            <div class="es-icon" style="font-size: 3rem;">🛍️</div>
+            <p style="color: #64748b; margin-top: 1rem;">No sales orders found.</p>
+            <a asp-action="Create" class="btn-af btn-af-primary btn-af-sm mt-2">+ Create First Sales Order</a>
+        </div>
+    }
+    else
+    {
+        <div style="overflow-x:auto;">
+            <table class="af-table" style="font-size: 0.85rem;">
+                <thead>
+                    <tr>
+                        <th>SO Number</th>
+                        <th>Customer</th>
+                        <th>Order Date</th>
+                        <th>Expected Delivery</th>
+                        <th class="text-center">Items / Pcs</th>
+                        <th class="text-end">Total Amount</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in Model)
+                    {
+                        var totalPieces = o.Details.Sum(d => d.Quantity);
+                        var dispatchedPieces = o.Details.Sum(d => d.DispatchedQuantity);
+                        var isFullyDispatched = o.Status == SalesOrderStatus.Dispatched;
+
+                        <tr>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@o.Id" style="font-weight: 700; color: #2563eb; text-decoration: none;">
+                                    @o.SoNumber
+                                </a>
+                                @if (!string.IsNullOrEmpty(o.CustomerPoReference))
+                                {
+                                    <div style="font-size: 0.75rem; color: #64748b;">Ref: @o.CustomerPoReference</div>
+                                }
+                            </td>
+                            <td>
+                                <strong>@(o.Customer?.CustomerName ?? "—")</strong>
+                                @if (!string.IsNullOrEmpty(o.Customer?.City))
+                                {
+                                    <span style="font-size: 0.75rem; color: #94a3b8;">(@o.Customer.City)</span>
+                                }
+                            </td>
+                            <td style="color: #64748b;">@o.OrderDate.ToString("dd-MMM-yyyy")</td>
+                            <td style="color: #64748b;">@(o.ExpectedDeliveryDate?.ToString("dd-MMM-yyyy") ?? "—")</td>
+                            <td class="text-center">
+                                <span style="font-weight: 600;">@dispatchedPieces / @totalPieces pcs</span>
+                                @if (o.Challans.Any())
+                                {
+                                    <div style="font-size: 0.75rem; color: #7c3aed;">@o.Challans.Count Challan(s)</div>
+                                }
+                            </td>
+                            <td class="text-end" style="font-weight: 700;">₹@o.TotalAmount.ToString("N2")</td>
+                            <td class="text-center">
+                                <span class="af-badge @(o.Status switch {
+                                    SalesOrderStatus.Confirmed => "b-blue",
+                                    SalesOrderStatus.InProduction => "b-warn",
+                                    SalesOrderStatus.PartiallyDispatched => "b-purple",
+                                    SalesOrderStatus.Dispatched => "b-green",
+                                    SalesOrderStatus.Cancelled => "b-gray",
+                                    _ => "b-gray"
+                                })">@o.Status</span>
+                            </td>
+                            <td class="text-end">
+                                <div style="display:inline-flex;gap:.3rem;align-items:center;">
+                                    <a asp-action="Details" asp-route-id="@o.Id" class="btn-af btn-af-ghost btn-af-sm" title="View Details">View</a>
+                                    @if (!isFullyDispatched)
+                                    {
+                                        <a asp-action="CreateChallan" asp-route-id="@o.Id" class="btn-af btn-af-sm" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;" title="Generate Delivery Challan">🚚 Dispatch</a>
+                                        <a asp-action="Edit" asp-route-id="@o.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

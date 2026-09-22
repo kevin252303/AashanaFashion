@@ -1,0 +1,465 @@
+@{
+    ViewData["Title"] = "Production Floor Barcode Scanner";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1 fw-bold">📱 Floor Barcode & QR Scanner</h2>
+        <p class="text-muted mb-0">High-speed piece tracking station for USB laser scanners and camera scanning.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-controller="PMS" asp-action="ProductionEntities" class="btn btn-outline-secondary">
+            📋 Tracking Entities
+        </a>
+        <a asp-controller="QualityControl" asp-action="Index" class="btn btn-outline-primary">
+            🔍 QC Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left: Scanner Input & Camera -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-bold">🔫 Scanner Input</h5>
+                <span class="badge bg-success-subtle text-success">Active & Ready</span>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-muted small text-uppercase">Scan Barcode / QR Code</label>
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-light">🔍</span>
+                        <input type="text" id="barcodeInput" class="form-control fw-bold" placeholder="Scan or type barcode..." autofocus autocomplete="off" />
+                        <button class="btn btn-primary" id="btnLookup" type="button">Lookup</button>
+                    </div>
+                    <small class="text-muted mt-1 d-block">
+                        💡 <em>Handheld USB barcode guns automatically trigger lookup on scan.</em>
+                    </small>
+                </div>
+
+                <div class="d-grid gap-2 mb-3">
+                    <button class="btn btn-outline-secondary" type="button" id="btnToggleCamera">
+                        📷 <span id="cameraBtnText">Open Webcam / Mobile Camera Scanner</span>
+                    </button>
+                </div>
+
+                <!-- Camera Container -->
+                <div id="cameraScannerWrapper" class="d-none border rounded-3 p-2 bg-dark text-center">
+                    <div id="reader" style="width: 100%; max-width: 400px; margin: 0 auto;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Scan Statistics -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4 border-end">
+                        <span class="text-muted small">Total Scans</span>
+                        <h4 class="fw-bold my-1 text-primary" id="statTotalScans">0</h4>
+                    </div>
+                    <div class="col-4 border-end">
+                        <span class="text-muted small">Successful</span>
+                        <h4 class="fw-bold my-1 text-success" id="statSuccessScans">0</h4>
+                    </div>
+                    <div class="col-4">
+                        <span class="text-muted small">Errors</span>
+                        <h4 class="fw-bold my-1 text-danger" id="statErrorScans">0</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Garment Details & 1-Scan Action Center -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm rounded-3 mb-4" id="detailsCard">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-bold">🏷️ Garment Piece Information</h5>
+                <span id="garmentStatusBadge" class="badge bg-secondary fs-6">Awaiting Scan</span>
+            </div>
+            <div class="card-body" id="scanEmptyState">
+                <div class="text-center py-5 text-muted">
+                    <div class="fs-1 mb-2">📦</div>
+                    <h5 class="fw-semibold">Ready for Scanning</h5>
+                    <p class="mb-0 text-muted">Point your laser gun at a bundle sticker or use your camera.</p>
+                </div>
+            </div>
+
+            <!-- Scanned Data Display (Initially Hidden) -->
+            <div class="card-body d-none" id="scanDataContent">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="text-muted small text-uppercase fw-semibold">Piece Identifier</span>
+                            <h4 class="fw-bold my-1 text-dark" id="dispBarcode">—</h4>
+                            <div class="fw-semibold text-primary fs-5" id="dispComponent">—</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="text-muted small text-uppercase fw-semibold">Order & Design</span>
+                            <h4 class="fw-bold my-1" id="dispLot">—</h4>
+                            <div class="text-muted" id="dispDesign">—</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <small class="text-muted d-block">Colour</small>
+                        <strong id="dispColour" class="fs-6">—</strong>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted d-block">Size</small>
+                        <strong id="dispSize" class="fs-6">—</strong>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted d-block">Piece Serial #</small>
+                        <strong id="dispSlNo" class="fs-6">—</strong>
+                    </div>
+                </div>
+
+                <!-- Current Process Alert -->
+                <div class="alert alert-warning mb-4 d-none" id="activeProcessBox">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-warning text-dark me-2">In Progress</span>
+                            <strong id="dispProcessName">Handwork</strong> at <span id="dispVendorName">Vendor ABC</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success fw-bold px-3" id="btnQuickReturn">
+                            ✓ Mark Returned
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 1-Scan Floor Action Controls -->
+                <div class="border rounded-3 p-3 bg-light mb-4">
+                    <h6 class="fw-bold mb-3">⚡ Floor Dispatch / Transfer</h6>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Next Process</label>
+                            <select id="actionProcessName" class="form-select form-select-sm">
+                                <option value="Dying">Dying</option>
+                                <option value="Roll">Roll Press</option>
+                                <option value="Handwork">Handwork</option>
+                                <option value="Stitching">Stitching</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Assign Vendor / Worker</label>
+                            <select id="actionVendorId" class="form-select form-select-sm">
+                                <option value="">-- In-House --</option>
+                                @foreach (var v in (List<AashanaFashion.Models.Vendor>)ViewBag.Vendors)
+                                {
+                                    <option value="@v.Id">@v.VendorName</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-sm btn-primary w-100 fw-semibold" id="btnDispatchAction">
+                                📤 Dispatch Piece
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Process History -->
+                <div>
+                    <h6 class="fw-bold mb-2">📜 Stage Tracking History</h6>
+                    <div id="historyTableContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Scan Session Log Table -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-bold">⏱️ Session Activity Log</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnClearLog">Clear Log</button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 9pt;">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Time</th>
+                                <th>Barcode</th>
+                                <th>Piece</th>
+                                <th>Action Performed</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionLogBody">
+                            <tr id="emptyLogPrompt">
+                                <td colspan="5" class="text-center py-4 text-muted">No scans in this session yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- html5-qrcode lightweight library for webcam/mobile camera scanning -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <script>
+        // Web Audio Synthesizer Beeps
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playBeep(success) {
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (success) {
+                    // High cheerful double-beep
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.08);
+
+                    setTimeout(() => {
+                        const osc2 = audioCtx.createOscillator();
+                        const gain2 = audioCtx.createGain();
+                        osc2.connect(gain2);
+                        gain2.connect(audioCtx.destination);
+                        osc2.type = 'sine';
+                        osc2.frequency.setValueAtTime(1174.66, audioCtx.currentTime); // D6
+                        gain2.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                        osc2.start();
+                        osc2.stop(audioCtx.currentTime + 0.1);
+                    }, 90);
+                } else {
+                    // Low buzz
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                }
+            } catch (e) {
+                console.log('Audio feedback not available', e);
+            }
+        }
+
+        let totalScans = 0;
+        let successScans = 0;
+        let errorScans = 0;
+        let currentScannedBarcode = null;
+
+        function updateStats(success) {
+            totalScans++;
+            if (success) successScans++; else errorScans++;
+            $('#statTotalScans').text(totalScans);
+            $('#statSuccessScans').text(successScans);
+            $('#statErrorScans').text(errorScans);
+        }
+
+        function addSessionLog(barcode, piece, action, isSuccess) {
+            $('#emptyLogPrompt').remove();
+            const time = new Date().toLocaleTimeString();
+            const badge = isSuccess 
+                ? '<span class="badge bg-success">Success</span>' 
+                : '<span class="badge bg-danger">Error</span>';
+
+            const row = `
+                <tr>
+                    <td class="text-muted">${time}</td>
+                    <td class="fw-bold">${barcode}</td>
+                    <td>${piece}</td>
+                    <td>${action}</td>
+                    <td>${badge}</td>
+                </tr>
+            `;
+            $('#sessionLogBody').prepend(row);
+        }
+
+        // Barcode Lookup
+        function doLookup(code) {
+            if (!code || code.trim() === '') return;
+            code = code.trim();
+
+            $.ajax({
+                url: '/Barcode/Lookup',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ code: code }),
+                success: function (res) {
+                    if (res.success) {
+                        playBeep(true);
+                        updateStats(true);
+                        currentScannedBarcode = res.barcode;
+
+                        $('#scanEmptyState').addClass('d-none');
+                        $('#scanDataContent').removeClass('d-none');
+
+                        $('#garmentStatusBadge').text(res.status).removeClass().addClass('badge bg-primary fs-6');
+                        $('#dispBarcode').text(res.barcode);
+                        $('#dispComponent').text(res.entityType + ' #' + res.slNo);
+                        $('#dispLot').text('Lot ' + res.lotNo);
+                        $('#dispDesign').text(res.designNumber);
+                        $('#dispColour').text(res.colour);
+                        $('#dispSize').text(res.size);
+                        $('#dispSlNo').text('#' + res.slNo);
+
+                        if (res.currentProcess) {
+                            $('#activeProcessBox').removeClass('d-none');
+                            $('#dispProcessName').text(res.currentProcess);
+                            $('#dispVendorName').text(res.currentVendor || 'In-House');
+                        } else {
+                            $('#activeProcessBox').addClass('d-none');
+                        }
+
+                        // History
+                        let historyHtml = '<div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Process</th><th>Vendor</th><th>Given</th><th>Returned</th></tr></thead><tbody>';
+                        if (res.history && res.history.length > 0) {
+                            res.history.forEach(h => {
+                                historyHtml += `<tr><td>${h.processName}</td><td>${h.vendorName || 'In-House'}</td><td>${h.givenDate || '—'}</td><td>${h.actualReturnDate || 'Ongoing'}</td></tr>`;
+                            });
+                        } else {
+                            historyHtml += '<tr><td colspan="4" class="text-center text-muted">No past tracking records</td></tr>';
+                        }
+                        historyHtml += '</tbody></table></div>';
+                        $('#historyTableContainer').html(historyHtml);
+
+                        addSessionLog(res.barcode, res.entityType + ' #' + res.slNo, 'Looked up garment info', true);
+                    } else {
+                        playBeep(false);
+                        updateStats(false);
+                        addSessionLog(code, '—', res.message || 'Not found', false);
+                        alert(res.message || 'Barcode not recognized.');
+                    }
+                },
+                error: function () {
+                    playBeep(false);
+                    updateStats(false);
+                    alert('Error connecting to scanner API.');
+                },
+                complete: function () {
+                    $('#barcodeInput').val('').focus();
+                }
+            });
+        }
+
+        // Trigger lookup on Enter key
+        $('#barcodeInput').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                doLookup($(this).val());
+            }
+        });
+
+        $('#btnLookup').on('click', function () {
+            doLookup($('#barcodeInput').val());
+        });
+
+        // Quick Return Button Action
+        $('#btnQuickReturn').on('click', function () {
+            if (!currentScannedBarcode) return;
+
+            $.ajax({
+                url: '/Barcode/ExecuteScanAction',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    barcode: currentScannedBarcode,
+                    actionType: 'Return'
+                }),
+                success: function (res) {
+                    if (res.success) {
+                        playBeep(true);
+                        alert(res.message);
+                        addSessionLog(currentScannedBarcode, $('#dispComponent').text(), 'Marked Returned', true);
+                        doLookup(currentScannedBarcode);
+                    } else {
+                        playBeep(false);
+                        alert(res.message);
+                    }
+                }
+            });
+        });
+
+        // Dispatch Action
+        $('#btnDispatchAction').on('click', function () {
+            if (!currentScannedBarcode) return;
+
+            const processName = $('#actionProcessName').val();
+            const vendorId = $('#actionVendorId').val() ? parseInt($('#actionVendorId').val()) : null;
+
+            $.ajax({
+                url: '/Barcode/ExecuteScanAction',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    barcode: currentScannedBarcode,
+                    actionType: 'SendProcess',
+                    processName: processName,
+                    vendorId: vendorId
+                }),
+                success: function (res) {
+                    if (res.success) {
+                        playBeep(true);
+                        alert(res.message);
+                        addSessionLog(currentScannedBarcode, $('#dispComponent').text(), 'Dispatched to ' + processName, true);
+                        doLookup(currentScannedBarcode);
+                    } else {
+                        playBeep(false);
+                        alert(res.message);
+                    }
+                }
+            });
+        });
+
+        $('#btnClearLog').on('click', function () {
+            $('#sessionLogBody').html('<tr id="emptyLogPrompt"><td colspan="5" class="text-center py-4 text-muted">No scans in this session yet.</td></tr>');
+        });
+
+        // Camera Scanner Toggle
+        let html5QrcodeScanner = null;
+        $('#btnToggleCamera').on('click', function () {
+            const wrapper = $('#cameraScannerWrapper');
+            if (wrapper.hasClass('d-none')) {
+                wrapper.removeClass('d-none');
+                $('#cameraBtnText').text('Close Camera Scanner');
+
+                if (!html5QrcodeScanner) {
+                    html5QrcodeScanner = new Html5Qrcode("reader");
+                }
+
+                html5QrcodeScanner.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    (decodedText) => {
+                        doLookup(decodedText);
+                    },
+                    (errorMessage) => {
+                        // ignore frame errors
+                    }
+                ).catch((err) => {
+                    alert('Camera access denied or unavailable: ' + err);
+                    wrapper.addClass('d-none');
+                    $('#cameraBtnText').text('Open Webcam / Mobile Camera Scanner');
+                });
+            } else {
+                if (html5QrcodeScanner) {
+                    html5QrcodeScanner.stop().then(() => {
+                        wrapper.addClass('d-none');
+                        $('#cameraBtnText').text('Open Webcam / Mobile Camera Scanner');
+                    });
+                } else {
+                    wrapper.addClass('d-none');
+                    $('#cameraBtnText').text('Open Webcam / Mobile Camera Scanner');
+                }
+            }
+        });
+    </script>
+}

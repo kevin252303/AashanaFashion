@@ -176,4 +176,13 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+#if DEBUG
+if (args.Contains("--verify-all") || args.Contains("--test-all"))
+{
+    var passed = await DataVerificationRunner.RunAllModuleTestsAsync(app.Services);
+    Environment.Exit(passed ? 0 : 1);
+}
+#endif
+
 app.Run();
+

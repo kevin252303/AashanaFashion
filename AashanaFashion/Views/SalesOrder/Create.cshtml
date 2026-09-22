@@ -1,0 +1,350 @@
+@model AashanaFashion.Models.SalesOrderViewModel
+@{
+    ViewData["Title"] = "New Sales Order";
+    var customers = ViewBag.Customers as List<AashanaFashion.Models.Customer> ?? new();
+    var designs = ViewBag.Designs as List<AashanaFashion.Models.Design> ?? new();
+    var colours = ViewBag.Colours as List<AashanaFashion.Models.Colour> ?? new();
+    var sizes = ViewBag.Sizes as List<AashanaFashion.Models.Size> ?? new();
+}
+
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="page-title">New Sales Order</h1>
+        <p class="page-sub">Book customer order & schedule production</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back to Orders</a>
+</div>
+
+<form asp-action="Create" method="post" id="soForm">
+    @Html.AntiForgeryToken()
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="af-alert af-alert-danger mb-3">
+            <div class="alert-body">
+                @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                { <div>@e.ErrorMessage</div> }
+            </div>
+            <button class="alert-close">&times;</button>
+        </div>
+    }
+
+    <!-- Order Header Details -->
+    <div class="data-card p-4 mb-4">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="af-label">SO Number *</label>
+                <input asp-for="SoNumber" class="af-input" readonly style="background:#f1f5f9;font-weight:700;" />
+            </div>
+            <div class="col-md-5">
+                <label class="af-label">Customer *</label>
+                <select asp-for="CustomerId" class="af-input af-select" id="customerSelect" required>
+                    <option value="">— Select Customer —</option>
+                    @foreach (var c in customers)
+                    {
+                        <option value="@c.Id" selected="@(c.Id == Model.CustomerId ? "selected" : null)">
+                            @c.CustomerName @(!string.IsNullOrEmpty(c.City) ? $"({c.City})" : "")
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="af-label">Customer PO Ref / Order Ref</label>
+                <input asp-for="CustomerPoReference" class="af-input" placeholder="e.g. PO-8891" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="af-label">Order Date *</label>
+                <input asp-for="OrderDate" type="date" class="af-input" value="@Model.OrderDate.ToString("yyyy-MM-dd")" required />
+            </div>
+            <div class="col-md-3">
+                <label class="af-label">Expected Delivery Date</label>
+                <input asp-for="ExpectedDeliveryDate" type="date" class="af-input" value="@(Model.ExpectedDeliveryDate?.ToString("yyyy-MM-dd"))" />
+            </div>
+            <div class="col-md-3">
+                <label class="af-label">Transporter / Courier</label>
+                <input asp-for="TransporterName" class="af-input" id="transporterInput" placeholder="Transport service" />
+            </div>
+            <div class="col-md-3">
+                <label class="af-label">Payment Terms</label>
+                <input asp-for="PaymentTerms" class="af-input" id="paymentTermsInput" placeholder="e.g. Net 30, Advance" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="af-label">Shipping / Delivery Address</label>
+                <input asp-for="ShippingAddress" class="af-input" id="shippingAddressInput" placeholder="Consignee delivery address" />
+            </div>
+            <div class="col-md-6">
+                <label class="af-label">Notes / Instructions</label>
+                <input asp-for="Notes" class="af-input" placeholder="Packaging or delivery instructions" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Line Items Table -->
+    <div class="data-card mb-4">
+        <div class="data-card-header d-flex justify-content-between align-items-center">
+            <div>
+                <span class="data-card-title">Order Line Items</span>
+                <span style="font-size: 0.8rem; color: #64748b; margin-left: 0.5rem;">Designs, colour, size & quantity details</span>
+            </div>
+            <button type="button" id="addRowBtn" class="btn-af btn-af-ghost btn-af-sm">+ Add Item</button>
+        </div>
+        <div style="padding: 1rem;">
+            <div style="overflow-x:auto;">
+                <table class="af-table" id="itemsTable" style="min-width: 1000px; font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;" class="text-center">Sr</th>
+                            <th style="min-width: 200px;">Design / Product *</th>
+                            <th style="width: 140px;">Colour</th>
+                            <th style="width: 110px;">Size</th>
+                            <th style="width: 90px;" class="text-end">Qty *</th>
+                            <th style="width: 120px;" class="text-end">Rate (₹) *</th>
+                            <th style="width: 90px;" class="text-end">Disc %</th>
+                            <th style="width: 90px;" class="text-end">GST %</th>
+                            <th style="width: 120px;" class="text-end">Gross (₹)</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody">
+                        <tr class="item-row">
+                            <td class="text-center sr-no">1</td>
+                            <td>
+                                <select name="Details[0].DesignId" class="af-input af-select item-design" required style="font-size: 0.8rem;">
+                                    <option value="">— Select Design —</option>
+                                    @foreach (var d in designs)
+                                    {
+                                        <option value="@d.Id" data-number="@d.DesignNumber" data-rate="@d.SalesPrice" data-colours="@d.Colours" data-sizes="@d.Sizes">
+                                            @d.DesignNumber (₹@d.SalesPrice.ToString("N2"))
+                                        </option>
+                                    }
+                                </select>
+                                <input type="hidden" name="Details[0].DesignNumber" class="item-design-number" />
+                            </td>
+                            <td>
+                                <input type="text" name="Details[0].Colour" class="af-input item-colour" placeholder="Colour" list="coloursList" style="font-size: 0.8rem;" />
+                            </td>
+                            <td>
+                                <input type="text" name="Details[0].Size" class="af-input item-size" placeholder="Size" list="sizesList" style="font-size: 0.8rem;" />
+                            </td>
+                            <td>
+                                <input type="number" min="1" name="Details[0].Quantity" class="af-input text-end item-qty" value="1" required style="font-size: 0.8rem;" />
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" min="0" name="Details[0].UnitPrice" class="af-input text-end item-rate" value="0.00" required style="font-size: 0.8rem;" />
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" min="0" max="100" name="Details[0].DiscountPercentage" class="af-input text-end item-disc" value="0" style="font-size: 0.8rem;" />
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" min="0" max="100" name="Details[0].GstPercentage" class="af-input text-end item-gst" value="12" style="font-size: 0.8rem;" />
+                            </td>
+                            <td class="text-end font-weight-bold item-net" style="font-weight: 700;">₹0.00</td>
+                            <td class="text-center">
+                                <button type="button" class="btn-af btn-af-danger btn-af-sm remove-row" style="display:none;">×</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charges, Taxes & Grand Total -->
+    <div class="row g-3 justify-content-end mb-4">
+        <div class="col-md-5">
+            <div class="data-card p-3">
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                    <span style="color: #64748b;">Subtotal:</span>
+                    <strong id="subtotalDisplay">₹0.00</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span style="color: #64748b;">Transport Charge:</span>
+                    <input type="number" step="0.01" min="0" asp-for="TransportCharge" class="af-input text-end" id="transportCharge" style="width: 120px;" value="0" />
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span style="color: #64748b;">Transport GST %:</span>
+                    <input type="number" step="0.01" min="0" max="100" asp-for="TransportChargeGST" class="af-input text-end" id="transportGST" style="width: 120px;" value="18" />
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span style="color: #64748b;">Round Off:</span>
+                    <input type="number" step="0.01" asp-for="RoundOff" class="af-input text-end" id="roundOff" style="width: 120px;" value="0" />
+                </div>
+                <div class="d-flex justify-content-between py-2 mt-1" style="font-size: 1.2rem;">
+                    <span style="font-weight: 700; color: #0f172a;">Grand Total:</span>
+                    <strong id="grandTotalDisplay" style="color: #16a34a;">₹0.00</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mb-5">
+        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+        <button type="submit" class="btn-af btn-af-primary">Save & Confirm Order</button>
+    </div>
+</form>
+
+<!-- Datalists for Colours and Sizes -->
+<datalist id="coloursList">
+    @foreach (var c in colours) { <option value="@c.ColourName" /> }
+</datalist>
+<datalist id="sizesList">
+    @foreach (var s in sizes) { <option value="@s.SizeName" /> }
+</datalist>
+
+<template id="designOptionsTemplate">
+    <option value="">— Select Design —</option>
+    @foreach (var d in designs)
+    {
+        <option value="@d.Id" data-number="@d.DesignNumber" data-rate="@d.SalesPrice" data-colours="@d.Colours" data-sizes="@d.Sizes">
+            @d.DesignNumber (₹@d.SalesPrice.ToString("N2"))
+        </option>
+    }
+</template>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const customerSelect = document.getElementById('customerSelect');
+    const shippingAddress = document.getElementById('shippingAddressInput');
+    const transporterInput = document.getElementById('transporterInput');
+    const paymentTermsInput = document.getElementById('paymentTermsInput');
+
+    const itemsBody = document.getElementById('itemsBody');
+    const addRowBtn = document.getElementById('addRowBtn');
+
+    const subtotalDisplay = document.getElementById('subtotalDisplay');
+    const grandTotalDisplay = document.getElementById('grandTotalDisplay');
+    const transportChargeInput = document.getElementById('transportCharge');
+    const transportGSTInput = document.getElementById('transportGST');
+    const roundOffInput = document.getElementById('roundOff');
+
+    const designOptions = document.getElementById('designOptionsTemplate').innerHTML;
+
+    function fmt(n) {
+        return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Customer autofill
+    customerSelect?.addEventListener('change', function () {
+        const id = this.value;
+        if (!id) return;
+        fetch('/SalesOrder/GetCustomerDetails?id=' + id)
+            .then(res => res.json())
+            .then(data => {
+                if (shippingAddress && data.shippingAddress) shippingAddress.value = data.shippingAddress;
+                if (transporterInput && data.transporter) transporterInput.value = data.transporter;
+                if (paymentTermsInput && data.paymentTerms) paymentTermsInput.value = data.paymentTerms;
+            })
+            .catch(console.error);
+    });
+
+    function reindex() {
+        const rows = itemsBody.querySelectorAll('.item-row');
+        rows.forEach((row, idx) => {
+            row.querySelectorAll('select, input').forEach(el => {
+                const name = el.getAttribute('name');
+                if (name) el.setAttribute('name', name.replace(/\[\d+\]/, '[' + idx + ']'));
+            });
+            const sr = row.querySelector('.sr-no');
+            if (sr) sr.textContent = idx + 1;
+            const removeBtn = row.querySelector('.remove-row');
+            if (removeBtn) removeBtn.style.display = rows.length > 1 ? '' : 'none';
+        });
+    }
+
+    function recalc() {
+        let subtotal = 0;
+        itemsBody.querySelectorAll('.item-row').forEach(row => {
+            const qty = parseFloat(row.querySelector('.item-qty')?.value) || 0;
+            const rate = parseFloat(row.querySelector('.item-rate')?.value) || 0;
+            const disc = parseFloat(row.querySelector('.item-disc')?.value) || 0;
+            const gst = parseFloat(row.querySelector('.item-gst')?.value) || 0;
+
+            const total = qty * rate;
+            const discAmt = total * disc / 100;
+            const gstAmt = (total - discAmt) * gst / 100;
+            const net = total - discAmt + gstAmt;
+
+            const netEl = row.querySelector('.item-net');
+            if (netEl) netEl.textContent = fmt(net);
+
+            subtotal += net;
+        });
+
+        const tc = parseFloat(transportChargeInput?.value) || 0;
+        const tg = parseFloat(transportGSTInput?.value) || 0;
+        const ro = parseFloat(roundOffInput?.value) || 0;
+
+        const effectiveTransport = tc + (tc * tg / 100);
+        const grandTotal = subtotal + effectiveTransport + ro;
+
+        if (subtotalDisplay) subtotalDisplay.textContent = fmt(subtotal);
+        if (grandTotalDisplay) grandTotalDisplay.textContent = fmt(grandTotal);
+    }
+
+    function bindRow(row) {
+        const designSelect = row.querySelector('.item-design');
+        const designNumInput = row.querySelector('.item-design-number');
+        const rateInput = row.querySelector('.item-rate');
+
+        designSelect?.addEventListener('change', function () {
+            const opt = this.selectedOptions[0];
+            if (opt && opt.value) {
+                if (designNumInput) designNumInput.value = opt.getAttribute('data-number') || '';
+                const rate = parseFloat(opt.getAttribute('data-rate')) || 0;
+                if (rateInput && (!rateInput.value || parseFloat(rateInput.value) === 0)) {
+                    rateInput.value = rate.toFixed(2);
+                }
+            } else if (designNumInput) {
+                designNumInput.value = '';
+            }
+            recalc();
+        });
+
+        row.querySelector('.item-qty')?.addEventListener('input', recalc);
+        row.querySelector('.item-rate')?.addEventListener('input', recalc);
+        row.querySelector('.item-disc')?.addEventListener('input', recalc);
+        row.querySelector('.item-gst')?.addEventListener('input', recalc);
+
+        row.querySelector('.remove-row')?.addEventListener('click', function () {
+            row.remove();
+            reindex();
+            recalc();
+        });
+    }
+
+    addRowBtn?.addEventListener('click', function () {
+        const idx = itemsBody.querySelectorAll('.item-row').length;
+        const tr = document.createElement('tr');
+        tr.className = 'item-row';
+        tr.innerHTML = `
+            <td class="text-center sr-no">${idx + 1}</td>
+            <td>
+                <select name="Details[${idx}].DesignId" class="af-input af-select item-design" required style="font-size: 0.8rem;">
+                    ${designOptions}
+                </select>
+                <input type="hidden" name="Details[${idx}].DesignNumber" class="item-design-number" />
+            </td>
+            <td><input type="text" name="Details[${idx}].Colour" class="af-input item-colour" placeholder="Colour" list="coloursList" style="font-size: 0.8rem;" /></td>
+            <td><input type="text" name="Details[${idx}].Size" class="af-input item-size" placeholder="Size" list="sizesList" style="font-size: 0.8rem;" /></td>
+            <td><input type="number" min="1" name="Details[${idx}].Quantity" class="af-input text-end item-qty" value="1" required style="font-size: 0.8rem;" /></td>
+            <td><input type="number" step="0.01" min="0" name="Details[${idx}].UnitPrice" class="af-input text-end item-rate" value="0.00" required style="font-size: 0.8rem;" /></td>
+            <td><input type="number" step="0.01" min="0" max="100" name="Details[${idx}].DiscountPercentage" class="af-input text-end item-disc" value="0" style="font-size: 0.8rem;" /></td>
+            <td><input type="number" step="0.01" min="0" max="100" name="Details[${idx}].GstPercentage" class="af-input text-end item-gst" value="12" style="font-size: 0.8rem;" /></td>
+            <td class="text-end font-weight-bold item-net" style="font-weight: 700;">₹0.00</td>
+            <td class="text-center"><button type="button" class="btn-af btn-af-danger btn-af-sm remove-row">×</button></td>
+        `;
+        itemsBody.appendChild(tr);
+        bindRow(tr);
+        reindex();
+    });
+
+    itemsBody.querySelectorAll('.item-row').forEach(bindRow);
+    transportChargeInput?.addEventListener('input', recalc);
+    transportGSTInput?.addEventListener('input', recalc);
+    roundOffInput?.addEventListener('input', recalc);
+
+    recalc();
+});
+</script>

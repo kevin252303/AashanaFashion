@@ -9,6 +9,7 @@ public class ProductionEntity
     public string Colour { get; set; } = string.Empty;
     public string Size { get; set; } = string.Empty;
     public int SlNo { get; set; } // Serial number within the order (1, 2, 3...)
+    public string? Barcode { get; set; } // e.g. AF-0042-015-CH
     public string Status { get; set; } = "Created"; // Created, AtDying, AtRoll, AtHandwork, AtStitching, Completed, Dispatched
     public DateTime CreatedDate { get; set; } = DateTime.Now;
     public List<ProcessTracking> ProcessTrackings { get; set; } = new();

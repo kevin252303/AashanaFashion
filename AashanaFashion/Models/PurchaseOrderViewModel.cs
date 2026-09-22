@@ -44,6 +44,8 @@ public class PurchaseOrderDetailViewModel
 
     public int SrNo { get; set; }
 
+    public int? RawMaterialId { get; set; }
+
     [Required]
     public string ProductName { get; set; } = string.Empty;
 

@@ -40,6 +40,11 @@
         <nav class="sidebar-nav">
             <div class="nav-label">Main</div>
 
+            <a class="s-link @(ctrl == "SalesOrder" ? "active" : "")"
+               asp-controller="SalesOrder" asp-action="Index">
+                <span class="ico">🛍️</span> Sales Orders
+            </a>
+
             @if (canViewPurchase)
             {
                 <a class="s-link @(ctrl == "Purchase" ? "active" : "")"
@@ -76,9 +81,13 @@
                             <span class="ico">🏢</span> Vendor Master
                         </a>
                     }
-                    <a class="s-link s-sublink @(ctrl == "RawMaterial" ? "active" : "")"
+                    <a class="s-link s-sublink @(ctrl == "RawMaterial" && (action == "Index" || action == "InOut" || action == "AdjustStock") ? "active" : "")"
                        asp-controller="RawMaterial" asp-action="Index">
-                        <span class="ico">🧵</span> Raw Material
+                        <span class="ico">🧵</span> Inventory & Stock
+                    </a>
+                    <a class="s-link s-sublink @(ctrl == "RawMaterial" && action == "Ledger" ? "active" : "")"
+                       asp-controller="RawMaterial" asp-action="Ledger">
+                        <span class="ico">📜</span> Stock Ledger
                     </a>
                     <a class="s-link s-sublink @(ctrl == "Colour" ? "active" : "")"
                        asp-controller="Colour" asp-action="Index">
@@ -110,11 +119,11 @@
             }
 
             <div class="nav-label">Production</div>
-            <a class="s-link s-link-toggle @(ctrl == "Production" || ctrl == "PMS" ? "open" : "")" onclick="toggleNav(this)">
+            <a class="s-link s-link-toggle @(ctrl == "Production" || ctrl == "PMS" || ctrl == "QualityControl" ? "open" : "")" onclick="toggleNav(this)">
                 <span class="ico">📦</span> Production Work
                 <span class="nav-arrow">▾</span>
             </a>
-            <div class="s-submenu @(ctrl == "Production" || ctrl == "PMS" ? "" : "d-none")">
+            <div class="s-submenu @(ctrl == "Production" || ctrl == "PMS" || ctrl == "QualityControl" ? "" : "d-none")">
                 <a class="s-link s-sublink @(ctrl == "PMS" && action == "Index" ? "active" : "")"
                    asp-controller="PMS" asp-action="Index">
                     <span class="ico">📊</span> Dashboard (WIP)
@@ -130,6 +139,14 @@
                 <a class="s-link s-sublink @(ctrl == "PMS" && action == "ProcessTracking" ? "active" : "")"
                    asp-controller="PMS" asp-action="ProcessTracking">
                     <span class="ico">📋</span> Process Tracking
+                </a>
+                <a class="s-link s-sublink @(ctrl == "QualityControl" ? "active" : "")"
+                   asp-controller="QualityControl" asp-action="Index">
+                    <span class="ico">🔍</span> Quality Control (QC)
+                </a>
+                <a class="s-link s-sublink @(ctrl == "Barcode" ? "active" : "")"
+                   asp-controller="Barcode" asp-action="Scanner">
+                    <span class="ico">📱</span> Barcode Scanner
                 </a>
             </div>
 
@@ -155,12 +172,16 @@
                 </div>
             }
 
-            @if (role == "System Admin")
+            @if (isAdmin || role == "Manager" || role == "System Admin" || User.HasClaim("Permission.Accounting.CanView", "true"))
             {
-                <div class="nav-label">Finance</div>
+                <div class="nav-label">Finance & Accounts</div>
+                <a class="s-link @(ctrl == "Invoice" ? "active" : "")"
+                   asp-controller="Invoice" asp-action="Index">
+                    <span class="ico">🧾</span> Tax Invoices
+                </a>
                 <a class="s-link @(ctrl == "Accounting" ? "active" : "")"
                    asp-controller="Accounting" asp-action="Index">
-                    <span class="ico">💰</span> Accounting
+                    <span class="ico">💰</span> General Ledger
                 </a>
             }
         </nav>

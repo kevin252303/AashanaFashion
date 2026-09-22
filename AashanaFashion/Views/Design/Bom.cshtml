@@ -1,0 +1,446 @@
+@model AashanaFashion.Models.Design
+@{
+    ViewData["Title"] = $"BOM & Costing — {Model.DesignNumber}";
+    var rawMaterials = ViewBag.RawMaterials as List<AashanaFashion.Models.RawMaterial> ?? new();
+    var vendors = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new();
+}
+
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <div>
+        <h1 class="page-title">Bill of Materials (BOM) & Garment Costing</h1>
+        <p class="page-sub">Design: <strong>@Model.DesignNumber</strong> @(string.IsNullOrEmpty(Model.Category) ? "" : $"({Model.Category})")</p>
+    </div>
+    <div style="display:flex;gap:.5rem;">
+        <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back to Designs</a>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn-af btn-af-ghost btn-af-sm">Edit Design Info</a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
+}
+
+<form asp-action="Bom" asp-route-id="@Model.Id" method="post" id="bomForm">
+    @Html.AntiForgeryToken()
+
+    <!-- Top KPI Costing Summary -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg">
+            <div class="data-card p-3" style="border-left: 4px solid #3b82f6;">
+                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Material Cost / pc</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #2563eb; margin-top: 4px;" id="kpiMaterialCost">₹@Model.TotalMaterialCost.ToString("N2")</div>
+                <div style="font-size: 0.75rem; color: #94a3b8;">Fabrics, linings & trims</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg">
+            <div class="data-card p-3" style="border-left: 4px solid #8b5cf6;">
+                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Labor & Job-Work / pc</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #7c3aed; margin-top: 4px;" id="kpiLaborCost">₹@Model.TotalLaborCost.ToString("N2")</div>
+                <div style="font-size: 0.75rem; color: #94a3b8;">Dying, handwork, stitching</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg">
+            <div class="data-card p-3" style="border-left: 4px solid #f59e0b;">
+                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Production Cost</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #d97706; margin-top: 4px;" id="kpiTotalCost">₹@Model.TotalProductionCost.ToString("N2")</div>
+                <div style="font-size: 0.75rem; color: #94a3b8;">COGS per garment piece</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg">
+            <div class="data-card p-3" style="border-left: 4px solid #06b6d4;">
+                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Selling Price</div>
+                <div class="d-flex align-items-center gap-1 mt-1">
+                    <span style="font-weight: 700; font-size: 1.1rem; color: #0f172a;">₹</span>
+                    <input type="number" step="0.01" min="0" name="SalesPrice" id="salesPriceInput" class="af-input" value="@Model.SalesPrice" style="width: 110px; font-weight: 700; font-size: 1.2rem; padding: 2px 6px;" />
+                </div>
+                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">Standard retail / wholesale</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg">
+            <div class="data-card p-3" style="border-left: 4px solid #10b981;">
+                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Estimated Profit Margin</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #16a34a; margin-top: 4px;" id="kpiMargin">
+                    ₹@Model.GrossProfitMargin.ToString("N2")
+                    <span style="font-size: 0.85rem; font-weight: 600;" id="kpiMarginPct">(@Model.GrossProfitMarginPercent.ToString("N1")%)</span>
+                </div>
+                <div style="font-size: 0.75rem; color: #94a3b8;">Per piece markup</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. Bill of Materials (Raw Materials Recipe) -->
+    <div class="data-card mb-4">
+        <div class="data-card-header d-flex justify-content-between align-items-center">
+            <div>
+                <span class="data-card-title">1. Raw Materials Consumption (BOM)</span>
+                <span style="font-size: 0.8rem; color: #64748b; margin-left: 0.5rem;">Fabrics, trims and components consumed per single piece</span>
+            </div>
+            <button type="button" id="addBomRowBtn" class="btn-af btn-af-ghost btn-af-sm">+ Add Material Line</button>
+        </div>
+        <div style="padding: 1rem;">
+            <div style="overflow-x:auto;">
+                <table class="af-table" id="bomTable" style="min-width: 900px; font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Component</th>
+                            <th style="min-width: 220px;">Raw Material *</th>
+                            <th style="width: 110px;" class="text-end">Consumption *</th>
+                            <th style="width: 80px;" class="text-center">Unit</th>
+                            <th style="width: 90px;" class="text-end">Wastage %</th>
+                            <th style="width: 100px;" class="text-end">Rate (₹)</th>
+                            <th style="width: 110px;" class="text-end">Cost / pc (₹)</th>
+                            <th style="min-width: 120px;">Remarks</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="bomBody">
+                        @if (Model.BomItems.Any())
+                        {
+                            var bi = 0;
+                            foreach (var b in Model.BomItems)
+                            {
+                                var rate = b.RawMaterial?.Rate ?? 0;
+                                var lineCost = b.EffectiveQuantity * rate;
+                                <tr class="bom-row">
+                                    <td>
+                                        <select name="BomItems[@bi].Component" class="af-input af-select" style="font-size: 0.8rem;">
+                                            <option value="Chaniya" selected="@(b.Component == "Chaniya" ? "selected" : null)">Chaniya</option>
+                                            <option value="Choli" selected="@(b.Component == "Choli" ? "selected" : null)">Choli</option>
+                                            <option value="Dupatta" selected="@(b.Component == "Dupatta" ? "selected" : null)">Dupatta</option>
+                                            <option value="Blouse" selected="@(b.Component == "Blouse" ? "selected" : null)">Blouse</option>
+                                            <option value="Lining" selected="@(b.Component == "Lining" ? "selected" : null)">Lining</option>
+                                            <option value="Trims / Lace" selected="@(b.Component == "Trims / Lace" ? "selected" : null)">Trims / Lace</option>
+                                            <option value="General" selected="@(b.Component == "General" ? "selected" : null)">General</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select name="BomItems[@bi].RawMaterialId" class="af-input af-select bom-material-select" required style="font-size: 0.8rem;">
+                                            <option value="">— Select Material —</option>
+                                            @foreach (var rm in rawMaterials)
+                                            {
+                                                <option value="@rm.Id" data-unit="@rm.Unit" data-rate="@rm.Rate" selected="@(rm.Id == b.RawMaterialId ? "selected" : null)">
+                                                    @rm.Name (₹@rm.Rate / @rm.Unit)
+                                                </option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.01" min="0.01" name="BomItems[@bi].QuantityPerPiece" class="af-input text-end bom-qty" value="@b.QuantityPerPiece" required style="font-size: 0.8rem;" />
+                                    </td>
+                                    <td class="text-center bom-unit" style="color: #64748b;">@(b.RawMaterial?.Unit ?? "—")</td>
+                                    <td>
+                                        <input type="number" step="0.5" min="0" max="100" name="BomItems[@bi].WastagePercentage" class="af-input text-end bom-wastage" value="@b.WastagePercentage" style="font-size: 0.8rem;" />
+                                    </td>
+                                    <td class="text-end bom-rate" style="color: #64748b;">₹@rate.ToString("N2")</td>
+                                    <td class="text-end font-weight-bold bom-line-cost" style="color: #0f172a; font-weight: 700;">₹@lineCost.ToString("N2")</td>
+                                    <td>
+                                        <input type="text" name="BomItems[@bi].Remarks" class="af-input" value="@b.Remarks" placeholder="Color / placement" style="font-size: 0.8rem;" />
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn-af btn-af-danger btn-af-sm remove-bom-row">×</button>
+                                    </td>
+                                </tr>
+                                bi++;
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Operation Costs (Job-Work & Labor) -->
+    <div class="data-card mb-4">
+        <div class="data-card-header d-flex justify-content-between align-items-center">
+            <div>
+                <span class="data-card-title">2. Labor & Job-Work Operations</span>
+                <span style="font-size: 0.8rem; color: #64748b; margin-left: 0.5rem;">Estimated processing rates per single piece</span>
+            </div>
+            <button type="button" id="addOpRowBtn" class="btn-af btn-af-ghost btn-af-sm">+ Add Operation</button>
+        </div>
+        <div style="padding: 1rem;">
+            <div style="overflow-x:auto;">
+                <table class="af-table" id="opTable" style="min-width: 800px; font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th style="width: 220px;">Operation / Step *</th>
+                            <th style="width: 140px;" class="text-end">Cost / pc (₹) *</th>
+                            <th style="width: 200px;">Default Vendor (Optional)</th>
+                            <th>Process Notes</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="opBody">
+                        @if (Model.OperationCosts.Any())
+                        {
+                            var oi = 0;
+                            foreach (var o in Model.OperationCosts)
+                            {
+                                <tr class="op-row">
+                                    <td>
+                                        <select name="OperationCosts[@oi].OperationName" class="af-input af-select" style="font-size: 0.8rem;">
+                                            <option value="Dying" selected="@(o.OperationName == "Dying" ? "selected" : null)">Dying</option>
+                                            <option value="Roll Press" selected="@(o.OperationName == "Roll Press" ? "selected" : null)">Roll Press</option>
+                                            <option value="Handwork" selected="@(o.OperationName == "Handwork" ? "selected" : null)">Handwork / Embroidery</option>
+                                            <option value="Stitching" selected="@(o.OperationName == "Stitching" ? "selected" : null)">Stitching</option>
+                                            <option value="Finishing & Ironing" selected="@(o.OperationName == "Finishing & Ironing" ? "selected" : null)">Finishing & Ironing</option>
+                                            <option value="Packing" selected="@(o.OperationName == "Packing" ? "selected" : null)">Packing</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.01" min="0" name="OperationCosts[@oi].EstimatedCost" class="af-input text-end op-cost" value="@o.EstimatedCost" required style="font-size: 0.8rem;" />
+                                    </td>
+                                    <td>
+                                        <select name="OperationCosts[@oi].VendorId" class="af-input af-select" style="font-size: 0.8rem;">
+                                            <option value="">— No Default Vendor —</option>
+                                            @foreach (var v in vendors)
+                                            {
+                                                <option value="@v.Id" selected="@(v.Id == o.VendorId ? "selected" : null)">
+                                                    @v.VendorName
+                                                </option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="OperationCosts[@oi].Remarks" class="af-input" value="@o.Remarks" placeholder="Rate details or special requirements" style="font-size: 0.8rem;" />
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn-af btn-af-danger btn-af-sm remove-op-row">×</button>
+                                    </td>
+                                </tr>
+                                oi++;
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Submit -->
+    <div class="d-flex justify-content-end gap-2 mb-5">
+        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+        <button type="submit" class="btn-af btn-af-primary">Save BOM & Cost Sheet</button>
+    </div>
+</form>
+
+<!-- Raw Material Options Template for JS -->
+<template id="materialOptionsTemplate">
+    <option value="">— Select Material —</option>
+    @foreach (var rm in rawMaterials)
+    {
+        <option value="@rm.Id" data-unit="@rm.Unit" data-rate="@rm.Rate">
+            @rm.Name (₹@rm.Rate / @rm.Unit)
+        </option>
+    }
+</template>
+
+<template id="vendorOptionsTemplate">
+    <option value="">— No Default Vendor —</option>
+    @foreach (var v in vendors)
+    {
+        <option value="@v.Id">@v.VendorName</option>
+    }
+</template>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const bomBody = document.getElementById('bomBody');
+    const opBody = document.getElementById('opBody');
+    const addBomBtn = document.getElementById('addBomRowBtn');
+    const addOpBtn = document.getElementById('addOpRowBtn');
+    const salesPriceInput = document.getElementById('salesPriceInput');
+
+    const kpiMaterial = document.getElementById('kpiMaterialCost');
+    const kpiLabor = document.getElementById('kpiLaborCost');
+    const kpiTotal = document.getElementById('kpiTotalCost');
+    const kpiMargin = document.getElementById('kpiMargin');
+    const kpiMarginPct = document.getElementById('kpiMarginPct');
+
+    const materialOptions = document.getElementById('materialOptionsTemplate').innerHTML;
+    const vendorOptions = document.getElementById('vendorOptionsTemplate').innerHTML;
+
+    function fmt(val) {
+        return '₹' + Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function reindexBom() {
+        const rows = bomBody.querySelectorAll('.bom-row');
+        rows.forEach((row, idx) => {
+            row.querySelectorAll('select, input').forEach(el => {
+                const name = el.getAttribute('name');
+                if (name) el.setAttribute('name', name.replace(/\[\d+\]/, '[' + idx + ']'));
+            });
+        });
+    }
+
+    function reindexOp() {
+        const rows = opBody.querySelectorAll('.op-row');
+        rows.forEach((row, idx) => {
+            row.querySelectorAll('select, input').forEach(el => {
+                const name = el.getAttribute('name');
+                if (name) el.setAttribute('name', name.replace(/\[\d+\]/, '[' + idx + ']'));
+            });
+        });
+    }
+
+    function recalculate() {
+        let totalMaterial = 0;
+        let totalLabor = 0;
+
+        bomBody.querySelectorAll('.bom-row').forEach(row => {
+            const select = row.querySelector('.bom-material-select');
+            const qtyInput = row.querySelector('.bom-qty');
+            const wastageInput = row.querySelector('.bom-wastage');
+            const unitEl = row.querySelector('.bom-unit');
+            const rateEl = row.querySelector('.bom-rate');
+            const costEl = row.querySelector('.bom-line-cost');
+
+            const opt = select?.selectedOptions[0];
+            const rate = parseFloat(opt?.getAttribute('data-rate')) || 0;
+            const unit = opt?.getAttribute('data-unit') || '—';
+            const qty = parseFloat(qtyInput?.value) || 0;
+            const wastage = parseFloat(wastageInput?.value) || 0;
+
+            if (unitEl) unitEl.textContent = unit;
+            if (rateEl) rateEl.textContent = fmt(rate);
+
+            const effectiveQty = qty * (1 + (wastage / 100));
+            const lineCost = effectiveQty * rate;
+            if (costEl) costEl.textContent = fmt(lineCost);
+
+            totalMaterial += lineCost;
+        });
+
+        opBody.querySelectorAll('.op-row').forEach(row => {
+            const costInput = row.querySelector('.op-cost');
+            const cost = parseFloat(costInput?.value) || 0;
+            totalLabor += cost;
+        });
+
+        const totalCost = totalMaterial + totalLabor;
+        const salesPrice = parseFloat(salesPriceInput?.value) || 0;
+        const margin = salesPrice - totalCost;
+        const marginPct = salesPrice > 0 ? (margin / salesPrice) * 100 : 0;
+
+        if (kpiMaterial) kpiMaterial.textContent = fmt(totalMaterial);
+        if (kpiLabor) kpiLabor.textContent = fmt(totalLabor);
+        if (kpiTotal) kpiTotal.textContent = fmt(totalCost);
+        if (kpiMargin) {
+            kpiMargin.innerHTML = fmt(margin) + ' <span style="font-size: 0.85rem; font-weight: 600;" id="kpiMarginPct">(' + marginPct.toFixed(1) + '%)</span>';
+            kpiMargin.style.color = margin >= 0 ? '#16a34a' : '#dc2626';
+        }
+    }
+
+    function bindBomRow(row) {
+        row.querySelector('.bom-material-select')?.addEventListener('change', recalculate);
+        row.querySelector('.bom-qty')?.addEventListener('input', recalculate);
+        row.querySelector('.bom-wastage')?.addEventListener('input', recalculate);
+        row.querySelector('.remove-bom-row')?.addEventListener('click', function () {
+            row.remove();
+            reindexBom();
+            recalculate();
+        });
+    }
+
+    function bindOpRow(row) {
+        row.querySelector('.op-cost')?.addEventListener('input', recalculate);
+        row.querySelector('.remove-op-row')?.addEventListener('click', function () {
+            row.remove();
+            reindexOp();
+            recalculate();
+        });
+    }
+
+    addBomBtn?.addEventListener('click', function () {
+        const idx = bomBody.querySelectorAll('.bom-row').length;
+        const tr = document.createElement('tr');
+        tr.className = 'bom-row';
+        tr.innerHTML = `
+            <td>
+                <select name="BomItems[${idx}].Component" class="af-input af-select" style="font-size: 0.8rem;">
+                    <option value="Chaniya">Chaniya</option>
+                    <option value="Choli">Choli</option>
+                    <option value="Dupatta">Dupatta</option>
+                    <option value="Blouse">Blouse</option>
+                    <option value="Lining">Lining</option>
+                    <option value="Trims / Lace">Trims / Lace</option>
+                    <option value="General" selected>General</option>
+                </select>
+            </td>
+            <td>
+                <select name="BomItems[${idx}].RawMaterialId" class="af-input af-select bom-material-select" required style="font-size: 0.8rem;">
+                    ${materialOptions}
+                </select>
+            </td>
+            <td>
+                <input type="number" step="0.01" min="0.01" name="BomItems[${idx}].QuantityPerPiece" class="af-input text-end bom-qty" value="1.00" required style="font-size: 0.8rem;" />
+            </td>
+            <td class="text-center bom-unit" style="color: #64748b;">—</td>
+            <td>
+                <input type="number" step="0.5" min="0" max="100" name="BomItems[${idx}].WastagePercentage" class="af-input text-end bom-wastage" value="0" style="font-size: 0.8rem;" />
+            </td>
+            <td class="text-end bom-rate" style="color: #64748b;">₹0.00</td>
+            <td class="text-end font-weight-bold bom-line-cost" style="color: #0f172a; font-weight: 700;">₹0.00</td>
+            <td>
+                <input type="text" name="BomItems[${idx}].Remarks" class="af-input" placeholder="Color / placement" style="font-size: 0.8rem;" />
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn-af btn-af-danger btn-af-sm remove-bom-row">×</button>
+            </td>
+        `;
+        bomBody.appendChild(tr);
+        bindBomRow(tr);
+        reindexBom();
+    });
+
+    addOpBtn?.addEventListener('click', function () {
+        const idx = opBody.querySelectorAll('.op-row').length;
+        const tr = document.createElement('tr');
+        tr.className = 'op-row';
+        tr.innerHTML = `
+            <td>
+                <select name="OperationCosts[${idx}].OperationName" class="af-input af-select" style="font-size: 0.8rem;">
+                    <option value="Dying">Dying</option>
+                    <option value="Roll Press">Roll Press</option>
+                    <option value="Handwork">Handwork / Embroidery</option>
+                    <option value="Stitching" selected>Stitching</option>
+                    <option value="Finishing & Ironing">Finishing & Ironing</option>
+                    <option value="Packing">Packing</option>
+                </select>
+            </td>
+            <td>
+                <input type="number" step="0.01" min="0" name="OperationCosts[${idx}].EstimatedCost" class="af-input text-end op-cost" value="0.00" required style="font-size: 0.8rem;" />
+            </td>
+            <td>
+                <select name="OperationCosts[${idx}].VendorId" class="af-input af-select" style="font-size: 0.8rem;">
+                    ${vendorOptions}
+                </select>
+            </td>
+            <td>
+                <input type="text" name="OperationCosts[${idx}].Remarks" class="af-input" placeholder="Rate details or special requirements" style="font-size: 0.8rem;" />
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn-af btn-af-danger btn-af-sm remove-op-row">×</button>
+            </td>
+        `;
+        opBody.appendChild(tr);
+        bindOpRow(tr);
+        reindexOp();
+    });
+
+    bomBody.querySelectorAll('.bom-row').forEach(bindBomRow);
+    opBody.querySelectorAll('.op-row').forEach(bindOpRow);
+    salesPriceInput?.addEventListener('input', recalculate);
+
+    // Initial check
+    if (bomBody.querySelectorAll('.bom-row').length === 0) {
+        addBomBtn?.click();
+    }
+    if (opBody.querySelectorAll('.op-row').length === 0) {
+        addOpBtn?.click();
+    }
+    recalculate();
+});
+</script>

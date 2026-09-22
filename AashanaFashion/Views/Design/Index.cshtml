@@ -64,6 +64,7 @@
                         <td>@item.CreationFlow</td>
                         <td>
                             <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+                                <a asp-action="Bom" asp-route-id="@item.Id" class="btn-af btn-af-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;" title="Bill of Materials & Costing">BOM & Cost</a>
                                 <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
                                 @if (canDelete)
                                 {

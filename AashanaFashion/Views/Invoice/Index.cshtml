@@ -1,0 +1,198 @@
+@model IEnumerable<AashanaFashion.Models.TaxInvoice>
+@{
+    ViewData["Title"] = "GST Tax Invoices";
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    bool canCreate = role == "Admin" || role == "SuperAdmin" || role == "Manager";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1 fw-bold">🧾 GST Tax Invoices & Receivables</h2>
+        <p class="text-muted mb-0">Manage customer billing, GST compliance (CGST/SGST/IGST), and payment receipts.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-controller="Accounting" asp-action="Index" class="btn btn-outline-secondary">
+            💰 General Ledger
+        </a>
+        @if (canCreate)
+        {
+            <a asp-action="Create" class="btn btn-primary">
+                ➕ Create Tax Invoice
+            </a>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Success!</strong> @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Financial KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body">
+                <span class="text-muted small text-uppercase fw-semibold">Total Invoiced</span>
+                <h3 class="fw-bold my-1 text-primary">₹@(((decimal)ViewBag.TotalInvoiced).ToString("N2"))</h3>
+                <small class="text-muted">Total billing to date</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body">
+                <span class="text-muted small text-uppercase fw-semibold">Total Collected</span>
+                <h3 class="fw-bold my-1 text-success">₹@(((decimal)ViewBag.TotalCollected).ToString("N2"))</h3>
+                <small class="text-success fw-semibold">Cleared payments</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body">
+                <span class="text-muted small text-uppercase fw-semibold">Accounts Receivable (AR)</span>
+                <h3 class="fw-bold my-1 text-warning">₹@(((decimal)ViewBag.OutstandingReceivables).ToString("N2"))</h3>
+                <small class="text-muted">Customer pending balances</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body">
+                <span class="text-muted small text-uppercase fw-semibold">Overdue Invoices</span>
+                <h3 class="fw-bold my-1 text-danger">@ViewBag.OverdueCount</h3>
+                <small class="text-muted">Past payment due date</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Filter Header -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-light">🔍</span>
+                    <input type="text" name="search" class="form-control" placeholder="Search by Invoice #, Customer, GSTIN..." value="@ViewBag.Search" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Payment Statuses</option>
+                    @foreach (AashanaFashion.Models.InvoicePaymentStatus s in Enum.GetValues(typeof(AashanaFashion.Models.InvoicePaymentStatus)))
+                    {
+                        <option value="@s" selected="@((AashanaFashion.Models.InvoicePaymentStatus?)ViewBag.Status == s)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-secondary flex-grow-1">Filter</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Invoices Table -->
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-0">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Date</th>
+                            <th>Due Date</th>
+                            <th>Customer Name</th>
+                            <th>Place of Supply</th>
+                            <th class="text-end">Taxable</th>
+                            <th class="text-end">GST Amount</th>
+                            <th class="text-end">Grand Total</th>
+                            <th class="text-end">Balance Due</th>
+                            <th>Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inv in Model)
+                        {
+                            bool isOverdue = inv.DueDate < DateTime.Today && inv.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Paid;
+                            <tr class="@(isOverdue ? "table-danger" : "")">
+                                <td class="fw-bold">
+                                    <a asp-action="Details" asp-route-id="@inv.Id" class="text-decoration-none">@inv.InvoiceNumber</a>
+                                    @if (inv.SalesOrderId.HasValue)
+                                    {
+                                        <div class="small text-muted">SO: @inv.SalesOrder?.SoNumber</div>
+                                    }
+                                </td>
+                                <td>@inv.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    <span class="@(isOverdue ? "text-danger fw-bold" : "")">@inv.DueDate.ToString("dd/MM/yyyy")</span>
+                                </td>
+                                <td>
+                                    <strong>@inv.CustomerName</strong>
+                                    @if (!string.IsNullOrEmpty(inv.CustomerGstin))
+                                    {
+                                        <div class="small text-muted">GST: @inv.CustomerGstin</div>
+                                    }
+                                </td>
+                                <td>
+                                    <small class="badge bg-light text-dark border">@inv.PlaceOfSupply</small>
+                                </td>
+                                <td class="text-end">₹@inv.TaxableAmount.ToString("N2")</td>
+                                <td class="text-end">
+                                    ₹@((inv.CgstAmount + inv.SgstAmount + inv.IgstAmount).ToString("N2"))
+                                    <div class="small text-muted">@(inv.IsInterState ? "IGST" : "CGST+SGST")</div>
+                                </td>
+                                <td class="text-end fw-bold text-primary">₹@inv.GrandTotal.ToString("N2")</td>
+                                <td class="text-end fw-bold @(inv.BalanceDue > 0 ? "text-warning" : "text-muted")">
+                                    ₹@inv.BalanceDue.ToString("N2")
+                                </td>
+                                <td>
+                                    @if (inv.PaymentStatus == AashanaFashion.Models.InvoicePaymentStatus.Paid)
+                                    {
+                                        <span class="badge bg-success">Paid</span>
+                                    }
+                                    else if (inv.PaymentStatus == AashanaFashion.Models.InvoicePaymentStatus.PartiallyPaid)
+                                    {
+                                        <span class="badge bg-warning text-dark">Partial</span>
+                                    }
+                                    else if (inv.PaymentStatus == AashanaFashion.Models.InvoicePaymentStatus.Unpaid)
+                                    {
+                                        <span class="badge bg-danger">Unpaid</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Cancelled</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <a asp-action="Details" asp-route-id="@inv.Id" class="btn btn-outline-secondary">View</a>
+                                        <a asp-action="Print" asp-route-id="@inv.Id" target="_blank" class="btn btn-outline-dark" title="Print GST Invoice">🖨️</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5 text-muted">
+                <span class="fs-1 d-block mb-2">🧾</span>
+                <h5>No GST Tax Invoices found</h5>
+                <p class="mb-3">Create your first tax invoice or generate one from a Sales Order.</p>
+                <a asp-action="Create" class="btn btn-primary">Create Invoice</a>
+            </div>
+        }
+    </div>
+</div>

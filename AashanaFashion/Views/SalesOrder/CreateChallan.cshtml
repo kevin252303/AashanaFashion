@@ -1,0 +1,173 @@
+@model AashanaFashion.Models.CreateChallanViewModel
+@{
+    ViewData["Title"] = $"Generate Delivery Challan — {Model.SoNumber}";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="page-title">Generate Delivery Challan & Dispatch</h1>
+        <p class="page-sub">Against Sales Order: <strong>@Model.SoNumber</strong> | Customer: <strong>@Model.CustomerName</strong></p>
+    </div>
+    <a asp-action="Details" asp-route-id="@Model.SalesOrderId" class="btn-af btn-af-ghost btn-af-sm">← Back to Order</a>
+</div>
+
+<form asp-action="CreateChallan" method="post" id="challanForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="SalesOrderId" />
+    <input type="hidden" asp-for="SoNumber" />
+    <input type="hidden" asp-for="CustomerId" />
+    <input type="hidden" asp-for="CustomerName" />
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="af-alert af-alert-danger mb-3">
+            <div class="alert-body">
+                @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                { <div>@e.ErrorMessage</div> }
+            </div>
+            <button class="alert-close">&times;</button>
+        </div>
+    }
+
+    <!-- Transport & Shipping Card -->
+    <div class="data-card p-4 mb-4">
+        <h5 style="font-size: 0.95rem; font-weight: 700; color: #0f172a; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
+            Logistics & Transport Information
+        </h5>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="af-label">Challan Number *</label>
+                <input asp-for="ChallanNumber" class="af-input" readonly style="background:#f1f5f9;font-weight:700;" />
+            </div>
+            <div class="col-md-3">
+                <label class="af-label">Challan Date *</label>
+                <input asp-for="ChallanDate" type="datetime-local" class="af-input" value="@Model.ChallanDate.ToString("yyyy-MM-ddTHH:mm")" required />
+            </div>
+            <div class="col-md-3">
+                <label class="af-label">Transporter / Courier *</label>
+                <input asp-for="TransporterName" class="af-input" placeholder="e.g. VRL Logistics, Blue Dart" required />
+            </div>
+            <div class="col-md-3">
+                <label class="af-label">Vehicle Number</label>
+                <input asp-for="VehicleNumber" class="af-input" placeholder="e.g. GJ-05-AB-1234" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="af-label">LR / Docket / Tracking #</label>
+                <input asp-for="LrNumber" class="af-input" placeholder="Lorry receipt number" />
+            </div>
+            <div class="col-md-3">
+                <label class="af-label">E-Way Bill Number</label>
+                <input asp-for="EwayBillNumber" class="af-input" placeholder="E-way bill number" />
+            </div>
+            <div class="col-md-3">
+                <label class="af-label">Number of Parcels / Boxes *</label>
+                <input asp-for="NumberOfBoxes" type="number" min="1" class="af-input" required />
+            </div>
+            <div class="col-md-3">
+                <label class="af-label">Consignee City / Destination</label>
+                <input class="af-input" value="@Model.CustomerName" readonly style="background:#f8fafc;" />
+            </div>
+
+            <div class="col-md-8">
+                <label class="af-label">Shipping / Delivery Address *</label>
+                <input asp-for="ShippingAddress" class="af-input" required />
+            </div>
+            <div class="col-md-4">
+                <label class="af-label">Dispatch Remarks / Notes</label>
+                <input asp-for="Notes" class="af-input" placeholder="e.g. Fragile, Handle with care" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Items to Dispatch Table -->
+    <div class="data-card mb-4">
+        <div class="data-card-header d-flex justify-content-between align-items-center">
+            <div>
+                <span class="data-card-title">Select Items & Quantities to Dispatch</span>
+                <span style="font-size: 0.8rem; color: #64748b; margin-left: 0.5rem;">Adjust quantity for partial shipments</span>
+            </div>
+            <span class="af-badge b-purple" id="totalDispatchBadge">Total Dispatch: 0 pcs</span>
+        </div>
+        <div style="padding: 1rem;">
+            <div style="overflow-x:auto;">
+                <table class="af-table" style="font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th>Design Number</th>
+                            <th>Colour</th>
+                            <th>Size</th>
+                            <th class="text-end">Ordered</th>
+                            <th class="text-end">Prev. Dispatched</th>
+                            <th class="text-end">Pending</th>
+                            <th style="width: 140px;" class="text-end">Dispatch Now *</th>
+                            <th>Package Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Items.Count; i++)
+                        {
+                            var item = Model.Items[i];
+                            <tr>
+                                <td>
+                                    <strong>@item.DesignNumber</strong>
+                                    <input type="hidden" name="Items[@i].SalesOrderDetailId" value="@item.SalesOrderDetailId" />
+                                    <input type="hidden" name="Items[@i].DesignNumber" value="@item.DesignNumber" />
+                                </td>
+                                <td>
+                                    @(string.IsNullOrEmpty(item.Colour) ? "—" : item.Colour)
+                                    <input type="hidden" name="Items[@i].Colour" value="@item.Colour" />
+                                </td>
+                                <td>
+                                    @(string.IsNullOrEmpty(item.Size) ? "—" : item.Size)
+                                    <input type="hidden" name="Items[@i].Size" value="@item.Size" />
+                                </td>
+                                <td class="text-end text-muted">
+                                    @item.OrderedQuantity
+                                    <input type="hidden" name="Items[@i].OrderedQuantity" value="@item.OrderedQuantity" />
+                                </td>
+                                <td class="text-end text-muted">
+                                    @item.PreviouslyDispatched
+                                    <input type="hidden" name="Items[@i].PreviouslyDispatched" value="@item.PreviouslyDispatched" />
+                                </td>
+                                <td class="text-end" style="font-weight: 700; color: #dc2626;">
+                                    @item.PendingQuantity
+                                    <input type="hidden" name="Items[@i].PendingQuantity" value="@item.PendingQuantity" />
+                                </td>
+                                <td>
+                                    <input type="number" min="0" max="@item.PendingQuantity" name="Items[@i].DispatchQuantity" class="af-input text-end dispatch-qty" value="@item.DispatchQuantity" style="font-size: 0.85rem; font-weight: 700;" required />
+                                </td>
+                                <td>
+                                    <input type="text" name="Items[@i].Remarks" class="af-input" placeholder="Box # or note" style="font-size: 0.8rem;" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mb-5">
+        <a asp-action="Details" asp-route-id="@Model.SalesOrderId" class="btn-af btn-af-ghost">Cancel</a>
+        <button type="submit" class="btn-af btn-af-primary">Generate Delivery Challan</button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const qtyInputs = document.querySelectorAll('.dispatch-qty');
+    const badge = document.getElementById('totalDispatchBadge');
+
+    function updateTotal() {
+        let total = 0;
+        qtyInputs.forEach(input => {
+            total += parseInt(input.value) || 0;
+        });
+        if (badge) badge.textContent = 'Total Dispatch: ' + total + ' pcs';
+    }
+
+    qtyInputs.forEach(input => input.addEventListener('input', updateTotal));
+    updateTotal();
+});
+</script>

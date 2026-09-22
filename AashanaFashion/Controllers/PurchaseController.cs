@@ -30,6 +30,7 @@ public class PurchaseController : Controller
     public async Task<IActionResult> Create()
     {
         ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+        ViewBag.RawMaterials = await _context.RawMaterials.OrderBy(m => m.Name).ToListAsync();
         ViewBag.NextPoNumber = await GeneratePoNumber();
         return View(new PurchaseOrderViewModel());
     }
@@ -42,6 +43,7 @@ public class PurchaseController : Controller
         if (!ModelState.IsValid)
         {
             ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+            ViewBag.RawMaterials = await _context.RawMaterials.OrderBy(m => m.Name).ToListAsync();
             ViewBag.NextPoNumber = await GeneratePoNumber();
             return View(model);
         }
@@ -69,6 +71,7 @@ public class PurchaseController : Controller
             order.Details.Add(new PurchaseOrderDetail
             {
                 SrNo = srNo++,
+                RawMaterialId = d.RawMaterialId,
                 ProductName = d.ProductName,
                 ProductDesignNo = d.ProductDesignNo,
                 HsnCode = d.HsnCode,
@@ -127,6 +130,7 @@ public class PurchaseController : Controller
             {
                 Id = d.Id,
                 SrNo = d.SrNo,
+                RawMaterialId = d.RawMaterialId,
                 ProductName = d.ProductName,
                 ProductDesignNo = d.ProductDesignNo,
                 HsnCode = d.HsnCode,
@@ -140,6 +144,7 @@ public class PurchaseController : Controller
         };
 
         ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+        ViewBag.RawMaterials = await _context.RawMaterials.OrderBy(m => m.Name).ToListAsync();
         return View(model);
     }
 
@@ -151,6 +156,7 @@ public class PurchaseController : Controller
         if (!ModelState.IsValid)
         {
             ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+            ViewBag.RawMaterials = await _context.RawMaterials.OrderBy(m => m.Name).ToListAsync();
             return View(model);
         }
 
@@ -188,6 +194,7 @@ public class PurchaseController : Controller
             var newDetail = new PurchaseOrderDetail
             {
                 SrNo = srNo++,
+                RawMaterialId = d.RawMaterialId,
                 ProductName = d.ProductName,
                 ProductDesignNo = d.ProductDesignNo,
                 HsnCode = d.HsnCode,
@@ -277,6 +284,7 @@ public class PurchaseController : Controller
             }
         }
 
+        var oldReceivedMap = order.Details.ToDictionary(d => d.Id, d => d.ReceivedQuantity);
         order.Status = status;
 
         if (status == PurchaseOrderStatus.Received)
@@ -317,6 +325,48 @@ public class PurchaseController : Controller
                 {
                     BillNumber = billNumber.Trim()
                 });
+            }
+
+            // Update real-time inventory stock & record ledger transaction
+            foreach (var d in order.Details)
+            {
+                var prevReceived = oldReceivedMap.TryGetValue(d.Id, out var pr) ? pr : 0;
+                var delta = d.ReceivedQuantity - prevReceived;
+                if (delta > 0)
+                {
+                    RawMaterial? material = null;
+                    if (d.RawMaterialId.HasValue)
+                    {
+                        material = await _context.RawMaterials.FindAsync(d.RawMaterialId.Value);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(d.ProductName))
+                    {
+                        var nameLower = d.ProductName.Trim().ToLower();
+                        material = await _context.RawMaterials.FirstOrDefaultAsync(m => m.Name.ToLower() == nameLower);
+                    }
+
+                    if (material != null)
+                    {
+                        material.CurrentStock += delta;
+                        if (d.UnitPrice > 0)
+                        {
+                            material.Rate = d.UnitPrice;
+                        }
+
+                        _context.RawMaterialTransactions.Add(new RawMaterialTransaction
+                        {
+                            RawMaterialId = material.Id,
+                            Type = "Inward",
+                            Quantity = delta,
+                            BalanceAfter = material.CurrentStock,
+                            ReferenceType = "PurchaseOrder",
+                            ReferenceId = order.Id,
+                            UnitPrice = d.UnitPrice,
+                            Remarks = $"Received from PO #{order.PoNumber}" + (!string.IsNullOrWhiteSpace(billNumber) ? $" (Bill: {billNumber.Trim()})" : ""),
+                            CreatedDate = DateTime.Now
+                        });
+                    }
+                }
             }
         }
 
