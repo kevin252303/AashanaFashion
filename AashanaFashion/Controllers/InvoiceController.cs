@@ -4,14 +4,22 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using AashanaFashion.Services;
+using System.Text;
+
 namespace AashanaFashion.Controllers;
 
 [Authorize]
 public class InvoiceController : Controller
 {
     private readonly AppDbContext _context;
+    private readonly IEwayBillService _ewayBillService;
 
-    public InvoiceController(AppDbContext context) => _context = context;
+    public InvoiceController(AppDbContext context, IEwayBillService ewayBillService)
+    {
+        _context = context;
+        _ewayBillService = ewayBillService;
+    }
 
     public async Task<IActionResult> Index(string? search, InvoicePaymentStatus? status)
     {
@@ -392,5 +400,43 @@ public class InvoiceController : Controller
         }
 
         return $"{prefix}{nextSeq:D4}";
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DownloadEwayBillJson(int id, [FromQuery] EwayBillTransportInput transport)
+    {
+        var invoice = await _context.TaxInvoices.FindAsync(id);
+        if (invoice == null) return NotFound();
+
+        // Update transport info if provided
+        if (!string.IsNullOrWhiteSpace(transport.VehicleNumber)) invoice.VehicleNumber = transport.VehicleNumber.Trim();
+        if (!string.IsNullOrWhiteSpace(transport.TransporterName)) invoice.TransporterName = transport.TransporterName.Trim();
+        if (!string.IsNullOrWhiteSpace(transport.TransporterId)) invoice.TransporterId = transport.TransporterId.Trim();
+        if (transport.DistanceKm > 0) invoice.DistanceKm = transport.DistanceKm;
+        if (!string.IsNullOrWhiteSpace(transport.VehicleType)) invoice.VehicleType = transport.VehicleType;
+        if (!string.IsNullOrWhiteSpace(transport.TransMode)) invoice.TransMode = transport.TransMode;
+
+        await _context.SaveChangesAsync();
+
+        var json = await _ewayBillService.GenerateInvoiceJsonAsync(id, transport);
+        var fileName = $"EWB_INV_{invoice.InvoiceNumber}.json";
+        return File(Encoding.UTF8.GetBytes(json), "application/json", fileName);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveEwayBill(SaveEwayBillInput model)
+    {
+        var invoice = await _context.TaxInvoices.FindAsync(model.Id);
+        if (invoice == null) return NotFound();
+
+        invoice.EwayBillNumber = model.EwayBillNumber.Trim();
+        invoice.EwayBillDate = model.EwayBillDate ?? DateTime.Today;
+        if (!string.IsNullOrWhiteSpace(model.VehicleNumber)) invoice.VehicleNumber = model.VehicleNumber.Trim();
+        if (!string.IsNullOrWhiteSpace(model.TransporterName)) invoice.TransporterName = model.TransporterName.Trim();
+
+        await _context.SaveChangesAsync();
+        TempData["Success"] = $"E-Way Bill #{invoice.EwayBillNumber} saved against Invoice {invoice.InvoiceNumber}.";
+        return RedirectToAction(nameof(Details), new { id = model.Id });
     }
 }

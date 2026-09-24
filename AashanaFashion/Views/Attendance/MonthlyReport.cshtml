@@ -1,0 +1,172 @@
+@model IEnumerable<AashanaFashion.Models.Employee>
+@{
+    ViewData["Title"] = "Monthly Attendance Matrix";
+    int curYear = ViewBag.Year;
+    int curMonth = ViewBag.Month;
+    int daysInMonth = ViewBag.DaysInMonth;
+    var departments = ViewBag.Departments as List<string> ?? new List<string>();
+    string currentDept = ViewBag.Department ?? "";
+    var records = ViewBag.Records as List<AashanaFashion.Models.AttendanceRecord> ?? new();
+    string monthName = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(curMonth);
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h2 class="mb-1 fw-bold">📊 Monthly Attendance Matrix</h2>
+        <p class="text-muted mb-0">Detailed day-by-day attendance grid for @monthName @curYear.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            📅 Daily Register
+        </a>
+        <a asp-controller="Salary" asp-action="Index" class="btn btn-outline-primary">
+            💵 Go to Payroll
+        </a>
+        <button onclick="window.print()" class="btn btn-outline-dark">
+            🖨️ Print Matrix
+        </button>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-3">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <label class="small text-muted fw-semibold">Month:</label>
+                <select name="month" class="form-select" onchange="this.form.submit()">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        <option value="@m" selected="@(m == curMonth)">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="small text-muted fw-semibold">Year:</label>
+                <select name="year" class="form-select" onchange="this.form.submit()">
+                    @for (int y = DateTime.Today.Year - 1; y <= DateTime.Today.Year + 1; y++)
+                    {
+                        <option value="@y" selected="@(y == curYear)">@y</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="small text-muted fw-semibold">Department:</label>
+                <select name="department" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Departments</option>
+                    @foreach (var d in departments)
+                    {
+                        <option value="@d" selected="@(d == currentDept)">@d</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-secondary w-100">Refresh</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="d-flex flex-wrap gap-3 mb-3 small align-items-center">
+    <span class="fw-bold text-muted">Legend:</span>
+    <span class="d-inline-flex align-items-center gap-1"><span class="badge bg-success">P</span> Present</span>
+    <span class="d-inline-flex align-items-center gap-1"><span class="badge bg-info text-dark">L</span> Late</span>
+    <span class="d-inline-flex align-items-center gap-1"><span class="badge bg-warning text-dark">H</span> Half Day</span>
+    <span class="d-inline-flex align-items-center gap-1"><span class="badge bg-danger">A</span> Absent</span>
+    <span class="d-inline-flex align-items-center gap-1"><span class="badge bg-light text-muted border">OFF</span> Sunday</span>
+</div>
+
+<!-- Grid Matrix Table -->
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm align-middle text-center mb-0" style="font-size: 0.82rem;">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-start ps-2" style="min-width: 170px;">Employee</th>
+                    <th style="min-width: 80px;">Role</th>
+                    @for (int d = 1; d <= daysInMonth; d++)
+                    {
+                        var dayDate = new DateTime(curYear, curMonth, d);
+                        var isSun = dayDate.DayOfWeek == DayOfWeek.Sunday;
+                        <th class="@(isSun ? "bg-light text-muted" : "")" style="min-width: 28px;">
+                            <div>@d</div>
+                            <small class="text-muted" style="font-size: 0.7rem;">@dayDate.ToString("ddd")[0]</small>
+                        </th>
+                    }
+                    <th class="bg-light fw-bold" style="min-width: 50px;">Days</th>
+                    <th class="bg-light fw-bold" style="min-width: 55px;">Hours</th>
+                    <th class="bg-light fw-bold" style="min-width: 50px;">OT</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var emp in Model)
+                {
+                    var empRecords = records.Where(r => r.EmployeeId == emp.Id).ToList();
+                    decimal presentDays = 0;
+                    decimal totalHours = 0;
+                    decimal overtimeHours = 0;
+
+                    <tr>
+                        <td class="text-start ps-2 fw-semibold text-truncate" style="max-width: 170px;">
+                            <a asp-controller="Employee" asp-action="Edit" asp-route-id="@emp.Id" class="text-decoration-none text-dark">
+                                @emp.FullName
+                            </a>
+                            <div class="text-muted small font-monospace">@emp.EmployeeCode</div>
+                        </td>
+                        <td class="small text-muted">@emp.Department</td>
+
+                        @for (int d = 1; d <= daysInMonth; d++)
+                        {
+                            var date = new DateTime(curYear, curMonth, d);
+                            var isSunday = date.DayOfWeek == DayOfWeek.Sunday;
+                            var rec = empRecords.FirstOrDefault(r => r.Date.Day == d);
+
+                            if (rec != null)
+                            {
+                                totalHours += rec.TotalHours;
+                                overtimeHours += rec.OvertimeHours;
+
+                                if (rec.Status == AashanaFashion.Models.AttendanceStatus.Present)
+                                {
+                                    presentDays += 1;
+                                    <td class="p-1"><span class="badge bg-success p-1" title="In: @rec.CheckInTime.ToString("hh:mm tt")">P</span></td>
+                                }
+                                else if (rec.Status == AashanaFashion.Models.AttendanceStatus.Late)
+                                {
+                                    presentDays += 1;
+                                    <td class="p-1"><span class="badge bg-info text-dark p-1" title="Late: @rec.CheckInTime.ToString("hh:mm tt")">L</span></td>
+                                }
+                                else if (rec.Status == AashanaFashion.Models.AttendanceStatus.HalfDay)
+                                {
+                                    presentDays += 0.5m;
+                                    <td class="p-1"><span class="badge bg-warning text-dark p-1" title="Half Day (@rec.TotalHours hrs)">H</span></td>
+                                }
+                                else
+                                {
+                                    <td class="p-1"><span class="badge bg-danger p-1">A</span></td>
+                                }
+                            }
+                            else if (isSunday)
+                            {
+                                <td class="bg-light text-muted p-1 small" style="opacity: 0.6;">-</td>
+                            }
+                            else if (date <= DateTime.Today)
+                            {
+                                <td class="p-1"><span class="badge bg-danger-subtle text-danger p-1">A</span></td>
+                            }
+                            else
+                            {
+                                <td class="p-1 text-muted" style="opacity: 0.3;">·</td>
+                            }
+                        }
+
+                        <td class="bg-light fw-bold text-success">@presentDays</td>
+                        <td class="bg-light fw-bold text-primary">@Math.Round(totalHours, 1)</td>
+                        <td class="bg-light text-muted">@Math.Round(overtimeHours, 1)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

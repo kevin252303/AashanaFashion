@@ -24,6 +24,11 @@ public class DeliveryChallan
     public string? LrNumber { get; set; }
 
     public string? EwayBillNumber { get; set; }
+    public DateTime? EwayBillDate { get; set; }
+    public string? TransporterId { get; set; }
+    public int? DistanceKm { get; set; } = 50;
+    public string? VehicleType { get; set; } = "R";
+    public string? TransMode { get; set; } = "1";
 
     public int NumberOfBoxes { get; set; } = 1;
 

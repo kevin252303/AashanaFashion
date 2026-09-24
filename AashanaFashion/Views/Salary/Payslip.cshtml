@@ -1,0 +1,248 @@
+@model AashanaFashion.Models.SalaryRecord
+@{
+    ViewData["Title"] = $"Payslip — {Model.Employee?.FullName} — {ViewBag.MonthName} {Model.Year}";
+    var emp = Model.Employee!;
+    string monthName = ViewBag.MonthName ?? "";
+}
+
+<div class="d-print-none mb-4 d-flex justify-content-between align-items-center">
+    <a asp-action="Index" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="btn btn-outline-secondary">
+        ← Back to Payroll Register
+    </a>
+    <div class="d-flex gap-2">
+        <button onclick="window.print()" class="btn btn-primary">
+            🖨️ Print Payslip / Save PDF
+        </button>
+    </div>
+</div>
+
+<div class="card border shadow-sm rounded-3 p-4 bg-white payslip-container mx-auto" style="max-width: 820px;">
+    <!-- Company Header -->
+    <div class="border-bottom pb-3 mb-3">
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-primary text-white fw-bold rounded-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.4rem;">
+                    AF
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-0 text-primary">Aashana Fashion</h3>
+                    <small class="text-muted d-block">Apparel Manufacturing, Job Work & Export House</small>
+                    <small class="text-muted">Plot 14-16, Garment Industrial Zone, Surat, Gujarat</small>
+                </div>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-light text-dark border px-3 py-2 fs-6">SALARY SLIP</span>
+                <div class="fw-bold text-dark mt-1">@monthName @Model.Year</div>
+                <small class="text-muted">Generated: @Model.GeneratedDate.ToString("dd MMM yyyy")</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Details Grid -->
+    <div class="row g-3 mb-4 p-3 bg-light rounded-3" style="font-size: 0.9rem;">
+        <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Employee Name:</span>
+            <span class="fw-bold text-dark">@emp.FullName</span>
+        </div>
+        <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Employee Code:</span>
+            <span class="font-monospace fw-bold text-primary">@emp.EmployeeCode</span>
+        </div>
+        <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Department:</span>
+            <span class="fw-bold text-dark">@emp.Department</span>
+        </div>
+        <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Designation:</span>
+            <span class="fw-bold text-dark">@emp.Designation</span>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Salary Mode:</span>
+            <span class="fw-bold text-dark">@emp.SalaryType (₹@emp.BaseRate:N2)</span>
+        </div>
+        <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Joining Date:</span>
+            <span>@emp.JoiningDate.ToString("dd/MM/yyyy")</span>
+        </div>
+        <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Bank / UPI:</span>
+            <span>@(string.IsNullOrWhiteSpace(emp.UpiId) ? (emp.BankName ?? "Cash") : emp.UpiId)</span>
+        </div>
+        <div class="col-6 col-md-3">
+            <span class="text-muted small d-block">Payment Status:</span>
+            <span class="badge @(Model.PaymentStatus == AashanaFashion.Models.PayrollStatus.Paid ? "bg-success" : "bg-warning text-dark")">
+                @Model.PaymentStatus
+            </span>
+        </div>
+    </div>
+
+    <!-- Attendance Breakdown -->
+    <div class="card border mb-4">
+        <div class="card-header bg-white py-2">
+            <span class="fw-bold small text-muted text-uppercase">Attendance & Shift Summary</span>
+        </div>
+        <div class="card-body p-2">
+            <div class="row text-center g-2" style="font-size: 0.85rem;">
+                <div class="col-2 border-end">
+                    <span class="text-muted d-block small">Month Days</span>
+                    <span class="fw-bold">@Model.TotalWorkingDays</span>
+                </div>
+                <div class="col-2 border-end">
+                    <span class="text-muted d-block small">Days Present</span>
+                    <span class="fw-bold text-success">@Model.DaysPresent</span>
+                </div>
+                <div class="col-2 border-end">
+                    <span class="text-muted d-block small">Half Days</span>
+                    <span class="fw-bold text-warning">@Model.HalfDays</span>
+                </div>
+                <div class="col-2 border-end">
+                    <span class="text-muted d-block small">Absent</span>
+                    <span class="fw-bold text-danger">@Model.DaysAbsent</span>
+                </div>
+                <div class="col-2 border-end">
+                    <span class="text-muted d-block small">Total Hours</span>
+                    <span class="fw-bold text-primary">@Model.TotalHoursWorked</span>
+                </div>
+                <div class="col-2">
+                    <span class="text-muted d-block small">OT Hours</span>
+                    <span class="fw-bold text-success">+@Model.TotalOvertimeHours</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Earnings & Deductions Tables -->
+    <div class="row g-4 mb-4">
+        <!-- Earnings -->
+        <div class="col-md-6">
+            <div class="border rounded-3 h-100">
+                <div class="bg-light p-2 border-bottom fw-bold text-success d-flex justify-content-between">
+                    <span>EARNINGS</span>
+                    <span>AMOUNT (₹)</span>
+                </div>
+                <table class="table table-borderless table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="ps-3">Base Wages Earned</td>
+                            <td class="text-end pe-3 fw-semibold">₹@Model.BaseSalaryEarned.ToString("N2")</td>
+                        </tr>
+                        @if (Model.OvertimePay > 0)
+                        {
+                            <tr>
+                                <td class="ps-3">Overtime Pay (@Model.TotalOvertimeHours hrs)</td>
+                                <td class="text-end pe-3 fw-semibold text-success">+₹@Model.OvertimePay.ToString("N2")</td>
+                            </tr>
+                        }
+                        @if (Model.BonusAllowance > 0)
+                        {
+                            <tr>
+                                <td class="ps-3">Performance Bonus / Allowance</td>
+                                <td class="text-end pe-3 fw-semibold text-success">+₹@Model.BonusAllowance.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="border-top">
+                        <tr class="fw-bold">
+                            <td class="ps-3">Gross Earnings:</td>
+                            <td class="text-end pe-3">₹@((Model.BaseSalaryEarned + Model.OvertimePay + Model.BonusAllowance).ToString("N2"))</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Deductions -->
+        <div class="col-md-6">
+            <div class="border rounded-3 h-100">
+                <div class="bg-light p-2 border-bottom fw-bold text-danger d-flex justify-content-between">
+                    <span>DEDUCTIONS</span>
+                    <span>AMOUNT (₹)</span>
+                </div>
+                <table class="table table-borderless table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="ps-3">Salary Advance / Floor Cash</td>
+                            <td class="text-end pe-3 fw-semibold">₹@(Model.Deductions > 0 ? Model.Deductions.ToString("N2") : "0.00")</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3">TDS / Professional Tax</td>
+                            <td class="text-end pe-3 fw-semibold">₹0.00</td>
+                        </tr>
+                    </tbody>
+                    <tfoot class="border-top">
+                        <tr class="fw-bold">
+                            <td class="ps-3">Total Deductions:</td>
+                            <td class="text-end pe-3 text-danger">₹@Model.Deductions.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Net Salary Highlight -->
+    <div class="p-3 bg-light rounded-3 border d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="text-muted small text-uppercase fw-bold">Net Salary Payable:</span>
+            <h2 class="fw-bold mb-0 text-primary">₹@Model.NetSalary.ToString("N2")</h2>
+            @if (!string.IsNullOrWhiteSpace(Model.Remarks))
+            {
+                <small class="text-muted">Remarks: @Model.Remarks</small>
+            }
+        </div>
+        <div class="text-end">
+            @if (Model.PaymentStatus == AashanaFashion.Models.PayrollStatus.Paid)
+            {
+                <div class="badge bg-success px-3 py-2 fs-6">PAID via @(Model.PaymentMethod ?? "Cash")</div>
+                @if (!string.IsNullOrWhiteSpace(Model.PaymentReference))
+                {
+                    <div class="small text-muted mt-1 font-monospace">Ref: @Model.PaymentReference</div>
+                }
+                @if (Model.PaidDate.HasValue)
+                {
+                    <div class="small text-muted">Paid on: @Model.PaidDate.Value.ToString("dd/MM/yyyy")</div>
+                }
+            }
+            else
+            {
+                <div class="badge bg-warning text-dark px-3 py-2 fs-6">PAYMENT PENDING</div>
+            }
+        </div>
+    </div>
+
+    <!-- Signatures -->
+    <div class="row pt-5 mt-4 text-center">
+        <div class="col-6">
+            <div class="border-top pt-2 mx-auto" style="max-width: 200px;">
+                <span class="small fw-semibold text-muted">Employee Signature</span>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="border-top pt-2 mx-auto" style="max-width: 200px;">
+                <span class="small fw-semibold text-muted">Authorized Signatory<br />Aashana Fashion</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @@media print {
+        body {
+            background-color: white !important;
+        }
+        .sidebar, .topbar, .d-print-none {
+            display: none !important;
+        }
+        .main-wrap, .page-body {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .payslip-container {
+            border: none !important;
+            box-shadow: none !important;
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+    }
+</style>

@@ -1,0 +1,277 @@
+@model IEnumerable<AashanaFashion.Models.BiometricDevice>
+@{
+    ViewData["Title"] = "Biometric Devices & Hardware Terminals";
+    string baseUrl = ViewBag.BaseUrl ?? "";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h2 class="mb-1 fw-bold">📟 Biometric Face Recognition Devices</h2>
+        <p class="text-muted mb-0">Connect external physical face scanning hardware terminals to Aashana Fashion via Cloud Push API or local LAN.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Create" class="btn btn-primary">
+            ➕ Register Hardware Terminal
+        </a>
+        <a asp-action="ImportLogs" class="btn btn-outline-secondary">
+            📁 Import Device Logs (CSV/USB)
+        </a>
+        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#testPunchModal">
+            ⚡ Simulate Test Punch
+        </button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show af-alert mb-4" role="alert">
+        <span>✅ @TempData["Success"]</span>
+        <button type="button" class="btn-close alert-close"></button>
+    </div>
+}
+
+<!-- Quick Webhook Push URL Banner -->
+<div class="card border-0 shadow-sm rounded-3 mb-4 bg-light">
+    <div class="card-body p-4">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h5 class="fw-bold mb-1 text-dark">🔗 Universal Cloud Webhook Push Endpoint</h5>
+                <p class="text-muted small mb-2">Configure your physical face terminal's "Cloud Server" or "Webhook HTTP Push" setting to point to this URL:</p>
+                <div class="input-group">
+                    <span class="input-group-text bg-white font-monospace text-primary fw-bold">POST</span>
+                    <input type="text" id="universalPushUrl" class="form-control font-monospace bg-white" readonly value="@baseUrl/api/biometric/push" />
+                    <button class="btn btn-outline-primary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('universalPushUrl').value); alert('Push URL copied to clipboard!');">
+                        📋 Copy URL
+                    </button>
+                </div>
+                <small class="text-muted mt-1 d-block">
+                    💡 <em>Compatible with eSSL / ZKTeco ADMS, Hikvision MinMoe, Realtime, Biomax, and any HTTP-enabled device.</em>
+                </small>
+            </div>
+            <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                <a href="#setupInstructions" class="btn btn-sm btn-outline-dark">
+                    📖 Device Setup Instructions ↓
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Devices Table -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0 fw-bold">Connected Physical Hardware Terminals</h5>
+        <span class="badge bg-light text-dark border">@Model.Count() Devices</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3">Terminal Name</th>
+                    <th>Identifier / Serial No</th>
+                    <th>Model / Brand</th>
+                    <th>Location</th>
+                    <th>Last Heartbeat</th>
+                    <th>Status</th>
+                    <th class="text-end pe-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <div class="fs-1 mb-2">📟</div>
+                            <p class="mb-2">No biometric hardware terminals registered yet.</p>
+                            <a asp-action="Create" class="btn btn-primary btn-sm">Register First Terminal</a>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var dev in Model)
+                    {
+                        var isOnline = dev.LastHeartbeat.HasValue && (DateTime.Now - dev.LastHeartbeat.Value).TotalMinutes < 15;
+                        <tr>
+                            <td class="ps-3">
+                                <div class="fw-bold text-dark">@dev.DeviceName</div>
+                                <small class="text-muted font-monospace">API Key: @(dev.ApiKey.Length > 8 ? dev.ApiKey.Substring(0, 8) + "..." : dev.ApiKey)</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border font-monospace">@dev.DeviceIdentifier</span>
+                                @if (!string.IsNullOrEmpty(dev.IpAddress))
+                                {
+                                    <div class="small text-muted font-monospace">IP: @dev.IpAddress</div>
+                                }
+                            </td>
+                            <td>
+                                <div>@(dev.DeviceModel ?? "Universal")</div>
+                            </td>
+                            <td>
+                                <div>@(dev.Location ?? "Factory Floor")</div>
+                            </td>
+                            <td>
+                                @if (dev.LastHeartbeat.HasValue)
+                                {
+                                    <span class="fw-semibold">@dev.LastHeartbeat.Value.ToString("dd MMM, hh:mm tt")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Never connected</span>
+                                }
+                            </td>
+                            <td>
+                                @if (isOnline)
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">🟢 Online</span>
+                                }
+                                else if (dev.IsActive)
+                                {
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">🟡 Standby</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Disabled</span>
+                                }
+                            </td>
+                            <td class="text-end pe-3">
+                                <div class="btn-group btn-group-sm">
+                                    <a asp-action="Edit" asp-route-id="@dev.Id" class="btn btn-outline-secondary" title="Edit Terminal">
+                                        ✏️ Edit
+                                    </a>
+                                    <form asp-action="Delete" asp-route-id="@dev.Id" method="post" class="d-inline" onsubmit="return confirm('Delete this device registration?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Configuration Instructions Guide -->
+<div class="card border-0 shadow-sm rounded-3" id="setupInstructions">
+    <div class="card-header bg-white py-3 border-bottom">
+        <h5 class="card-title mb-0 fw-bold">📖 How to Configure Your Face Scan Machine</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="p-3 border rounded-3 h-100">
+                    <span class="badge bg-primary mb-2">Option A</span>
+                    <h6 class="fw-bold">eSSL / ZKTeco ADMS Cloud Setup</h6>
+                    <ol class="small text-muted ps-3 mb-0">
+                        <li>Open device menu: <strong>Comm. &rarr; Cloud Server / ADMS</strong>.</li>
+                        <li>Enable <strong>Cloud Server Setting</strong>.</li>
+                        <li>Set Server Address: <code>@(baseUrl.Replace("http://", "").Replace("https://", ""))</code>.</li>
+                        <li>Set Server Port: <code>@(Context.Request.Host.Port ?? (Context.Request.IsHttps ? 443 : 80))</code>.</li>
+                        <li>Enable <strong>Push attendance logs</strong>.</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 border rounded-3 h-100">
+                    <span class="badge bg-info text-dark mb-2">Option B</span>
+                    <h6 class="fw-bold">Universal Webhook Push</h6>
+                    <ol class="small text-muted ps-3 mb-0">
+                        <li>Open device Web GUI or admin software.</li>
+                        <li>Go to <strong>HTTP Push / Webhook</strong> settings.</li>
+                        <li>Enter Push URL: <code>@baseUrl/api/biometric/push</code>.</li>
+                        <li>Device sends: <code>{ "employeeCode": "EMP-001", "punchTime": "2026-09-23 09:30:00" }</code>.</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 border rounded-3 h-100">
+                    <span class="badge bg-secondary mb-2">Option C</span>
+                    <h6 class="fw-bold">USB Flash Drive / File Import</h6>
+                    <ol class="small text-muted ps-3 mb-0">
+                        <li>Insert USB pendrive into face scanning device.</li>
+                        <li>Menu &rarr; <strong>Download Att-Log</strong> (.csv / .dat / .txt).</li>
+                        <li>Go to <a asp-action="ImportLogs">Import Device Logs</a> in Aashana Fashion and upload the file.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Punch Simulator Modal -->
+<div class="modal fade" id="testPunchModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">⚡ Simulate Device Face Punch</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Verify that attendance, hours, and overtime calculate correctly when a punch arrives from the physical machine.</p>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Employee Code</label>
+                    <input type="text" id="simEmpCode" class="form-control font-monospace" placeholder="e.g. EMP-001 or 1" value="EMP-001" required />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Punch Mode</label>
+                    <select id="simPunchType" class="form-select">
+                        <option value="Auto">Auto (Punch IN if first, Punch OUT if second)</option>
+                        <option value="CheckIn">Force Punch IN</option>
+                        <option value="CheckOut">Force Punch OUT</option>
+                    </select>
+                </div>
+
+                <div id="simResult" class="alert d-none mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="btnSendSimPunch" class="btn btn-success">
+                    Send Punch Event
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $('#btnSendSimPunch').on('click', async function () {
+            const empCode = $('#simEmpCode').val().trim();
+            const punchType = $('#simPunchType').val();
+
+            if (!empCode) {
+                alert('Please enter an employee code.');
+                return;
+            }
+
+            const btn = $(this);
+            btn.prop('disabled', true).text('Sending...');
+
+            try {
+                const res = await $.post('@Url.Action("TestPunch", "BiometricDevice")', {
+                    employeeCode: empCode,
+                    punchType: punchType
+                });
+
+                $('#simResult')
+                    .removeClass('d-none alert-danger')
+                    .addClass('alert-success')
+                    .html(`<strong>✅ Success!</strong> ${res.message || 'Punch logged.'}`);
+            } catch (err) {
+                const errMsg = err.responseJSON ? err.responseJSON.message : err.statusText;
+                $('#simResult')
+                    .removeClass('d-none alert-success')
+                    .addClass('alert-danger')
+                    .html(`<strong>❌ Failed:</strong> ${errMsg}`);
+            } finally {
+                btn.prop('disabled', false).text('Send Punch Event');
+            }
+        });
+    </script>
+}

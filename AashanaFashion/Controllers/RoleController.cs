@@ -20,10 +20,20 @@ namespace AashanaFashion.Controllers
             ("Purchase",        "Purchase Orders"),
             ("Dying",           "Dying Entry"),
             ("RollPress",       "Roll Press Entry"),
-            ("PMS",             "PMS"),
+            ("PMS",             "PMS WIP Dashboard"),
             ("RawMaterial",     "Raw Material"),
+            ("Inventory",       "Stock Ledger & Inventory"),
+            ("SalesOrder",      "Sales Orders & Challans"),
+            ("Invoice",         "Tax Invoices & E-Way Bill"),
+            ("QualityControl",  "Quality Control (QC)"),
+            ("Barcode",         "Barcode Scanner"),
+            ("Employee",        "Employees (HR)"),
+            ("Attendance",      "Attendance & Face Kiosk"),
+            ("Salary",          "Salary & Payroll"),
+            ("BiometricDevice", "Biometric Terminals"),
+            ("Accounting",      "Accounting Ledger"),
             ("UserManagement",  "User Management"),
-            ("Accounting",      "Accounting"),
+            ("Role",            "Role & Permissions"),
         };
 
         public RoleController(AppDbContext context) => _context = context;

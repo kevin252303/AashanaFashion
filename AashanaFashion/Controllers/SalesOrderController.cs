@@ -5,14 +5,22 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using AashanaFashion.Services;
+using System.Text;
+
 namespace AashanaFashion.Controllers;
 
 [Authorize]
 public class SalesOrderController : Controller
 {
     private readonly AppDbContext _context;
+    private readonly IEwayBillService _ewayBillService;
 
-    public SalesOrderController(AppDbContext context) => _context = context;
+    public SalesOrderController(AppDbContext context, IEwayBillService ewayBillService)
+    {
+        _context = context;
+        _ewayBillService = ewayBillService;
+    }
 
     public async Task<IActionResult> Index(string? search, SalesOrderStatus? status)
     {
@@ -433,5 +441,42 @@ public class SalesOrderController : Controller
         var prefix = $"DC-{year}-";
         var count = await _context.DeliveryChallans.CountAsync(c => c.ChallanNumber.StartsWith(prefix));
         return $"{prefix}{(count + 1):D4}";
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DownloadChallanEwayJson(int id, [FromQuery] EwayBillTransportInput transport)
+    {
+        var challan = await _context.DeliveryChallans.FindAsync(id);
+        if (challan == null) return NotFound();
+
+        if (!string.IsNullOrWhiteSpace(transport.VehicleNumber)) challan.VehicleNumber = transport.VehicleNumber.Trim();
+        if (!string.IsNullOrWhiteSpace(transport.TransporterName)) challan.TransporterName = transport.TransporterName.Trim();
+        if (!string.IsNullOrWhiteSpace(transport.TransporterId)) challan.TransporterId = transport.TransporterId.Trim();
+        if (transport.DistanceKm > 0) challan.DistanceKm = transport.DistanceKm;
+        if (!string.IsNullOrWhiteSpace(transport.VehicleType)) challan.VehicleType = transport.VehicleType;
+        if (!string.IsNullOrWhiteSpace(transport.TransMode)) challan.TransMode = transport.TransMode;
+
+        await _context.SaveChangesAsync();
+
+        var json = await _ewayBillService.GenerateChallanJsonAsync(id, transport);
+        var fileName = $"EWB_CHL_{challan.ChallanNumber}.json";
+        return File(Encoding.UTF8.GetBytes(json), "application/json", fileName);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveChallanEwayBill(SaveEwayBillInput model)
+    {
+        var challan = await _context.DeliveryChallans.FindAsync(model.Id);
+        if (challan == null) return NotFound();
+
+        challan.EwayBillNumber = model.EwayBillNumber.Trim();
+        challan.EwayBillDate = model.EwayBillDate ?? DateTime.Today;
+        if (!string.IsNullOrWhiteSpace(model.VehicleNumber)) challan.VehicleNumber = model.VehicleNumber.Trim();
+        if (!string.IsNullOrWhiteSpace(model.TransporterName)) challan.TransporterName = model.TransporterName.Trim();
+
+        await _context.SaveChangesAsync();
+        TempData["Success"] = $"E-Way Bill #{challan.EwayBillNumber} saved against Challan {challan.ChallanNumber}.";
+        return RedirectToAction(nameof(PrintChallan), new { id = model.Id });
     }
 }

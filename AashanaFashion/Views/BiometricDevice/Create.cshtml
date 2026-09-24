@@ -1,0 +1,81 @@
+@model AashanaFashion.Models.BiometricDevice
+@{
+    ViewData["Title"] = "Register Biometric Terminal";
+}
+
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a asp-action="Index">Biometric Devices</a></li>
+            <li class="breadcrumb-item active">Register Terminal</li>
+        </ol>
+    </nav>
+    <h2 class="mb-0 fw-bold">➕ Register Physical Biometric Hardware</h2>
+    <p class="text-muted">Register a floor face recognition scanner or fingerprint punch machine.</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <form asp-action="Create" method="post" class="card border-0 shadow-sm rounded-3">
+            @Html.AntiForgeryToken()
+
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="card-title mb-0 fw-bold">Device Identification & Network Setup</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="DeviceName" class="form-label fw-semibold">Device / Terminal Name <span class="text-danger">*</span></label>
+                        <input asp-for="DeviceName" class="form-control" placeholder="e.g. Main Gate Face Scanner" required />
+                        <span asp-validation-for="DeviceName" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="DeviceIdentifier" class="form-label fw-semibold">Serial Number / Machine ID <span class="text-danger">*</span></label>
+                        <input asp-for="DeviceIdentifier" class="form-control font-monospace" placeholder="e.g. SN12345678 or DEV-01" required />
+                        <small class="text-muted">Found on the device sticker or device menu &rarr; Sys Info.</small>
+                        <span asp-validation-for="DeviceIdentifier" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="DeviceModel" class="form-label fw-semibold">Brand / Model</label>
+                        <input asp-for="DeviceModel" class="form-control" placeholder="e.g. eSSL SilkBio-101 / Hikvision MinMoe" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Location" class="form-label fw-semibold">Installation Location</label>
+                        <input asp-for="Location" class="form-control" placeholder="e.g. Factory Main Entrance / Stitching Unit" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="IpAddress" class="form-label fw-semibold">LAN IP Address (Optional)</label>
+                        <input asp-for="IpAddress" class="form-control font-monospace" placeholder="e.g. 192.168.1.201" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="ApiKey" class="form-label fw-semibold">API Secret Token</label>
+                        <input asp-for="ApiKey" class="form-control font-monospace bg-light" readonly />
+                        <small class="text-muted">Auto-generated authentication token for webhooks.</small>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-check form-switch pt-2">
+                            <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveSwitch" checked />
+                            <label class="form-check-label fw-semibold" for="isActiveSwitch">Enable Machine Communication</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-white py-3 border-top d-flex justify-content-between">
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    💾 Save & Register Terminal
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

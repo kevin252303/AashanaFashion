@@ -1,6 +1,7 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
 using AashanaFashion.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +14,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString(activeConnection)));
 
 builder.Services.AddHttpClient<IGstVerificationService, GstVerificationService>();
+builder.Services.AddScoped<IEwayBillService, EwayBillService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -23,6 +25,27 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.None;
         options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnValidatePrincipal = async context =>
+            {
+                var userIdClaim = context.Principal?.FindFirst("UserId")?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
+                }
+
+                var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var user = await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+                if (user == null || !user.IsActive)
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                }
+            }
+        };
     });
 
 var app = builder.Build();
@@ -48,33 +71,102 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 
-    // Seed roles
-    var systemAdminRole = db.UserRoles.FirstOrDefault(r => r.RoleName == "System Admin");
-    if (systemAdminRole == null)
+    // Seed standard roles and module permissions in UserRoleList
+    var allModules = new[]
     {
-        systemAdminRole = new UserRole
-        {
-            RoleName = "System Admin",
-            Description = "System Administrator with access to the Accounting module",
-            IsActive = true,
-            CreatedDate = DateTime.Now
-        };
-        db.UserRoles.Add(systemAdminRole);
-        db.SaveChanges();
-    }
+        "ProductionOrder", "DesignMaster", "VendorMaster", "CustomerMaster",
+        "Purchase", "Dying", "RollPress", "PMS", "RawMaterial",
+        "Inventory", "SalesOrder", "Invoice", "QualityControl", "Barcode",
+        "Employee", "Attendance", "Salary", "BiometricDevice", "Accounting",
+        "UserManagement", "Role"
+    };
 
-    // Seed permissions for System Admin
-    if (!db.RolePermissions.Any(p => p.UserRoleId == systemAdminRole.Id && p.Module == "Accounting"))
+    var standardRoles = new[]
     {
-        db.RolePermissions.Add(new RolePermission
+        new { Name = "SuperAdmin",   Desc = "Super Administrator with full unrestricted access across all systems" },
+        new { Name = "Admin",        Desc = "Company Administrator with full operational & management access" },
+        new { Name = "System Admin", Desc = "System Administrator with specialized financial & accounting access" },
+        new { Name = "Manager",      Desc = "Operations Manager for production, inventory, sales, QC, & HR" },
+        new { Name = "Viewer",       Desc = "Read-only access for floor tracking, status views, and reports" },
+    };
+
+    foreach (var r in standardRoles)
+    {
+        var roleRec = db.UserRoles.FirstOrDefault(x => x.RoleName == r.Name);
+        if (roleRec == null)
         {
-            UserRoleId = systemAdminRole.Id,
-            Module = "Accounting",
-            CanView = true,
-            CanCreate = true,
-            CanEdit = true,
-            CanDelete = true
-        });
+            roleRec = new UserRole
+            {
+                RoleName = r.Name,
+                Description = r.Desc,
+                IsActive = true,
+                CreatedDate = DateTime.Now
+            };
+            db.UserRoles.Add(roleRec);
+            db.SaveChanges();
+        }
+
+        // Seed or update permissions for all 21 modules
+        foreach (var mod in allModules)
+        {
+            var perm = db.RolePermissions.FirstOrDefault(p => p.UserRoleId == roleRec.Id && p.Module == mod);
+            bool canView = true;
+            bool canCreate = false;
+            bool canEdit = false;
+            bool canDelete = false;
+
+            if (r.Name == "SuperAdmin" || r.Name == "Admin")
+            {
+                canCreate = true;
+                canEdit = true;
+                canDelete = true;
+            }
+            else if (r.Name == "System Admin")
+            {
+                canCreate = true;
+                canEdit = true;
+                canDelete = (mod == "Accounting" || mod == "Invoice");
+            }
+            else if (r.Name == "Manager")
+            {
+                bool isAdminOnlyMod = (mod == "UserManagement" || mod == "Role" || mod == "Accounting");
+                if (!isAdminOnlyMod)
+                {
+                    canCreate = true;
+                    canEdit = true;
+                    canDelete = false;
+                }
+                else
+                {
+                    canView = false;
+                }
+            }
+            else if (r.Name == "Viewer")
+            {
+                bool isAdminOnlyMod = (mod == "UserManagement" || mod == "Role" || mod == "Accounting" || mod == "Salary");
+                canView = !isAdminOnlyMod;
+            }
+
+            if (perm == null)
+            {
+                db.RolePermissions.Add(new RolePermission
+                {
+                    UserRoleId = roleRec.Id,
+                    Module = mod,
+                    CanView = canView,
+                    CanCreate = canCreate,
+                    CanEdit = canEdit,
+                    CanDelete = canDelete
+                });
+            }
+            else if (r.Name == "Admin" || r.Name == "SuperAdmin")
+            {
+                perm.CanView = true;
+                perm.CanCreate = true;
+                perm.CanEdit = true;
+                perm.CanDelete = true;
+            }
+        }
         db.SaveChanges();
     }
 
@@ -172,6 +264,166 @@ using (var scope = app.Services.CreateScope())
             new ProductionOrderDetail { ProductionOrderId = order1.Id, Colour = "Blue", Size = "L", Quantity = 12 },
             new ProductionOrderDetail { ProductionOrderId = order1.Id, Colour = "Green", Size = "XL", Quantity = 13 }
         );
+        db.SaveChanges();
+    }
+
+    // Seed sample employees
+    if (!db.Employees.Any())
+    {
+        var emp1 = new Employee
+        {
+            EmployeeCode = "EMP-001",
+            FullName = "Ramesh Sharma",
+            Department = "Cutting",
+            Designation = "Master Cutter",
+            ContactNumber = "9825100001",
+            Email = "ramesh@aashana.local",
+            JoiningDate = new DateTime(2025, 1, 10),
+            SalaryType = SalaryType.DailyWage,
+            BaseRate = 750m,
+            StandardDailyHours = 8m,
+            OvertimeHourlyRate = 140m,
+            UpiId = "ramesh@upi",
+            IsActive = true
+        };
+
+        var emp2 = new Employee
+        {
+            EmployeeCode = "EMP-002",
+            FullName = "Priya Patel",
+            Department = "Stitching",
+            Designation = "Senior Stitcher",
+            ContactNumber = "9825100002",
+            Email = "priya@aashana.local",
+            JoiningDate = new DateTime(2025, 2, 15),
+            SalaryType = SalaryType.DailyWage,
+            BaseRate = 650m,
+            StandardDailyHours = 8m,
+            OvertimeHourlyRate = 125m,
+            BankName = "State Bank of India",
+            BankAccountNumber = "30291823719",
+            BankIFSC = "SBIN0001234",
+            IsActive = true
+        };
+
+        var emp3 = new Employee
+        {
+            EmployeeCode = "EMP-003",
+            FullName = "Abdul Khan",
+            Department = "Quality",
+            Designation = "Floor Quality Inspector",
+            ContactNumber = "9825100003",
+            Email = "abdul@aashana.local",
+            JoiningDate = new DateTime(2024, 11, 1),
+            SalaryType = SalaryType.MonthlySalary,
+            BaseRate = 22000m,
+            StandardDailyHours = 8m,
+            OvertimeHourlyRate = 135m,
+            UpiId = "abdul@paytm",
+            IsActive = true
+        };
+
+        var emp4 = new Employee
+        {
+            EmployeeCode = "EMP-004",
+            FullName = "Sunita Verma",
+            Department = "Finishing",
+            Designation = "Finishing & Ironing",
+            ContactNumber = "9825100004",
+            Email = "sunita@aashana.local",
+            JoiningDate = new DateTime(2025, 4, 1),
+            SalaryType = SalaryType.HourlyRate,
+            BaseRate = 95m,
+            StandardDailyHours = 8m,
+            OvertimeHourlyRate = 145m,
+            IsActive = true
+        };
+
+        db.Employees.AddRange(emp1, emp2, emp3, emp4);
+        db.SaveChanges();
+
+        // Seed sample attendance for today and recent days
+        var today = DateTime.Today;
+        db.AttendanceRecords.AddRange(
+            new AttendanceRecord
+            {
+                EmployeeId = emp1.Id,
+                Date = today,
+                CheckInTime = today.AddHours(9).AddMinutes(5),
+                CheckOutTime = null,
+                TotalHours = 0,
+                OvertimeHours = 0,
+                Status = AttendanceStatus.Present,
+                VerificationMethod = VerificationMethod.FaceScan,
+                FaceConfidence = 96.4
+            },
+            new AttendanceRecord
+            {
+                EmployeeId = emp2.Id,
+                Date = today,
+                CheckInTime = today.AddHours(9).AddMinutes(42),
+                CheckOutTime = null,
+                TotalHours = 0,
+                OvertimeHours = 0,
+                Status = AttendanceStatus.Late,
+                VerificationMethod = VerificationMethod.FaceScan,
+                FaceConfidence = 94.2,
+                Notes = "Late check-in at 09:42 AM"
+            },
+            new AttendanceRecord
+            {
+                EmployeeId = emp1.Id,
+                Date = today.AddDays(-1),
+                CheckInTime = today.AddDays(-1).AddHours(9).AddMinutes(2),
+                CheckOutTime = today.AddDays(-1).AddHours(18).AddMinutes(35),
+                TotalHours = 9.5m,
+                OvertimeHours = 1.5m,
+                Status = AttendanceStatus.Present,
+                VerificationMethod = VerificationMethod.FaceScan,
+                FaceConfidence = 97.1
+            },
+            new AttendanceRecord
+            {
+                EmployeeId = emp2.Id,
+                Date = today.AddDays(-1),
+                CheckInTime = today.AddDays(-1).AddHours(9).AddMinutes(0),
+                CheckOutTime = today.AddDays(-1).AddHours(17).AddMinutes(30),
+                TotalHours = 8.5m,
+                OvertimeHours = 0.5m,
+                Status = AttendanceStatus.Present,
+                VerificationMethod = VerificationMethod.FaceScan,
+                FaceConfidence = 95.8
+            },
+            new AttendanceRecord
+            {
+                EmployeeId = emp3.Id,
+                Date = today.AddDays(-1),
+                CheckInTime = today.AddDays(-1).AddHours(9).AddMinutes(15),
+                CheckOutTime = today.AddDays(-1).AddHours(18).AddMinutes(0),
+                TotalHours = 8.75m,
+                OvertimeHours = 0.75m,
+                Status = AttendanceStatus.Present,
+                VerificationMethod = VerificationMethod.ManualPunch
+            }
+        );
+        db.SaveChanges();
+    }
+
+    // Seed sample physical biometric hardware terminal
+    if (!db.BiometricDevices.Any())
+    {
+        db.BiometricDevices.Add(new BiometricDevice
+        {
+            DeviceName = "Main Factory Gate Face Scanner",
+            DeviceIdentifier = "SN-AF-FACE-01",
+            DeviceModel = "eSSL / ZKTeco Face Recognition Terminal",
+            Location = "Factory Main Entrance Gate",
+            IpAddress = "192.168.1.200",
+            ApiKey = "af_face_terminal_key_01",
+            LastHeartbeat = DateTime.Now.AddMinutes(-5),
+            IsActive = true,
+            CreatedAt = DateTime.Now
+        });
         db.SaveChanges();
     }
 }

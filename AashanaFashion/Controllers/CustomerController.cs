@@ -34,14 +34,22 @@ public class CustomerController : Controller
 
     [PermissionAuthorize("CustomerMaster", "CanCreate")]
     [HttpGet]
-    public IActionResult Create() => View(new CustomerViewModel());
+    public async Task<IActionResult> Create()
+    {
+        ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+        return View(new CustomerViewModel());
+    }
 
     [PermissionAuthorize("CustomerMaster", "CanCreate")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CustomerViewModel model, List<CustomerContact>? Contacts)
     {
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+            return View(model);
+        }
 
         var customer = MapToCustomer(model);
         customer.CreatedDate = DateTime.Now;
@@ -66,6 +74,7 @@ public class CustomerController : Controller
     {
         var customer = await _context.Customers.Include(c => c.Contacts).FirstOrDefaultAsync(c => c.Id == id);
         if (customer == null) return NotFound();
+        ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
         return View(MapToViewModel(customer));
     }
 
@@ -74,7 +83,11 @@ public class CustomerController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(CustomerViewModel model, List<CustomerContact>? Contacts)
     {
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+            return View(model);
+        }
 
         var customer = await _context.Customers.Include(c => c.Contacts).FirstOrDefaultAsync(c => c.Id == model.Id);
         if (customer == null) return NotFound();

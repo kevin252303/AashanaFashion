@@ -46,6 +46,10 @@ namespace AashanaFashion.Data
         public DbSet<TaxInvoiceItem> TaxInvoiceItems { get; set; }
         public DbSet<PaymentReceipt> PaymentReceipts { get; set; }
         public DbSet<VendorPayment> VendorPayments { get; set; }
+        public DbSet<Employee> Employees { get; set; }
+        public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
+        public DbSet<SalaryRecord> SalaryRecords { get; set; }
+        public DbSet<BiometricDevice> BiometricDevices { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -513,6 +517,89 @@ namespace AashanaFashion.Data
                 .HasOne(p => p.PurchaseOrder)
                 .WithMany()
                 .HasForeignKey(p => p.PurchaseOrderId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // ——— HR, Attendance & Payroll entities ———
+            modelBuilder.Entity<Employee>()
+                .HasIndex(e => e.EmployeeCode)
+                .IsUnique();
+
+            modelBuilder.Entity<Employee>()
+                .Property(e => e.BaseRate)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Employee>()
+                .Property(e => e.StandardDailyHours)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Employee>()
+                .Property(e => e.OvertimeHourlyRate)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<AttendanceRecord>()
+                .HasOne(a => a.Employee)
+                .WithMany(e => e.AttendanceRecords)
+                .HasForeignKey(a => a.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AttendanceRecord>()
+                .Property(a => a.TotalHours)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<AttendanceRecord>()
+                .Property(a => a.OvertimeHours)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalaryRecord>()
+                .HasOne(s => s.Employee)
+                .WithMany(e => e.SalaryRecords)
+                .HasForeignKey(s => s.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SalaryRecord>()
+                .Property(s => s.DaysPresent)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalaryRecord>()
+                .Property(s => s.DaysAbsent)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalaryRecord>()
+                .Property(s => s.TotalHoursWorked)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalaryRecord>()
+                .Property(s => s.TotalOvertimeHours)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalaryRecord>()
+                .Property(s => s.BaseSalaryEarned)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalaryRecord>()
+                .Property(s => s.OvertimePay)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalaryRecord>()
+                .Property(s => s.BonusAllowance)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalaryRecord>()
+                .Property(s => s.Deductions)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<SalaryRecord>()
+                .Property(s => s.NetSalary)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<BiometricDevice>()
+                .HasIndex(d => d.DeviceIdentifier)
+                .IsUnique();
+
+            modelBuilder.Entity<AttendanceRecord>()
+                .HasOne(a => a.Device)
+                .WithMany(d => d.AttendanceRecords)
+                .HasForeignKey(a => a.DeviceId)
                 .OnDelete(DeleteBehavior.SetNull);
         }
     }

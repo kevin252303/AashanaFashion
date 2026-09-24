@@ -1,0 +1,438 @@
+@{
+    ViewData["Title"] = "Face Attendance Kiosk";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0 fw-bold">📷 Floor Face Attendance Kiosk</h2>
+        <p class="text-muted mb-0">High-speed biometric clock in/out station for factory workers and staff.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            📅 Attendance Register
+        </a>
+        <a asp-controller="Salary" asp-action="Index" class="btn btn-outline-primary">
+            💵 Payroll Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Center / Left: Camera Feed & Recognition -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fs-5">📹</span>
+                    <span class="fw-bold" id="kioskStationTitle">Kiosk Camera Station</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="kioskStatusBadge" class="badge bg-warning text-dark">Initializing...</span>
+                    <button id="btnToggleCamera" class="btn btn-sm btn-outline-secondary">Turn Off</button>
+                </div>
+            </div>
+
+            <div class="card-body p-3 text-center position-relative">
+                <!-- Video & Overlay Viewport -->
+                <div class="position-relative d-inline-block bg-black rounded-3 overflow-hidden shadow" style="width: 100%; max-width: 580px; min-height: 400px; background-color: #0b0f19;">
+                    <video id="kioskVideo" autoplay muted playsinline style="width: 100%; height: 100%; max-height: 460px; object-fit: cover; transform: scaleX(-1); display: none;"></video>
+                    <canvas id="kioskCanvas" class="position-absolute top-0 start-0" style="width: 100%; height: 100%; transform: scaleX(-1); pointer-events: none;"></canvas>
+
+                    <!-- Camera Offline / Start Prompt -->
+                    <div id="cameraOfflinePrompt" class="p-5 text-white d-flex flex-column align-items-center justify-content-center" style="min-height: 400px;">
+                        <div class="fs-1 mb-3">👤</div>
+                        <h4 class="fw-bold">Ready to Start Attendance Kiosk</h4>
+                        <p class="text-white-50 small mb-4">Click below to activate webcam and load registered face profiles.</p>
+                        <button id="btnStartKiosk" class="btn btn-primary btn-lg px-4 py-2 fw-semibold">
+                            ▶️ Start Face Scanner
+                        </button>
+                    </div>
+
+                    <!-- Target Face Guide Scanner Graphic -->
+                    <div id="scannerGuideBox" class="position-absolute top-50 start-50 translate-middle d-none pointer-events-none text-center" style="width: 240px; height: 300px; pointer-events: none;">
+                        <div class="w-100 h-100 border border-3 border-primary rounded-4 position-relative" style="box-shadow: 0 0 25px rgba(13,110,253,0.5); opacity: 0.85;">
+                            <!-- Top scanning laser line animation -->
+                            <div class="scanner-laser"></div>
+                        </div>
+                        <div class="badge bg-dark-subtle text-white mt-2 px-3 py-1 shadow-sm">Look Straight into Camera</div>
+                    </div>
+
+                    <!-- Instant Match Popup Overlay in Video -->
+                    <div id="matchOverlayCard" class="position-absolute bottom-0 start-0 end-0 p-3 text-white d-none" 
+                         style="background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 80%, transparent 100%);">
+                        <div class="d-flex align-items-center justify-content-center gap-3">
+                            <img id="matchPhoto" src="" class="rounded-circle border border-2 border-white shadow" style="width: 60px; height: 60px; object-fit: cover;" />
+                            <div class="text-start">
+                                <div class="badge bg-success mb-1" id="matchActionBadge">Punch IN Success</div>
+                                <h5 class="fw-bold mb-0 text-white" id="matchName">Ramesh Kumar</h5>
+                                <small class="text-white-50" id="matchCode">EMP-001 • Stitching</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Status Message -->
+                <div class="mt-3">
+                    <div id="kioskMessage" class="fw-semibold text-muted">
+                        Click "Start Face Scanner" to begin floor attendance.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floor Kiosk Stats Footer -->
+            <div class="card-footer bg-light p-3">
+                <div class="row text-center g-2">
+                    <div class="col-4 border-end">
+                        <small class="text-muted d-block">Registered Faces</small>
+                        <h4 class="fw-bold my-0 text-primary" id="statRegisteredFaces">0</h4>
+                    </div>
+                    <div class="col-4 border-end">
+                        <small class="text-muted d-block">Session Punches</small>
+                        <h4 class="fw-bold my-0 text-success" id="statSessionPunches">0</h4>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted d-block">Recognition Confidence</small>
+                        <h4 class="fw-bold my-0 text-dark" id="statLastConfidence">—</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Side: Live Punch Log & Quick Search Fallback -->
+    <div class="col-lg-5">
+        <!-- Live Punch Stream -->
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-bold">🕒 Live Punch Activity</h5>
+                <span class="badge bg-success-subtle text-success">Live Feed</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="punchActivityLog" style="max-height: 380px; overflow-y: auto;">
+                    <div id="emptyPunchLog" class="p-4 text-center text-muted">
+                        <div class="fs-2 mb-2">⏱️</div>
+                        <p class="mb-0 small">No face punches recorded in this session yet.</p>
+                        <small class="text-muted">Workers appearing in camera will be logged here automatically.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Manual Punch Fallback for Mask / No Face -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-2 border-bottom">
+                <span class="fw-bold small text-muted text-uppercase">Manual Kiosk Fallback</span>
+            </div>
+            <div class="card-body p-3">
+                <p class="small text-muted mb-2">If employee cannot be recognized due to lighting or face covering:</p>
+                <div class="input-group">
+                    <select id="quickEmployeeSelect" class="form-select">
+                        <option value="">Select Employee to Punch...</option>
+                    </select>
+                    <button class="btn btn-outline-primary" type="button" id="btnQuickManualPunch">
+                        Record Punch
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Animated scanning laser line */
+    .scanner-laser {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, #00ff88, transparent);
+        box-shadow: 0 0 10px #00ff88;
+        animation: scanMove 2.2s infinite ease-in-out;
+    }
+
+    @@keyframes scanMove {
+        0% { top: 5%; opacity: 0.2; }
+        50% { top: 95%; opacity: 1; }
+        100% { top: 5%; opacity: 0.2; }
+    }
+</style>
+
+@section Scripts {
+    <!-- face-api.js neural network library -->
+    <script src="https://cdn.jsdelivr.net/npm/@@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
+    <script src="~/js/face-attendance.js"></script>
+
+    <script>
+        const video = document.getElementById('kioskVideo');
+        const canvas = document.getElementById('kioskCanvas');
+        const offlinePrompt = document.getElementById('cameraOfflinePrompt');
+        const guideBox = document.getElementById('scannerGuideBox');
+        const btnStart = document.getElementById('btnStartKiosk');
+        const btnToggle = document.getElementById('btnToggleCamera');
+        const statusBadge = document.getElementById('kioskStatusBadge');
+        const kioskMsg = document.getElementById('kioskMessage');
+
+        let registeredEmployees = [];
+        let recognitionActive = false;
+        let detectionLoopId = null;
+        let sessionPunchesCount = 0;
+
+        // Anti-bounce cooldown map: { employeeId: timestamp }
+        const recentPunches = {};
+        const PUNCH_COOLDOWN_MS = 6000; // 6 seconds debounce per worker
+
+        // 1. Load Registered Faces and Model
+        async function initKiosk() {
+            statusBadge.className = 'badge bg-warning text-dark';
+            statusBadge.textContent = 'Loading Profiles...';
+            kioskMsg.textContent = 'Loading employee face descriptors from database...';
+
+            try {
+                // Fetch registered employees
+                const res = await fetch('@Url.Action("GetRegisteredFaces", "Attendance")');
+                registeredEmployees = await res.json();
+                
+                $('#statRegisteredFaces').text(registeredEmployees.length);
+                populateQuickSelect(registeredEmployees);
+
+                kioskMsg.textContent = `Loaded ${registeredEmployees.length} registered face profiles. Loading AI neural nets...`;
+
+                // Load AI Models
+                const modelsOk = await FaceAttendanceEngine.loadModels((msg) => {
+                    kioskMsg.textContent = msg;
+                });
+
+                if (modelsOk) {
+                    statusBadge.className = 'badge bg-info text-dark';
+                    statusBadge.textContent = 'Ready to Start';
+                    kioskMsg.innerHTML = '<span class="text-success fw-bold">System ready! Click "Start Face Scanner" to begin.</span>';
+                    btnStart.disabled = false;
+                } else {
+                    statusBadge.className = 'badge bg-danger';
+                    statusBadge.textContent = 'Model Error';
+                }
+            } catch (err) {
+                console.error(err);
+                statusBadge.className = 'badge bg-danger';
+                statusBadge.textContent = 'Init Error';
+                kioskMsg.textContent = 'Failed to load employee profiles: ' + err.message;
+            }
+        }
+
+        function populateQuickSelect(list) {
+            const sel = $('#quickEmployeeSelect');
+            sel.empty().append('<option value="">Select Employee to Punch...</option>');
+            list.forEach(emp => {
+                sel.append(`<option value="${emp.id}">${emp.employeeCode} — ${emp.fullName} (${emp.department})</option>`);
+            });
+        }
+
+        // 2. Start Camera & Scanning
+        async function startKioskScanning() {
+            try {
+                kioskMsg.textContent = 'Starting camera station...';
+                await FaceAttendanceEngine.startCamera(video);
+
+                video.style.display = 'block';
+                offlinePrompt.style.display = 'none';
+                guideBox.classList.remove('d-none');
+                btnToggle.textContent = 'Turn Off';
+
+                statusBadge.className = 'badge bg-success';
+                statusBadge.textContent = 'Scanning Active';
+                kioskMsg.innerHTML = '🟢 <strong>Scanner active.</strong> Workers should look at the screen.';
+
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+
+                recognitionActive = true;
+                runRecognitionLoop();
+            } catch (err) {
+                alert('Camera error: ' + err.message);
+                statusBadge.className = 'badge bg-danger';
+                statusBadge.textContent = 'Camera Denied';
+            }
+        }
+
+        // 3. Continuous Face Recognition Loop
+        async function runRecognitionLoop() {
+            if (!recognitionActive) return;
+
+            if (!video.paused && !video.ended && FaceAttendanceEngine.modelsLoaded) {
+                try {
+                    const detection = await FaceAttendanceEngine.detectFace(video);
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    if (detection && detection.descriptor) {
+                        // Draw box
+                        const dims = { width: canvas.width, height: canvas.height };
+                        const resized = faceapi.resizeResults(detection, dims);
+                        faceapi.draw.drawDetections(canvas, resized);
+
+                        // Match against database descriptors
+                        const queryDescriptor = Array.from(detection.descriptor);
+                        const matchResult = FaceAttendanceEngine.findBestMatch(queryDescriptor, registeredEmployees, 0.55);
+
+                        if (matchResult.matched) {
+                            const emp = matchResult.employee;
+                            $('#statLastConfidence').text(matchResult.confidence + '%');
+
+                            // Check cooldown
+                            const now = Date.now();
+                            if (!recentPunches[emp.id] || (now - recentPunches[emp.id] > PUNCH_COOLDOWN_MS)) {
+                                recentPunches[emp.id] = now;
+                                await handleMatchedPunch(emp, matchResult.confidence);
+                            }
+                        } else {
+                            $('#statLastConfidence').text('Unrecognized');
+                        }
+                    }
+                } catch (e) {
+                    console.error('Frame recognition error', e);
+                }
+            }
+
+            // Loop smoothly with requestAnimationFrame or short delay
+            if (recognitionActive) {
+                setTimeout(runRecognitionLoop, 250);
+            }
+        }
+
+        // 4. Handle Matched Employee Punch
+        async function handleMatchedPunch(emp, confidence) {
+            // Snapshot current frame
+            const snapshot = FaceAttendanceEngine.captureSnapshot(video);
+
+            // Show instant feedback card
+            $('#matchName').text(emp.fullName);
+            $('#matchCode').text(`${emp.employeeCode} • ${emp.department} • ${confidence}% Confidence`);
+            $('#matchPhoto').attr('src', emp.facePhotoPath || '/images/default-avatar.png');
+            $('#matchOverlayCard').removeClass('d-none');
+
+            // Send to server
+            try {
+                const response = await fetch('@Url.Action("RecordPunch", "Attendance")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employeeId: emp.id,
+                        verificationMethod: 'FaceScan',
+                        faceConfidence: confidence,
+                        snapshotBase64: snapshot
+                    })
+                });
+                const res = await response.json();
+
+                if (res.success) {
+                    FaceAttendanceEngine.playSuccessSound();
+                    sessionPunchesCount++;
+                    $('#statSessionPunches').text(sessionPunchesCount);
+
+                    const punchTypeBadge = res.punchType === 'IN' 
+                        ? '<span class="badge bg-success">Punch IN</span>' 
+                        : '<span class="badge bg-primary">Punch OUT</span>';
+
+                    $('#matchActionBadge').html(punchTypeBadge + ` at ${res.time}`);
+                    kioskMsg.innerHTML = `<span class="text-success fw-bold">✅ ${res.message}</span>`;
+
+                    addPunchActivityItem(emp, res.punchType, res.time, snapshot, res.totalHours);
+                } else if (res.isAlreadyDone) {
+                    FaceAttendanceEngine.playErrorSound();
+                    $('#matchActionBadge').html('<span class="badge bg-secondary">Already Done</span>');
+                    kioskMsg.innerHTML = `<span class="text-warning fw-bold">⚠️ ${res.message}</span>`;
+                } else {
+                    FaceAttendanceEngine.playErrorSound();
+                    kioskMsg.innerHTML = `<span class="text-danger fw-bold">❌ ${res.message}</span>`;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+
+            // Hide overlay card after 3 seconds
+            setTimeout(() => {
+                $('#matchOverlayCard').addClass('d-none');
+            }, 3000);
+        }
+
+        // Add punch item to side stream
+        function addPunchActivityItem(emp, punchType, time, snapshot, hours) {
+            $('#emptyPunchLog').remove();
+            const badgeClass = punchType === 'IN' ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary';
+            const hoursInfo = hours > 0 ? `<div class="small text-muted">${hours} hrs logged</div>` : '';
+            
+            const html = `
+                <div class="list-group-item p-3 border-bottom d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="${snapshot || emp.facePhotoPath || '/images/default-avatar.png'}" class="rounded-circle border" style="width: 45px; height: 45px; object-fit: cover;" />
+                        <div>
+                            <div class="fw-bold">${emp.fullName}</div>
+                            <small class="text-muted font-monospace">${emp.employeeCode} • ${emp.department}</small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge ${badgeClass} mb-1">${punchType === 'IN' ? '🟢 Check IN' : '🔵 Check OUT'}</span>
+                        <div class="small fw-semibold text-dark">${time}</div>
+                        ${hoursInfo}
+                    </div>
+                </div>
+            `;
+            $('#punchActivityLog').prepend(html);
+        }
+
+        // Quick Manual Punch Button Fallback
+        $('#btnQuickManualPunch').on('click', async function () {
+            const empId = $('#quickEmployeeSelect').val();
+            if (!empId) {
+                alert('Please select an employee.');
+                return;
+            }
+
+            const emp = registeredEmployees.find(e => e.id == empId) || { id: parseInt(empId), fullName: $('#quickEmployeeSelect option:selected').text(), employeeCode: '' };
+
+            const response = await fetch('@Url.Action("RecordPunch", "Attendance")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employeeId: parseInt(empId),
+                    verificationMethod: 'Kiosk',
+                    faceConfidence: 100
+                })
+            });
+            const res = await response.json();
+            if (res.success) {
+                FaceAttendanceEngine.playSuccessSound();
+                sessionPunchesCount++;
+                $('#statSessionPunches').text(sessionPunchesCount);
+                kioskMsg.innerHTML = `<span class="text-success fw-bold">✅ ${res.message}</span>`;
+                addPunchActivityItem(emp, res.punchType, res.time, null, res.totalHours);
+            } else {
+                alert(res.message);
+            }
+        });
+
+        // Toggle / Start Camera Events
+        btnStart.addEventListener('click', startKioskScanning);
+        btnToggle.addEventListener('click', function () {
+            if (recognitionActive) {
+                recognitionActive = false;
+                FaceAttendanceEngine.stopCamera(video);
+                video.style.display = 'none';
+                offlinePrompt.style.display = 'flex';
+                guideBox.classList.add('d-none');
+                btnToggle.textContent = 'Turn On';
+                statusBadge.className = 'badge bg-secondary';
+                statusBadge.textContent = 'Camera Stopped';
+                kioskMsg.textContent = 'Camera is turned off.';
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            } else {
+                startKioskScanning();
+            }
+        });
+
+        // Initialize when page loads
+        $(document).ready(initKiosk);
+    </script>
+}

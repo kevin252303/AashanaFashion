@@ -1,0 +1,216 @@
+@model AashanaFashion.Models.Employee
+@{
+    ViewData["Title"] = "Edit Employee";
+}
+
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a asp-action="Index">Employees</a></li>
+            <li class="breadcrumb-item active">@Model.FullName</li>
+        </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-0 fw-bold">✏️ Edit Employee — @Model.FullName</h2>
+            <p class="text-muted mb-0">Code: <span class="fw-bold font-monospace">@Model.EmployeeCode</span></p>
+        </div>
+        <a asp-action="EnrollFace" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+            📷 Update Face Profile
+        </a>
+    </div>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="FaceDescriptor" />
+    <input type="hidden" asp-for="FacePhotoPath" />
+    <input type="hidden" asp-for="IsFaceRegistered" />
+
+    <div class="row g-4">
+        <!-- Basic Information -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold">👤 Personal & Job Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="EmployeeCode" class="form-label fw-semibold">Employee Code <span class="text-danger">*</span></label>
+                            <input asp-for="EmployeeCode" class="form-control" required />
+                            <span asp-validation-for="EmployeeCode" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-8">
+                            <label asp-for="FullName" class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+                            <input asp-for="FullName" class="form-control" required />
+                            <span asp-validation-for="FullName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Department" class="form-label fw-semibold">Department <span class="text-danger">*</span></label>
+                            <select asp-for="Department" class="form-select" required>
+                                <option value="Cutting">Cutting</option>
+                                <option value="Stitching">Stitching</option>
+                                <option value="Finishing">Finishing & Pressing</option>
+                                <option value="Quality">Quality Control</option>
+                                <option value="Dying">Dying & Washing</option>
+                                <option value="Packing">Packing & Dispatch</option>
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Management">Management & Floor Super</option>
+                                <option value="Accounts">Accounts & Office</option>
+                            </select>
+                            <span asp-validation-for="Department" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Designation" class="form-label fw-semibold">Designation / Role <span class="text-danger">*</span></label>
+                            <input asp-for="Designation" class="form-control" required />
+                            <span asp-validation-for="Designation" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="ContactNumber" class="form-label fw-semibold">Contact / Mobile</label>
+                            <input asp-for="ContactNumber" class="form-control" />
+                            <span asp-validation-for="ContactNumber" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Email" class="form-label fw-semibold">Email Address</label>
+                            <input asp-for="Email" type="email" class="form-control" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="JoiningDate" class="form-label fw-semibold">Date of Joining</label>
+                            <input asp-for="JoiningDate" type="date" class="form-control" />
+                            <span asp-validation-for="JoiningDate" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Address" class="form-label fw-semibold">Address / Location</label>
+                            <input asp-for="Address" class="form-control" />
+                            <span asp-validation-for="Address" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="form-check form-switch pt-2">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveSwitch" />
+                                <label class="form-check-label fw-semibold" for="isActiveSwitch">Active Employee</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wage & Salary Setup -->
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold">💵 Wage & Compensation Setup</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="SalaryType" class="form-label fw-semibold">Salary Calculation Mode</label>
+                            <select asp-for="SalaryType" class="form-select" asp-items="Html.GetEnumSelectList<AashanaFashion.Models.SalaryType>()">
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="BaseRate" class="form-label fw-semibold">Base Rate / Salary (₹) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input asp-for="BaseRate" type="number" step="0.01" class="form-control" required />
+                            </div>
+                            <span asp-validation-for="BaseRate" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="StandardDailyHours" class="form-label fw-semibold">Standard Shift Working Hours</label>
+                            <input asp-for="StandardDailyHours" type="number" step="0.5" class="form-control" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="OvertimeHourlyRate" class="form-label fw-semibold">Overtime Hourly Rate (₹)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input asp-for="OvertimeHourlyRate" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Bank & Payout Details -->
+        <div class="col-lg-4">
+            <!-- Current Face Profile Card -->
+            <div class="card border-0 shadow-sm rounded-3 mb-4 text-center p-3">
+                <h6 class="fw-bold mb-3 text-muted text-uppercase small">Biometric Face Record</h6>
+                <div class="mb-3">
+                    @if (!string.IsNullOrEmpty(Model.FacePhotoPath))
+                    {
+                        <img src="@Model.FacePhotoPath" alt="@Model.FullName" class="rounded-circle border shadow-sm" style="width: 110px; height: 110px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <div class="rounded-circle bg-light border d-inline-flex align-items-center justify-content-center text-muted fs-1 shadow-sm" style="width: 110px; height: 110px;">
+                            👤
+                        </div>
+                    }
+                </div>
+                <div>
+                    @if (Model.IsFaceRegistered)
+                    {
+                        <span class="badge bg-success-subtle text-success fs-6 mb-2">✅ Face Registered</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning-subtle text-warning fs-6 mb-2">⚠️ Not Registered</span>
+                    }
+                </div>
+                <a asp-action="EnrollFace" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary mt-2">
+                    📷 @(Model.IsFaceRegistered ? "Re-scan / Update Face" : "Register Face Now")
+                </a>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold">🏦 Bank & Payment Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="UpiId" class="form-label fw-semibold">UPI ID / PhonePe / GPay</label>
+                        <input asp-for="UpiId" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="BankName" class="form-label fw-semibold">Bank Name</label>
+                        <input asp-for="BankName" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="BankAccountNumber" class="form-label fw-semibold">Account Number</label>
+                        <input asp-for="BankAccountNumber" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="BankIFSC" class="form-label fw-semibold">IFSC Code</label>
+                        <input asp-for="BankIFSC" class="form-control" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    💾 Save Changes
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    Cancel
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

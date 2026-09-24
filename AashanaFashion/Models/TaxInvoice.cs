@@ -133,6 +133,29 @@ public class TaxInvoice
     [StringLength(500)]
     public string? Notes { get; set; }
 
+    // E-Way Bill & Logistics
+    [StringLength(20)]
+    public string? EwayBillNumber { get; set; }
+
+    public DateTime? EwayBillDate { get; set; }
+
+    [StringLength(100)]
+    public string? TransporterName { get; set; }
+
+    [StringLength(20)]
+    public string? TransporterId { get; set; }
+
+    [StringLength(20)]
+    public string? VehicleNumber { get; set; }
+
+    public int? DistanceKm { get; set; } = 50;
+
+    [StringLength(10)]
+    public string? VehicleType { get; set; } = "R"; // R = Regular
+
+    [StringLength(10)]
+    public string? TransMode { get; set; } = "1"; // 1 = Road
+
     public DateTime CreatedDate { get; set; } = DateTime.Now;
 
     public List<TaxInvoiceItem> Items { get; set; } = new();

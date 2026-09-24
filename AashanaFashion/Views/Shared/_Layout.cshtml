@@ -172,6 +172,38 @@
                 </div>
             }
 
+            <div class="nav-label">HR & Payroll</div>
+            <a class="s-link s-link-toggle @(ctrl == "Employee" || ctrl == "Attendance" || ctrl == "Salary" ? "open" : "")" onclick="toggleNav(this)">
+                <span class="ico">👥</span> Attendance & HR
+                <span class="nav-arrow">▾</span>
+            </a>
+            <div class="s-submenu @(ctrl == "Employee" || ctrl == "Attendance" || ctrl == "Salary" ? "" : "d-none")">
+                <a class="s-link s-sublink @(ctrl == "Attendance" && action == "Kiosk" ? "active" : "")"
+                   asp-controller="Attendance" asp-action="Kiosk">
+                    <span class="ico">📷</span> Face Scanner Kiosk
+                </a>
+                <a class="s-link s-sublink @(ctrl == "Attendance" && action == "Index" ? "active" : "")"
+                   asp-controller="Attendance" asp-action="Index">
+                    <span class="ico">📅</span> Daily Register
+                </a>
+                <a class="s-link s-sublink @(ctrl == "Attendance" && action == "MonthlyReport" ? "active" : "")"
+                   asp-controller="Attendance" asp-action="MonthlyReport">
+                    <span class="ico">📊</span> Attendance Grid
+                </a>
+                <a class="s-link s-sublink @(ctrl == "Employee" ? "active" : "")"
+                   asp-controller="Employee" asp-action="Index">
+                    <span class="ico">👤</span> Employees
+                </a>
+                <a class="s-link s-sublink @(ctrl == "Salary" ? "active" : "")"
+                   asp-controller="Salary" asp-action="Index">
+                    <span class="ico">💵</span> Salary & Payroll
+                </a>
+                <a class="s-link s-sublink @(ctrl == "BiometricDevice" ? "active" : "")"
+                   asp-controller="BiometricDevice" asp-action="Index">
+                    <span class="ico">📟</span> Biometric Terminals
+                </a>
+            </div>
+
             @if (isAdmin || role == "Manager" || role == "System Admin" || User.HasClaim("Permission.Accounting.CanView", "true"))
             {
                 <div class="nav-label">Finance & Accounts</div>
@@ -193,16 +225,43 @@
         <div class="topbar-left">
             <span class="page-title">@(ViewData["Title"] ?? "Dashboard")</span>
         </div>
-        <div class="user-chip">
-            <div class="u-avatar">@initials</div>
-            <div>
-                <div class="u-name">@fullName</div>
-                <div class="u-role">@role</div>
+        <div class="user-chip dropdown">
+            <div class="d-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
+                <div class="u-avatar">@initials</div>
+                <div>
+                    <div class="u-name">@fullName</div>
+                    <div class="u-role">@role</div>
+                </div>
+                <span class="ms-1" style="font-size:0.75rem; color:#94a3b8;">▾</span>
             </div>
-            <form asp-controller="Account" asp-action="Logout" method="post" class="mb-0 ms-2">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn-af btn-af-ghost btn-af-sm">Logout</button>
-            </form>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2" style="min-width: 220px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0.5rem;">
+                <li class="px-3 py-2 border-bottom mb-1">
+                    <div class="fw-bold text-dark" style="font-size:0.9rem;">@fullName</div>
+                    <div class="small text-muted">Role: <span class="badge bg-primary" style="font-size:0.72rem;">@role</span></div>
+                </li>
+                <li>
+                    <a class="dropdown-item py-2 d-flex align-items-center gap-2" asp-controller="Account" asp-action="ChangePassword">
+                        <span>🔑</span> Change Password
+                    </a>
+                </li>
+                @if (canViewUserMgmt)
+                {
+                    <li>
+                        <a class="dropdown-item py-2 d-flex align-items-center gap-2" asp-controller="UserManagement" asp-action="Index">
+                            <span>👥</span> User Management
+                        </a>
+                    </li>
+                }
+                <li><hr class="dropdown-divider my-1"></li>
+                <li>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="m-0 p-0">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger w-100 border-0 bg-transparent text-start">
+                            <span>🚪</span> Sign Out
+                        </button>
+                    </form>
+                </li>
+            </ul>
         </div>
     </div>
 

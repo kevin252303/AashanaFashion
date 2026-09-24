@@ -511,7 +511,23 @@
                         <div class="col-md-4">
                             <div class="af-form-group">
                                 <label asp-for="Responsible" class="af-label">Responsible</label>
-                                <input asp-for="Responsible" class="af-input" />
+                                <select asp-for="Responsible" class="af-input af-select">
+                                    <option value="">— Select Responsible User —</option>
+                                    @if (ViewBag.Users != null)
+                                    {
+                                        foreach (var u in (List<AashanaFashion.Models.AppUser>)ViewBag.Users)
+                                        {
+                                            if (Model.Responsible == u.FullName)
+                                            {
+                                                <option value="@u.FullName" selected>@u.FullName (@u.Role)</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@u.FullName">@u.FullName (@u.Role)</option>
+                                            }
+                                        }
+                                    }
+                                </select>
                             </div>
                         </div>
                         <div class="col-md-4">

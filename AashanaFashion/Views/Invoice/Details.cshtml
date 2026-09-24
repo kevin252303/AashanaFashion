@@ -26,8 +26,44 @@
             }
         </h2>
         <p class="text-muted mb-0">Issued on @Model.InvoiceDate.ToString("dd MMMM yyyy") | Due on @Model.DueDate.ToString("dd MMMM yyyy")</p>
+        @if (!string.IsNullOrWhiteSpace(Model.EwayBillNumber))
+        {
+            <div class="mt-2">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 py-2 px-3">
+                    🚚 E-Way Bill: <strong>@Model.EwayBillNumber</strong>
+                    @(Model.EwayBillDate.HasValue ? $"({Model.EwayBillDate.Value:dd MMM yyyy})" : "")
+                </span>
+                @if (!string.IsNullOrWhiteSpace(Model.VehicleNumber))
+                {
+                    <span class="badge bg-light text-dark border ms-1">Vehicle: @Model.VehicleNumber</span>
+                }
+            </div>
+        }
     </div>
     <div class="d-flex gap-2">
+        <div class="dropdown">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                🚚 E-Way Bill
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow">
+                <li>
+                    <a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#ewayJsonModal">
+                        📄 Download NIC JSON (.json)
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#ewaySaveModal">
+                        💾 Record E-Way Bill Number
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item text-muted small" href="https://ewaybillgst.gov.in" target="_blank">
+                        ↗️ Open ewaybillgst.gov.in
+                    </a>
+                </li>
+            </ul>
+        </div>
         <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-dark">
             🖨️ Print GST Invoice
         </a>
@@ -361,5 +397,112 @@
                 </div>
             </form>
         </div>
+    </div>
+</div>
+
+<!-- Modal: Download E-Way Bill JSON -->
+<div class="modal fade" id="ewayJsonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form asp-action="DownloadEwayBillJson" method="get" class="modal-content">
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">🚚 Download Official NIC E-Way Bill JSON</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small mb-3">
+                    <strong>💡 How to use:</strong> Download this JSON file and upload it directly to the official government portal at <a href="https://ewaybillgst.gov.in" target="_blank" class="fw-bold">ewaybillgst.gov.in</a> &rarr; <em>E-Waybill &rarr; Generate Bulk</em>.
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Vehicle Number</label>
+                        <input type="text" name="VehicleNumber" class="form-control text-uppercase font-monospace" placeholder="e.g. GJ05AB1234" value="@Model.VehicleNumber" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Approx. Distance (KM)</label>
+                        <input type="number" name="DistanceKm" class="form-control" value="@(Model.DistanceKm ?? 50)" min="1" max="4000" required />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Transporter / Courier Name</label>
+                    <input type="text" name="TransporterName" class="form-control" placeholder="e.g. VRL Logistics, SafeXpress" value="@Model.TransporterName" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Transporter ID (GSTIN / TRANSIN)</label>
+                    <input type="text" name="TransporterId" class="form-control text-uppercase font-monospace" placeholder="15-digit GSTIN or TRANSIN (Optional)" value="@Model.TransporterId" />
+                    <small class="text-muted">Enter if assigning transportation to a registered transporter.</small>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Vehicle Type</label>
+                        <select name="VehicleType" class="form-select">
+                            <option value="R">Regular</option>
+                            <option value="O">Over Dimensional Cargo (ODC)</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Transport Mode</label>
+                        <select name="TransMode" class="form-select">
+                            <option value="1">1 - Road</option>
+                            <option value="2">2 - Rail</option>
+                            <option value="3">3 - Air</option>
+                            <option value="4">4 - Ship</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary fw-bold">
+                    ⬇️ Download E-Way Bill JSON
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Record E-Way Bill Number -->
+<div class="modal fade" id="ewaySaveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form asp-action="SaveEwayBill" method="post" class="modal-content">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="Id" value="@Model.Id" />
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">💾 Record Generated E-Way Bill Number</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">Enter the 12-digit E-Way Bill Number issued by the Government portal. It will be printed on the Tax Invoice and Delivery Challan.</p>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">E-Way Bill Number <span class="text-danger">*</span></label>
+                    <input type="text" name="EwayBillNumber" class="form-control form-control-lg font-monospace fw-bold text-primary" placeholder="e.g. 123456789012" value="@Model.EwayBillNumber" maxlength="20" required />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">E-Way Bill Date</label>
+                    <input type="date" name="EwayBillDate" class="form-control" value="@((Model.EwayBillDate ?? DateTime.Today).ToString("yyyy-MM-dd"))" />
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Vehicle Number</label>
+                        <input type="text" name="VehicleNumber" class="form-control text-uppercase font-monospace" value="@Model.VehicleNumber" placeholder="GJ05AB1234" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Transporter</label>
+                        <input type="text" name="TransporterName" class="form-control" value="@Model.TransporterName" placeholder="Transporter Name" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-success fw-bold">Save E-Way Bill</button>
+            </div>
+        </form>
     </div>
 </div>

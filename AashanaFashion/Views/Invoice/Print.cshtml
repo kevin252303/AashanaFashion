@@ -170,6 +170,27 @@
                             <td class="text-muted">Reverse Charge:</td>
                             <td>No</td>
                         </tr>
+                        @if (!string.IsNullOrWhiteSpace(Model.EwayBillNumber))
+                        {
+                            <tr>
+                                <td class="text-muted fw-bold">E-Way Bill No:</td>
+                                <td class="fw-bold font-monospace text-dark">@Model.EwayBillNumber</td>
+                            </tr>
+                            @if (Model.EwayBillDate.HasValue)
+                            {
+                                <tr>
+                                    <td class="text-muted">E-Way Bill Date:</td>
+                                    <td>@Model.EwayBillDate.Value.ToString("dd/MM/yyyy")</td>
+                                </tr>
+                            }
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.VehicleNumber))
+                        {
+                            <tr>
+                                <td class="text-muted">Vehicle No:</td>
+                                <td class="font-monospace">@Model.VehicleNumber</td>
+                            </tr>
+                        }
                     </table>
                 </div>
             </div>

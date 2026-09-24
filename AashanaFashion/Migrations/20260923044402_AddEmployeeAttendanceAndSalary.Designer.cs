@@ -4,6 +4,7 @@ using AashanaFashion.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AashanaFashion.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260923044402_AddEmployeeAttendanceAndSalary")]
+    partial class AddEmployeeAttendanceAndSalary
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -150,13 +153,6 @@ namespace AashanaFashion.Migrations
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("DeviceId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("DeviceLogId")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.Property<int>("EmployeeId")
                         .HasColumnType("int");
 
@@ -181,63 +177,9 @@ namespace AashanaFashion.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DeviceId");
-
                     b.HasIndex("EmployeeId");
 
                     b.ToTable("AttendanceRecords");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.BiometricDevice", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ApiKey")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeviceIdentifier")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("DeviceModel")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("DeviceName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("IpAddress")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("LastHeartbeat")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Location")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DeviceIdentifier")
-                        .IsUnique();
-
-                    b.ToTable("BiometricDevices");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.Colour", b =>
@@ -514,12 +456,6 @@ namespace AashanaFashion.Migrations
                     b.Property<string>("DispatchedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("DistanceKm")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("EwayBillDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("EwayBillNumber")
                         .HasColumnType("nvarchar(max)");
 
@@ -538,19 +474,10 @@ namespace AashanaFashion.Migrations
                     b.Property<string>("ShippingAddress")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("TransMode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TransporterId")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("TransporterName")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("VehicleNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("VehicleType")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -2016,18 +1943,8 @@ namespace AashanaFashion.Migrations
                     b.Property<decimal>("DiscountAmount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int?>("DistanceKm")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("EwayBillDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("EwayBillNumber")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<decimal>("GrandTotal")
                         .HasColumnType("decimal(18,2)");
@@ -2089,26 +2006,6 @@ namespace AashanaFashion.Migrations
                     b.Property<string>("TermsAndConditions")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("TransMode")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("TransporterId")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("TransporterName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("VehicleNumber")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("VehicleType")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
 
                     b.HasKey("Id");
 
@@ -2487,18 +2384,11 @@ namespace AashanaFashion.Migrations
 
             modelBuilder.Entity("AashanaFashion.Models.AttendanceRecord", b =>
                 {
-                    b.HasOne("AashanaFashion.Models.BiometricDevice", "Device")
-                        .WithMany("AttendanceRecords")
-                        .HasForeignKey("DeviceId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("AashanaFashion.Models.Employee", "Employee")
                         .WithMany("AttendanceRecords")
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Device");
 
                     b.Navigation("Employee");
                 });
@@ -2910,11 +2800,6 @@ namespace AashanaFashion.Migrations
                     b.Navigation("PurchaseOrder");
 
                     b.Navigation("Vendor");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.BiometricDevice", b =>
-                {
-                    b.Navigation("AttendanceRecords");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.Customer", b =>

@@ -1,0 +1,98 @@
+@model AashanaFashion.Models.BiometricDevice
+@{
+    ViewData["Title"] = $"Edit Device — {Model.DeviceName}";
+    string baseUrl = ViewBag.BaseUrl ?? "";
+}
+
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a asp-action="Index">Biometric Devices</a></li>
+            <li class="breadcrumb-item active">@Model.DeviceName</li>
+        </ol>
+    </nav>
+    <h2 class="mb-0 fw-bold">✏️ Edit Biometric Terminal — @Model.DeviceName</h2>
+    <p class="text-muted">Serial: <span class="font-monospace fw-bold">@Model.DeviceIdentifier</span></p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="card border-0 shadow-sm rounded-3 mb-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="ApiKey" />
+
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="card-title mb-0 fw-bold">Device Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="DeviceName" class="form-label fw-semibold">Device Name <span class="text-danger">*</span></label>
+                        <input asp-for="DeviceName" class="form-control" required />
+                        <span asp-validation-for="DeviceName" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="DeviceIdentifier" class="form-label fw-semibold">Serial Number / Machine ID <span class="text-danger">*</span></label>
+                        <input asp-for="DeviceIdentifier" class="form-control font-monospace" required />
+                        <span asp-validation-for="DeviceIdentifier" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="DeviceModel" class="form-label fw-semibold">Brand / Model</label>
+                        <input asp-for="DeviceModel" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Location" class="form-label fw-semibold">Installation Location</label>
+                        <input asp-for="Location" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="IpAddress" class="form-label fw-semibold">LAN IP Address</label>
+                        <input asp-for="IpAddress" class="form-control font-monospace" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Current API Key</label>
+                        <input type="text" value="@Model.ApiKey" class="form-control font-monospace bg-light" readonly />
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-check form-switch pt-2">
+                            <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveSwitch" />
+                            <label class="form-check-label fw-semibold" for="isActiveSwitch">Device Communication Active</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-white py-3 border-top d-flex justify-content-between">
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    💾 Save Changes
+                </button>
+            </div>
+        </form>
+
+        <!-- Regenerate API Key Card -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="fw-bold mb-1">Regenerate API Key</h6>
+                    <small class="text-muted">If the token was compromised, generate a new token. You will need to update the device settings.</small>
+                </div>
+                <form asp-action="RegenerateApiKey" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Regenerate API key for this terminal?');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                        🔄 Regenerate Key
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
