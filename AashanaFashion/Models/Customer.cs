@@ -34,6 +34,8 @@ public class Customer
     public string? SalesPaymentTerms { get; set; }
     public string? SalesPaymentMethod { get; set; }
     public string? Pricelist { get; set; }
+    public int? PricelistId { get; set; }
+    public Pricelist? PricelistMaster { get; set; }
     public string? DeliveryMethod { get; set; }
     public string? Transporter { get; set; }
     public decimal? Distance { get; set; }

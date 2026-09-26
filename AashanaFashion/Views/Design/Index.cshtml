@@ -57,8 +57,35 @@
                             }
                         </td>
                         <td><span class="af-badge b-blue">@item.ProductType</span></td>
-                        <td>₹@item.SalesPrice.ToString("N2")</td>
-                        <td>@item.Category</td>
+                        <td>
+                            ₹@item.SalesPrice.ToString("N2")
+                            @if (item.ExtraCharges?.Any() == true)
+                            {
+                                <div class="mt-1">
+                                    <span class="badge bg-warning text-dark border" style="font-size: 0.68rem; font-weight: 600;" title="@item.ExtraCharges.Count variant charge(s) configured">
+                                        ⚙️ +@item.ExtraCharges.Count Surcharge@(item.ExtraCharges.Count > 1 ? "s" : "")
+                                    </span>
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            @if (item.ProductCategory != null)
+                            {
+                                <span class="badge bg-light text-primary border" style="font-size: 0.78rem; font-weight: 600;">
+                                    📁 @item.ProductCategory.CategoryName
+                                </span>
+                            }
+                            else if (!string.IsNullOrEmpty(item.Category))
+                            {
+                                <span class="badge bg-light text-secondary border" style="font-size: 0.78rem;">
+                                    @item.Category
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
                         <td>@item.Colours</td>
                         <td>@item.Sizes</td>
                         <td>@item.CreationFlow</td>

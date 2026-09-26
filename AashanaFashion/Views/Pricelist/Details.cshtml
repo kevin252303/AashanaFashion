@@ -1,0 +1,280 @@
+@model AashanaFashion.Models.Pricelist
+@{
+    ViewData["Title"] = $"Pricelist: {Model.Name}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Dashboard</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Pricelist Master</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold mb-0">🏷️ @Model.Name</h2>
+        <p class="text-muted small mb-0">Created on @Model.CreatedDate.ToString("dd MMM yyyy, hh:mm tt")</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary fw-semibold">
+            ✏️ Edit Pricelist
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            ← Back to List
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Success!</strong> @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Notice:</strong> @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row g-4 mb-4">
+    <!-- Header Overview -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="card-title mb-0 fw-bold">📋 Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <span class="text-muted small d-block">Status</span>
+                    @if (Model.IsActive)
+                    {
+                        <span class="badge bg-success">Active</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Inactive</span>
+                    }
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted small d-block">Currency</span>
+                    <strong>@Model.Currency</strong>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted small d-block">Discount Policy</span>
+                    @if (Model.DiscountPolicy == AashanaFashion.Models.PricelistDiscountPolicy.DiscountIncluded)
+                    {
+                        <span class="badge bg-info-subtle text-info border">
+                            Discount included in price
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning-subtle text-warning border">
+                            Show public price &amp; discount to customer
+                        </span>
+                    }
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted small d-block">Description</span>
+                    <p class="mb-0">@(string.IsNullOrWhiteSpace(Model.Description) ? "No description provided." : Model.Description)</p>
+                </div>
+                <div class="pt-3 border-top d-flex justify-content-between">
+                    <div>
+                        <span class="text-muted small d-block">Total Rules</span>
+                        <h4 class="fw-bold mb-0">@Model.Items.Count</h4>
+                    </div>
+                    <div>
+                        <span class="text-muted small d-block">Assigned Customers</span>
+                        <h4 class="fw-bold text-primary mb-0">@Model.Customers.Count</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Status Toggle -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body">
+                <form asp-action="ToggleActive" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary w-100 mb-2">
+                        @(Model.IsActive ? "⏸️ Deactivate Pricelist" : "▶️ Activate Pricelist")
+                    </button>
+                </form>
+                @if (Model.Customers.Count == 0)
+                {
+                    <form asp-action="Delete" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Are you sure you want to delete this pricelist?');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-danger w-100">
+                            🗑️ Delete Pricelist
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Rules & Customers Tabs -->
+    <div class="col-lg-8">
+        <!-- Pricing Rules -->
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-bold">⚡ Price Calculation Rules (@Model.Items.Count)</h5>
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary">
+                    ✏️ Manage Rules
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Applied On</th>
+                                <th>Target</th>
+                                <th class="text-center">Min Qty</th>
+                                <th>Computation</th>
+                                <th>Validity Period</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Items.Any())
+                            {
+                                int idx = 1;
+                                foreach (var rule in Model.Items)
+                                {
+                                    <tr>
+                                        <td>@idx</td>
+                                        <td>
+                                            @switch (rule.AppliedOn)
+                                            {
+                                                case AashanaFashion.Models.PricelistAppliedOn.Product:
+                                                    <span class="badge bg-primary">Product / Design</span>
+                                                    break;
+                                                case AashanaFashion.Models.PricelistAppliedOn.Category:
+                                                    <span class="badge bg-info">Category</span>
+                                                    break;
+                                                default:
+                                                    <span class="badge bg-secondary">All Products</span>
+                                                    break;
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (rule.AppliedOn == AashanaFashion.Models.PricelistAppliedOn.Product && rule.Design != null)
+                                            {
+                                                <a asp-controller="Design" asp-action="Details" asp-route-id="@rule.DesignId" class="fw-semibold text-decoration-none">
+                                                    @rule.Design.DesignNumber
+                                                </a>
+                                                <small class="text-muted d-block">Base: ₹@rule.Design.SalesPrice.ToString("N2")</small>
+                                            }
+                                            else if (rule.AppliedOn == AashanaFashion.Models.PricelistAppliedOn.Category && !string.IsNullOrEmpty(rule.Category))
+                                            {
+                                                <strong>@rule.Category</strong>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Global (All Inventory)</span>
+                                            }
+                                        </td>
+                                        <td class="text-center fw-semibold">
+                                            @rule.MinQuantity.ToString("N0") pcs
+                                        </td>
+                                        <td>
+                                            @switch (rule.ComputationMethod)
+                                            {
+                                                case AashanaFashion.Models.PricelistComputeMethod.FixedPrice:
+                                                    <span class="text-success fw-bold">Fixed ₹@((rule.FixedPrice ?? 0m).ToString("N2"))</span>
+                                                    break;
+                                                case AashanaFashion.Models.PricelistComputeMethod.Percentage:
+                                                    <span class="text-primary fw-bold">@((rule.DiscountPercentage ?? 0m).ToString("N1"))% Discount</span>
+                                                    break;
+                                                case AashanaFashion.Models.PricelistComputeMethod.Formula:
+                                                    <span class="text-dark fw-bold">Formula: -@((rule.DiscountPercentage ?? 0m).ToString("N1"))% + ₹@((rule.Surcharge ?? 0m).ToString("N2"))</span>
+                                                    break;
+                                            }
+                                        </td>
+                                        <td class="small">
+                                            @if (rule.StartDate.HasValue || rule.EndDate.HasValue)
+                                            {
+                                                <span>@(rule.StartDate?.ToString("dd/MM/yyyy") ?? "Any") ➔ @(rule.EndDate?.ToString("dd/MM/yyyy") ?? "Any")</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Always Valid</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                    idx++;
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        No specific rules configured. Default design prices apply.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assigned Customers -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="card-title mb-0 fw-bold">👥 Assigned Customers (@Model.Customers.Count)</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Customer Name</th>
+                                <th>City / State</th>
+                                <th>GSTIN</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Customers.Any())
+                            {
+                                foreach (var c in Model.Customers)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">
+                                            @c.CustomerName
+                                            @if (!string.IsNullOrEmpty(c.CustomerCompany))
+                                            {
+                                                <small class="text-muted d-block">@c.CustomerCompany</small>
+                                            }
+                                        </td>
+                                        <td>@(c.City ?? "—"), @(c.State ?? "—")</td>
+                                        <td><code>@(c.GstNumber ?? "Unregistered")</code></td>
+                                        <td class="text-end">
+                                            <a asp-controller="Customer" asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-outline-secondary">
+                                                Edit Customer
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        No customers currently assigned to this pricelist. You can assign it via Customer Master.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -16,7 +16,11 @@ public class DesignController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var designs = await _context.Designs.OrderBy(d => d.DesignNumber).ToListAsync();
+        var designs = await _context.Designs
+            .Include(d => d.ProductCategory)
+            .Include(d => d.ExtraCharges)
+            .OrderBy(d => d.DesignNumber)
+            .ToListAsync();
         return View(designs);
     }
 
@@ -28,6 +32,7 @@ public class DesignController : Controller
         ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
         ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
         ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+        ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
         return View(new Design());
     }
 
@@ -40,6 +45,7 @@ public class DesignController : Controller
         List<ProductPricelist>? Pricelists,
         List<ProductVendor>? ProductVendors,
         List<ProductPackaging>? Packagings,
+        List<ProductExtraCharge>? ExtraCharges,
         List<int>? selectedColours,
         List<int>? selectedSizes)
     {
@@ -63,11 +69,15 @@ public class DesignController : Controller
             design.Sizes = string.Empty;
         }
 
+        CleanOptionalChildModelErrors(design);
+
         if (!ModelState.IsValid)
         {
             ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
             ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+            ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+            ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
             ViewBag.SelectedColours = design.Colours?.Split(',').Select(c => c.Trim()).ToList() ?? new List<string>();
             ViewBag.SelectedSizes = design.Sizes?.Split(',').Select(s => s.Trim()).ToList() ?? new List<string>();
             return View(design);
@@ -80,9 +90,24 @@ public class DesignController : Controller
             ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
             ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+            ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+            ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
             ViewBag.SelectedColours = design.Colours?.Split(',').Select(c => c.Trim()).ToList() ?? new List<string>();
             ViewBag.SelectedSizes = design.Sizes?.Split(',').Select(s => s.Trim()).ToList() ?? new List<string>();
             return View(design);
+        }
+
+        if (design.CategoryId.HasValue)
+        {
+            var cat = await _context.ProductCategories.FindAsync(design.CategoryId.Value);
+            if (cat != null)
+            {
+                design.Category = cat.CategoryName;
+                if (string.IsNullOrWhiteSpace(design.HsnSacCode) && !string.IsNullOrWhiteSpace(cat.DefaultHsnCode))
+                {
+                    design.HsnSacCode = cat.DefaultHsnCode;
+                }
+            }
         }
 
         design.CreatedDate = DateTime.Now;
@@ -92,6 +117,8 @@ public class DesignController : Controller
         if (AttributeLines?.Any() == true)
             foreach (var a in AttributeLines.Where(a => !string.IsNullOrWhiteSpace(a.Attribute)))
             {
+                a.Attribute = a.Attribute?.Trim() ?? string.Empty;
+                a.Values = a.Values?.Trim() ?? string.Empty;
                 a.DesignId = design.Id;
                 _context.ProductAttributeLines.Add(a);
             }
@@ -99,6 +126,8 @@ public class DesignController : Controller
         if (Pricelists?.Any() == true)
             foreach (var p in Pricelists.Where(p => !string.IsNullOrWhiteSpace(p.Pricelist)))
             {
+                p.Pricelist = p.Pricelist?.Trim() ?? string.Empty;
+                p.AppliedOn = p.AppliedOn?.Trim() ?? string.Empty;
                 p.DesignId = design.Id;
                 _context.ProductPricelists.Add(p);
             }
@@ -113,8 +142,17 @@ public class DesignController : Controller
         if (Packagings?.Any() == true)
             foreach (var pkg in Packagings.Where(pkg => !string.IsNullOrWhiteSpace(pkg.PackagingName)))
             {
+                pkg.PackagingName = pkg.PackagingName?.Trim() ?? string.Empty;
                 pkg.DesignId = design.Id;
                 _context.ProductPackagings.Add(pkg);
+            }
+
+        if (ExtraCharges?.Any() == true)
+            foreach (var ec in ExtraCharges.Where(ec => ec.ExtraCharge > 0 && !string.IsNullOrWhiteSpace(ec.AttributeValue)))
+            {
+                ec.Id = 0;
+                ec.DesignId = design.Id;
+                _context.ProductExtraCharges.Add(ec);
             }
 
         await _context.SaveChangesAsync();
@@ -131,6 +169,7 @@ public class DesignController : Controller
             .Include(d => d.Pricelists)
             .Include(d => d.ProductVendors)
             .Include(d => d.Packagings)
+            .Include(d => d.ExtraCharges)
             .FirstOrDefaultAsync(d => d.Id == id);
 
         if (design == null) return NotFound();
@@ -141,6 +180,7 @@ public class DesignController : Controller
         ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
         ViewBag.SelectedColours = design.Colours?.Split(',').Select(c => c.Trim()).ToList() ?? new List<string>();
         ViewBag.SelectedSizes = design.Sizes?.Split(',').Select(s => s.Trim()).ToList() ?? new List<string>();
+        ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
 
         return View(design);
     }
@@ -154,15 +194,19 @@ public class DesignController : Controller
         List<ProductPricelist>? Pricelists,
         List<ProductVendor>? ProductVendors,
         List<ProductPackaging>? Packagings,
+        List<ProductExtraCharge>? ExtraCharges,
         List<int>? selectedColours,
         List<int>? selectedSizes)
     {
+        CleanOptionalChildModelErrors(design);
+
         if (!ModelState.IsValid)
         {
             ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
             ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
             ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+            ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
             ViewBag.SelectedColours = selectedColours != null ? (await _context.Colours.Where(c => selectedColours.Contains(c.Id)).Select(c => c.ColourName).ToListAsync()) : new List<string>();
             ViewBag.SelectedSizes = selectedSizes != null ? (await _context.Sizes.Where(s => selectedSizes.Contains(s.Id)).Select(s => s.SizeName).ToListAsync()) : new List<string>();
             return View(design);
@@ -176,6 +220,7 @@ public class DesignController : Controller
             ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
             ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+            ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
             ViewBag.SelectedColours = selectedColours != null ? (await _context.Colours.Where(c => selectedColours.Contains(c.Id)).Select(c => c.ColourName).ToListAsync()) : new List<string>();
             ViewBag.SelectedSizes = selectedSizes != null ? (await _context.Sizes.Where(s => selectedSizes.Contains(s.Id)).Select(s => s.SizeName).ToListAsync()) : new List<string>();
             return View(design);
@@ -186,6 +231,7 @@ public class DesignController : Controller
             .Include(d => d.Pricelists)
             .Include(d => d.ProductVendors)
             .Include(d => d.Packagings)
+            .Include(d => d.ExtraCharges)
             .FirstOrDefaultAsync(d => d.Id == design.Id);
 
         if (dbDesign == null) return NotFound();
@@ -201,7 +247,23 @@ public class DesignController : Controller
         dbDesign.CommonDNo = design.CommonDNo;
         dbDesign.SalesTaxes = design.SalesTaxes;
         dbDesign.PurchaseTaxes = design.PurchaseTaxes;
-        dbDesign.Category = design.Category;
+        dbDesign.CategoryId = design.CategoryId;
+        if (design.CategoryId.HasValue)
+        {
+            var cat = await _context.ProductCategories.FindAsync(design.CategoryId.Value);
+            if (cat != null)
+            {
+                dbDesign.Category = cat.CategoryName;
+                if (string.IsNullOrWhiteSpace(dbDesign.HsnSacCode) && !string.IsNullOrWhiteSpace(cat.DefaultHsnCode))
+                {
+                    dbDesign.HsnSacCode = cat.DefaultHsnCode;
+                }
+            }
+        }
+        else
+        {
+            dbDesign.Category = design.Category;
+        }
         dbDesign.HsnSacCode = design.HsnSacCode;
         dbDesign.Company = design.Company;
         dbDesign.Property1 = design.Property1;
@@ -264,6 +326,8 @@ public class DesignController : Controller
             foreach (var a in AttributeLines.Where(a => !string.IsNullOrWhiteSpace(a.Attribute)))
             {
                 a.Id = 0;
+                a.Attribute = a.Attribute?.Trim() ?? string.Empty;
+                a.Values = a.Values?.Trim() ?? string.Empty;
                 a.DesignId = dbDesign.Id;
                 _context.ProductAttributeLines.Add(a);
             }
@@ -273,6 +337,8 @@ public class DesignController : Controller
             foreach (var p in Pricelists.Where(p => !string.IsNullOrWhiteSpace(p.Pricelist)))
             {
                 p.Id = 0;
+                p.Pricelist = p.Pricelist?.Trim() ?? string.Empty;
+                p.AppliedOn = p.AppliedOn?.Trim() ?? string.Empty;
                 p.DesignId = dbDesign.Id;
                 _context.ProductPricelists.Add(p);
             }
@@ -291,13 +357,74 @@ public class DesignController : Controller
             foreach (var pkg in Packagings.Where(pkg => !string.IsNullOrWhiteSpace(pkg.PackagingName)))
             {
                 pkg.Id = 0;
+                pkg.PackagingName = pkg.PackagingName?.Trim() ?? string.Empty;
                 pkg.DesignId = dbDesign.Id;
                 _context.ProductPackagings.Add(pkg);
+            }
+
+        if (dbDesign.ExtraCharges?.Any() == true)
+        {
+            _context.ProductExtraCharges.RemoveRange(dbDesign.ExtraCharges);
+        }
+        else
+        {
+            var existingCharges = await _context.ProductExtraCharges.Where(e => e.DesignId == dbDesign.Id).ToListAsync();
+            _context.ProductExtraCharges.RemoveRange(existingCharges);
+        }
+
+        if (ExtraCharges?.Any() == true)
+            foreach (var ec in ExtraCharges.Where(ec => ec.ExtraCharge > 0 && !string.IsNullOrWhiteSpace(ec.AttributeValue)))
+            {
+                ec.Id = 0;
+                ec.DesignId = dbDesign.Id;
+                _context.ProductExtraCharges.Add(ec);
             }
 
         await _context.SaveChangesAsync();
         TempData["Success"] = $"Product '{dbDesign.DesignNumber}' updated successfully.";
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetVariantPrice(int designId, string? colour, string? size)
+    {
+        var design = await _context.Designs
+            .Include(d => d.ExtraCharges)
+            .FirstOrDefaultAsync(d => d.Id == designId);
+
+        if (design == null) return NotFound();
+
+        decimal basePrice = design.SalesPrice > 0 ? design.SalesPrice : design.Price;
+        decimal colourCharge = 0m;
+        decimal sizeCharge = 0m;
+
+        if (!string.IsNullOrWhiteSpace(colour))
+        {
+            var cMatch = design.ExtraCharges.FirstOrDefault(e => e.AttributeType == "Colour" &&
+                string.Equals(e.AttributeValue.Trim(), colour.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (cMatch != null) colourCharge = cMatch.ExtraCharge;
+        }
+
+        if (!string.IsNullOrWhiteSpace(size))
+        {
+            var sMatch = design.ExtraCharges.FirstOrDefault(e => e.AttributeType == "Size" &&
+                string.Equals(e.AttributeValue.Trim(), size.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (sMatch != null) sizeCharge = sMatch.ExtraCharge;
+        }
+
+        decimal totalExtra = colourCharge + sizeCharge;
+        decimal effectivePrice = basePrice + totalExtra;
+
+        return Json(new
+        {
+            designId,
+            basePrice,
+            colourCharge,
+            sizeCharge,
+            totalExtra,
+            effectivePrice,
+            extraCharges = design.ExtraCharges.Select(e => new { e.AttributeType, e.AttributeValue, e.ExtraCharge, e.Remarks })
+        });
     }
 
     [PermissionAuthorize("DesignMaster", "CanView")]
@@ -403,5 +530,51 @@ public class DesignController : Controller
             TempData["Success"] = $"Product '{design.DesignNumber}' deleted.";
         }
         return RedirectToAction(nameof(Index));
+    }
+
+    private void CleanOptionalChildModelErrors(Design design)
+    {
+        // 1. Remove validation errors for optional child collections (attributes, pricelists, vendors, packagings, extra charges)
+        var childPrefixes = new[] { "AttributeLines", "Pricelists", "ProductVendors", "Packagings", "ExtraCharges" };
+        foreach (var key in ModelState.Keys.Where(k => childPrefixes.Any(p => k.StartsWith(p, StringComparison.OrdinalIgnoreCase))).ToList())
+        {
+            ModelState.Remove(key);
+        }
+
+        // 2. If SalesPrice was submitted as empty or invalid, default to 0
+        if (ModelState.TryGetValue("SalesPrice", out var spEntry) && spEntry.Errors.Any())
+        {
+            ModelState.Remove("SalesPrice");
+            design.SalesPrice = 0m;
+        }
+
+        // 3. Remove validation errors for optional fields on Design
+        var optionalFieldNames = new[] {
+            "InvoicingPolicy", "CommonDNo", "SalesTaxes", "PurchaseTaxes", "Category",
+            "HsnSacCode", "Company", "Property1", "InternalNotes", "VisibilityOfProducts",
+            "Website", "Tags", "Ribbon", "OutOfStockMessage", "EcommerceDescription",
+            "WarningOnSalesOrders", "QuotationDescription", "ReInvoiceCosts", "Responsible",
+            "PurchaseDescription", "WarningOnPurchaseOrders", "ControlPolicy", "PhotoPath", "CreationFlow"
+        };
+        foreach (var f in optionalFieldNames)
+        {
+            if (ModelState.ContainsKey(f))
+            {
+                ModelState.Remove(f);
+            }
+        }
+
+        // 4. Remove any remaining "The value '' is invalid" errors left on optional fields
+        foreach (var key in ModelState.Keys.ToList())
+        {
+            var entry = ModelState[key];
+            if (entry != null && entry.Errors.Any(e => e.ErrorMessage.Contains("invalid") || string.IsNullOrEmpty(e.ErrorMessage)))
+            {
+                if (key != "DesignNumber")
+                {
+                    ModelState.Remove(key);
+                }
+            }
+        }
     }
 }

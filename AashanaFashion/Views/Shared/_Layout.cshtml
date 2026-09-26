@@ -55,16 +55,20 @@
 
             @if (canViewDesign || canViewVendor || canViewCustomer)
             {
-                <a class="s-link s-link-toggle @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" || ctrl == "Colour" || ctrl == "Size" ? "open" : "")" onclick="toggleNav(this)">
+                <a class="s-link s-link-toggle @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" || ctrl == "Colour" || ctrl == "Size" || ctrl == "Pricelist" || ctrl == "Category" ? "open" : "")" onclick="toggleNav(this)">
                     <span class="ico">⚙️</span> Admin Master
                     <span class="nav-arrow">▾</span>
                 </a>
-                <div class="s-submenu @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" || ctrl == "Colour" || ctrl == "Size" ? "" : "d-none")">
+                <div class="s-submenu @(ctrl == "Design" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" || ctrl == "Colour" || ctrl == "Size" || ctrl == "Pricelist" || ctrl == "Category" ? "" : "d-none")">
                     @if (canViewDesign)
                     {
                         <a class="s-link s-sublink @(ctrl == "Design" ? "active" : "")"
                            asp-controller="Design" asp-action="Index">
                             <span class="ico">🎨</span> Product Master
+                        </a>
+                        <a class="s-link s-sublink @(ctrl == "Category" ? "active" : "")"
+                           asp-controller="Category" asp-action="Index">
+                            <span class="ico">🗂️</span> Category Master
                         </a>
                     }
                     @if (canViewCustomer)
@@ -72,6 +76,13 @@
                         <a class="s-link s-sublink @(ctrl == "Customer" ? "active" : "")"
                            asp-controller="Customer" asp-action="Index">
                             <span class="ico">👥</span> Customer Master
+                        </a>
+                    }
+                    @if (isAdmin || canViewCustomer || canViewDesign)
+                    {
+                        <a class="s-link s-sublink @(ctrl == "Pricelist" ? "active" : "")"
+                           asp-controller="Pricelist" asp-action="Index">
+                            <span class="ico">🏷️</span> Pricelist Master
                         </a>
                     }
                     @if (canViewVendor)

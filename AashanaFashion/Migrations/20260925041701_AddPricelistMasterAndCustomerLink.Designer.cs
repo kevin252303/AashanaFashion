@@ -4,6 +4,7 @@ using AashanaFashion.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AashanaFashion.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260925041701_AddPricelistMasterAndCustomerLink")]
+    partial class AddPricelistMasterAndCustomerLink
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -619,9 +622,6 @@ namespace AashanaFashion.Migrations
                     b.Property<string>("Category")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("CategoryId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Colours")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -766,8 +766,6 @@ namespace AashanaFashion.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CategoryId");
 
                     b.ToTable("Designs");
                 });
@@ -1169,88 +1167,6 @@ namespace AashanaFashion.Migrations
                     b.HasIndex("DesignId");
 
                     b.ToTable("ProductAttributeLines");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductCategory", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CategoryCode")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<string>("CategoryName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal?>("DefaultGstRate")
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<string>("DefaultHsnCode")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<int?>("ParentCategoryId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CategoryName")
-                        .IsUnique();
-
-                    b.HasIndex("ParentCategoryId");
-
-                    b.ToTable("ProductCategories");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductExtraCharge", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AttributeType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("AttributeValue")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("DesignId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("ExtraCharge")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Remarks")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DesignId");
-
-                    b.ToTable("ProductExtraCharges");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.ProductPackaging", b =>
@@ -2740,16 +2656,6 @@ namespace AashanaFashion.Migrations
                     b.Navigation("SalesOrderDetail");
                 });
 
-            modelBuilder.Entity("AashanaFashion.Models.Design", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.ProductCategory", "ProductCategory")
-                        .WithMany("Products")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("ProductCategory");
-                });
-
             modelBuilder.Entity("AashanaFashion.Models.DesignBomItem", b =>
                 {
                     b.HasOne("AashanaFashion.Models.Design", "Design")
@@ -2845,27 +2751,6 @@ namespace AashanaFashion.Migrations
                 {
                     b.HasOne("AashanaFashion.Models.Design", "Design")
                         .WithMany("AttributeLines")
-                        .HasForeignKey("DesignId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Design");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductCategory", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.ProductCategory", "ParentCategory")
-                        .WithMany("SubCategories")
-                        .HasForeignKey("ParentCategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("ParentCategory");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductExtraCharge", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.Design", "Design")
-                        .WithMany("ExtraCharges")
                         .HasForeignKey("DesignId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -3171,8 +3056,6 @@ namespace AashanaFashion.Migrations
 
                     b.Navigation("BomItems");
 
-                    b.Navigation("ExtraCharges");
-
                     b.Navigation("OperationCosts");
 
                     b.Navigation("Packagings");
@@ -3194,13 +3077,6 @@ namespace AashanaFashion.Migrations
                     b.Navigation("Customers");
 
                     b.Navigation("Items");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductCategory", b =>
-                {
-                    b.Navigation("Products");
-
-                    b.Navigation("SubCategories");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.ProductionEntity", b =>

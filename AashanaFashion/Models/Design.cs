@@ -15,6 +15,8 @@ public class Design
     public string? CommonDNo { get; set; }
     public string? SalesTaxes { get; set; }
     public string? PurchaseTaxes { get; set; }
+    public int? CategoryId { get; set; }
+    public ProductCategory? ProductCategory { get; set; }
     public string? Category { get; set; }
     public string? HsnSacCode { get; set; }
     public string? Company { get; set; }
@@ -66,6 +68,7 @@ public class Design
     public List<ProductPricelist> Pricelists { get; set; } = new();
     public List<ProductVendor> ProductVendors { get; set; } = new();
     public List<ProductPackaging> Packagings { get; set; } = new();
+    public List<ProductExtraCharge> ExtraCharges { get; set; } = new();
     public List<DesignBomItem> BomItems { get; set; } = new();
     public List<DesignOperationCost> OperationCosts { get; set; } = new();
 
@@ -87,8 +90,8 @@ public class ProductAttributeLine
     public int Id { get; set; }
     public int DesignId { get; set; }
     public Design? Design { get; set; }
-    public string Attribute { get; set; } = string.Empty;
-    public string Values { get; set; } = string.Empty;
+    public string? Attribute { get; set; }
+    public string? Values { get; set; }
     public bool ColourCheck { get; set; }
 }
 
@@ -97,8 +100,8 @@ public class ProductPricelist
     public int Id { get; set; }
     public int DesignId { get; set; }
     public Design? Design { get; set; }
-    public string Pricelist { get; set; } = string.Empty;
-    public string AppliedOn { get; set; } = string.Empty;
+    public string? Pricelist { get; set; }
+    public string? AppliedOn { get; set; }
     public decimal Price { get; set; }
     public decimal MinQuantity { get; set; }
 }
@@ -121,6 +124,6 @@ public class ProductPackaging
     public int Id { get; set; }
     public int DesignId { get; set; }
     public Design? Design { get; set; }
-    public string PackagingName { get; set; } = string.Empty;
+    public string? PackagingName { get; set; }
     public decimal Quantity { get; set; }
 }

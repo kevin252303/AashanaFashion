@@ -37,7 +37,10 @@
                 <input asp-for="SoNumber" class="af-input" readonly style="background:#f1f5f9;font-weight:700;" />
             </div>
             <div class="col-md-5">
-                <label class="af-label">Customer *</label>
+                <label class="af-label d-flex justify-content-between align-items-center mb-1">
+                    <span>Customer *</span>
+                    <span class="badge bg-light text-primary border d-none" id="customerPricelistBadge" style="font-size: 0.72rem;">🏷️ Pricelist</span>
+                </label>
                 <select asp-for="CustomerId" class="af-input af-select" id="customerSelect" required>
                     <option value="">— Select Customer —</option>
                     @foreach (var c in customers)
@@ -225,16 +228,63 @@ document.addEventListener('DOMContentLoaded', function () {
         return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // Customer autofill
+    let currentPricelistId = null;
+
+    function applyPricelistToRow(row) {
+        const designSelect = row.querySelector('.item-design');
+        const designId = designSelect?.value;
+        const qty = parseFloat(row.querySelector('.item-qty')?.value) || 1;
+        const rateInput = row.querySelector('.item-rate');
+        const discInput = row.querySelector('.item-disc');
+        const colourInput = row.querySelector('.item-colour');
+        const sizeInput = row.querySelector('.item-size');
+        const colour = colourInput?.value?.trim() || '';
+        const size = sizeInput?.value?.trim() || '';
+
+        if (!designId) return;
+
+        const plParam = currentPricelistId ? `pricelistId=${currentPricelistId}` : 'pricelistId=';
+        fetch(`/Pricelist/CalculatePrice?${plParam}&designId=${designId}&quantity=${qty}&colour=${encodeURIComponent(colour)}&size=${encodeURIComponent(size)}`)
+            .then(res => res.json())
+            .then(res => {
+                if (res) {
+                    if (rateInput && res.unitPrice > 0) rateInput.value = res.unitPrice.toFixed(2);
+                    if (discInput && res.discountPercentage > 0) discInput.value = res.discountPercentage.toFixed(2);
+                    recalc();
+                }
+            })
+            .catch(console.error);
+    }
+
+    // Customer autofill & Pricelist sync
     customerSelect?.addEventListener('change', function () {
         const id = this.value;
-        if (!id) return;
+        if (!id) {
+            currentPricelistId = null;
+            const plBadge = document.getElementById('customerPricelistBadge');
+            if (plBadge) plBadge.classList.add('d-none');
+            return;
+        }
         fetch('/SalesOrder/GetCustomerDetails?id=' + id)
             .then(res => res.json())
             .then(data => {
                 if (shippingAddress && data.shippingAddress) shippingAddress.value = data.shippingAddress;
                 if (transporterInput && data.transporter) transporterInput.value = data.transporter;
                 if (paymentTermsInput && data.paymentTerms) paymentTermsInput.value = data.paymentTerms;
+
+                currentPricelistId = data.pricelistId || null;
+                const plBadge = document.getElementById('customerPricelistBadge');
+                if (plBadge) {
+                    if (data.pricelistName) {
+                        plBadge.textContent = '🏷️ Pricelist: ' + data.pricelistName;
+                        plBadge.classList.remove('d-none');
+                    } else {
+                        plBadge.classList.add('d-none');
+                    }
+                }
+
+                // Re-evaluate existing rows against customer's pricelist
+                document.querySelectorAll('#itemsBody .item-row').forEach(applyPricelistToRow);
             })
             .catch(console.error);
     });
@@ -272,12 +322,8 @@ document.addEventListener('DOMContentLoaded', function () {
             subtotal += net;
         });
 
-        const tc = parseFloat(transportChargeInput?.value) || 0;
-        const tg = parseFloat(transportGSTInput?.value) || 0;
         const ro = parseFloat(roundOffInput?.value) || 0;
-
-        const effectiveTransport = tc + (tc * tg / 100);
-        const grandTotal = subtotal + effectiveTransport + ro;
+        const grandTotal = subtotal + ro;
 
         if (subtotalDisplay) subtotalDisplay.textContent = fmt(subtotal);
         if (grandTotalDisplay) grandTotalDisplay.textContent = fmt(grandTotal);
@@ -296,13 +342,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (rateInput && (!rateInput.value || parseFloat(rateInput.value) === 0)) {
                     rateInput.value = rate.toFixed(2);
                 }
+                applyPricelistToRow(row);
             } else if (designNumInput) {
                 designNumInput.value = '';
             }
             recalc();
         });
 
-        row.querySelector('.item-qty')?.addEventListener('input', recalc);
+        row.querySelector('.item-qty')?.addEventListener('input', function () {
+            applyPricelistToRow(row);
+            recalc();
+        });
+        row.querySelector('.item-colour')?.addEventListener('change', function () {
+            applyPricelistToRow(row);
+        });
+        row.querySelector('.item-size')?.addEventListener('change', function () {
+            applyPricelistToRow(row);
+        });
         row.querySelector('.item-rate')?.addEventListener('input', recalc);
         row.querySelector('.item-disc')?.addEventListener('input', recalc);
         row.querySelector('.item-gst')?.addEventListener('input', recalc);

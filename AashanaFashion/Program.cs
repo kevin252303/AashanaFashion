@@ -15,6 +15,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddHttpClient<IGstVerificationService, GstVerificationService>();
 builder.Services.AddScoped<IEwayBillService, EwayBillService>();
+builder.Services.AddScoped<IPricelistService, PricelistService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -239,6 +240,103 @@ using (var scope = app.Services.CreateScope())
             new Design { DesignNumber = "AF-002", Colours = "Yellow,Pink", Sizes = "M,L,XL", Price = 2000, CreationFlow = "Dying → Handwork → Stitching" },
             new Design { DesignNumber = "AF-003", Colours = "Red,Black,White", Sizes = "S,M,L", Price = 1800, CreationFlow = "Dying → Handwork → Stitching" }
         );
+        db.SaveChanges();
+    }
+
+    // Seed default standard product categories
+    if (!db.ProductCategories.Any())
+    {
+        var kurtis = new ProductCategory { CategoryName = "Kurtis", CategoryCode = "KRT", DefaultHsnCode = "6204", DefaultGstRate = 5.0m, Description = "Designer and daily wear kurtis" };
+        var sarees = new ProductCategory { CategoryName = "Sarees", CategoryCode = "SAR", DefaultHsnCode = "5208", DefaultGstRate = 5.0m, Description = "Traditional, party wear, and printed sarees" };
+        var lehengas = new ProductCategory { CategoryName = "Lehengas", CategoryCode = "LHG", DefaultHsnCode = "6204", DefaultGstRate = 12.0m, Description = "Bridal and festive lehenga choli" };
+        var gowns = new ProductCategory { CategoryName = "Gowns & Indo-Western", CategoryCode = "GWN", DefaultHsnCode = "6204", DefaultGstRate = 12.0m, Description = "Evening gowns and western fusion" };
+        var dressMaterial = new ProductCategory { CategoryName = "Dress Material & Fabrics", CategoryCode = "DRS", DefaultHsnCode = "5208", DefaultGstRate = 5.0m, Description = "Unstitched and semi-stitched suit sets" };
+        var westernWear = new ProductCategory { CategoryName = "Western Tops & Co-ords", CategoryCode = "WST", DefaultHsnCode = "6206", DefaultGstRate = 5.0m, Description = "Casual tops, shirts, and coordinate sets" };
+
+        db.ProductCategories.AddRange(kurtis, sarees, lehengas, gowns, dressMaterial, westernWear);
+        db.SaveChanges();
+    }
+
+    // Link any Designs without CategoryId based on their Category string
+    var unlinkedDesigns = db.Designs.Where(d => d.CategoryId == null && !string.IsNullOrEmpty(d.Category)).ToList();
+    if (unlinkedDesigns.Any())
+    {
+        foreach (var d in unlinkedDesigns)
+        {
+            var cat = db.ProductCategories.FirstOrDefault(c => c.CategoryName.ToLower() == d.Category!.ToLower());
+            if (cat == null)
+            {
+                cat = new ProductCategory { CategoryName = d.Category!, DefaultHsnCode = d.HsnSacCode ?? "6204", DefaultGstRate = 5.0m };
+                db.ProductCategories.Add(cat);
+                db.SaveChanges();
+            }
+            d.CategoryId = cat.Id;
+        }
+        db.SaveChanges();
+    }
+
+    // Seed default standard pricelists (Odoo-compliant)
+    if (!db.Pricelists.Any())
+    {
+        var publicPl = new Pricelist
+        {
+            Name = "Public Pricelist (INR)",
+            Currency = "INR (₹)",
+            DiscountPolicy = PricelistDiscountPolicy.DiscountIncluded,
+            IsActive = true,
+            Description = "Standard public retail pricelist with default catalogue rates.",
+            CreatedDate = DateTime.Now
+        };
+        publicPl.Items.Add(new PricelistItem
+        {
+            AppliedOn = PricelistAppliedOn.AllProducts,
+            ComputationMethod = PricelistComputeMethod.Percentage,
+            DiscountPercentage = 0m,
+            MinQuantity = 1m
+        });
+
+        var wholesalePl = new Pricelist
+        {
+            Name = "Wholesale Pricelist (10% Off)",
+            Currency = "INR (₹)",
+            DiscountPolicy = PricelistDiscountPolicy.ShowDiscount,
+            IsActive = true,
+            Description = "Standard wholesale B2B pricelist offering 10% discount on all garment collections.",
+            CreatedDate = DateTime.Now
+        };
+        wholesalePl.Items.Add(new PricelistItem
+        {
+            AppliedOn = PricelistAppliedOn.AllProducts,
+            ComputationMethod = PricelistComputeMethod.Percentage,
+            DiscountPercentage = 10.0m,
+            MinQuantity = 1m
+        });
+
+        var bulkTierPl = new Pricelist
+        {
+            Name = "Bulk Volume Tier (15% Off for 10+ Pcs)",
+            Currency = "INR (₹)",
+            DiscountPolicy = PricelistDiscountPolicy.DiscountIncluded,
+            IsActive = true,
+            Description = "Tiered volume buyer pricelist: 5% baseline, 15% discount for 10+ pieces.",
+            CreatedDate = DateTime.Now
+        };
+        bulkTierPl.Items.Add(new PricelistItem
+        {
+            AppliedOn = PricelistAppliedOn.AllProducts,
+            ComputationMethod = PricelistComputeMethod.Percentage,
+            DiscountPercentage = 5.0m,
+            MinQuantity = 1m
+        });
+        bulkTierPl.Items.Add(new PricelistItem
+        {
+            AppliedOn = PricelistAppliedOn.AllProducts,
+            ComputationMethod = PricelistComputeMethod.Percentage,
+            DiscountPercentage = 15.0m,
+            MinQuantity = 10m
+        });
+
+        db.Pricelists.AddRange(publicPl, wholesalePl, bulkTierPl);
         db.SaveChanges();
     }
 

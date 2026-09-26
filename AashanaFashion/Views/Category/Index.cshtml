@@ -1,0 +1,206 @@
+@model IEnumerable<AashanaFashion.Models.ProductCategory>
+@{
+    ViewData["Title"] = "Category Master";
+    var role       = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    bool isAdmin   = role == "Admin" || role == "SuperAdmin";
+    bool canCreate = isAdmin || User.HasClaim("Permission.DesignMaster.CanCreate", "true");
+    bool canEdit   = isAdmin || User.HasClaim("Permission.DesignMaster.CanEdit",   "true");
+    bool canDelete = isAdmin || User.HasClaim("Permission.DesignMaster.CanDelete", "true");
+
+    var activeCount = Model.Count(c => c.IsActive);
+    var totalProducts = Model.Sum(c => c.Products?.Count ?? 0);
+}
+
+<div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="page-title mb-1">🗂️ Category Master</h1>
+        <p class="page-sub text-muted mb-0">Classify garments and products for catalogue navigation, pricing rules, and GST rates</p>
+    </div>
+    @if (canCreate)
+    {
+        <a asp-action="Create" class="btn-af btn-af-primary">
+            ➕ New Category
+        </a>
+    }
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3">
+        <span class="alert-body">@TempData["Success"]</span>
+        <button class="alert-close">&times;</button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="af-alert af-alert-danger mb-3">
+        <span class="alert-body">@TempData["Error"]</span>
+        <button class="alert-close">&times;</button>
+    </div>
+}
+
+<!-- Summary Stats -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3 rounded-3 bg-white">
+            <div class="text-muted small fw-semibold">TOTAL CATEGORIES</div>
+            <div class="fs-4 fw-bold text-dark mt-1">@Model.Count() <span class="fs-6 text-muted fw-normal">(@activeCount Active)</span></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3 rounded-3 bg-white">
+            <div class="text-muted small fw-semibold">LINKED PRODUCTS (DESIGNS)</div>
+            <div class="fs-4 fw-bold text-primary mt-1">@totalProducts <span class="fs-6 text-muted fw-normal">Total Items</span></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3 rounded-3 bg-white">
+            <div class="text-muted small fw-semibold">DEFAULT TAX CATEGORIES</div>
+            <div class="fs-4 fw-bold text-success mt-1">5% / 12% <span class="fs-6 text-muted fw-normal">GST Standards</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Filter Bar -->
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body p-2">
+        <form method="get" asp-action="Index" class="row g-2 align-items-center">
+            <div class="col-md-6 col-lg-5">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="🔍 Search category name, code, HSN..." value="@ViewBag.Search" />
+            </div>
+            <div class="col-auto">
+                <div class="form-check form-check-inline mt-1">
+                    <input class="form-check-input" type="checkbox" name="activeOnly" id="activeOnly" value="true" @(ViewBag.ActiveOnly == true ? "checked" : "") onchange="this.form.submit()" />
+                    <label class="form-check-label small" for="activeOnly">Active Only</label>
+                </div>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+                @if (!string.IsNullOrEmpty(ViewBag.Search as string) || ViewBag.ActiveOnly == true)
+                {
+                    <a asp-action="Index" class="btn btn-sm btn-link text-decoration-none text-muted">Clear</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="data-card shadow-sm rounded-3 overflow-hidden bg-white">
+    <table class="af-table table mb-0 align-middle">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 25%;">Category Name</th>
+                <th style="width: 12%;">Code</th>
+                <th style="width: 18%;">Parent Category</th>
+                <th style="width: 12%;">HSN/SAC</th>
+                <th style="width: 10%;">GST Rate</th>
+                <th style="width: 10%;">Products</th>
+                <th style="width: 8%;">Status</th>
+                <th style="width: 15%; text-align: right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                var prodCount = item.Products?.Count ?? 0;
+                <tr>
+                    <td>
+                        <div class="fw-bold text-dark">@item.CategoryName</div>
+                        @if (!string.IsNullOrEmpty(item.Description))
+                        {
+                            <small class="text-muted text-truncate d-block" style="max-width: 260px;">@item.Description</small>
+                        }
+                    </td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(item.CategoryCode))
+                        {
+                            <span class="badge bg-light text-dark border font-monospace">@item.CategoryCode</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>
+                        @if (item.ParentCategory != null)
+                        {
+                            <span class="badge bg-secondary-subtle text-secondary border">📁 @item.ParentCategory.CategoryName</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted small">Top Level</span>
+                        }
+                    </td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(item.DefaultHsnCode))
+                        {
+                            <code>@item.DefaultHsnCode</code>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>
+                        @if (item.DefaultGstRate.HasValue)
+                        {
+                            <span class="badge bg-success-subtle text-success border">@item.DefaultGstRate.Value.ToString("0.##")%</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>
+                        <a asp-controller="Design" asp-action="Index" class="text-decoration-none">
+                            <span class="badge @(prodCount > 0 ? "bg-primary" : "bg-light text-muted border")" style="font-size: 0.8rem;">
+                                👕 @prodCount
+                            </span>
+                        </a>
+                    </td>
+                    <td>
+                        <span class="af-badge @(item.IsActive ? "b-green" : "b-gray")">
+                            @(item.IsActive ? "Active" : "Inactive")
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end gap-1">
+                            @if (canEdit)
+                            {
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm" title="Edit Category">
+                                    ✏️ Edit
+                                </a>
+                                <form asp-action="ToggleActive" asp-route-id="@item.Id" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn-af btn-af-ghost btn-af-sm" title="@(item.IsActive ? "Deactivate" : "Activate")">
+                                        @(item.IsActive ? "⏸️" : "▶️")
+                                    </button>
+                                </form>
+                            }
+                            @if (canDelete)
+                            {
+                                <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Are you sure you want to delete category \'@item.CategoryName\'?');" title="Delete Category">
+                                        🗑️
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (!Model.Any())
+    {
+        <div class="text-center p-5 text-muted">
+            <div class="fs-1 mb-2">🗂️</div>
+            <p class="mb-2">No categories found matching your search.</p>
+            @if (canCreate)
+            {
+                <a asp-action="Create" class="btn btn-sm btn-primary">+ Create First Category</a>
+            }
+        </div>
+    }
+</div>

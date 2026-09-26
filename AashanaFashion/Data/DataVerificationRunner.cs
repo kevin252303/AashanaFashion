@@ -155,6 +155,18 @@ public static class DataVerificationRunner
             Assert(design.BomItems.Count == 3, "BOM contains 3 garment components (Chaniya, Choli, Dupatta)");
             Assert(totalBomMaterialMeters > 8.5m && totalBomMaterialMeters < 8.6m, "Effective material consumption computed accurately");
             Assert(design.OperationCosts.Count == 3, "3 operation stages configured");
+
+            // Verify Category Master linkage
+            var lehengaCategory = await db.ProductCategories.FirstOrDefaultAsync(c => c.CategoryName == "Lehengas");
+            if (lehengaCategory != null && design.CategoryId == null)
+            {
+                design.CategoryId = lehengaCategory.Id;
+                design.Category = lehengaCategory.CategoryName;
+                await db.SaveChangesAsync();
+            }
+            Assert(await db.ProductCategories.AnyAsync(), "Product Categories seeded and active in Category Master");
+            Assert(design.CategoryId != null, "Product Master design successfully linked to Category Master");
+            Console.WriteLine($"│ ✓ Category Master Link: Design assigned to Category '{design.Category}' (ID={design.CategoryId})");
             Console.WriteLine($"│ ✓ Design Registered: ID={design.Id}, No='{design.DesignNumber}', MRP=₹{design.Price:N2}");
             Console.WriteLine($"│ ✓ Multi-Component BOM: 3 parts totaling {totalBomMaterialMeters:N3}m fabric = ₹{totalMaterialCost:N2}");
             Console.WriteLine($"│ ✓ Operation Costs: Dying (₹120) + Handwork (₹950) + Stitching (₹450) = ₹{totalOpsCost:N2}");
@@ -952,6 +964,12 @@ public static class DataVerificationRunner
                     IsActive = true
                 };
                 db.Users.Add(testUser);
+                await db.SaveChangesAsync();
+            }
+            else
+            {
+                testUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword("InitialPass123");
+                testUser.IsActive = true;
                 await db.SaveChangesAsync();
             }
 

@@ -4,6 +4,7 @@ using AashanaFashion.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AashanaFashion.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260925045102_AddCategoryMasterAndLinkToProduct")]
+    partial class AddCategoryMasterAndLinkToProduct
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1216,41 +1219,6 @@ namespace AashanaFashion.Migrations
                     b.HasIndex("ParentCategoryId");
 
                     b.ToTable("ProductCategories");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.ProductExtraCharge", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AttributeType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("AttributeValue")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("DesignId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("ExtraCharge")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Remarks")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DesignId");
-
-                    b.ToTable("ProductExtraCharges");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.ProductPackaging", b =>
@@ -2862,17 +2830,6 @@ namespace AashanaFashion.Migrations
                     b.Navigation("ParentCategory");
                 });
 
-            modelBuilder.Entity("AashanaFashion.Models.ProductExtraCharge", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.Design", "Design")
-                        .WithMany("ExtraCharges")
-                        .HasForeignKey("DesignId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Design");
-                });
-
             modelBuilder.Entity("AashanaFashion.Models.ProductPackaging", b =>
                 {
                     b.HasOne("AashanaFashion.Models.Design", "Design")
@@ -3170,8 +3127,6 @@ namespace AashanaFashion.Migrations
                     b.Navigation("AttributeLines");
 
                     b.Navigation("BomItems");
-
-                    b.Navigation("ExtraCharges");
 
                     b.Navigation("OperationCosts");
 

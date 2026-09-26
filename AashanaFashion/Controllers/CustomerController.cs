@@ -37,6 +37,7 @@ public class CustomerController : Controller
     public async Task<IActionResult> Create()
     {
         ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+        ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
         return View(new CustomerViewModel());
     }
 
@@ -48,6 +49,7 @@ public class CustomerController : Controller
         if (!ModelState.IsValid)
         {
             ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+            ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
             return View(model);
         }
 
@@ -75,6 +77,7 @@ public class CustomerController : Controller
         var customer = await _context.Customers.Include(c => c.Contacts).FirstOrDefaultAsync(c => c.Id == id);
         if (customer == null) return NotFound();
         ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+        ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
         return View(MapToViewModel(customer));
     }
 
@@ -86,6 +89,7 @@ public class CustomerController : Controller
         if (!ModelState.IsValid)
         {
             ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+            ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
             return View(model);
         }
 
@@ -140,7 +144,7 @@ public class CustomerController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private static Customer MapToCustomer(CustomerViewModel model, Customer? existing = null)
+    private Customer MapToCustomer(CustomerViewModel model, Customer? existing = null)
     {
         var c = existing ?? new Customer();
         c.CustomerName = model.CustomerName;
@@ -165,7 +169,16 @@ public class CustomerController : Controller
         c.AddDesignOnScan = model.AddDesignOnScan;
         c.SalesPaymentTerms = model.SalesPaymentTerms;
         c.SalesPaymentMethod = model.SalesPaymentMethod;
-        c.Pricelist = model.Pricelist;
+        c.PricelistId = model.PricelistId;
+        if (model.PricelistId.HasValue && model.PricelistId.Value > 0)
+        {
+            var pl = _context.Pricelists.Find(model.PricelistId.Value);
+            c.Pricelist = pl?.Name ?? model.Pricelist;
+        }
+        else
+        {
+            c.Pricelist = model.Pricelist;
+        }
         c.DeliveryMethod = model.DeliveryMethod;
         c.Transporter = model.Transporter;
         c.Distance = model.Distance;
@@ -238,6 +251,7 @@ public class CustomerController : Controller
         SalesPaymentTerms = c.SalesPaymentTerms,
         SalesPaymentMethod = c.SalesPaymentMethod,
         Pricelist = c.Pricelist,
+        PricelistId = c.PricelistId,
         DeliveryMethod = c.DeliveryMethod,
         Transporter = c.Transporter,
         Distance = c.Distance,

@@ -1,0 +1,157 @@
+@model AashanaFashion.Models.ProductCategory
+@{
+    ViewData["Title"] = "Edit Category — " + Model.CategoryName;
+    var parents = (List<AashanaFashion.Models.ProductCategory>?)ViewBag.ParentCategories ?? new List<AashanaFashion.Models.ProductCategory>();
+    var prodCount = Model.Products?.Count ?? 0;
+}
+
+<div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="page-title mb-1">Edit Category: @Model.CategoryName</h1>
+        <p class="page-sub text-muted mb-0">Update category details, parent hierarchy, and default tax configurations</p>
+    </div>
+    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back to Categories</a>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="data-card shadow-sm rounded-3 bg-white">
+            <div class="data-card-header border-bottom p-3 d-flex justify-content-between align-items-center">
+                <div class="data-card-title fw-bold">Category Information</div>
+                <span class="badge @(Model.IsActive ? "bg-success" : "bg-secondary")">
+                    @(Model.IsActive ? "Active" : "Inactive")
+                </span>
+            </div>
+            <div class="p-4">
+                <form asp-action="Edit" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="CreatedDate" />
+
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <div class="af-form-group">
+                                <label asp-for="CategoryName" class="af-label fw-semibold">Category Name <span class="text-danger">*</span></label>
+                                <input asp-for="CategoryName" class="af-input" required />
+                                <span asp-validation-for="CategoryName" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="af-form-group">
+                                <label asp-for="CategoryCode" class="af-label fw-semibold">Short Code</label>
+                                <input asp-for="CategoryCode" class="af-input text-uppercase font-monospace" maxlength="10" />
+                                <span asp-validation-for="CategoryCode" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="af-form-group">
+                                <label asp-for="ParentCategoryId" class="af-label fw-semibold">Parent Category</label>
+                                <select asp-for="ParentCategoryId" class="af-input af-select">
+                                    <option value="">-- None (Top Level Category) --</option>
+                                    @foreach (var parent in parents)
+                                    {
+                                        <option value="@parent.Id" selected="@(Model.ParentCategoryId == parent.Id)">📁 @parent.CategoryName</option>
+                                    }
+                                </select>
+                                <small class="text-muted">Use for hierarchical grouping (e.g. Ethnic Wear → Kurtis).</small>
+                                <span asp-validation-for="ParentCategoryId" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="DefaultHsnCode" class="af-label fw-semibold">Default HSN/SAC Code</label>
+                                <input asp-for="DefaultHsnCode" class="af-input font-monospace" />
+                                <small class="text-muted">Auto-suggested when creating products in this category.</small>
+                                <span asp-validation-for="DefaultHsnCode" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label asp-for="DefaultGstRate" class="af-label fw-semibold">Default GST Rate (%)</label>
+                                <select asp-for="DefaultGstRate" class="af-input af-select">
+                                    <option value="5.00" selected="@(Model.DefaultGstRate == 5.0m)">5% (Garments under ₹1,000 / Standard Apparel)</option>
+                                    <option value="12.00" selected="@(Model.DefaultGstRate == 12.0m)">12% (Garments above ₹1,000 / Luxury Apparel)</option>
+                                    <option value="18.00" selected="@(Model.DefaultGstRate == 18.0m)">18% (Synthetic / Specialized)</option>
+                                    <option value="0.00" selected="@(Model.DefaultGstRate == 0.0m)">0% (Nil Rated / Exempt)</option>
+                                </select>
+                                <span asp-validation-for="DefaultGstRate" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="af-form-group">
+                                <label asp-for="Description" class="af-label fw-semibold">Description / Notes</label>
+                                <textarea asp-for="Description" class="af-input" rows="3"></textarea>
+                                <span asp-validation-for="Description" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" asp-for="IsActive" id="isActiveSwitch" />
+                                <label class="form-check-label fw-semibold ms-2" for="isActiveSwitch">Active Category</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn-af btn-af-primary px-4">Update Category</button>
+                            <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Linked Products Sidebar -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm rounded-3 bg-white p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold">👕 Linked Products (@prodCount)</span>
+                @if (prodCount > 0)
+                {
+                    <a asp-controller="Design" asp-action="Index" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">View in Product Master</a>
+                }
+            </div>
+            @if (prodCount > 0 && Model.Products != null)
+            {
+                <div class="list-group list-group-flush small" style="max-height: 280px; overflow-y: auto;">
+                    @foreach (var prod in Model.Products.Take(10))
+                    {
+                        <div class="list-group-item px-1 py-2 d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong class="text-dark">@prod.DesignNumber</strong>
+                                @if (prod.SalesPrice > 0)
+                                {
+                                    <span class="text-muted ms-1">₹@prod.SalesPrice.ToString("N2")</span>
+                                }
+                            </div>
+                            <a asp-controller="Design" asp-action="Edit" asp-route-id="@prod.Id" class="btn btn-sm btn-link p-0 text-decoration-none">Edit</a>
+                        </div>
+                    }
+                    @if (prodCount > 10)
+                    {
+                        <div class="text-muted text-center pt-2 small">... and @(prodCount - 10) more products</div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-muted small py-3 text-center">No products are currently linked to this category.</div>
+            }
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3 bg-light p-3">
+            <div class="fw-bold mb-1 small text-dark">ℹ️ Synchronisation Note</div>
+            <div class="text-muted small">
+                Renaming this category will automatically synchronize the category name on all <strong>@prodCount</strong> linked design record(s).
+            </div>
+        </div>
+    </div>
+</div>

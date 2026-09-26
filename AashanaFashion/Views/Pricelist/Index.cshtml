@@ -1,0 +1,191 @@
+@model IEnumerable<AashanaFashion.Models.Pricelist>
+@{
+    ViewData["Title"] = "Pricelist Master";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Dashboard</a></li>
+                <li class="breadcrumb-item text-muted">Admin Master</li>
+                <li class="breadcrumb-item active" aria-current="page">Pricelist Master</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold mb-0">🏷️ Pricelist Master</h2>
+        <p class="text-muted small mb-0">Manage customer pricing rules, volume tiered rates, and wholesale discount structures (Odoo-compliant).</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Create" class="btn btn-primary fw-semibold">
+            ➕ New Pricelist
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Success!</strong> @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Warning!</strong> @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Filters & Search -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-3">
+        <form method="get" asp-action="Index" class="row g-2 align-items-center">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">🔍</span>
+                    <input type="text" name="search" class="form-control border-start-0" placeholder="Search pricelist by name or description..." value="@ViewBag.Search" />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check form-switch mt-2">
+                    <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeFilter" @(ViewBag.ActiveOnly == true ? "checked" : "") onchange="this.form.submit()">
+                    <label class="form-check-label fw-semibold small" for="activeFilter">Active Only</label>
+                </div>
+            </div>
+            <div class="col-md-3 text-end">
+                <button type="submit" class="btn btn-secondary btn-sm me-1">Filter</button>
+                <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Pricelist Table -->
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 25%;">Pricelist Name</th>
+                        <th style="width: 12%;">Currency</th>
+                        <th style="width: 20%;">Discount Policy</th>
+                        <th style="width: 12%;" class="text-center">Rules / Items</th>
+                        <th style="width: 12%;" class="text-center">Assigned Customers</th>
+                        <th style="width: 10%;" class="text-center">Status</th>
+                        <th style="width: 9%;" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var pl in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-action="Details" asp-route-id="@pl.Id" class="fw-bold text-decoration-none text-dark">
+                                        🏷️ @pl.Name
+                                    </a>
+                                    @if (!string.IsNullOrEmpty(pl.Description))
+                                    {
+                                        <div class="small text-muted text-truncate" style="max-width: 320px;">@pl.Description</div>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">@pl.Currency</span>
+                                </td>
+                                <td>
+                                    @if (pl.DiscountPolicy == AashanaFashion.Models.PricelistDiscountPolicy.DiscountIncluded)
+                                    {
+                                        <span class="badge bg-info-subtle text-info border">
+                                            Discount included in price
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning border">
+                                            Show discount to customer
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary-subtle text-secondary fw-bold px-2 py-1">
+                                        @pl.Items.Count rule(s)
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <a asp-action="Details" asp-route-id="@pl.Id" class="text-decoration-none">
+                                        <span class="badge bg-primary-subtle text-primary fw-bold px-2 py-1">
+                                            👥 @pl.Customers.Count customer(s)
+                                        </span>
+                                    </a>
+                                </td>
+                                <td class="text-center">
+                                    @if (pl.IsActive)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            ⚙️
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                            <li>
+                                                <a class="dropdown-item" asp-action="Details" asp-route-id="@pl.Id">
+                                                    👁️ View Details & Rules
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" asp-action="Edit" asp-route-id="@pl.Id">
+                                                    ✏️ Edit Pricelist
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form asp-action="ToggleActive" asp-route-id="@pl.Id" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="dropdown-item">
+                                                        @(pl.IsActive ? "⏸️ Deactivate" : "▶️ Activate")
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            @if (pl.Customers.Count == 0)
+                                            {
+                                                <li>
+                                                    <form asp-action="Delete" asp-route-id="@pl.Id" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this pricelist?');">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="dropdown-item text-danger">
+                                                            🗑️ Delete
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <h5>No pricelists found</h5>
+                                <p class="small">Create your first custom pricelist to offer special discounts to customers.</p>
+                                <a asp-action="Create" class="btn btn-sm btn-primary">➕ Create Pricelist</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

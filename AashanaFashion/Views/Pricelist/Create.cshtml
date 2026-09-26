@@ -1,0 +1,246 @@
+@model AashanaFashion.Models.Pricelist
+@{
+    ViewData["Title"] = "Create Pricelist";
+}
+
+<div class="mb-4">
+    <a asp-action="Index" class="text-decoration-none text-muted small">← Back to Pricelists</a>
+    <h2 class="fw-bold mt-1">🏷️ Create New Pricelist</h2>
+    <p class="text-muted small">Configure customer pricing rules, tiered quantity discounts, and special product rates.</p>
+</div>
+
+<form asp-action="Create" method="post" id="pricelistForm">
+    @Html.AntiForgeryToken()
+
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+            <h5 class="card-title mb-0 fw-bold">📋 Pricelist Header</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Name" class="form-label fw-semibold">Pricelist Name <span class="text-danger">*</span></label>
+                    <input asp-for="Name" class="form-control" placeholder="e.g. Wholesale Pricelist (10% Off)" required />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Currency" class="form-label fw-semibold">Currency</label>
+                    <input asp-for="Currency" class="form-control" value="INR (₹)" readonly />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="DiscountPolicy" class="form-label fw-semibold">Discount Policy</label>
+                    <select asp-for="DiscountPolicy" class="form-select" asp-items="Html.GetEnumSelectList<AashanaFashion.Models.PricelistDiscountPolicy>()"></select>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label fw-semibold">Description / Remarks</label>
+                    <textarea asp-for="Description" class="form-control" rows="2" placeholder="Internal notes or terms regarding this pricelist..."></textarea>
+                </div>
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveCheck" checked>
+                        <label class="form-check-label fw-semibold" for="isActiveCheck">Active Pricelist</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pricing Rules / Items (Odoo style) -->
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title mb-0 fw-bold">⚡ Price Rules</h5>
+                <small class="text-muted">Rules are evaluated by specificity: Specific Product &gt; Category &gt; All Products.</small>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" id="addRuleBtn">
+                ➕ Add Price Rule
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0" id="rulesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 18%;">Applied On</th>
+                            <th style="width: 22%;">Target (Design / Category)</th>
+                            <th style="width: 12%;">Min Qty</th>
+                            <th style="width: 16%;">Computation</th>
+                            <th style="width: 14%;">Value</th>
+                            <th style="width: 13%;">Validity Dates</th>
+                            <th style="width: 5%;" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rulesBody">
+                        <!-- Populated by JavaScript or existing model -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="noRulesAlert" class="p-4 text-center text-muted" style="display: none;">
+                No price rules added yet. Click <strong>"➕ Add Price Rule"</strong> above.
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mb-5">
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary fw-bold px-4">💾 Save Pricelist</button>
+    </div>
+</form>
+
+<!-- Templates for dynamic rows -->
+<template id="designOptionsTemplate">
+    <option value="">-- Select Product / Design --</option>
+    @if (ViewBag.Designs != null)
+    {
+        foreach (var d in ViewBag.Designs)
+        {
+            <option value="@d.Id" data-rate="@d.SalesPrice" data-cat="@d.Category">
+                @d.DesignNumber (@(d.Category ?? "Garment")) — ₹@d.SalesPrice.ToString("N2")
+            </option>
+        }
+    }
+</template>
+
+<template id="categoryOptionsTemplate">
+    <option value="">-- Select Category --</option>
+    @if (ViewBag.Categories != null)
+    {
+        foreach (var cat in ViewBag.Categories)
+        {
+            <option value="@cat">@cat</option>
+        }
+    }
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let ruleIndex = 0;
+        const designOptions = document.getElementById('designOptionsTemplate').innerHTML;
+        const categoryOptions = document.getElementById('categoryOptionsTemplate').innerHTML;
+
+        function addRuleRow(rule = null) {
+            const idx = ruleIndex++;
+            const appliedOn = rule ? rule.appliedOn : 0; // 0=AllProducts, 1=Category, 2=Product
+            const compMethod = rule ? rule.computationMethod : 1; // 0=FixedPrice, 1=Percentage, 2=Formula
+            const minQty = rule ? rule.minQuantity : 1;
+            const fixedPrice = rule && rule.fixedPrice ? rule.fixedPrice : '';
+            const discPct = rule && rule.discountPercentage ? rule.discountPercentage : 10;
+            const startDate = rule && rule.startDate ? rule.startDate : '';
+            const endDate = rule && rule.endDate ? rule.endDate : '';
+
+            const tr = document.createElement('tr');
+            tr.className = 'rule-row';
+            tr.innerHTML = `
+                <td>
+                    <select name="items[${idx}].AppliedOn" class="form-select form-select-sm applied-on-select">
+                        <option value="0" ${appliedOn == 0 ? 'selected' : ''}>All Products</option>
+                        <option value="1" ${appliedOn == 1 ? 'selected' : ''}>Product Category</option>
+                        <option value="2" ${appliedOn == 2 ? 'selected' : ''}>Specific Product</option>
+                    </select>
+                </td>
+                <td>
+                    <div class="target-container">
+                        <span class="text-muted small all-products-label" style="${appliedOn == 0 ? '' : 'display:none;'}">Applies to all inventory garments</span>
+                        <select name="items[${idx}].Category" class="form-select form-select-sm category-select" style="${appliedOn == 1 ? '' : 'display:none;'}">
+                            ${categoryOptions}
+                        </select>
+                        <select name="items[${idx}].DesignId" class="form-select form-select-sm design-select" style="${appliedOn == 2 ? '' : 'display:none;'}">
+                            ${designOptions}
+                        </select>
+                    </div>
+                </td>
+                <td>
+                    <input type="number" step="1" min="1" name="items[${idx}].MinQuantity" class="form-control form-control-sm text-center" value="${minQty}" />
+                </td>
+                <td>
+                    <select name="items[${idx}].ComputationMethod" class="form-select form-select-sm comp-method-select">
+                        <option value="1" ${compMethod == 1 ? 'selected' : ''}>Percentage Discount (%)</option>
+                        <option value="0" ${compMethod == 0 ? 'selected' : ''}>Fixed Price (₹)</option>
+                        <option value="2" ${compMethod == 2 ? 'selected' : ''}>Formula (Base - % + Fee)</option>
+                    </select>
+                </td>
+                <td>
+                    <div class="val-percentage" style="${compMethod == 1 ? '' : 'display:none;'}">
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.1" min="0" max="100" name="items[${idx}].DiscountPercentage" class="form-control text-end" value="${discPct}" placeholder="0" />
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div class="val-fixed" style="${compMethod == 0 ? '' : 'display:none;'}">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" step="0.01" min="0" name="items[${idx}].FixedPrice" class="form-control text-end" value="${fixedPrice}" placeholder="0.00" />
+                        </div>
+                    </div>
+                    <div class="val-formula" style="${compMethod == 2 ? '' : 'display:none;'}">
+                        <div class="d-flex gap-1">
+                            <input type="number" step="0.1" min="0" max="100" name="items[${idx}].DiscountPercentage" class="form-control form-control-sm text-end" value="${discPct}" placeholder="Disc %" title="Discount %" />
+                            <input type="number" step="0.01" name="items[${idx}].Surcharge" class="form-control form-control-sm text-end" value="0.00" placeholder="+ Surcharge" title="Surcharge ₹" />
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex flex-column gap-1">
+                        <input type="date" name="items[${idx}].StartDate" class="form-control form-control-sm" value="${startDate}" title="Start Date" />
+                        <input type="date" name="items[${idx}].EndDate" class="form-control form-control-sm" value="${endDate}" title="End Date" />
+                    </div>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm text-danger remove-rule-btn">✕</button>
+                </td>
+            `;
+
+            document.getElementById('rulesBody').appendChild(tr);
+            bindRowEvents(tr);
+            updateNoRulesVisibility();
+        }
+
+        function bindRowEvents(row) {
+            const appliedSelect = row.querySelector('.applied-on-select');
+            const allLabel = row.querySelector('.all-products-label');
+            const catSelect = row.querySelector('.category-select');
+            const desSelect = row.querySelector('.design-select');
+
+            appliedSelect.addEventListener('change', function () {
+                const val = this.value;
+                allLabel.style.display = val == '0' ? '' : 'none';
+                catSelect.style.display = val == '1' ? '' : 'none';
+                desSelect.style.display = val == '2' ? '' : 'none';
+            });
+
+            const compSelect = row.querySelector('.comp-method-select');
+            const valPct = row.querySelector('.val-percentage');
+            const valFix = row.querySelector('.val-fixed');
+            const valFor = row.querySelector('.val-formula');
+
+            compSelect.addEventListener('change', function () {
+                const val = this.value;
+                valPct.style.display = val == '1' ? '' : 'none';
+                valFix.style.display = val == '0' ? '' : 'none';
+                valFor.style.display = val == '2' ? '' : 'none';
+            });
+
+            row.querySelector('.remove-rule-btn').addEventListener('click', function () {
+                row.remove();
+                updateNoRulesVisibility();
+            });
+        }
+
+        function updateNoRulesVisibility() {
+            const count = document.querySelectorAll('#rulesBody tr').length;
+            document.getElementById('noRulesAlert').style.display = count === 0 ? '' : 'none';
+        }
+
+        document.getElementById('addRuleBtn').addEventListener('click', function () {
+            addRuleRow();
+        });
+
+        // Initialize with 1 default rule
+        document.addEventListener('DOMContentLoaded', function () {
+            addRuleRow({ appliedOn: 0, computationMethod: 1, discountPercentage: 10, minQuantity: 1 });
+        });
+    </script>
+}

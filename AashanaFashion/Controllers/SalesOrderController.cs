@@ -423,7 +423,9 @@ public class SalesOrderController : Controller
             paymentTerms = customer.SalesPaymentTerms ?? "",
             gstNumber = customer.GstNumber ?? "",
             phone = customer.Phone ?? "",
-            contactPerson = customer.ContactPerson ?? ""
+            contactPerson = customer.ContactPerson ?? "",
+            pricelistId = customer.PricelistId,
+            pricelistName = customer.Pricelist ?? ""
         });
     }
 

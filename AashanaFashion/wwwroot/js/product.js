@@ -214,4 +214,72 @@
         pkgBody.querySelectorAll('.pkg-row').forEach(bindPkgRemove);
         reindexPkg();
     }
+
+    // ——— Prevent empty child collection rows from submitting invalid values ———
+    var productForm = document.getElementById('productForm') || document.querySelector('form');
+    if (productForm) {
+        productForm.addEventListener('submit', function () {
+            // Clean empty attribute rows
+            var attrIdx = 0;
+            document.querySelectorAll('#attrBody .attr-row').forEach(function (row) {
+                var attr = row.querySelector('input[name*=".Attribute"]')?.value?.trim();
+                var val = row.querySelector('input[name*=".Values"]')?.value?.trim();
+                if (!attr && !val) {
+                    row.querySelectorAll('input, select').forEach(function (el) { el.disabled = true; });
+                } else {
+                    row.querySelectorAll('input, select').forEach(function (el) {
+                        var name = el.getAttribute('name');
+                        if (name) el.setAttribute('name', name.replace(/\[\d+\]/, '[' + attrIdx + ']'));
+                    });
+                    attrIdx++;
+                }
+            });
+
+            // Clean empty pricelist rows
+            var priceIdx = 0;
+            document.querySelectorAll('#priceBody .price-row').forEach(function (row) {
+                var pl = row.querySelector('input[name*=".Pricelist"]')?.value?.trim();
+                if (!pl) {
+                    row.querySelectorAll('input, select').forEach(function (el) { el.disabled = true; });
+                } else {
+                    row.querySelectorAll('input, select').forEach(function (el) {
+                        var name = el.getAttribute('name');
+                        if (name) el.setAttribute('name', name.replace(/\[\d+\]/, '[' + priceIdx + ']'));
+                    });
+                    priceIdx++;
+                }
+            });
+
+            // Clean empty vendor rows
+            var vendorIdx = 0;
+            document.querySelectorAll('#vendorBody .vendor-row').forEach(function (row) {
+                var vendorSelect = row.querySelector('select[name*=".VendorId"]');
+                var vendorId = vendorSelect ? vendorSelect.value : '';
+                if (!vendorId) {
+                    row.querySelectorAll('input, select').forEach(function (el) { el.disabled = true; });
+                } else {
+                    row.querySelectorAll('input, select').forEach(function (el) {
+                        var name = el.getAttribute('name');
+                        if (name) el.setAttribute('name', name.replace(/\[\d+\]/, '[' + vendorIdx + ']'));
+                    });
+                    vendorIdx++;
+                }
+            });
+
+            // Clean empty packaging rows
+            var pkgIdx = 0;
+            document.querySelectorAll('#pkgBody .pkg-row').forEach(function (row) {
+                var pkg = row.querySelector('input[name*=".PackagingName"]')?.value?.trim();
+                if (!pkg) {
+                    row.querySelectorAll('input, select').forEach(function (el) { el.disabled = true; });
+                } else {
+                    row.querySelectorAll('input, select').forEach(function (el) {
+                        var name = el.getAttribute('name');
+                        if (name) el.setAttribute('name', name.replace(/\[\d+\]/, '[' + pkgIdx + ']'));
+                    });
+                    pkgIdx++;
+                }
+            });
+        });
+    }
 })();

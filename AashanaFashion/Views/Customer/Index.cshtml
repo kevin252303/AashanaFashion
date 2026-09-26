@@ -42,8 +42,17 @@
             @foreach (var item in Model)
             {
                 <tr>
-                    <td><strong>@item.CustomerName</strong></td>
-                    <td>@item.GstNumber</td>
+                    <td>
+                        <strong>@item.CustomerName</strong>
+                        @if (!string.IsNullOrEmpty(item.Pricelist))
+                        {
+                            <div class="mt-1">
+                                <span class="badge bg-light text-primary border" style="font-size: 0.72rem; font-weight: 600;">
+                                    🏷️ @item.Pricelist
+                                </span>
+                            </div>
+                        }
+                    </td>
                     <td>@item.ContactPerson</td>
                     <td>@item.Phone</td>
                     <td>@item.Email</td>

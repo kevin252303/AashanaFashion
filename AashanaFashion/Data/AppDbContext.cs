@@ -27,11 +27,15 @@ namespace AashanaFashion.Data
         public DbSet<ProductPricelist> ProductPricelists { get; set; }
         public DbSet<ProductVendor> ProductVendors { get; set; }
         public DbSet<ProductPackaging> ProductPackagings { get; set; }
+        public DbSet<ProductExtraCharge> ProductExtraCharges { get; set; }
         public DbSet<VendorContact> VendorContacts { get; set; }
         public DbSet<Customer> Customers { get; set; }
         public DbSet<CustomerContact> CustomerContacts { get; set; }
         public DbSet<Colour> Colours { get; set; }
         public DbSet<Size> Sizes { get; set; }
+        public DbSet<ProductCategory> ProductCategories { get; set; }
+        public DbSet<Pricelist> Pricelists { get; set; }
+        public DbSet<PricelistItem> PricelistItems { get; set; }
         public DbSet<AccountingTransaction> AccountingTransactions { get; set; }
         public DbSet<PurchaseOrderBill> PurchaseOrderBills { get; set; }
         public DbSet<DesignBomItem> DesignBomItems { get; set; }
@@ -347,6 +351,25 @@ namespace AashanaFashion.Data
                 .Property(c => c.GeoLongitude)
                 .HasColumnType("decimal(18,8)");
 
+            // --- Pricelist entities ---
+            modelBuilder.Entity<Pricelist>()
+                .HasMany(p => p.Items)
+                .WithOne(i => i.Pricelist)
+                .HasForeignKey(i => i.PricelistId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Customer>()
+                .HasOne(c => c.PricelistMaster)
+                .WithMany(p => p.Customers)
+                .HasForeignKey(c => c.PricelistId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PricelistItem>()
+                .HasOne(i => i.Design)
+                .WithMany()
+                .HasForeignKey(i => i.DesignId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<AccountingTransaction>()
                 .Property(a => a.Amount)
                 .HasColumnType("decimal(18,2)");
@@ -601,6 +624,32 @@ namespace AashanaFashion.Data
                 .WithMany(d => d.AttendanceRecords)
                 .HasForeignKey(a => a.DeviceId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<ProductCategory>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+                entity.HasIndex(c => c.CategoryName).IsUnique();
+                entity.HasOne(c => c.ParentCategory)
+                    .WithMany(p => p.SubCategories)
+                    .HasForeignKey(c => c.ParentCategoryId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Design>(entity =>
+            {
+                entity.HasOne(d => d.ProductCategory)
+                    .WithMany(c => c.Products)
+                    .HasForeignKey(d => d.CategoryId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<ProductExtraCharge>(entity =>
+            {
+                entity.HasOne(e => e.Design)
+                    .WithMany(d => d.ExtraCharges)
+                    .HasForeignKey(e => e.DesignId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }
