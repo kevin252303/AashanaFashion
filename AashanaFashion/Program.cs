@@ -3,11 +3,16 @@ using AashanaFashion.Models;
 using AashanaFashion.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo("/app/dataprotection-keys"))
+    .SetApplicationName("AashanaFashion");
 
 var activeConnection = builder.Configuration.GetValue<string>("ActiveConnection") ?? "DefaultConnection";
 builder.Services.AddDbContext<AppDbContext>(options =>

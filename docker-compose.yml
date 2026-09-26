@@ -34,7 +34,10 @@ services:
       - ConnectionStrings__DockerSqlConnection=Server=db,1433;Database=AashanaFashionDb;User Id=sa;Password=YourStrongPass123!;TrustServerCertificate=True;MultipleActiveResultSets=true
     ports:
       - "5000:5000"
+    volumes:
+      - dataprotection_keys:/app/dataprotection-keys
     restart: always
 
 volumes:
   mssql_data:
+  dataprotection_keys:
