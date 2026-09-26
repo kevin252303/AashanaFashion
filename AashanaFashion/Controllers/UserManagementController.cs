@@ -15,10 +15,39 @@ namespace AashanaFashion.Controllers
         public UserManagementController(AppDbContext context) => _context = context;
 
         // GET: /UserManagement — all authenticated roles can view
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? search, string? role, bool? activeOnly)
         {
-            var users = await _context.Users.ToListAsync();
+            var query = _context.Users.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(u =>
+                    u.Username.ToLower().Contains(s) ||
+                    u.FirstName.ToLower().Contains(s) ||
+                    u.LastName.ToLower().Contains(s) ||
+                    (u.DisplayName != null && u.DisplayName.ToLower().Contains(s)) ||
+                    (u.Email != null && u.Email.ToLower().Contains(s)) ||
+                    (u.ContactNumber != null && u.ContactNumber.ToLower().Contains(s)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(role))
+            {
+                query = query.Where(u => u.Role == role);
+            }
+
+            if (activeOnly == true)
+            {
+                query = query.Where(u => u.IsActive);
+            }
+
+            var users = await query.ToListAsync();
             ViewBag.UserRoles = await _context.UserRoles.ToDictionaryAsync(r => r.RoleName, r => r.Id);
+            ViewBag.Roles = await _context.UserRoles.Where(r => r.IsActive).Select(r => r.RoleName).Distinct().OrderBy(r => r).ToListAsync();
+            ViewBag.Search = search;
+            ViewBag.SelectedRole = role;
+            ViewBag.ActiveOnly = activeOnly ?? false;
+
             return View(users);
         }
 

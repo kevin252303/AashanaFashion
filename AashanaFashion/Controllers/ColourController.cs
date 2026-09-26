@@ -14,9 +14,25 @@ public class ColourController : Controller
 
     public ColourController(AppDbContext context) => _context = context;
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? search, bool? activeOnly)
     {
-        var colours = await _context.Colours.OrderBy(c => c.ColourName).ToListAsync();
+        var query = _context.Colours.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(c => c.ColourName.ToLower().Contains(s) || (c.ColourCode != null && c.ColourCode.ToLower().Contains(s)));
+        }
+
+        if (activeOnly == true)
+        {
+            query = query.Where(c => c.IsActive);
+        }
+
+        var colours = await query.OrderBy(c => c.ColourName).ToListAsync();
+        ViewBag.Search = search;
+        ViewBag.ActiveOnly = activeOnly ?? false;
+
         return View(colours);
     }
 

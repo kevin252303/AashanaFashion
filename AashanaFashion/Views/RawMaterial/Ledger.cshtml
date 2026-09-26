@@ -24,6 +24,10 @@
     <form method="get" asp-action="Ledger">
         <div class="row g-2 align-items-end">
             <div class="col-md-3">
+                <label class="af-label" style="font-size: 0.8rem;">Search</label>
+                <input type="text" name="search" class="af-input" placeholder="Search reference, notes, material..." value="@ViewBag.Search" style="font-size: 0.85rem;" />
+            </div>
+            <div class="col-md-2">
                 <label class="af-label" style="font-size: 0.8rem;">Material</label>
                 <select name="materialId" class="af-input af-select" style="font-size: 0.85rem;">
                     <option value="">— All Materials —</option>
@@ -48,12 +52,12 @@
                 <label class="af-label" style="font-size: 0.8rem;">From Date</label>
                 <input type="date" name="fromDate" class="af-input" style="font-size: 0.85rem;" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
             </div>
-            <div class="col-md-2">
+            <div class="col-md-1">
                 <label class="af-label" style="font-size: 0.8rem;">To Date</label>
                 <input type="date" name="toDate" class="af-input" style="font-size: 0.85rem;" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
             </div>
-            <div class="col-md-3" style="display:flex;gap:.5rem;">
-                <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter Ledger</button>
+            <div class="col-md-2" style="display:flex;gap:.5rem;">
+                <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
                 <a asp-action="Ledger" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
             </div>
         </div>

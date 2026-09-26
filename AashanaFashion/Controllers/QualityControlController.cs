@@ -13,7 +13,7 @@ public class QualityControlController : Controller
 
     public QualityControlController(AppDbContext context) => _context = context;
 
-    public async Task<IActionResult> Index(int? orderId, QcStage? stage, int? vendorId)
+    public async Task<IActionResult> Index(string? search, int? orderId, QcStage? stage, int? vendorId, QcResult? result)
     {
         var allInspections = await _context.QualityInspections
             .Include(q => q.ProductionOrder)
@@ -62,12 +62,24 @@ public class QualityControlController : Controller
 
         // Filter Inspections list
         var filtered = allInspections.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            filtered = filtered.Where(q => q.InspectionNumber.ToLower().Contains(s)
+                || (q.InspectorName != null && q.InspectorName.ToLower().Contains(s))
+                || (q.ProductionOrder != null && q.ProductionOrder.LotNo.ToLower().Contains(s))
+                || (q.ProductionOrder?.Design != null && q.ProductionOrder.Design.DesignNumber.ToLower().Contains(s))
+                || (q.Vendor != null && q.Vendor.VendorName.ToLower().Contains(s))
+                || (q.Remarks != null && q.Remarks.ToLower().Contains(s)));
+        }
         if (orderId.HasValue)
             filtered = filtered.Where(q => q.ProductionOrderId == orderId.Value);
         if (stage.HasValue)
             filtered = filtered.Where(q => q.Stage == stage.Value);
         if (vendorId.HasValue)
             filtered = filtered.Where(q => q.VendorId == vendorId.Value);
+        if (result.HasValue)
+            filtered = filtered.Where(q => q.OverallResult == result.Value);
 
         var vm = new QcDashboardViewModel
         {
@@ -85,6 +97,8 @@ public class QualityControlController : Controller
             SelectedVendorId = vendorId
         };
 
+        ViewBag.Search = search;
+        ViewBag.SelectedResult = result;
         ViewBag.Orders = await _context.ProductionOrders.Include(p => p.Design).OrderByDescending(p => p.Id).ToListAsync();
         ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
 
@@ -237,7 +251,7 @@ public class QualityControlController : Controller
         return View(inspection);
     }
 
-    public async Task<IActionResult> ReworkQueue(ReworkStatus? status)
+    public async Task<IActionResult> ReworkQueue(ReworkStatus? status, string? search)
     {
         var query = _context.QualityDefects
             .Include(d => d.QualityInspection)
@@ -251,6 +265,16 @@ public class QualityControlController : Controller
         var allReworks = await query.ToListAsync();
 
         var filtered = allReworks.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            filtered = filtered.Where(d => (d.DefectReason != null && d.DefectReason.ToLower().Contains(s))
+                || (d.ReworkAssignedTo != null && d.ReworkAssignedTo.ToLower().Contains(s))
+                || (d.QualityInspection != null && d.QualityInspection.InspectionNumber.ToLower().Contains(s))
+                || (d.QualityInspection?.ProductionOrder != null && d.QualityInspection.ProductionOrder.LotNo.ToLower().Contains(s))
+                || (d.QualityInspection?.ProductionOrder?.Design != null && d.QualityInspection.ProductionOrder.Design.DesignNumber.ToLower().Contains(s)));
+        }
+
         if (status.HasValue)
         {
             filtered = filtered.Where(d => d.ReworkStatus == status.Value);
@@ -260,6 +284,9 @@ public class QualityControlController : Controller
             // Default: show pending or sent to rework
             filtered = filtered.Where(d => d.ReworkStatus == ReworkStatus.PendingRework || d.ReworkStatus == ReworkStatus.SentToRework);
         }
+
+        ViewBag.Search = search;
+        ViewBag.SelectedStatus = status;
 
         var vm = new ReworkQueueViewModel
         {

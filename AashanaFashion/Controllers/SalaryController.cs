@@ -18,16 +18,42 @@ namespace AashanaFashion.Controllers
         }
 
         // GET: /Salary
-        public async Task<IActionResult> Index(int? year, int? month)
+        public async Task<IActionResult> Index(int? year, int? month, string? search, PayrollStatus? status, string? department)
         {
             var curYear = year ?? DateTime.Today.Year;
             var curMonth = month ?? DateTime.Today.Month;
 
-            var records = await _context.SalaryRecords
+            var query = _context.SalaryRecords
                 .Include(s => s.Employee)
                 .Where(s => s.Year == curYear && s.Month == curMonth)
-                .OrderBy(s => s.Employee!.EmployeeCode)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(department))
+            {
+                query = query.Where(s => s.Employee != null && s.Employee.Department == department);
+            }
+
+            if (status.HasValue)
+            {
+                query = query.Where(s => s.PaymentStatus == status.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(r => r.Employee != null && (
+                    r.Employee.EmployeeCode.ToLower().Contains(s) ||
+                    r.Employee.FullName.ToLower().Contains(s) ||
+                    (r.Employee.Designation != null && r.Employee.Designation.ToLower().Contains(s)) ||
+                    (r.Employee.Department != null && r.Employee.Department.ToLower().Contains(s))));
+            }
+
+            var records = await query.OrderBy(s => s.Employee!.EmployeeCode).ToListAsync();
+
+            ViewBag.Search = search;
+            ViewBag.Status = status;
+            ViewBag.Department = department;
+            ViewBag.Departments = await _context.Employees.Select(e => e.Department).Distinct().OrderBy(d => d).ToListAsync();
 
             var viewModel = new PayrollSummaryViewModel
             {

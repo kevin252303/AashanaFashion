@@ -65,29 +65,41 @@
 
 <!-- Filter Tabs -->
 <div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-header bg-white py-2 border-bottom">
+    <div class="card-header bg-white py-2 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
         <ul class="nav nav-pills card-header-pills">
             <li class="nav-item">
-                <a class="nav-link @(!currentStatus.HasValue ? "active" : "")" asp-action="ReworkQueue">
+                <a class="nav-link @(!currentStatus.HasValue ? "active" : "")" asp-action="ReworkQueue" asp-route-search="@ViewBag.Search">
                     Active Queue (@(Model.TotalPendingRework + Model.TotalSentToRework))
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.PendingRework ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.PendingRework">
+                <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.PendingRework ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.PendingRework" asp-route-search="@ViewBag.Search">
                     Pending Rework (@Model.TotalPendingRework)
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.SentToRework ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.SentToRework">
+                <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.SentToRework ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.SentToRework" asp-route-search="@ViewBag.Search">
                     With Tailor / Vendor (@Model.TotalSentToRework)
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.ReworkCompleted ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.ReworkCompleted">
+                <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.ReworkCompleted ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.ReworkCompleted" asp-route-search="@ViewBag.Search">
                     Completed Repaired (@Model.TotalCompletedRework)
                 </a>
             </li>
         </ul>
+        <form method="get" class="d-flex align-items-center gap-2">
+            @if (currentStatus.HasValue)
+            {
+                <input type="hidden" name="status" value="@currentStatus.Value" />
+            }
+            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search defect, order, worker..." value="@ViewBag.Search" style="max-width: 220px;" />
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+            @if (!string.IsNullOrEmpty(ViewBag.Search as string) || currentStatus.HasValue)
+            {
+                <a asp-action="ReworkQueue" class="btn btn-outline-secondary btn-sm">Reset</a>
+            }
+        </form>
     </div>
     <div class="card-body p-0">
         @if (Model.DefectItems.Any())

@@ -18,7 +18,7 @@ public class AccountingController : Controller
     }
 
     // GET: /Accounting
-    public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, TransactionType? type, string? category)
+    public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, TransactionType? type, string? category, string? search)
     {
         var query = _context.AccountingTransactions
             .Include(t => t.Vendor)
@@ -26,6 +26,16 @@ public class AccountingController : Controller
             .AsQueryable();
 
         // Apply filters
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(t =>
+                (t.Reference != null && t.Reference.ToLower().Contains(s)) ||
+                (t.Description != null && t.Description.ToLower().Contains(s)) ||
+                (t.Category != null && t.Category.ToLower().Contains(s)) ||
+                (t.Vendor != null && t.Vendor.VendorName.ToLower().Contains(s)) ||
+                (t.Customer != null && t.Customer.CustomerName.ToLower().Contains(s)));
+        }
         if (startDate.HasValue)
         {
             query = query.Where(t => t.Date >= startDate.Value);
@@ -69,6 +79,7 @@ public class AccountingController : Controller
         ViewBag.EndDate = endDate?.ToString("yyyy-MM-dd");
         ViewBag.Type = type;
         ViewBag.Category = category;
+        ViewBag.Search = search;
 
         // Categories list for filter dropdown
         ViewBag.Categories = await _context.AccountingTransactions

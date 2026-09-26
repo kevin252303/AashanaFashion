@@ -24,6 +24,25 @@
     <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
 }
 
+<!-- Search & Filter -->
+<div class="data-card mb-4 p-3">
+    <form method="get" asp-action="Index" class="row g-2 align-items-center">
+        <div class="col-md-7">
+            <input type="text" name="search" class="af-input" placeholder="Search colour name, hex code..." value="@ViewBag.Search" />
+        </div>
+        <div class="col-md-3">
+            <div class="form-check ms-1">
+                <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnly" @(ViewBag.ActiveOnly == true ? "checked" : "") />
+                <label class="form-check-label small" for="activeOnly">Active Only</label>
+            </div>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
+            <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
+        </div>
+    </form>
+</div>
+
 <div class="data-card">
     <table class="af-table">
         <thead>

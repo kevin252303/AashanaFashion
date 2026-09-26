@@ -43,6 +43,35 @@
             <div><div class="stat-val">@Model.Count(u => u.IsActive)</div><div class="stat-lbl">Active</div></div>
         </div>
     </div>
+<!-- Search & Filter -->
+<div class="data-card mb-4 p-3">
+    <form method="get" asp-action="Index" class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <input type="text" name="search" class="af-input" placeholder="Search username, name, email, phone..." value="@ViewBag.Search" />
+        </div>
+        <div class="col-md-3">
+            <select name="role" class="af-select">
+                <option value="">All Roles</option>
+                @if (ViewBag.Roles != null)
+                {
+                    @foreach (var r in (List<string>)ViewBag.Roles)
+                    {
+                        <option value="@r" selected="@(r == (string)ViewBag.SelectedRole)">@r</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <div class="form-check ms-1">
+                <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnly" @(ViewBag.ActiveOnly == true ? "checked" : "") />
+                <label class="form-check-label small" for="activeOnly">Active Only</label>
+            </div>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
+            <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
+        </div>
+    </form>
 </div>
 
 <!-- Table -->

@@ -16,6 +16,8 @@
         <a asp-action="ExportProcessTracking" 
            asp-route-orderId="@ViewBag.SelectedOrderId"
            asp-route-processName="@ViewBag.SelectedProcessName"
+           asp-route-search="@ViewBag.Search"
+           asp-route-delayedOnly="@ViewBag.DelayedOnly"
            class="btn-af btn-af-primary">📥 Download CSV</a>
     }
 </div>
@@ -23,8 +25,12 @@
 <!-- Filters -->
 <div class="data-card mb-4">
     <div style="padding:1rem;">
-        <form asp-action="ProcessTracking" method="get" class="row g-3">
-            <div class="col-md-4">
+        <form asp-action="ProcessTracking" method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="af-label">Search</label>
+                <input type="text" name="search" class="af-input" placeholder="Search code, barcode, vendor, challan..." value="@ViewBag.Search" />
+            </div>
+            <div class="col-md-3">
                 <label class="af-label">Order</label>
                 <select name="orderId" class="af-input af-select">
                     <option value="">All Orders</option>
@@ -36,7 +42,7 @@
                     }
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="af-label">Process</label>
                 <select name="processName" class="af-input af-select">
                     <option value="All">All</option>
@@ -46,8 +52,14 @@
                     }
                 </select>
             </div>
-            <div class="col-md-3" style="display:flex;align-items:end;gap:.5rem;">
-                <button type="submit" class="btn-af btn-af-primary">Filter</button>
+            <div class="col-md-2">
+                <div class="form-check ms-1 mb-2">
+                    <input class="form-check-input" type="checkbox" name="delayedOnly" value="true" id="delayedOnly" @(ViewBag.DelayedOnly == true ? "checked" : "") />
+                    <label class="form-check-label small" for="delayedOnly">Delayed Only</label>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn-af btn-af-primary flex-fill">Filter</button>
                 <a asp-action="ProcessTracking" class="btn-af btn-af-ghost">Clear</a>
             </div>
         </form>

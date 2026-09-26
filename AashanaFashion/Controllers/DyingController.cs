@@ -13,7 +13,7 @@ public class DyingController : Controller
 
     public DyingController(AppDbContext context) => _context = context;
 
-    public async Task<IActionResult> Index(int? month, int? year)
+    public async Task<IActionResult> Index(int? month, int? year, string? search)
     {
         var currentMonth = month ?? DateTime.Now.Month;
         var currentYear = year ?? DateTime.Now.Year;
@@ -21,10 +21,17 @@ public class DyingController : Controller
         var startDate = new DateTime(currentYear, currentMonth, 1);
         var endDate = startDate.AddMonths(1);
 
-        var entries = await _context.DyingEntries
+        var query = _context.DyingEntries
             .Where(d => d.EntryDate >= startDate && d.EntryDate < endDate)
-            .OrderByDescending(d => d.EntryDate)
-            .ToListAsync();
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(d => d.LotNo.ToLower().Contains(s) || (d.Remarks != null && d.Remarks.ToLower().Contains(s)));
+        }
+
+        var entries = await query.OrderByDescending(d => d.EntryDate).ToListAsync();
 
         var summary = entries
             .GroupBy(d => d.LotNo)
@@ -42,6 +49,7 @@ public class DyingController : Controller
         ViewBag.Year = currentYear;
         ViewBag.TotalMeters = totalMeters;
         ViewBag.MonthName = startDate.ToString("MMMM yyyy");
+        ViewBag.Search = search;
 
         var vm = new DyingIndexViewModel
         {

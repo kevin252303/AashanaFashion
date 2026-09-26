@@ -19,7 +19,7 @@ namespace AashanaFashion.Controllers
         }
 
         // GET: /Attendance
-        public async Task<IActionResult> Index(DateTime? date, string? department)
+        public async Task<IActionResult> Index(DateTime? date, string? department, string? search, AttendanceStatus? status)
         {
             var targetDate = date?.Date ?? DateTime.Today;
 
@@ -27,6 +27,15 @@ namespace AashanaFashion.Controllers
             if (!string.IsNullOrWhiteSpace(department))
             {
                 empQuery = empQuery.Where(e => e.Department == department);
+            }
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim().ToLower();
+                empQuery = empQuery.Where(e =>
+                    e.EmployeeCode.ToLower().Contains(s) ||
+                    e.FullName.ToLower().Contains(s) ||
+                    (e.Designation != null && e.Designation.ToLower().Contains(s)) ||
+                    (e.Department != null && e.Department.ToLower().Contains(s)));
             }
             var employees = await empQuery.OrderBy(e => e.EmployeeCode).ToListAsync();
 
@@ -37,17 +46,31 @@ namespace AashanaFashion.Controllers
 
             var recordDict = records.ToDictionary(r => r.EmployeeId, r => r);
 
-            ViewBag.TargetDate = targetDate;
-            ViewBag.Department = department;
-            ViewBag.Departments = await _context.Employees.Select(e => e.Department).Distinct().OrderBy(d => d).ToListAsync();
-            ViewBag.RecordDict = recordDict;
-
-            // Metrics
+            // Metrics before status filter
             int totalActive = employees.Count;
             int presentCount = records.Count(r => r.Status == AttendanceStatus.Present || r.Status == AttendanceStatus.Late);
             int halfDayCount = records.Count(r => r.Status == AttendanceStatus.HalfDay);
             int lateCount = records.Count(r => r.Status == AttendanceStatus.Late);
             int absentCount = totalActive - records.Count(r => r.Status != AttendanceStatus.Absent);
+
+            if (status.HasValue)
+            {
+                if (status.Value == AttendanceStatus.Absent)
+                {
+                    employees = employees.Where(e => !recordDict.TryGetValue(e.Id, out var rec) || rec.Status == AttendanceStatus.Absent).ToList();
+                }
+                else
+                {
+                    employees = employees.Where(e => recordDict.TryGetValue(e.Id, out var rec) && rec.Status == status.Value).ToList();
+                }
+            }
+
+            ViewBag.TargetDate = targetDate;
+            ViewBag.Department = department;
+            ViewBag.Search = search;
+            ViewBag.Status = status;
+            ViewBag.Departments = await _context.Employees.Select(e => e.Department).Distinct().OrderBy(d => d).ToListAsync();
+            ViewBag.RecordDict = recordDict;
 
             ViewBag.TotalEmployees = totalActive;
             ViewBag.PresentCount = presentCount;
@@ -322,7 +345,7 @@ namespace AashanaFashion.Controllers
         }
 
         // GET: /Attendance/MonthlyReport
-        public async Task<IActionResult> MonthlyReport(int? year, int? month, string? department)
+        public async Task<IActionResult> MonthlyReport(int? year, int? month, string? department, string? search)
         {
             var curYear = year ?? DateTime.Today.Year;
             var curMonth = month ?? DateTime.Today.Month;
@@ -336,6 +359,15 @@ namespace AashanaFashion.Controllers
             {
                 empQuery = empQuery.Where(e => e.Department == department);
             }
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim().ToLower();
+                empQuery = empQuery.Where(e =>
+                    e.EmployeeCode.ToLower().Contains(s) ||
+                    e.FullName.ToLower().Contains(s) ||
+                    (e.Designation != null && e.Designation.ToLower().Contains(s)) ||
+                    (e.Department != null && e.Department.ToLower().Contains(s)));
+            }
             var employees = await empQuery.OrderBy(e => e.EmployeeCode).ToListAsync();
 
             var records = await _context.AttendanceRecords
@@ -346,6 +378,7 @@ namespace AashanaFashion.Controllers
             ViewBag.Month = curMonth;
             ViewBag.DaysInMonth = daysInMonth;
             ViewBag.Department = department;
+            ViewBag.Search = search;
             ViewBag.Departments = await _context.Employees.Select(e => e.Department).Distinct().OrderBy(d => d).ToListAsync();
             ViewBag.Records = records;
 

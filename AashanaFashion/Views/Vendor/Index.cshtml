@@ -24,6 +24,37 @@
     <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
 }
 
+<!-- Search & Filter Bar -->
+<div class="data-card mb-4 p-3">
+    <form method="get" asp-action="Index">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <input type="text" name="search" class="af-input" placeholder="Search Vendor, Contact, Phone, GSTIN..." value="@ViewBag.Search" style="font-size: 0.85rem;" />
+            </div>
+            <div class="col-md-3">
+                <select name="city" class="af-input af-select" style="font-size: 0.85rem;">
+                    <option value="">— All Cities —</option>
+                    @if (ViewBag.Cities != null)
+                    {
+                        foreach (var c in (List<string>)ViewBag.Cities)
+                        {
+                            <option value="@c" selected="@(ViewBag.SelectedCity == c ? "selected" : null)">@c</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-4 d-flex gap-2 align-items-center">
+                <div class="form-check me-2 mb-0" style="font-size: 0.82rem; white-space: nowrap;">
+                    <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnlyCheck" @(ViewBag.ActiveOnly == true ? "checked" : "") />
+                    <label class="form-check-label text-muted" for="activeOnlyCheck">Active</label>
+                </div>
+                <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
+                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
+            </div>
+        </div>
+    </form>
+</div>
+
 <div class="data-card">
     <table class="af-table">
         <thead>

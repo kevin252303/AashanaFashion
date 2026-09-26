@@ -15,13 +15,39 @@ public class PurchaseController : Controller
     public PurchaseController(AppDbContext context) => _context = context;
 
     [PermissionAuthorize("Purchase", "CanView")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? search, PurchaseOrderStatus? status, int? vendorId)
     {
-        var orders = await _context.PurchaseOrders
+        var query = _context.PurchaseOrders
             .Include(p => p.Vendor)
             .Include(p => p.Details)
-            .OrderByDescending(p => p.OrderDate)
-            .ToListAsync();
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(p => p.PoNumber.ToLower().Contains(s)
+                || (p.InvoiceNumber != null && p.InvoiceNumber.ToLower().Contains(s))
+                || (p.AgentName != null && p.AgentName.ToLower().Contains(s))
+                || (p.Vendor != null && p.Vendor.VendorName.ToLower().Contains(s)));
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(p => p.Status == status.Value);
+        }
+
+        if (vendorId.HasValue && vendorId > 0)
+        {
+            query = query.Where(p => p.VendorId == vendorId.Value);
+        }
+
+        var orders = await query.OrderByDescending(p => p.OrderDate).ToListAsync();
+
+        ViewBag.Search = search;
+        ViewBag.SelectedStatus = status;
+        ViewBag.SelectedVendorId = vendorId;
+        ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+
         return View(orders);
     }
 

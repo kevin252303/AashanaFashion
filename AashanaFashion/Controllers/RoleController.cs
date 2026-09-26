@@ -38,9 +38,25 @@ namespace AashanaFashion.Controllers
 
         public RoleController(AppDbContext context) => _context = context;
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? search, bool? activeOnly)
         {
-            var roles = await _context.UserRoles.Include(r => r.Permissions).ToListAsync();
+            var query = _context.UserRoles.Include(r => r.Permissions).AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(r => r.RoleName.ToLower().Contains(s) || (r.Description != null && r.Description.ToLower().Contains(s)));
+            }
+
+            if (activeOnly == true)
+            {
+                query = query.Where(r => r.IsActive);
+            }
+
+            var roles = await query.ToListAsync();
+            ViewBag.Search = search;
+            ViewBag.ActiveOnly = activeOnly ?? false;
+
             return View(roles);
         }
 

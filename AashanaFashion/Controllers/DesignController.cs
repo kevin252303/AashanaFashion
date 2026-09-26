@@ -14,13 +14,47 @@ public class DesignController : Controller
 
     public DesignController(AppDbContext context) => _context = context;
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? search, int? categoryId, string? productType, bool? activeOnly)
     {
-        var designs = await _context.Designs
+        var query = _context.Designs
             .Include(d => d.ProductCategory)
             .Include(d => d.ExtraCharges)
-            .OrderBy(d => d.DesignNumber)
-            .ToListAsync();
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(d => d.DesignNumber.ToLower().Contains(s)
+                || (d.CommonDNo != null && d.CommonDNo.ToLower().Contains(s))
+                || (d.Colours != null && d.Colours.ToLower().Contains(s))
+                || (d.Sizes != null && d.Sizes.ToLower().Contains(s))
+                || (d.CreationFlow != null && d.CreationFlow.ToLower().Contains(s))
+                || (d.ProductCategory != null && d.ProductCategory.CategoryName.ToLower().Contains(s)));
+        }
+
+        if (categoryId.HasValue && categoryId > 0)
+        {
+            query = query.Where(d => d.CategoryId == categoryId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(productType))
+        {
+            query = query.Where(d => d.ProductType == productType);
+        }
+
+        if (activeOnly == true)
+        {
+            query = query.Where(d => d.IsActive && !d.Discontinued);
+        }
+
+        var designs = await query.OrderBy(d => d.DesignNumber).ToListAsync();
+
+        ViewBag.Search = search;
+        ViewBag.SelectedCategoryId = categoryId;
+        ViewBag.SelectedProductType = productType;
+        ViewBag.ActiveOnly = activeOnly;
+        ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
+
         return View(designs);
     }
 

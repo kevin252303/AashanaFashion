@@ -18,16 +18,35 @@ namespace AashanaFashion.Controllers
         }
 
         // GET: /BiometricDevice
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? search, bool? activeOnly)
         {
-            var devices = await _context.BiometricDevices
+            var query = _context.BiometricDevices
                 .Include(d => d.AttendanceRecords)
-                .OrderByDescending(d => d.CreatedAt)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(d =>
+                    d.DeviceName.ToLower().Contains(s) ||
+                    d.DeviceIdentifier.ToLower().Contains(s) ||
+                    (d.Location != null && d.Location.ToLower().Contains(s)) ||
+                    (d.IpAddress != null && d.IpAddress.ToLower().Contains(s)) ||
+                    (d.DeviceModel != null && d.DeviceModel.ToLower().Contains(s)));
+            }
+
+            if (activeOnly == true)
+            {
+                query = query.Where(d => d.IsActive);
+            }
+
+            var devices = await query.OrderByDescending(d => d.CreatedAt).ToListAsync();
 
             var request = HttpContext.Request;
             var baseUrl = $"{request.Scheme}://{request.Host}";
             ViewBag.BaseUrl = baseUrl;
+            ViewBag.Search = search;
+            ViewBag.ActiveOnly = activeOnly ?? false;
 
             return View(devices);
         }

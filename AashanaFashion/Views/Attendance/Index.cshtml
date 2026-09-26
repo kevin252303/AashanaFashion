@@ -97,14 +97,18 @@
 <!-- Filters Bar -->
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-body p-3">
-        <form method="get" class="row g-2 align-items-center">
-            <div class="col-md-4">
-                <label class="small text-muted fw-semibold">Select Date:</label>
-                <input type="date" name="date" value="@targetDate.ToString("yyyy-MM-dd")" class="form-control" onchange="this.form.submit()" />
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="small text-muted fw-semibold">Search:</label>
+                <input type="text" name="search" value="@ViewBag.Search" placeholder="Search code, name..." class="form-control form-control-sm" />
             </div>
-            <div class="col-md-4">
+            <div class="col-md-2">
+                <label class="small text-muted fw-semibold">Select Date:</label>
+                <input type="date" name="date" value="@targetDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-2">
                 <label class="small text-muted fw-semibold">Department:</label>
-                <select name="department" class="form-select" onchange="this.form.submit()">
+                <select name="department" class="form-select form-select-sm">
                     <option value="">All Departments</option>
                     @foreach (var d in departments)
                     {
@@ -112,13 +116,21 @@
                     }
                 </select>
             </div>
-            <div class="col-md-4 d-flex align-items-end gap-2">
-                <a asp-action="Index" asp-route-date="@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary w-100">
-                    Today
-                </a>
-                <a asp-action="Index" asp-route-date="@DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd")" class="btn btn-outline-secondary w-100">
-                    Yesterday
-                </a>
+            <div class="col-md-2">
+                <label class="small text-muted fw-semibold">Status:</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All Statuses</option>
+                    @foreach (AashanaFashion.Models.AttendanceStatus st in Enum.GetValues(typeof(AashanaFashion.Models.AttendanceStatus)))
+                    {
+                        <option value="@st" selected="@(ViewBag.Status != null && (AashanaFashion.Models.AttendanceStatus)ViewBag.Status == st)">@st</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm flex-fill">Filter</button>
+                <a asp-action="Index" class="btn btn-outline-secondary btn-sm" title="Reset">Reset</a>
+                <a asp-action="Index" asp-route-date="@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-outline-primary btn-sm">Today</a>
+                <a asp-action="Index" asp-route-date="@DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd")" class="btn btn-outline-secondary btn-sm">Yest</a>
             </div>
         </form>
     </div>

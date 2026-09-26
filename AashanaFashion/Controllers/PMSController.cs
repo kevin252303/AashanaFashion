@@ -34,7 +34,7 @@ public class PMSController : Controller
         return View(vm);
     }
 
-    public async Task<IActionResult> ProductionEntities(int? orderId, string? entityType, string? status, string? colour)
+    public async Task<IActionResult> ProductionEntities(int? orderId, string? entityType, string? status, string? colour, string? search)
     {
         var query = _context.ProductionEntities
             .Include(e => e.ProductionOrder)
@@ -51,6 +51,17 @@ public class PMSController : Controller
             query = query.Where(e => e.Status == status);
         if (!string.IsNullOrEmpty(colour) && colour != "All")
             query = query.Where(e => e.Colour == colour);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(e =>
+                (e.Barcode != null && e.Barcode.ToLower().Contains(s)) ||
+                (e.EntityType != null && e.EntityType.ToLower().Contains(s)) ||
+                (e.Colour != null && e.Colour.ToLower().Contains(s)) ||
+                (e.Size != null && e.Size.ToLower().Contains(s)) ||
+                (e.ProductionOrder != null && e.ProductionOrder.LotNo.ToLower().Contains(s)) ||
+                (e.ProductionOrder != null && e.ProductionOrder.Design != null && e.ProductionOrder.Design.DesignNumber.ToLower().Contains(s)));
+        }
 
         var entities = await query.OrderByDescending(e => e.CreatedDate).ToListAsync();
         var orders = await _context.ProductionOrders.Include(p => p.Design).ToListAsync();
@@ -61,6 +72,7 @@ public class PMSController : Controller
         ViewBag.SelectedEntityType = entityType ?? "All";
         ViewBag.SelectedStatus = status ?? "All";
         ViewBag.SelectedColour = colour ?? "All";
+        ViewBag.Search = search;
         ViewBag.Colours = colours;
         ViewBag.EntityTypes = new[] { "Chaniya", "Choli", "Blouse", "Duppata" };
         ViewBag.Statuses = new[] { "Created", "AtDying", "AtRoll", "AtHandwork", "AtStitching", "Completed", "Dispatched" };
@@ -69,7 +81,7 @@ public class PMSController : Controller
         return View(entities);
     }
 
-    public async Task<IActionResult> ProcessTracking(int? entityId, int? orderId, string? processName)
+    public async Task<IActionResult> ProcessTracking(int? entityId, int? orderId, string? processName, string? search, bool? delayedOnly)
     {
         var query = _context.ProcessTrackings
             .Include(p => p.ProductionEntity)
@@ -84,20 +96,41 @@ public class PMSController : Controller
             query = query.Where(p => p.ProcessName == processName);
         if (orderId.HasValue)
             query = query.Where(p => p.ProductionEntity!.ProductionOrderId == orderId.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(p =>
+                (p.ProductionEntity != null && p.ProductionEntity.Barcode != null && p.ProductionEntity.Barcode.ToLower().Contains(s)) ||
+                (p.ProductionEntity != null && p.ProductionEntity.ProductionOrder != null && p.ProductionEntity.ProductionOrder.LotNo.ToLower().Contains(s)) ||
+                (p.ProductionEntity != null && p.ProductionEntity.ProductionOrder != null && p.ProductionEntity.ProductionOrder.Design != null && p.ProductionEntity.ProductionOrder.Design.DesignNumber.ToLower().Contains(s)) ||
+                (p.Vendor != null && p.Vendor.VendorName.ToLower().Contains(s)) ||
+                (p.Remarks != null && p.Remarks.ToLower().Contains(s)));
+        }
 
         var trackings = await query.OrderByDescending(p => p.GivenDate).ToListAsync();
+        var delayedTrackings = trackings.Where(t => t.DaysLate > 0).ToList();
+
+        if (delayedOnly == true)
+        {
+            trackings = delayedTrackings;
+        }
+
         var entities = await _context.ProductionEntities.Include(e => e.ProductionOrder).ToListAsync();
+        var orders = await _context.ProductionOrders.Include(p => p.Design).ToListAsync();
 
         ViewBag.Entities = entities;
+        ViewBag.Orders = orders;
         ViewBag.SelectedEntityId = entityId;
         ViewBag.SelectedOrderId = orderId;
         ViewBag.SelectedProcessName = processName ?? "All";
+        ViewBag.Search = search;
+        ViewBag.DelayedOnly = delayedOnly ?? false;
         ViewBag.ProcessNames = new[] { "Dying", "Roll", "Handwork", "Stitching" };
 
         var vm = new ProcessTrackingViewModel
         {
             Trackings = trackings,
-            DelayedTrackings = trackings.Where(t => t.DaysLate > 0).ToList()
+            DelayedTrackings = delayedTrackings
         };
 
         return View(vm);
@@ -273,7 +306,7 @@ public class PMSController : Controller
         await _context.SaveChangesAsync();
     }
 
-    public async Task<IActionResult> ExportEntities(int? orderId, string? entityType, string? status, string? colour)
+    public async Task<IActionResult> ExportEntities(int? orderId, string? entityType, string? status, string? colour, string? search)
     {
         var query = _context.ProductionEntities
             .Include(e => e.ProductionOrder)
@@ -289,6 +322,17 @@ public class PMSController : Controller
             query = query.Where(e => e.Status == status);
         if (!string.IsNullOrEmpty(colour) && colour != "All")
             query = query.Where(e => e.Colour == colour);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(e =>
+                (e.Barcode != null && e.Barcode.ToLower().Contains(s)) ||
+                (e.EntityType != null && e.EntityType.ToLower().Contains(s)) ||
+                (e.Colour != null && e.Colour.ToLower().Contains(s)) ||
+                (e.Size != null && e.Size.ToLower().Contains(s)) ||
+                (e.ProductionOrder != null && e.ProductionOrder.LotNo.ToLower().Contains(s)) ||
+                (e.ProductionOrder != null && e.ProductionOrder.Design != null && e.ProductionOrder.Design.DesignNumber.ToLower().Contains(s)));
+        }
 
         var entities = await query.OrderByDescending(e => e.CreatedDate).ToListAsync();
 
@@ -301,7 +345,7 @@ public class PMSController : Controller
         return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "ProductionEntities.csv");
     }
 
-    public async Task<IActionResult> ExportProcessTracking(int? orderId, string? processName)
+    public async Task<IActionResult> ExportProcessTracking(int? orderId, string? processName, string? search, bool? delayedOnly)
     {
         var query = _context.ProcessTrackings
             .Include(p => p.ProductionEntity)
@@ -314,8 +358,22 @@ public class PMSController : Controller
             query = query.Where(p => p.ProductionEntity!.ProductionOrderId == orderId.Value);
         if (!string.IsNullOrEmpty(processName) && processName != "All")
             query = query.Where(p => p.ProcessName == processName);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(p =>
+                (p.ProductionEntity != null && p.ProductionEntity.Barcode != null && p.ProductionEntity.Barcode.ToLower().Contains(s)) ||
+                (p.ProductionEntity != null && p.ProductionEntity.ProductionOrder != null && p.ProductionEntity.ProductionOrder.LotNo.ToLower().Contains(s)) ||
+                (p.ProductionEntity != null && p.ProductionEntity.ProductionOrder != null && p.ProductionEntity.ProductionOrder.Design != null && p.ProductionEntity.ProductionOrder.Design.DesignNumber.ToLower().Contains(s)) ||
+                (p.Vendor != null && p.Vendor.VendorName.ToLower().Contains(s)) ||
+                (p.Remarks != null && p.Remarks.ToLower().Contains(s)));
+        }
 
         var trackings = await query.OrderByDescending(p => p.GivenDate).ToListAsync();
+        if (delayedOnly == true)
+        {
+            trackings = trackings.Where(t => t.DaysLate > 0).ToList();
+        }
 
         var csv = "Sl No,Lot No,Design,Entity,Colour,Size,Process,Subcontractor,Given Date,Expected Return,Actual Return,Days Late,Status\n";
         foreach (var t in trackings)

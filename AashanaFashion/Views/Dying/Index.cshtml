@@ -34,6 +34,23 @@
     </div>
 </div>
 
+<!-- Search Bar -->
+<div class="data-card mb-4 p-3">
+    <form method="get" asp-action="Index">
+        <input type="hidden" name="month" value="@ViewBag.Month" />
+        <input type="hidden" name="year" value="@ViewBag.Year" />
+        <div class="row g-2 align-items-center">
+            <div class="col-md-9">
+                <input type="text" name="search" class="af-input" placeholder="Search Lot Number or Remarks..." value="@ViewBag.Search" style="font-size: 0.85rem;" />
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Search</button>
+                <a asp-action="Index" asp-route-month="@ViewBag.Month" asp-route-year="@ViewBag.Year" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
+            </div>
+        </div>
+    </form>
+</div>
+
 <!-- Summary Cards -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-xl-3">

@@ -14,9 +14,25 @@ public class SizeController : Controller
 
     public SizeController(AppDbContext context) => _context = context;
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? search, bool? activeOnly)
     {
-        var sizes = await _context.Sizes.OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+        var query = _context.Sizes.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(size => size.SizeName.ToLower().Contains(s));
+        }
+
+        if (activeOnly == true)
+        {
+            query = query.Where(size => size.IsActive);
+        }
+
+        var sizes = await query.OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+        ViewBag.Search = search;
+        ViewBag.ActiveOnly = activeOnly ?? false;
+
         return View(sizes);
     }
 

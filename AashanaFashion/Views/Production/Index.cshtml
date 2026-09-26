@@ -45,6 +45,30 @@
     </div>
 </div>
 
+<!-- Search & Filter Bar -->
+<div class="data-card mb-4 p-3">
+    <form method="get" asp-action="Index">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <input type="text" name="search" class="af-input" placeholder="Search Design Number or Lot No..." value="@ViewBag.Search" style="font-size: 0.85rem;" />
+            </div>
+            <div class="col-md-4">
+                <select name="status" class="af-input af-select" style="font-size: 0.85rem;">
+                    <option value="">— All Stages / Statuses —</option>
+                    @foreach (var s in Enum.GetValues<AashanaFashion.Models.OrderStatus>())
+                    {
+                        <option value="@s" selected="@(ViewBag.SelectedStatus != null && (AashanaFashion.Models.OrderStatus)ViewBag.SelectedStatus == s ? "selected" : null)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
+                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
+            </div>
+        </div>
+    </form>
+</div>
+
 <!-- Table -->
 <div class="data-card">
     <div class="data-card-header">

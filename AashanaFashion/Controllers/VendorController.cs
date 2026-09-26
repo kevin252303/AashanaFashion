@@ -26,9 +26,38 @@ public class VendorController : Controller
         return Json(result);
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? search, string? city, bool? activeOnly)
     {
-        var vendors = await _context.Vendors.OrderBy(v => v.VendorName).ToListAsync();
+        var query = _context.Vendors.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(v => v.VendorName.ToLower().Contains(s)
+                || (v.ContactPerson != null && v.ContactPerson.ToLower().Contains(s))
+                || (v.Phone != null && v.Phone.ToLower().Contains(s))
+                || (v.Email != null && v.Email.ToLower().Contains(s))
+                || (v.GstNumber != null && v.GstNumber.ToLower().Contains(s))
+                || (v.City != null && v.City.ToLower().Contains(s)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(city))
+        {
+            query = query.Where(v => v.City == city);
+        }
+
+        if (activeOnly == true)
+        {
+            query = query.Where(v => v.IsActive);
+        }
+
+        var vendors = await query.OrderBy(v => v.VendorName).ToListAsync();
+
+        ViewBag.Search = search;
+        ViewBag.SelectedCity = city;
+        ViewBag.ActiveOnly = activeOnly;
+        ViewBag.Cities = await _context.Vendors.Where(v => !string.IsNullOrEmpty(v.City)).Select(v => v.City!).Distinct().OrderBy(c => c).ToListAsync();
+
         return View(vendors);
     }
 

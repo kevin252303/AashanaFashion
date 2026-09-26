@@ -205,7 +205,7 @@ public class RawMaterialController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Ledger(int? materialId, string? type, DateTime? fromDate, DateTime? toDate)
+    public async Task<IActionResult> Ledger(int? materialId, string? type, DateTime? fromDate, DateTime? toDate, string? search)
     {
         var query = _context.RawMaterialTransactions
             .Include(t => t.RawMaterial)
@@ -231,8 +231,17 @@ public class RawMaterialController : Controller
             query = query.Where(t => t.CreatedDate < toDate.Value.Date.AddDays(1));
         }
 
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(t => (t.Remarks != null && t.Remarks.ToLower().Contains(s))
+                || (t.ReferenceType != null && t.ReferenceType.ToLower().Contains(s))
+                || (t.RawMaterial != null && t.RawMaterial.Name.ToLower().Contains(s)));
+        }
+
         var transactions = await query.OrderByDescending(t => t.CreatedDate).ToListAsync();
         var materials = await _context.RawMaterials.OrderBy(m => m.Name).ToListAsync();
+        ViewBag.Search = search;
 
         var vm = new RawMaterialLedgerViewModel
         {

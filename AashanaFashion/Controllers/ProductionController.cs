@@ -16,16 +16,32 @@ namespace AashanaFashion.Controllers
         public ProductionController(AppDbContext context) => _context = context;
 
         // All roles can view
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? search, OrderStatus? status)
         {
-            var orders = await _context.ProductionOrders
-                .Include(p => p.Design)
-                .ToListAsync();
+            var totalOrders = await _context.ProductionOrders.ToListAsync();
+            ViewBag.Total = totalOrders.Count;
+            ViewBag.ReadyToDispatch = totalOrders.Count(o => o.Status == OrderStatus.ReadyToDispatch);
+            ViewBag.Dispatched = totalOrders.Count(o => o.Status == OrderStatus.Dispatched);
+            ViewBag.InProgress = totalOrders.Count(o => o.Status != OrderStatus.ReadyToDispatch && o.Status != OrderStatus.Dispatched);
 
-            ViewBag.Total = orders.Count;
-            ViewBag.ReadyToDispatch = orders.Count(o => o.Status == OrderStatus.ReadyToDispatch);
-            ViewBag.Dispatched = orders.Count(o => o.Status == OrderStatus.Dispatched);
-            ViewBag.InProgress = orders.Count(o => o.Status != OrderStatus.ReadyToDispatch && o.Status != OrderStatus.Dispatched);
+            var query = _context.ProductionOrders
+                .Include(p => p.Design)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(p => p.LotNo.ToLower().Contains(s) || (p.Design != null && p.Design.DesignNumber.ToLower().Contains(s)));
+            }
+
+            if (status.HasValue)
+            {
+                query = query.Where(p => p.Status == status.Value);
+            }
+
+            var orders = await query.OrderByDescending(p => p.CreatedDate).ToListAsync();
+            ViewBag.Search = search;
+            ViewBag.SelectedStatus = status;
 
             var batches = orders.Select(b => new BatchDashboardViewModel
             {

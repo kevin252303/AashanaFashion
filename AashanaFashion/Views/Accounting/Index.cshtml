@@ -101,12 +101,16 @@
 <!-- Filters -->
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-body py-3">
-        <form method="get" asp-action="Index" class="row g-3 align-items-end">
+        <form method="get" asp-action="Index" class="row g-2 align-items-end">
             <div class="col-md-3">
+                <label class="form-label small fw-semibold" for="search">Search</label>
+                <input type="text" id="search" name="search" value="@ViewBag.Search" placeholder="Ref, Party, Narration, Mode..." class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-2">
                 <label class="form-label small fw-semibold" for="startDate">Start Date</label>
                 <input type="date" id="startDate" name="startDate" value="@ViewBag.StartDate" class="form-control form-control-sm" />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small fw-semibold" for="endDate">End Date</label>
                 <input type="date" id="endDate" name="endDate" value="@ViewBag.EndDate" class="form-control form-control-sm" />
             </div>
@@ -128,9 +132,9 @@
                     }
                 </select>
             </div>
-            <div class="col-md-2 d-flex gap-2">
-                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">Filter</button>
-                <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear</a>
+            <div class="col-md-1 d-flex gap-1">
+                <button type="submit" class="btn btn-sm btn-primary flex-fill">Filter</button>
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary" title="Clear">✕</a>
             </div>
         </form>
     </div>

@@ -26,9 +26,39 @@ public class CustomerController : Controller
         return Json(result);
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? search, string? city, bool? activeOnly)
     {
-        var customers = await _context.Customers.OrderBy(c => c.CustomerName).ToListAsync();
+        var query = _context.Customers.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(c => c.CustomerName.ToLower().Contains(s)
+                || (c.ContactPerson != null && c.ContactPerson.ToLower().Contains(s))
+                || (c.Phone != null && c.Phone.ToLower().Contains(s))
+                || (c.Email != null && c.Email.ToLower().Contains(s))
+                || (c.GstNumber != null && c.GstNumber.ToLower().Contains(s))
+                || (c.Pricelist != null && c.Pricelist.ToLower().Contains(s))
+                || (c.City != null && c.City.ToLower().Contains(s)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(city))
+        {
+            query = query.Where(c => c.City == city);
+        }
+
+        if (activeOnly == true)
+        {
+            query = query.Where(c => c.IsActive);
+        }
+
+        var customers = await query.OrderBy(c => c.CustomerName).ToListAsync();
+
+        ViewBag.Search = search;
+        ViewBag.SelectedCity = city;
+        ViewBag.ActiveOnly = activeOnly;
+        ViewBag.Cities = await _context.Customers.Where(c => !string.IsNullOrEmpty(c.City)).Select(c => c.City!).Distinct().OrderBy(c => c).ToListAsync();
+
         return View(customers);
     }
 

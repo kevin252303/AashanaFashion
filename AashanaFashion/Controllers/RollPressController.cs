@@ -13,7 +13,7 @@ public class RollPressController : Controller
 
     public RollPressController(AppDbContext context) => _context = context;
 
-    public async Task<IActionResult> Index(int? month, int? year)
+    public async Task<IActionResult> Index(int? month, int? year, string? search)
     {
         var currentMonth = month ?? DateTime.Now.Month;
         var currentYear = year ?? DateTime.Now.Year;
@@ -21,10 +21,19 @@ public class RollPressController : Controller
         var startDate = new DateTime(currentYear, currentMonth, 1);
         var endDate = startDate.AddMonths(1);
 
-        var entries = await _context.RollPressEntries
+        var query = _context.RollPressEntries
             .Where(r => r.GivenDate >= startDate && r.GivenDate < endDate)
-            .OrderByDescending(r => r.GivenDate)
-            .ToListAsync();
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(r => r.LotNo.ToLower().Contains(s)
+                || r.DesignNo.ToLower().Contains(s)
+                || (r.Remarks != null && r.Remarks.ToLower().Contains(s)));
+        }
+
+        var entries = await query.OrderByDescending(r => r.GivenDate).ToListAsync();
 
         var summary = entries
             .GroupBy(r => r.DesignNo)
@@ -44,6 +53,7 @@ public class RollPressController : Controller
         ViewBag.Month = currentMonth;
         ViewBag.Year = currentYear;
         ViewBag.MonthName = startDate.ToString("MMMM yyyy");
+        ViewBag.Search = search;
         ViewBag.ArrivingToday = arrivingToday;
         ViewBag.ArrivingTodayCount = arrivingToday.Sum(x => x.NumberOfPieces);
 

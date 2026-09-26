@@ -171,9 +171,12 @@
                 <h5 class="card-title mb-0 fw-bold">🔍 Recent Quality Inspections</h5>
             </div>
             <div class="col-md-8">
-                <form method="get" class="row g-2 justify-content-md-end">
+                <form method="get" class="row g-2 justify-content-md-end align-items-center">
                     <div class="col-auto">
-                        <select name="orderId" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Search QC, Lot, Design, Vendor..." value="@ViewBag.Search" style="max-width: 190px;" />
+                    </div>
+                    <div class="col-auto">
+                        <select name="orderId" class="form-select form-select-sm">
                             <option value="">All Lots</option>
                             @foreach (var o in (List<AashanaFashion.Models.ProductionOrder>)ViewBag.Orders)
                             {
@@ -182,7 +185,7 @@
                         </select>
                     </div>
                     <div class="col-auto">
-                        <select name="stage" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <select name="stage" class="form-select form-select-sm">
                             <option value="">All Stages</option>
                             @foreach (AashanaFashion.Models.QcStage s in Enum.GetValues(typeof(AashanaFashion.Models.QcStage)))
                             {
@@ -191,13 +194,26 @@
                         </select>
                     </div>
                     <div class="col-auto">
-                        <select name="vendorId" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <select name="vendorId" class="form-select form-select-sm">
                             <option value="">All Vendors</option>
                             @foreach (var v in (List<AashanaFashion.Models.Vendor>)ViewBag.Vendors)
                             {
                                 <option value="@v.Id" selected="@(Model.SelectedVendorId == v.Id)">@v.VendorName</option>
                             }
                         </select>
+                    </div>
+                    <div class="col-auto">
+                        <select name="result" class="form-select form-select-sm">
+                            <option value="">All Results</option>
+                            @foreach (AashanaFashion.Models.QcResult r in Enum.GetValues(typeof(AashanaFashion.Models.QcResult)))
+                            {
+                                <option value="@r" selected="@(ViewBag.Result != null && (AashanaFashion.Models.QcResult)ViewBag.Result == r)">@r</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-auto d-flex gap-1">
+                        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Reset</a>
                     </div>
                 </form>
             </div>
