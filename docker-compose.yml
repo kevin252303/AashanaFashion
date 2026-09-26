@@ -11,6 +11,12 @@ services:
     volumes:
       - mssql_data:/var/opt/mssql
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrongPass123!' -Q 'SELECT 1' -No -C || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   web:
     image: aashana_web
@@ -19,11 +25,11 @@ services:
       dockerfile: Dockerfile
     container_name: aashana_web
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://0.0.0.0:5000
-      - ASPNETCORE_HTTP_PORTS=5000
       - ActiveConnection=DockerSqlConnection
       - ConnectionStrings__DockerSqlConnection=Server=db,1433;Database=AashanaFashionDb;User Id=sa;Password=YourStrongPass123!;TrustServerCertificate=True;MultipleActiveResultSets=true
     ports:
