@@ -79,7 +79,12 @@ public class BarcodeController : Controller
     {
         var order = await _context.ProductionOrders
             .Include(p => p.Design)
+                .ThenInclude(d => d!.HandworkWorker)
+            .Include(p => p.Design)
+                .ThenInclude(d => d!.StitchingWorker)
             .Include(p => p.Details)
+            .Include(p => p.HandworkWorker)
+            .Include(p => p.StitchingWorker)
             .FirstOrDefaultAsync(p => p.Id == orderId);
 
         if (order == null) return NotFound();

@@ -1,6 +1,7 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
 using AashanaFashion.Authorization;
+using AashanaFashion.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -26,6 +27,11 @@ namespace AashanaFashion.Controllers
 
             var query = _context.ProductionOrders
                 .Include(p => p.Design)
+                    .ThenInclude(d => d!.HandworkWorker)
+                .Include(p => p.Design)
+                    .ThenInclude(d => d!.StitchingWorker)
+                .Include(p => p.HandworkWorker)
+                .Include(p => p.StitchingWorker)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -52,6 +58,9 @@ namespace AashanaFashion.Controllers
                 CurrentStage = b.Status.ToString(),
                 Status = b.Status,
                 CreationSteps = b.Design?.GetCreationSteps() ?? new List<string>(),
+                HandworkWorkerName = b.HandworkWorker?.VendorName ?? b.Design?.HandworkWorker?.VendorName,
+                StitchingWorkerName = b.StitchingWorker?.VendorName ?? b.Design?.StitchingWorker?.VendorName,
+                HandworkParts = b.HandworkComponentsSummary,
                 VerificationStatus = new Dictionary<string, bool>
                 {
                     { "RawMaterial", b.IsRawMaterialVerified },
@@ -68,11 +77,17 @@ namespace AashanaFashion.Controllers
         // Admin only — Create
         [PermissionAuthorize("ProductionOrder", "CanCreate")]
         [HttpGet]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            var designs = _context.Designs.OrderBy(d => d.DesignNumber).ToList();
+            var designs = await _context.Designs
+                .Include(d => d.HandworkWorker)
+                .Include(d => d.StitchingWorker)
+                .OrderBy(d => d.DesignNumber)
+                .ToListAsync();
             ViewBag.Designs = designs;
-            return View(new ProductionOrder());
+            ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+            var nextLotNo = await GenerateNextLotNumberAsync();
+            return View(new ProductionOrder { LotNo = nextLotNo });
         }
 
         [PermissionAuthorize("ProductionOrder", "CanCreate")]
@@ -80,12 +95,33 @@ namespace AashanaFashion.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ProductionOrder order, [FromForm] List<ProductionOrderDetail> Details)
         {
+            if (string.IsNullOrWhiteSpace(order.LotNo))
+            {
+                order.LotNo = await GenerateNextLotNumberAsync();
+            }
+            else
+            {
+                order.LotNo = order.LotNo.Trim();
+            }
+
+            if (await _context.ProductionOrders.AnyAsync(o => o.LotNo == order.LotNo))
+            {
+                ModelState.AddModelError("LotNo", $"Lot No '{order.LotNo}' already exists. Please choose a unique Lot No.");
+            }
+
             if (!ModelState.IsValid || order.DesignId == 0)
             {
-                ViewBag.Designs = _context.Designs.OrderBy(d => d.DesignNumber).ToList();
+                ViewBag.Designs = await _context.Designs
+                    .Include(d => d.HandworkWorker)
+                    .Include(d => d.StitchingWorker)
+                    .OrderBy(d => d.DesignNumber)
+                    .ToListAsync();
+                ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
                 return View(order);
             }
 
+            order.HandworkWorkerId = order.HandworkWorkerId > 0 ? order.HandworkWorkerId : null;
+            order.StitchingWorkerId = order.StitchingWorkerId > 0 ? order.StitchingWorkerId : null;
             order.CreatedDate = DateTime.Now;
             
             if (Details != null && Details.Any(d => d.Quantity > 0))
@@ -96,8 +132,97 @@ namespace AashanaFashion.Controllers
 
             _context.ProductionOrders.Add(order);
             await _context.SaveChangesAsync();
-            TempData["Success"] = $"Order '{order.LotNo}' created successfully.";
+
+            // Auto-generate tracking entities for this lot
+            var initEntityStatus = order.Status switch
+            {
+                OrderStatus.AtDying => "AtDying",
+                OrderStatus.AtHandwork => "AtHandwork",
+                OrderStatus.AtStitching => "AtStitching",
+                OrderStatus.ReadyToDispatch => "Completed",
+                OrderStatus.Dispatched => "Dispatched",
+                _ => "Created"
+            };
+
+            int slNo = 1;
+            if (order.Details != null && order.Details.Any())
+            {
+                foreach (var detail in order.Details)
+                {
+                    for (int i = 0; i < detail.Quantity; i++)
+                    {
+                        _context.ProductionEntities.Add(new ProductionEntity
+                        {
+                            ProductionOrderId = order.Id,
+                            EntityType = "Garment",
+                            Colour = detail.Colour,
+                            Size = detail.Size,
+                            SlNo = slNo,
+                            Barcode = BarcodeService.FormatEntityBarcode(order.Id, slNo),
+                            Status = initEntityStatus,
+                            CreatedDate = DateTime.Now
+                        });
+                        slNo++;
+                    }
+                }
+            }
+            else if (order.TotalQuantity > 0)
+            {
+                for (int i = 0; i < order.TotalQuantity; i++)
+                {
+                    _context.ProductionEntities.Add(new ProductionEntity
+                    {
+                        ProductionOrderId = order.Id,
+                        EntityType = "Garment",
+                        Colour = "Standard",
+                        Size = "Free Size",
+                        SlNo = slNo,
+                        Barcode = BarcodeService.FormatEntityBarcode(order.Id, slNo),
+                        Status = initEntityStatus,
+                        CreatedDate = DateTime.Now
+                    });
+                    slNo++;
+                }
+            }
+
+            if (slNo > 1)
+            {
+                await _context.SaveChangesAsync();
+            }
+
+            TempData["Success"] = $"Order '{order.LotNo}' created with {order.TotalQuantity} tracking entities.";
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetNextLotNumber()
+        {
+            var nextLotNo = await GenerateNextLotNumberAsync();
+            return Json(new { lotNo = nextLotNo });
+        }
+
+        private async Task<string> GenerateNextLotNumberAsync()
+        {
+            var prefix = $"LOT-{DateTime.Now:yyyyMM}-";
+            var existingLots = await _context.ProductionOrders
+                .Where(o => o.LotNo.StartsWith(prefix))
+                .Select(o => o.LotNo)
+                .ToListAsync();
+
+            int maxSeq = 0;
+            foreach (var lot in existingLots)
+            {
+                if (lot.Length >= prefix.Length + 4)
+                {
+                    var seqStr = lot.Substring(prefix.Length);
+                    if (int.TryParse(seqStr, out int cur) && cur > maxSeq)
+                    {
+                        maxSeq = cur;
+                    }
+                }
+            }
+
+            return $"{prefix}{(maxSeq + 1):D4}";
         }
 
         // Admin + Manager — Update Status
@@ -113,8 +238,12 @@ namespace AashanaFashion.Controllers
                 .FirstOrDefaultAsync(p => p.Id == id);
             if (order == null) return NotFound();
 
-            var designs = _context.Designs.OrderBy(d => d.DesignNumber).ToList();
+            var designs = _context.Designs
+                .Include(d => d.HandworkWorker)
+                .Include(d => d.StitchingWorker)
+                .OrderBy(d => d.DesignNumber).ToList();
             ViewBag.Designs = designs;
+            ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
             return View(order);
         }
 
@@ -194,7 +323,27 @@ namespace AashanaFashion.Controllers
                 order.IsStitchingVerified = true;
 
             if (Request.Form["Status"].Count > 0)
-                order.Status = Enum.Parse<OrderStatus>(Request.Form["Status"]!);
+            {
+                var newStatus = Enum.Parse<OrderStatus>(Request.Form["Status"]!);
+                if (order.Status != newStatus)
+                {
+                    order.Status = newStatus;
+                    var entityStatus = order.Status switch
+                    {
+                        OrderStatus.AtDying => "AtDying",
+                        OrderStatus.AtHandwork => "AtHandwork",
+                        OrderStatus.AtStitching => "AtStitching",
+                        OrderStatus.ReadyToDispatch => "Completed",
+                        OrderStatus.Dispatched => "Dispatched",
+                        _ => "Created"
+                    };
+                    var lotEntities = await _context.ProductionEntities.Where(e => e.ProductionOrderId == order.Id).ToListAsync();
+                    foreach (var ent in lotEntities)
+                    {
+                        ent.Status = entityStatus;
+                    }
+                }
+            }
 
             if (User.IsInRole("Admin"))
             {
@@ -217,6 +366,26 @@ namespace AashanaFashion.Controllers
                 _context.ProductionOrderDetails.AddRange(newDetails);
                 order.TotalQuantity = newDetails.Sum(d => d.Quantity);
             }
+
+            if (Request.Form.ContainsKey("StitchingWorkerId"))
+            {
+                if (int.TryParse(Request.Form["StitchingWorkerId"], out int swId) && swId > 0)
+                    order.StitchingWorkerId = swId;
+                else
+                    order.StitchingWorkerId = null;
+            }
+
+            if (Request.Form.ContainsKey("HandworkWorkerId"))
+            {
+                if (int.TryParse(Request.Form["HandworkWorkerId"], out int hwId) && hwId > 0)
+                    order.HandworkWorkerId = hwId;
+                else
+                    order.HandworkWorkerId = null;
+            }
+
+            order.HandworkCholi = Request.Form.ContainsKey("HandworkCholi") && (Request.Form["HandworkCholi"] == "true" || Request.Form["HandworkCholi"] == "on");
+            order.HandworkChaniya = Request.Form.ContainsKey("HandworkChaniya") && (Request.Form["HandworkChaniya"] == "true" || Request.Form["HandworkChaniya"] == "on");
+            order.HandworkDupatta = Request.Form.ContainsKey("HandworkDupatta") && (Request.Form["HandworkDupatta"] == "true" || Request.Form["HandworkDupatta"] == "on");
 
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Order '{order.LotNo}' updated successfully.";

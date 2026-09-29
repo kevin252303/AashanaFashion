@@ -247,4 +247,114 @@ public class AccountingController : Controller
     {
         return await _context.AccountingTransactions.AnyAsync(e => e.Id == id);
     }
+
+    // GET: /Accounting/Commissions
+    public async Task<IActionResult> Commissions(string? salesman, string? category, bool? pendingOnly, DateTime? startDate, DateTime? endDate)
+    {
+        var query = _context.SalesmanCommissionEntries
+            .Include(e => e.TaxInvoice)
+            .Include(e => e.Customer)
+            .Include(e => e.AccountingTransaction)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(salesman))
+        {
+            var s = salesman.Trim().ToLower();
+            query = query.Where(e => e.SalesmanName.ToLower().Contains(s));
+        }
+
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            var c = category.Trim().ToLower();
+            query = query.Where(e => e.CategoryOrTarget != null && e.CategoryOrTarget.ToLower().Contains(c));
+        }
+
+        if (pendingOnly == true)
+        {
+            query = query.Where(e => !e.IsPaid);
+        }
+
+        if (startDate.HasValue)
+        {
+            query = query.Where(e => e.EntryDate >= startDate.Value);
+        }
+
+        if (endDate.HasValue)
+        {
+            query = query.Where(e => e.EntryDate <= endDate.Value.AddDays(1).AddSeconds(-1));
+        }
+
+        var entries = await query.OrderByDescending(e => e.EntryDate).ToListAsync();
+
+        // Calculate summaries
+        var allEntries = await _context.SalesmanCommissionEntries.ToListAsync();
+        var model = new SalesCommissionDashboardViewModel
+        {
+            TotalCommissionIncurred = allEntries.Sum(e => e.CommissionAmount),
+            TotalCommissionPaid = allEntries.Where(e => e.IsPaid).Sum(e => e.CommissionAmount),
+            TotalCommissionPending = allEntries.Where(e => !e.IsPaid).Sum(e => e.CommissionAmount),
+            TotalInvoicesWithCommission = allEntries.Select(e => e.TaxInvoiceId).Distinct().Count(),
+            RecentEntries = entries,
+            SalesmanSummaries = allEntries
+                .GroupBy(e => e.SalesmanName)
+                .Select(g => new SalesmanSummaryItem
+                {
+                    SalesmanName = g.Key,
+                    TotalSales = g.Sum(e => e.SalesAmount),
+                    TotalCommission = g.Sum(e => e.CommissionAmount),
+                    PaidCommission = g.Where(e => e.IsPaid).Sum(e => e.CommissionAmount),
+                    PendingCommission = g.Where(e => !e.IsPaid).Sum(e => e.CommissionAmount),
+                    InvoiceCount = g.Select(e => e.TaxInvoiceId).Distinct().Count()
+                })
+                .OrderByDescending(s => s.TotalCommission)
+                .ToList()
+        };
+
+        ViewBag.Salesman = salesman;
+        ViewBag.Category = category;
+        ViewBag.PendingOnly = pendingOnly;
+        ViewBag.StartDate = startDate?.ToString("yyyy-MM-dd");
+        ViewBag.EndDate = endDate?.ToString("yyyy-MM-dd");
+
+        ViewBag.SalesmenList = await _context.SalesmanCommissionEntries
+            .Select(e => e.SalesmanName)
+            .Distinct()
+            .OrderBy(s => s)
+            .ToListAsync();
+
+        return View(model);
+    }
+
+    // POST: /Accounting/SettleCommission
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SettleCommission(int id, string? paymentReference)
+    {
+        var entry = await _context.SalesmanCommissionEntries
+            .Include(e => e.TaxInvoice)
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        if (entry == null) return NotFound();
+
+        entry.IsPaid = true;
+        entry.PaidDate = DateTime.Now;
+        entry.PaymentReference = paymentReference?.Trim() ?? $"PAID-{DateTime.Now:yyyyMMddHHmmss}";
+
+        // Record payout in accounting ledger
+        _context.AccountingTransactions.Add(new AccountingTransaction
+        {
+            Date = DateTime.Now,
+            Type = TransactionType.Expense,
+            Amount = entry.CommissionAmount,
+            Category = "Salesman Commission Paid",
+            Description = $"Commission payout to {entry.SalesmanName} for Invoice #{entry.TaxInvoice?.InvoiceNumber} (Ref: {entry.PaymentReference})",
+            Reference = entry.PaymentReference,
+            CustomerId = entry.CustomerId
+        });
+
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = $"Commission of ₹{entry.CommissionAmount:N2} marked as paid to {entry.SalesmanName}.";
+        return RedirectToAction(nameof(Commissions));
+    }
 }

@@ -19,6 +19,8 @@ public class DesignController : Controller
         var query = _context.Designs
             .Include(d => d.ProductCategory)
             .Include(d => d.ExtraCharges)
+            .Include(d => d.HandworkWorker)
+            .Include(d => d.StitchingWorker)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -144,6 +146,8 @@ public class DesignController : Controller
             }
         }
 
+        design.HandworkWorkerId = design.HandworkWorkerId > 0 ? design.HandworkWorkerId : null;
+        design.StitchingWorkerId = design.StitchingWorkerId > 0 ? design.StitchingWorkerId : null;
         design.CreatedDate = DateTime.Now;
         _context.Designs.Add(design);
         await _context.SaveChangesAsync();
@@ -204,6 +208,8 @@ public class DesignController : Controller
             .Include(d => d.ProductVendors)
             .Include(d => d.Packagings)
             .Include(d => d.ExtraCharges)
+            .Include(d => d.HandworkWorker)
+            .Include(d => d.StitchingWorker)
             .FirstOrDefaultAsync(d => d.Id == id);
 
         if (design == null) return NotFound();
@@ -353,6 +359,11 @@ public class DesignController : Controller
         dbDesign.Price = design.Price;
         dbDesign.CreationFlow = design.CreationFlow;
         dbDesign.IsActive = design.IsActive;
+        dbDesign.HandworkWorkerId = design.HandworkWorkerId > 0 ? design.HandworkWorkerId : null;
+        dbDesign.StitchingWorkerId = design.StitchingWorkerId > 0 ? design.StitchingWorkerId : null;
+        dbDesign.HandworkCholi = design.HandworkCholi;
+        dbDesign.HandworkChaniya = design.HandworkChaniya;
+        dbDesign.HandworkDupatta = design.HandworkDupatta;
 
         // Replace child collections
         _context.ProductAttributeLines.RemoveRange(dbDesign.AttributeLines);

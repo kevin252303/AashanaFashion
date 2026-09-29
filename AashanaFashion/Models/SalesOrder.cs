@@ -12,6 +12,9 @@ public class SalesOrder
     public int CustomerId { get; set; }
     public Customer? Customer { get; set; }
 
+    public int? PricelistId { get; set; }
+    public Pricelist? Pricelist { get; set; }
+
     public string? CustomerPoReference { get; set; }
 
     public DateTime OrderDate { get; set; } = DateTime.Now;

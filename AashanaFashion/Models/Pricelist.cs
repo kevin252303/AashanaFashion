@@ -162,3 +162,27 @@ public class QuickCreatePricelistModel
 
     public string? Description { get; set; }
 }
+
+public class QuickUpdatePricelistModel
+{
+    [Required]
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(150)]
+    public string Name { get; set; } = string.Empty;
+
+    public PricelistDiscountPolicy DiscountPolicy { get; set; } = PricelistDiscountPolicy.DiscountIncluded;
+
+    public PricelistAppliedOn AppliedOn { get; set; } = PricelistAppliedOn.AllProducts;
+
+    public PricelistComputeMethod ComputationMethod { get; set; } = PricelistComputeMethod.Percentage;
+
+    public decimal? DiscountPercentage { get; set; }
+
+    public decimal? FixedPrice { get; set; }
+
+    public decimal MinQuantity { get; set; } = 1m;
+
+    public string? Description { get; set; }
+}

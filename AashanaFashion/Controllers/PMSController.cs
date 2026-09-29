@@ -34,19 +34,109 @@ public class PMSController : Controller
         return View(vm);
     }
 
-    public async Task<IActionResult> ProductionEntities(int? orderId, string? entityType, string? status, string? colour, string? search)
+    public async Task<IActionResult> ProductionEntities(int? orderId, string? status, string? colour, string? search, string? entityType = null)
     {
+        // Auto-generate tracking entities for any active orders that have 0 entities generated
+        var ordersWithoutEntities = await _context.ProductionOrders
+            .Include(p => p.Details)
+            .Where(p => !_context.ProductionEntities.Any(e => e.ProductionOrderId == p.Id))
+            .ToListAsync();
+
+        if (ordersWithoutEntities.Any())
+        {
+            foreach (var o in ordersWithoutEntities)
+            {
+                var initStatus = o.Status switch
+                {
+                    OrderStatus.AtDying => "AtDying",
+                    OrderStatus.AtHandwork => "AtHandwork",
+                    OrderStatus.AtStitching => "AtStitching",
+                    OrderStatus.ReadyToDispatch => "Completed",
+                    OrderStatus.Dispatched => "Dispatched",
+                    _ => "Created"
+                };
+
+                int sl = 1;
+                if (o.Details != null && o.Details.Any())
+                {
+                    foreach (var d in o.Details)
+                    {
+                        for (int i = 0; i < d.Quantity; i++)
+                        {
+                            _context.ProductionEntities.Add(new ProductionEntity
+                            {
+                                ProductionOrderId = o.Id,
+                                EntityType = "Garment",
+                                Colour = d.Colour,
+                                Size = d.Size,
+                                SlNo = sl,
+                                Barcode = BarcodeService.FormatEntityBarcode(o.Id, sl),
+                                Status = initStatus,
+                                CreatedDate = DateTime.Now
+                            });
+                            sl++;
+                        }
+                    }
+                }
+                else if (o.TotalQuantity > 0)
+                {
+                    for (int i = 0; i < o.TotalQuantity; i++)
+                    {
+                        _context.ProductionEntities.Add(new ProductionEntity
+                        {
+                            ProductionOrderId = o.Id,
+                            EntityType = "Garment",
+                            Colour = "Standard",
+                            Size = "Free Size",
+                            SlNo = sl,
+                            Barcode = BarcodeService.FormatEntityBarcode(o.Id, sl),
+                            Status = initStatus,
+                            CreatedDate = DateTime.Now
+                        });
+                        sl++;
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        // Sync existing entities that are still marked "Created" but whose parent order has advanced
+        var createdEntitiesToSync = await _context.ProductionEntities
+            .Include(e => e.ProductionOrder)
+            .Where(e => e.Status == "Created" && e.ProductionOrder != null && e.ProductionOrder.Status != OrderStatus.RawMaterialArrived)
+            .ToListAsync();
+
+        if (createdEntitiesToSync.Any())
+        {
+            foreach (var e in createdEntitiesToSync)
+            {
+                e.Status = e.ProductionOrder!.Status switch
+                {
+                    OrderStatus.AtDying => "AtDying",
+                    OrderStatus.AtHandwork => "AtHandwork",
+                    OrderStatus.AtStitching => "AtStitching",
+                    OrderStatus.ReadyToDispatch => "Completed",
+                    OrderStatus.Dispatched => "Dispatched",
+                    _ => "Created"
+                };
+            }
+            await _context.SaveChangesAsync();
+        }
+
         var query = _context.ProductionEntities
             .Include(e => e.ProductionOrder)
-            .ThenInclude(p => p!.Design)
+                .ThenInclude(p => p!.Design)
+                    .ThenInclude(d => d!.OperationCosts)
+            .Include(e => e.ProductionOrder)
+                .ThenInclude(p => p!.HandworkWorker)
+            .Include(e => e.ProductionOrder)
+                .ThenInclude(p => p!.StitchingWorker)
             .Include(e => e.ProcessTrackings)
             .ThenInclude(t => t.Vendor)
             .AsQueryable();
 
         if (orderId.HasValue)
             query = query.Where(e => e.ProductionOrderId == orderId.Value);
-        if (!string.IsNullOrEmpty(entityType) && entityType != "All")
-            query = query.Where(e => e.EntityType == entityType);
         if (!string.IsNullOrEmpty(status) && status != "All")
             query = query.Where(e => e.Status == status);
         if (!string.IsNullOrEmpty(colour) && colour != "All")
@@ -56,7 +146,6 @@ public class PMSController : Controller
             var s = search.Trim().ToLower();
             query = query.Where(e =>
                 (e.Barcode != null && e.Barcode.ToLower().Contains(s)) ||
-                (e.EntityType != null && e.EntityType.ToLower().Contains(s)) ||
                 (e.Colour != null && e.Colour.ToLower().Contains(s)) ||
                 (e.Size != null && e.Size.ToLower().Contains(s)) ||
                 (e.ProductionOrder != null && e.ProductionOrder.LotNo.ToLower().Contains(s)) ||
@@ -69,12 +158,10 @@ public class PMSController : Controller
 
         ViewBag.Orders = orders;
         ViewBag.SelectedOrderId = orderId;
-        ViewBag.SelectedEntityType = entityType ?? "All";
         ViewBag.SelectedStatus = status ?? "All";
         ViewBag.SelectedColour = colour ?? "All";
         ViewBag.Search = search;
         ViewBag.Colours = colours;
-        ViewBag.EntityTypes = new[] { "Chaniya", "Choli", "Blouse", "Duppata" };
         ViewBag.Statuses = new[] { "Created", "AtDying", "AtRoll", "AtHandwork", "AtStitching", "Completed", "Dispatched" };
         ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
 
@@ -160,32 +247,29 @@ public class PMSController : Controller
         }
 
         int slNo = 1;
-        var componentTypes = new[] { "Chaniya", "Choli", "Duppata" };
 
         foreach (var detail in order.Details)
         {
             for (int i = 0; i < detail.Quantity; i++)
             {
-                foreach (var component in componentTypes)
+                var entity = new ProductionEntity
                 {
-                    var entity = new ProductionEntity
-                    {
-                        ProductionOrderId = order.Id,
-                        EntityType = component,
-                        Colour = detail.Colour,
-                        Size = detail.Size,
-                        SlNo = slNo,
-                        Barcode = BarcodeService.FormatEntityBarcode(order.Id, slNo, component),
-                        Status = "Created"
-                    };
-                    _context.ProductionEntities.Add(entity);
-                }
+                    ProductionOrderId = order.Id,
+                    EntityType = "Garment",
+                    Colour = detail.Colour,
+                    Size = detail.Size,
+                    SlNo = slNo,
+                    Barcode = BarcodeService.FormatEntityBarcode(order.Id, slNo),
+                    Status = "Created",
+                    CreatedDate = DateTime.Now
+                };
+                _context.ProductionEntities.Add(entity);
                 slNo++;
             }
         }
 
         await _context.SaveChangesAsync();
-        TempData["Success"] = $"Generated production sets (Chaniya, Choli, Dupatta) for Lot {order.LotNo}";
+        TempData["Success"] = $"Generated {order.TotalQuantity} tracking entities for Lot {order.LotNo}";
         return RedirectToAction(nameof(ProductionEntities), new { orderId });
     }
 
@@ -306,7 +390,7 @@ public class PMSController : Controller
         await _context.SaveChangesAsync();
     }
 
-    public async Task<IActionResult> ExportEntities(int? orderId, string? entityType, string? status, string? colour, string? search)
+    public async Task<IActionResult> ExportEntities(int? orderId, string? status, string? colour, string? search, string? entityType = null)
     {
         var query = _context.ProductionEntities
             .Include(e => e.ProductionOrder)
@@ -316,8 +400,6 @@ public class PMSController : Controller
 
         if (orderId.HasValue)
             query = query.Where(e => e.ProductionOrderId == orderId.Value);
-        if (!string.IsNullOrEmpty(entityType) && entityType != "All")
-            query = query.Where(e => e.EntityType == entityType);
         if (!string.IsNullOrEmpty(status) && status != "All")
             query = query.Where(e => e.Status == status);
         if (!string.IsNullOrEmpty(colour) && colour != "All")
@@ -327,7 +409,6 @@ public class PMSController : Controller
             var s = search.Trim().ToLower();
             query = query.Where(e =>
                 (e.Barcode != null && e.Barcode.ToLower().Contains(s)) ||
-                (e.EntityType != null && e.EntityType.ToLower().Contains(s)) ||
                 (e.Colour != null && e.Colour.ToLower().Contains(s)) ||
                 (e.Size != null && e.Size.ToLower().Contains(s)) ||
                 (e.ProductionOrder != null && e.ProductionOrder.LotNo.ToLower().Contains(s)) ||
@@ -336,10 +417,10 @@ public class PMSController : Controller
 
         var entities = await query.OrderByDescending(e => e.CreatedDate).ToListAsync();
 
-        var csv = "Sl No,Order,Lot No,Design,Entity Type,Colour,Size,Status,Created Date\n";
+        var csv = "Sl No,Barcode,Order,Lot No,Design,Colour,Size,Status,Created Date\n";
         foreach (var e in entities)
         {
-            csv += $"{e.SlNo},{e.ProductionOrder?.LotNo},{e.ProductionOrder?.Design?.DesignNumber},{e.EntityType},{e.Colour},{e.Size},{e.Status},{e.CreatedDate:dd/MM/yyyy}\n";
+            csv += $"{e.SlNo},{e.Barcode},{e.ProductionOrder?.Id},{e.ProductionOrder?.LotNo},{e.ProductionOrder?.Design?.DesignNumber},{e.Colour},{e.Size},{e.Status},{e.CreatedDate:dd/MM/yyyy}\n";
         }
 
         return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "ProductionEntities.csv");

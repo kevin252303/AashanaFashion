@@ -42,13 +42,13 @@
             color: #0f172a;
             margin: 0;
             padding: 0;
-            font-size: 9.5pt;
+            font-size: 9pt;
         }
 
         .no-print-bar {
             background: #ffffff;
             border-bottom: 1px solid #e2e8f0;
-            padding: 12px 24px;
+            padding: 10px 20px;
             position: sticky;
             top: 0;
             z-index: 100;
@@ -59,26 +59,58 @@
 
         .invoice-page {
             width: 210mm;
-            min-height: 297mm;
-            margin: 20px auto;
+            min-height: 275mm;
+            margin: 15px auto;
             background: #ffffff;
-            padding: 10mm 12mm;
+            padding: 8mm 10mm;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .invoice-watermark {
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 70% !important;
+            max-width: 480px !important;
+            pointer-events: none !important;
+            opacity: 0.10 !important;
+            z-index: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .invoice-watermark img {
+            width: 100% !important;
+            height: auto !important;
+            object-fit: contain !important;
+            pointer-events: none !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        /* Ensure all text and table contents sit cleanly above the watermark */
+        .invoice-body, .invoice-footer {
+            position: relative;
+            z-index: 1;
         }
 
         .tax-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 8.5pt;
+            font-size: 8pt;
         }
 
         .tax-table th, .tax-table td {
             border: 1px solid #000000;
-            padding: 4px 6px;
+            padding: 3px 5px;
         }
 
         .tax-table th {
@@ -87,16 +119,69 @@
             font-weight: 700;
         }
 
+        @@page {
+            size: A4 portrait;
+            margin: 4mm 6mm;
+        }
+
         @@media print {
-            body { background: transparent; }
+            html, body {
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                font-size: 8.5pt !important;
+                height: auto !important;
+            }
             .no-print-bar { display: none !important; }
             .invoice-page {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: auto !important;
+                height: auto !important;
                 box-shadow: none !important;
+                border: none !important;
                 margin: 0 !important;
-                padding: 5mm !important;
-                page-break-inside: avoid;
+                padding: 2mm 0 !important;
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
+                position: relative !important;
+                display: block !important;
             }
-            @@page { margin: 5mm; }
+            .invoice-body {
+                position: relative !important;
+                z-index: 1 !important;
+                display: block !important;
+            }
+            .invoice-footer {
+                position: relative !important;
+                z-index: 1 !important;
+                page-break-inside: avoid !important;
+                page-break-before: avoid !important;
+                margin-top: 6px !important;
+                padding-top: 6px !important;
+            }
+
+            .invoice-watermark {
+                position: absolute !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                width: 65% !important;
+                max-width: 450px !important;
+                display: flex !important;
+                opacity: 0.10 !important;
+                z-index: 0 !important;
+                pointer-events: none !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .invoice-watermark img {
+                width: 100% !important;
+                height: auto !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
     </style>
 </head>
@@ -113,27 +198,31 @@
     </div>
 
     <div class="invoice-page">
-        <div>
+        <!-- Watermark centered inside the invoice page (Visible on Screen & in Print) -->
+        <div class="invoice-watermark" aria-hidden="true">
+            <img src="/images/aashana_watermark.png" alt="Aashana Fashion Watermark" />
+        </div>
+        <div class="invoice-body">
             <!-- Top Heading & Copy Type -->
-            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
-                <div class="text-muted small">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-1">
+                <div class="text-muted small" style="font-size: 8pt;">
                     <strong>GSTIN:</strong> 24AABCA1234F1Z8 &nbsp;|&nbsp; <strong>State:</strong> Gujarat (24)
                 </div>
-                <div class="text-uppercase fw-bold small border px-2 py-1 bg-light">
+                <div class="text-uppercase fw-bold border px-2 py-0 bg-light" style="font-size: 8pt;">
                     Tax Invoice / Original for Recipient
                 </div>
             </div>
 
             <!-- Company Info Header -->
-            <div class="text-center pb-2 mb-2 border-bottom">
-                <h2 class="fw-bold mb-0 text-uppercase tracking-wide" style="font-size: 18pt;">AASHANA FASHION</h2>
-                <div class="small fw-semibold text-muted">Manufacturer & Wholesaler of Exclusive Designer Ethnic Garments</div>
-                <div class="small">101-104, Surat Textile Market, Ring Road, Surat, Gujarat - 395002</div>
-                <div class="small text-muted">Email: sales@aashanafashion.com | Phone: +91 98765 43210</div>
+            <div class="text-center pb-1 mb-1 border-bottom">
+                <h2 class="fw-bold mb-0 text-uppercase tracking-wide" style="font-size: 16pt; letter-spacing: 1px;">AASHANA FASHION</h2>
+                <div class="small fw-semibold text-muted" style="font-size: 8pt;">Manufacturer & Wholesaler of Exclusive Designer Ethnic Garments</div>
+                <div class="small" style="font-size: 8pt;">101-104, Surat Textile Market, Ring Road, Surat, Gujarat - 395002</div>
+                <div class="small text-muted" style="font-size: 7.5pt;">Email: sales@aashanafashion.com | Phone: +91 98765 43210</div>
             </div>
 
             <!-- Invoice & Customer Meta Grid -->
-            <div class="row g-0 border mb-2">
+            <div class="row g-0 border mb-1">
                 <div class="col-6 p-2 border-end">
                     <strong class="d-block mb-1 text-uppercase small text-muted">Billed To (Customer):</strong>
                     <div class="fw-bold fs-6">@Model.CustomerName</div>
@@ -196,7 +285,7 @@
             </div>
 
             <!-- Tax Invoice Items Table -->
-            <table class="tax-table mb-2">
+            <table class="tax-table mb-1">
                 <thead>
                     <tr>
                         <th style="width: 4%;">#</th>
@@ -270,15 +359,15 @@
             </table>
 
             <!-- Amount in words -->
-            <div class="p-2 border bg-light mb-2">
-                <span class="small text-muted text-uppercase fw-semibold">Amount Chargeable (in words):</span>
-                <div class="fw-bold fs-6">@NumberToWords(Model.GrandTotal)</div>
+            <div class="py-1 px-2 border bg-light mb-1">
+                <span class="small text-muted text-uppercase fw-semibold" style="font-size: 7.5pt;">Amount Chargeable (in words):</span>
+                <div class="fw-bold" style="font-size: 8.5pt;">@NumberToWords(Model.GrandTotal)</div>
             </div>
 
             <!-- Tax Summary Box -->
-            <div class="row g-0 border mb-2">
+            <div class="row g-0 border mb-1">
                 <div class="col-7 p-2 border-end small">
-                    <strong class="d-block mb-1 text-uppercase text-muted">Bank Details for RTGS / NEFT / IMPS:</strong>
+                    <strong class="d-block mb-1 text-uppercase text-muted" style="font-size: 7.5pt;">Bank Details for RTGS / NEFT / IMPS:</strong>
                     <div><strong>Bank:</strong> @Model.BankName</div>
                     <div><strong>Account No:</strong> @Model.BankAccountNumber</div>
                     <div><strong>IFSC Code:</strong> @Model.BankIfsc</div>
@@ -287,37 +376,37 @@
                 <div class="col-5 p-2 small">
                     <table class="table table-sm table-borderless mb-0">
                         <tr>
-                            <td class="text-muted">Taxable Value:</td>
-                            <td class="text-end fw-semibold">₹@Model.TaxableAmount.ToString("N2")</td>
+                            <td class="text-muted py-0">Taxable Value:</td>
+                            <td class="text-end fw-semibold py-0">₹@Model.TaxableAmount.ToString("N2")</td>
                         </tr>
                         @if (Model.IsInterState)
                         {
                             <tr>
-                                <td class="text-muted">Integrated Tax (IGST):</td>
-                                <td class="text-end fw-semibold">₹@Model.IgstAmount.ToString("N2")</td>
+                                <td class="text-muted py-0">Integrated Tax (IGST):</td>
+                                <td class="text-end fw-semibold py-0">₹@Model.IgstAmount.ToString("N2")</td>
                             </tr>
                         }
                         else
                         {
                             <tr>
-                                <td class="text-muted">Central Tax (CGST):</td>
-                                <td class="text-end fw-semibold">₹@Model.CgstAmount.ToString("N2")</td>
+                                <td class="text-muted py-0">Central Tax (CGST):</td>
+                                <td class="text-end fw-semibold py-0">₹@Model.CgstAmount.ToString("N2")</td>
                             </tr>
                             <tr>
-                                <td class="text-muted">State Tax (SGST):</td>
-                                <td class="text-end fw-semibold">₹@Model.SgstAmount.ToString("N2")</td>
+                                <td class="text-muted py-0">State Tax (SGST):</td>
+                                <td class="text-end fw-semibold py-0">₹@Model.SgstAmount.ToString("N2")</td>
                             </tr>
                         }
                         @if (Model.RoundOff != 0)
                         {
                             <tr>
-                                <td class="text-muted">Round Off:</td>
-                                <td class="text-end">₹@Model.RoundOff.ToString("N2")</td>
+                                <td class="text-muted py-0">Round Off:</td>
+                                <td class="text-end py-0">₹@Model.RoundOff.ToString("N2")</td>
                             </tr>
                         }
                         <tr class="border-top">
-                            <td class="fw-bold fs-6">Invoice Total:</td>
-                            <td class="text-end fw-bold fs-6 text-dark">₹@Model.GrandTotal.ToString("N2")</td>
+                            <td class="fw-bold py-1">Invoice Total:</td>
+                            <td class="text-end fw-bold py-1 text-dark" style="font-size: 10pt;">₹@Model.GrandTotal.ToString("N2")</td>
                         </tr>
                     </table>
                 </div>
@@ -325,19 +414,19 @@
         </div>
 
         <!-- Footer / Signatures -->
-        <div class="border-top pt-3 mt-3">
+        <div class="invoice-footer border-top pt-2 mt-1">
             <div class="row align-items-end">
                 <div class="col-7 small">
                     <strong>Declaration:</strong>
                     <p class="mb-0 text-muted" style="font-size: 7.5pt;">
                         We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
                     </p>
-                    <div class="mt-2 text-muted" style="font-size: 7.5pt;">
+                    <div class="mt-1 text-muted" style="font-size: 7.5pt;">
                         @Model.TermsAndConditions
                     </div>
                 </div>
                 <div class="col-5 text-end">
-                    <div class="small fw-bold text-uppercase mb-4">For AASHANA FASHION</div>
+                    <div class="small fw-bold text-uppercase mb-2">For AASHANA FASHION</div>
                     <div class="border-top d-inline-block pt-1 px-3 text-muted small" style="min-width: 160px;">
                         Authorized Signatory
                     </div>

@@ -63,6 +63,30 @@ public class Design
     public DateTime CreatedDate { get; set; } = DateTime.Now;
     public bool IsActive { get; set; } = true;
 
+    // ——— Assigned Workers / Karigars ———
+    public int? HandworkWorkerId { get; set; }
+    public Vendor? HandworkWorker { get; set; }
+
+    public int? StitchingWorkerId { get; set; }
+    public Vendor? StitchingWorker { get; set; }
+
+    // ——— Handwork Garment Parts ———
+    public bool HandworkCholi { get; set; } = true;
+    public bool HandworkChaniya { get; set; } = true;
+    public bool HandworkDupatta { get; set; } = false;
+
+    public string HandworkComponentsSummary
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (HandworkCholi) parts.Add("Choli");
+            if (HandworkChaniya) parts.Add("Chaniya");
+            if (HandworkDupatta) parts.Add("Dupatta");
+            return parts.Any() ? string.Join(", ", parts) : "None";
+        }
+    }
+
     // ——— Navigation ———
     public List<ProductAttributeLine> AttributeLines { get; set; } = new();
     public List<ProductPricelist> Pricelists { get; set; } = new();
@@ -79,10 +103,25 @@ public class Design
     public decimal GrossProfitMargin => SalesPrice - TotalProductionCost;
     public decimal GrossProfitMarginPercent => SalesPrice > 0 ? (GrossProfitMargin / SalesPrice) * 100m : 0;
 
-    public List<string> GetCreationSteps() =>
-        CreationFlow.Split(',', StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => s.Trim())
-            .ToList();
+    public List<string> GetCreationSteps()
+    {
+        if (!string.IsNullOrWhiteSpace(CreationFlow))
+        {
+            var steps = CreationFlow
+                .Split(new[] { ',', '→', '>', '|' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .ToList();
+            if (steps.Count > 0) return steps;
+        }
+
+        if (OperationCosts != null && OperationCosts.Any())
+        {
+            return OperationCosts.Select(o => o.OperationName).ToList();
+        }
+
+        return new List<string> { "Dying", "Handwork", "Stitching" };
+    }
 }
 
 public class ProductAttributeLine

@@ -13,6 +13,35 @@ $(document).ready(function () {
 
         generateMatrix();
         //updateVerificationSteps(steps);
+
+        // Pre-fill workers & handwork parts from design defaults
+        var hwWorker = selected.data('hw-worker');
+        var stWorker = selected.data('st-worker');
+        var hwCholi = selected.data('hw-choli');
+        var hwChaniya = selected.data('hw-chaniya');
+        var hwDupatta = selected.data('hw-dupatta');
+
+        if (hwWorker) {
+            $('#handworkWorkerSelect').val(hwWorker);
+        } else {
+            $('#handworkWorkerSelect').val('');
+        }
+
+        if (stWorker) {
+            $('#stitchingWorkerSelect').val(stWorker);
+        } else {
+            $('#stitchingWorkerSelect').val('');
+        }
+
+        if (hwCholi !== undefined) {
+            $('#lot_hw_choli').prop('checked', hwCholi === true || hwCholi === 'true');
+        }
+        if (hwChaniya !== undefined) {
+            $('#lot_hw_chaniya').prop('checked', hwChaniya === true || hwChaniya === 'true');
+        }
+        if (hwDupatta !== undefined) {
+            $('#lot_hw_dupatta').prop('checked', hwDupatta === true || hwDupatta === 'true');
+        }
     });
 
     function generateMatrix() {

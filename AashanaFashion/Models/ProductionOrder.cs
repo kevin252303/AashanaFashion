@@ -15,6 +15,31 @@ namespace AashanaFashion.Models
         public bool IsHandworkVerified { get; set; }
         public bool IsStitchingVerified { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.Now;
+
+        // ——— Assigned Workers / Karigars for this Lot ———
+        public int? HandworkWorkerId { get; set; }
+        public Vendor? HandworkWorker { get; set; }
+
+        public int? StitchingWorkerId { get; set; }
+        public Vendor? StitchingWorker { get; set; }
+
+        // ——— Handwork Garment Parts for this Lot ———
+        public bool HandworkCholi { get; set; } = true;
+        public bool HandworkChaniya { get; set; } = true;
+        public bool HandworkDupatta { get; set; } = false;
+
+        public string HandworkComponentsSummary
+        {
+            get
+            {
+                var parts = new List<string>();
+                if (HandworkCholi) parts.Add("Choli");
+                if (HandworkChaniya) parts.Add("Chaniya");
+                if (HandworkDupatta) parts.Add("Dupatta");
+                return parts.Any() ? string.Join(", ", parts) : "None";
+            }
+        }
+
         public List<ProductionOrderDetail> Details { get; set; } = new();
     }
 

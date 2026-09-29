@@ -4,6 +4,7 @@
     var role       = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
     bool isAdmin   = role == "Admin" || role == "SuperAdmin";
     var designs    = ViewBag.Designs as List<AashanaFashion.Models.Design> ?? new List<AashanaFashion.Models.Design>();
+    var vendors    = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new List<AashanaFashion.Models.Vendor>();
     var currentDesign  = designs.FirstOrDefault(d => d.Id == Model.DesignId);
     var creationSteps  = currentDesign?.GetCreationSteps() ?? new List<string>();
     var statusOptions  = string.Join("", Enum.GetValues<AashanaFashion.Models.OrderStatus>()
@@ -52,7 +53,7 @@
                             <label class="af-label">Design</label>
                             <select name="DesignId" class="af-input af-select" id="designSelect">
                                 @Html.Raw(string.Join("", designs.Select(d => 
-                                    $"<option value=\"{d.Id}\" data-colours=\"{d.Colours}\" data-sizes=\"{d.Sizes}\" data-steps=\"{d.CreationFlow}\" {(d.Id == Model.DesignId ? "selected" : "")}>{d.DesignNumber}</option>")))
+                                    $"<option value=\"{d.Id}\" data-colours=\"{d.Colours}\" data-sizes=\"{d.Sizes}\" data-steps=\"{d.CreationFlow}\" data-hw-worker=\"{d.HandworkWorkerId}\" data-st-worker=\"{d.StitchingWorkerId}\" data-hw-choli=\"{d.HandworkCholi.ToString().ToLower()}\" data-hw-chaniya=\"{d.HandworkChaniya.ToString().ToLower()}\" data-hw-dupatta=\"{d.HandworkDupatta.ToString().ToLower()}\" {(d.Id == Model.DesignId ? "selected" : "")}>{d.DesignNumber}</option>")))
                             </select>
                         </div>
                         <div class="af-form-group">
@@ -78,6 +79,54 @@
                         <select name="Status" class="af-input af-select">
                             @Html.Raw(statusOptions)
                         </select>
+                    </div>
+
+                    <!-- Workers & Handwork Planning for this Lot -->
+                    <div class="card p-3 mb-3" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+                        <h6 class="fw-bold mb-2 text-dark d-flex align-items-center gap-2" style="font-size:0.88rem;">
+                            <span>🪡</span> Assigned Workers & Handwork
+                        </h6>
+                        <div class="text-muted small mb-2" style="font-size:0.75rem;">Modify workers and handwork pieces for this lot as needed.</div>
+
+                        <div class="af-form-group mb-2">
+                            <label class="af-label" style="font-size:0.8rem;">Stitching Master / Worker</label>
+                            <select name="StitchingWorkerId" class="af-input af-select" id="stitchingWorkerSelect">
+                                <option value="">— Select Stitching Worker —</option>
+                                @foreach (var v in vendors)
+                                {
+                                    <option value="@v.Id" selected="@(v.Id == Model.StitchingWorkerId ? "selected" : null)">@v.VendorName</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="af-form-group mb-2">
+                            <label class="af-label" style="font-size:0.8rem;">Handwork Karigar / Worker</label>
+                            <select name="HandworkWorkerId" class="af-input af-select" id="handworkWorkerSelect">
+                                <option value="">— Select Handwork Worker —</option>
+                                @foreach (var v in vendors)
+                                {
+                                    <option value="@v.Id" selected="@(v.Id == Model.HandworkWorkerId ? "selected" : null)">@v.VendorName</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="pt-2 border-top">
+                            <label class="af-label mb-1" style="font-size:0.8rem;">Handwork Pieces (Any one, two, or all)</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="HandworkCholi" value="true" id="lot_hw_choli" @(Model.HandworkCholi ? "checked" : "") />
+                                    <label class="form-check-label fw-semibold" for="lot_hw_choli" style="font-size:0.82rem;">👚 Choli</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="HandworkChaniya" value="true" id="lot_hw_chaniya" @(Model.HandworkChaniya ? "checked" : "") />
+                                    <label class="form-check-label fw-semibold" for="lot_hw_chaniya" style="font-size:0.82rem;">👗 Chaniya</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="HandworkDupatta" value="true" id="lot_hw_dupatta" @(Model.HandworkDupatta ? "checked" : "") />
+                                    <label class="form-check-label fw-semibold" for="lot_hw_dupatta" style="font-size:0.82rem;">🧣 Dupatta</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="af-form-group" id="verificationSection" style="display:none;">

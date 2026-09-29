@@ -33,11 +33,11 @@ namespace AashanaFashion.Services
             // Company (Supplier) Defaults
             string fromGstin = _config["Company:GSTIN"] ?? "24AABCA1234F1Z9";
             string fromTrdName = _config["Company:Name"] ?? "Aashana Fashion";
-            string fromAddr1 = "Plot 14-16, Garment Industrial Zone";
-            string fromAddr2 = "Pandesara";
-            string fromPlace = "Surat";
-            int fromPincode = 394221;
-            int fromStateCode = 24; // Gujarat
+            string fromAddr1 = _config["Company:Address1"] ?? "Plot 14-16, Garment Industrial Zone";
+            string fromAddr2 = _config["Company:Address2"] ?? "Pandesara";
+            string fromPlace = _config["Company:City"] ?? "Surat";
+            int fromPincode = int.TryParse(_config["Company:Pincode"], out var p) ? p : 394221;
+            int fromStateCode = int.TryParse(_config["Company:StateCode"], out var sc) ? sc : 24;
 
             // Buyer (Recipient)
             string toGstin = !string.IsNullOrWhiteSpace(invoice.CustomerGstin) && invoice.CustomerGstin.Length == 15
@@ -167,10 +167,11 @@ namespace AashanaFashion.Services
 
             string fromGstin = _config["Company:GSTIN"] ?? "24AABCA1234F1Z9";
             string fromTrdName = _config["Company:Name"] ?? "Aashana Fashion";
-            string fromAddr1 = "Plot 14-16, Garment Industrial Zone";
-            string fromPlace = "Surat";
-            int fromPincode = 394221;
-            int fromStateCode = 24;
+            string fromAddr1 = _config["Company:Address1"] ?? "Plot 14-16, Garment Industrial Zone";
+            string fromAddr2 = _config["Company:Address2"] ?? "Pandesara";
+            string fromPlace = _config["Company:City"] ?? "Surat";
+            int fromPincode = int.TryParse(_config["Company:Pincode"], out var p) ? p : 394221;
+            int fromStateCode = int.TryParse(_config["Company:StateCode"], out var sc) ? sc : 24;
 
             string toGstin = !string.IsNullOrWhiteSpace(challan.Customer?.GstNumber) && challan.Customer.GstNumber.Length == 15
                 ? challan.Customer.GstNumber.Trim().ToUpper()

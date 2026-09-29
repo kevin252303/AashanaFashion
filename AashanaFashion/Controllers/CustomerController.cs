@@ -62,24 +62,30 @@ public class CustomerController : Controller
         return View(customers);
     }
 
+    private async Task PopulateDropdownsAsync()
+    {
+        ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+        ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+        ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
+        ViewBag.Designs = await _context.Designs.OrderBy(d => d.DesignNumber).Select(d => new { d.Id, d.DesignNumber }).ToListAsync();
+    }
+
     [PermissionAuthorize("CustomerMaster", "CanCreate")]
     [HttpGet]
     public async Task<IActionResult> Create()
     {
-        ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
-        ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+        await PopulateDropdownsAsync();
         return View(new CustomerViewModel());
     }
 
     [PermissionAuthorize("CustomerMaster", "CanCreate")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(CustomerViewModel model, List<CustomerContact>? Contacts)
+    public async Task<IActionResult> Create(CustomerViewModel model, List<CustomerContact>? Contacts, List<CustomerSalesmanCommission>? Commissions)
     {
         if (!ModelState.IsValid)
         {
-            ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
-            ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+            await PopulateDropdownsAsync();
             return View(model);
         }
 
@@ -89,11 +95,23 @@ public class CustomerController : Controller
         await _context.SaveChangesAsync();
 
         if (Contacts?.Any() == true)
+        {
             foreach (var c in Contacts.Where(c => !string.IsNullOrWhiteSpace(c.ContactName)))
             {
                 c.CustomerId = customer.Id;
                 _context.CustomerContacts.Add(c);
             }
+        }
+
+        if (Commissions?.Any() == true)
+        {
+            foreach (var comm in Commissions.Where(c => !string.IsNullOrWhiteSpace(c.SalesmanName) && c.CommissionRate > 0))
+            {
+                comm.Id = 0;
+                comm.CustomerId = customer.Id;
+                _context.CustomerSalesmanCommissions.Add(comm);
+            }
+        }
         await _context.SaveChangesAsync();
 
         TempData["Success"] = $"Customer '{customer.CustomerName}' created successfully.";
@@ -104,26 +122,30 @@ public class CustomerController : Controller
     [HttpGet]
     public async Task<IActionResult> Edit(int id)
     {
-        var customer = await _context.Customers.Include(c => c.Contacts).FirstOrDefaultAsync(c => c.Id == id);
+        var customer = await _context.Customers
+            .Include(c => c.Contacts)
+            .Include(c => c.Commissions)
+            .FirstOrDefaultAsync(c => c.Id == id);
         if (customer == null) return NotFound();
-        ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
-        ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+        await PopulateDropdownsAsync();
         return View(MapToViewModel(customer));
     }
 
     [PermissionAuthorize("CustomerMaster", "CanEdit")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(CustomerViewModel model, List<CustomerContact>? Contacts)
+    public async Task<IActionResult> Edit(CustomerViewModel model, List<CustomerContact>? Contacts, List<CustomerSalesmanCommission>? Commissions)
     {
         if (!ModelState.IsValid)
         {
-            ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
-            ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+            await PopulateDropdownsAsync();
             return View(model);
         }
 
-        var customer = await _context.Customers.Include(c => c.Contacts).FirstOrDefaultAsync(c => c.Id == model.Id);
+        var customer = await _context.Customers
+            .Include(c => c.Contacts)
+            .Include(c => c.Commissions)
+            .FirstOrDefaultAsync(c => c.Id == model.Id);
         if (customer == null) return NotFound();
 
         MapToCustomer(model, customer);
@@ -131,12 +153,26 @@ public class CustomerController : Controller
         // Replace contacts
         _context.CustomerContacts.RemoveRange(customer.Contacts);
         if (Contacts?.Any() == true)
+        {
             foreach (var c in Contacts.Where(c => !string.IsNullOrWhiteSpace(c.ContactName)))
             {
                 c.Id = 0;
                 c.CustomerId = customer.Id;
                 _context.CustomerContacts.Add(c);
             }
+        }
+
+        // Replace commissions
+        _context.CustomerSalesmanCommissions.RemoveRange(customer.Commissions);
+        if (Commissions?.Any() == true)
+        {
+            foreach (var comm in Commissions.Where(c => !string.IsNullOrWhiteSpace(c.SalesmanName) && c.CommissionRate > 0))
+            {
+                comm.Id = 0;
+                comm.CustomerId = customer.Id;
+                _context.CustomerSalesmanCommissions.Add(comm);
+            }
+        }
 
         await _context.SaveChangesAsync();
         TempData["Success"] = $"Customer '{customer.CustomerName}' updated successfully.";
@@ -324,6 +360,7 @@ public class CustomerController : Controller
         GeoLatitude = c.GeoLatitude,
         GeoLongitude = c.GeoLongitude,
         ComputeBasedOnAddress = c.ComputeBasedOnAddress,
-        Contacts = c.Contacts?.ToList() ?? new()
+        Contacts = c.Contacts?.ToList() ?? new(),
+        Commissions = c.Commissions?.ToList() ?? new()
     };
 }

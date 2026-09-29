@@ -126,8 +126,24 @@
                             }
                         </td>
                         <td>@item.Colours</td>
-                        <td>@item.Sizes</td>
-                        <td>@item.CreationFlow</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(item.CreationFlow))
+                            {
+                                <div class="fw-semibold">@item.CreationFlow</div>
+                            }
+                            else
+                            {
+                                <div class="text-muted">—</div>
+                            }
+                            @if (item.StitchingWorker != null)
+                            {
+                                <div style="font-size:0.75rem; color:#475569; white-space:nowrap;">🪡 Stitch: <strong>@item.StitchingWorker.VendorName</strong></div>
+                            }
+                            @if (item.HandworkWorker != null)
+                            {
+                                <div style="font-size:0.75rem; color:#475569; white-space:nowrap;">✨ Hand: <strong>@item.HandworkWorker.VendorName</strong> <span class="text-muted">(@item.HandworkComponentsSummary)</span></div>
+                            }
+                        </td>
                         <td>
                             <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
                                 <a asp-action="Bom" asp-route-id="@item.Id" class="btn-af btn-af-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;" title="Bill of Materials & Costing">BOM & Cost</a>

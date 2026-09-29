@@ -15,11 +15,13 @@ public class SalesOrderController : Controller
 {
     private readonly AppDbContext _context;
     private readonly IEwayBillService _ewayBillService;
+    private readonly IConfiguration _config;
 
-    public SalesOrderController(AppDbContext context, IEwayBillService ewayBillService)
+    public SalesOrderController(AppDbContext context, IEwayBillService ewayBillService, IConfiguration config)
     {
         _context = context;
         _ewayBillService = ewayBillService;
+        _config = config;
     }
 
     public async Task<IActionResult> Index(string? search, SalesOrderStatus? status)
@@ -56,6 +58,7 @@ public class SalesOrderController : Controller
         ViewBag.Designs = await _context.Designs.Where(d => d.IsActive).OrderBy(d => d.DesignNumber).ToListAsync();
         ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
         ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+        ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
         ViewBag.NextSoNumber = await GenerateSoNumber();
 
         return View(new SalesOrderViewModel
@@ -76,6 +79,7 @@ public class SalesOrderController : Controller
             ViewBag.Designs = await _context.Designs.Where(d => d.IsActive).OrderBy(d => d.DesignNumber).ToListAsync();
             ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+            ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
             return View(model);
         }
 
@@ -83,6 +87,7 @@ public class SalesOrderController : Controller
         {
             SoNumber = model.SoNumber,
             CustomerId = model.CustomerId,
+            PricelistId = model.PricelistId,
             CustomerPoReference = model.CustomerPoReference,
             OrderDate = model.OrderDate,
             ExpectedDeliveryDate = model.ExpectedDeliveryDate,
@@ -129,6 +134,7 @@ public class SalesOrderController : Controller
     {
         var order = await _context.SalesOrders
             .Include(s => s.Customer)
+            .Include(s => s.Pricelist)
             .Include(s => s.Details)
             .FirstOrDefaultAsync(s => s.Id == id);
 
@@ -145,6 +151,8 @@ public class SalesOrderController : Controller
             Id = order.Id,
             SoNumber = order.SoNumber,
             CustomerId = order.CustomerId,
+            PricelistId = order.PricelistId,
+            PricelistName = order.Pricelist?.Name,
             CustomerPoReference = order.CustomerPoReference,
             OrderDate = order.OrderDate,
             ExpectedDeliveryDate = order.ExpectedDeliveryDate,
@@ -177,6 +185,7 @@ public class SalesOrderController : Controller
         ViewBag.Designs = await _context.Designs.Where(d => d.IsActive).OrderBy(d => d.DesignNumber).ToListAsync();
         ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
         ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+        ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
 
         return View(vm);
     }
@@ -191,6 +200,7 @@ public class SalesOrderController : Controller
             ViewBag.Designs = await _context.Designs.Where(d => d.IsActive).OrderBy(d => d.DesignNumber).ToListAsync();
             ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
+            ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
             return View(model);
         }
 
@@ -201,6 +211,7 @@ public class SalesOrderController : Controller
         if (order == null) return NotFound();
 
         order.CustomerId = model.CustomerId;
+        order.PricelistId = model.PricelistId;
         order.CustomerPoReference = model.CustomerPoReference;
         order.OrderDate = model.OrderDate;
         order.ExpectedDeliveryDate = model.ExpectedDeliveryDate;
@@ -252,6 +263,7 @@ public class SalesOrderController : Controller
     {
         var order = await _context.SalesOrders
             .Include(s => s.Customer)
+            .Include(s => s.Pricelist)
             .Include(s => s.Details)
             .Include(s => s.Challans)
                 .ThenInclude(c => c.Items)
@@ -355,6 +367,32 @@ public class SalesOrderController : Controller
                     QuantityDispatched = item.DispatchQuantity,
                     Remarks = item.Remarks
                 });
+
+                // Deduct from Ready Product Inventory (Outward Sales Dispatch)
+                var readyProduct = await _context.ReadyProducts
+                    .FirstOrDefaultAsync(r => 
+                        (orderDetail.DesignId.HasValue && r.DesignId == orderDetail.DesignId.Value && r.Colour == orderDetail.Colour && r.Size == orderDetail.Size) ||
+                        (r.DesignNumber == orderDetail.DesignNumber && r.Colour == orderDetail.Colour && r.Size == orderDetail.Size));
+
+                if (readyProduct != null)
+                {
+                    readyProduct.QuantityOnHand -= item.DispatchQuantity;
+                    readyProduct.UpdatedDate = DateTime.Now;
+
+                    var readyTx = new ReadyProductTransaction
+                    {
+                        ReadyProductId = readyProduct.Id,
+                        TransactionType = ReadyProductTransactionType.OutwardSales,
+                        Quantity = -item.DispatchQuantity,
+                        BalanceAfter = readyProduct.QuantityOnHand,
+                        ReferenceType = "Delivery Challan",
+                        ReferenceNumber = challan.ChallanNumber,
+                        Notes = $"Dispatched {item.DispatchQuantity} ready set(s) against Sales Order #{order.SoNumber} via Challan #{challan.ChallanNumber}",
+                        CreatedBy = User.Identity?.Name ?? "Staff",
+                        CreatedDate = DateTime.Now
+                    };
+                    _context.ReadyProductTransactions.Add(readyTx);
+                }
             }
         }
 
@@ -480,5 +518,124 @@ public class SalesOrderController : Controller
         await _context.SaveChangesAsync();
         TempData["Success"] = $"E-Way Bill #{challan.EwayBillNumber} saved against Challan {challan.ChallanNumber}.";
         return RedirectToAction(nameof(PrintChallan), new { id = model.Id });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> PrintChallanEwayBill(int id)
+    {
+        var challan = await _context.DeliveryChallans
+            .Include(c => c.Customer)
+            .Include(c => c.Items)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (challan == null) return NotFound();
+
+        string fromGstin = _config["Company:GSTIN"] ?? "24AABCA1234F1Z9";
+        string fromName = _config["Company:Name"] ?? "AASHANA FASHION";
+        string fromAddr1 = _config["Company:Address1"] ?? "Plot 14-16, Garment Industrial Zone";
+        string fromAddr2 = _config["Company:Address2"] ?? "Pandesara";
+        string fromPlace = _config["Company:City"] ?? "Surat";
+        string fromState = _config["Company:State"] ?? "Gujarat";
+        int fromPin = int.TryParse(_config["Company:Pincode"], out var pinVal) ? pinVal : 394221;
+        int fromStateCode = int.TryParse(_config["Company:StateCode"], out var scVal) ? scVal : 24;
+        string fromAddr = $"{fromAddr1}, {fromAddr2}, {fromPlace}, {fromState} - {fromPin}";
+
+        string toGstin = !string.IsNullOrWhiteSpace(challan.Customer?.GstNumber) && challan.Customer.GstNumber.Length == 15
+            ? challan.Customer.GstNumber.Trim().ToUpper()
+            : "URP";
+        string toName = challan.Customer?.CustomerName ?? "Consignee";
+        string toAddr = challan.ShippingAddress ?? (challan.Customer?.Address ?? "Surat, Gujarat");
+        string toPlace = challan.Customer?.City ?? "Surat";
+        int toPin = _ewayBillService.ExtractPincode(challan.Customer?.PinCode ?? toAddr, 395002);
+        int toState = _ewayBillService.GetStateCode(toGstin, challan.Customer?.State);
+
+        var ewbNo = !string.IsNullOrWhiteSpace(challan.EwayBillNumber)
+            ? challan.EwayBillNumber
+            : $"2410{DateTime.Now:yyMMdd}{challan.Id:D4}";
+
+        var genDate = challan.EwayBillDate ?? challan.ChallanDate;
+        var dist = challan.DistanceKm ?? 50;
+        var days = Math.Max(1, (int)Math.Ceiling(dist / 200.0));
+        var validUntil = genDate.AddDays(days).Date.AddHours(23).AddMinutes(59);
+
+        // Estimate challan goods value for Job Work (e.g. ₹500/piece default)
+        decimal totalPcs = challan.Items.Sum(i => i.QuantityDispatched);
+        decimal taxableVal = totalPcs * 500m;
+        bool isInter = (toState != 24);
+        decimal cgst = isInter ? 0m : Math.Round(taxableVal * 0.025m, 2);
+        decimal sgst = isInter ? 0m : Math.Round(taxableVal * 0.025m, 2);
+        decimal igst = isInter ? Math.Round(taxableVal * 0.05m, 2) : 0m;
+        decimal totalVal = taxableVal + cgst + sgst + igst;
+
+        var vm = new EwayBillPrintViewModel
+        {
+            EwayBillNumber = ewbNo,
+            EwayBillDate = genDate,
+            ValidFrom = genDate,
+            ValidUntil = validUntil,
+            GeneratedBy = $"{fromGstin} - {fromName}",
+            SupplierGstin = fromGstin,
+            SupplierName = fromName,
+            DispatchAddress = fromAddr,
+            DispatchPlace = fromPlace,
+            DispatchPincode = fromPin,
+            DispatchStateCode = fromStateCode,
+
+            RecipientGstin = toGstin,
+            RecipientName = toName,
+            DeliveryAddress = toAddr,
+            DeliveryPlace = toPlace,
+            DeliveryPincode = toPin,
+            DeliveryStateCode = toState,
+
+            DocType = "Delivery Challan",
+            DocCode = "CHL",
+            DocNumber = challan.ChallanNumber,
+            DocDate = challan.ChallanDate,
+            SupplyType = "Outward - Job Work",
+            TransactionType = "Regular",
+            ReasonForTransportation = "Job Work / Delivery Challan",
+
+            TaxableAmount = taxableVal,
+            CgstAmount = cgst,
+            SgstAmount = sgst,
+            IgstAmount = igst,
+            CessAmount = 0m,
+            TotalInvoiceValue = totalVal,
+
+            TransMode = challan.TransMode switch { "2" => "Rail", "3" => "Air", "4" => "Ship", _ => "Road" },
+            VehicleNumber = !string.IsNullOrWhiteSpace(challan.VehicleNumber) ? challan.VehicleNumber : "GJ-05-BX-1234",
+            VehicleType = challan.VehicleType == "O" ? "Over Dimensional Cargo" : "Regular",
+            TransporterName = !string.IsNullOrWhiteSpace(challan.TransporterName) ? challan.TransporterName : "Direct Transport",
+            TransporterId = challan.TransporterId ?? "",
+            TransDocNo = challan.LrNumber ?? "",
+            TransDocDate = challan.ChallanDate,
+            DistanceKm = dist,
+            FromPlace = "Surat, Gujarat",
+
+            SourceId = challan.Id,
+            SourceType = "Challan"
+        };
+
+        int sr = 1;
+        foreach (var it in challan.Items)
+        {
+            decimal itemVal = it.QuantityDispatched * 500m;
+            vm.Items.Add(new EwayBillPrintItemViewModel
+            {
+                ItemNo = sr++,
+                HsnCode = "6204",
+                ProductName = $"Design {it.DesignNumber}",
+                Description = $"{it.Colour} {it.Size}".Trim(),
+                Quantity = it.QuantityDispatched,
+                Unit = "PCS",
+                TaxableValue = itemVal,
+                CgstRate = isInter ? 0 : 2.5m,
+                SgstRate = isInter ? 0 : 2.5m,
+                IgstRate = isInter ? 5m : 0
+            });
+        }
+
+        return View("~/Views/Shared/PrintEwayBill.cshtml", vm);
     }
 }

@@ -1,0 +1,194 @@
+@model AashanaFashion.Models.SalesReturnCreateViewModel
+@{
+    ViewData["Title"] = $"Sales Return for Invoice {Model.InvoiceNumber}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a asp-action="Details" asp-route-id="@Model.TaxInvoiceId" class="text-decoration-none text-muted small">← Back to Invoice @Model.InvoiceNumber</a>
+        <h2 class="fw-bold mt-1 mb-0">↩️ Record Goods Return &amp; Credit Note</h2>
+        <p class="text-muted mb-0">Invoice #<strong>@Model.InvoiceNumber</strong> | Customer: <strong>@Model.CustomerName</strong></p>
+    </div>
+</div>
+
+<form asp-action="ReturnGoods" method="post" id="returnForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="TaxInvoiceId" />
+    <input type="hidden" asp-for="InvoiceNumber" />
+    <input type="hidden" asp-for="InvoiceDate" />
+    <input type="hidden" asp-for="CustomerId" />
+    <input type="hidden" asp-for="CustomerName" />
+
+    <div asp-validation-summary="All" class="alert alert-danger" style="display:@(ViewData.ModelState.IsValid ? "none" : "block")"></div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold">📦 Select Items to Return</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="returnItemsTable" style="font-size:0.875rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Description / Item</th>
+                                    <th>Colour</th>
+                                    <th>Size</th>
+                                    <th class="text-center">Invoiced Qty</th>
+                                    <th class="text-center">Remaining</th>
+                                    <th class="text-center" style="width:130px;">Return Qty</th>
+                                    <th class="text-end">Unit Price (₹)</th>
+                                    <th class="text-end">Taxable (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < Model.Items.Count; i++)
+                                {
+                                    var item = Model.Items[i];
+                                    var remaining = item.OriginalQuantity - item.AlreadyReturnedQuantity;
+                                    <tr>
+                                        <td>
+                                            <input type="hidden" name="Items[@i].TaxInvoiceItemId" value="@item.TaxInvoiceItemId" />
+                                            <input type="hidden" name="Items[@i].DesignId" value="@item.DesignId" />
+                                            <input type="hidden" name="Items[@i].Description" value="@item.Description" />
+                                            <input type="hidden" name="Items[@i].Colour" value="@item.Colour" />
+                                            <input type="hidden" name="Items[@i].Size" value="@item.Size" />
+                                            <input type="hidden" name="Items[@i].OriginalQuantity" value="@item.OriginalQuantity" />
+                                            <input type="hidden" name="Items[@i].AlreadyReturnedQuantity" value="@item.AlreadyReturnedQuantity" />
+                                            <input type="hidden" name="Items[@i].UnitPrice" value="@item.UnitPrice" class="item-unit-price" />
+                                            <input type="hidden" name="Items[@i].GstRate" value="@item.GstRate" class="item-gst-rate" />
+
+                                            <span class="fw-bold">@item.Description</span>
+                                        </td>
+                                        <td>@(item.Colour ?? "—")</td>
+                                        <td>@(item.Size ?? "—")</td>
+                                        <td class="text-center">@item.OriginalQuantity</td>
+                                        <td class="text-center text-muted">@remaining</td>
+                                        <td class="text-center">
+                                            <input type="number" name="Items[@i].ReturnQuantity" value="0" min="0" max="@remaining"
+                                                   class="form-control form-control-sm text-center fw-bold return-qty-input" />
+                                        </td>
+                                        <td class="text-end">₹@item.UnitPrice.ToString("N2")</td>
+                                        <td class="text-end fw-semibold item-taxable-display">₹0.00</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Return Details Card -->
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold">📋 Return Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="ReturnDate" class="form-label fw-semibold">Return Date</label>
+                        <input asp-for="ReturnDate" type="date" class="form-control" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Reason" class="form-label fw-semibold">Return Reason</label>
+                        <select asp-for="Reason" class="form-select" asp-items="Html.GetEnumSelectList<AashanaFashion.Models.ReturnReason>()"></select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Remarks" class="form-label fw-semibold">Remarks / Notes</label>
+                        <textarea asp-for="Remarks" class="form-control" rows="3" placeholder="Condition of returned garments, defect notes..."></textarea>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input asp-for="RestockInventory" class="form-check-input" type="checkbox" id="restockCheck" checked />
+                        <label class="form-check-label fw-semibold" for="restockCheck">Restock to Ready Inventory</label>
+                        <small class="text-muted d-block" style="font-size:0.75rem;">Adds returned quantities back into Ready Product stock automatically.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary & Commission Card -->
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold">💰 Return Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Total Returned Qty:</span>
+                        <strong id="summaryTotalQty">0 pcs</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Return Taxable Value:</span>
+                        <strong id="summaryTaxable">₹0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="text-muted">Est. GST Reversal:</span>
+                        <strong id="summaryGst">₹0.00</strong>
+                    </div>
+                    <hr />
+                    <div class="d-flex justify-content-between fs-5 mb-3">
+                        <span class="fw-bold">Total Credit Amount:</span>
+                        <strong class="text-danger" id="summaryGrandTotal">₹0.00</strong>
+                    </div>
+
+                    <div class="alert alert-warning border small p-2 mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>Commission Deduction:</strong> Salesman commission attributed to these items will be automatically calculated and deducted as a clawback in the Commission Ledger and General Ledger.
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger fw-bold py-2" id="btnSubmitReturn">
+                            ↩️ Confirm Return &amp; Deduct Commission
+                        </button>
+                        <a asp-action="Details" asp-route-id="@Model.TaxInvoiceId" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        function recalculateReturnSummary() {
+            var totalQty = 0;
+            var totalTaxable = 0;
+            var totalGst = 0;
+
+            $('#returnItemsTable tbody tr').each(function () {
+                var $row = $(this);
+                var qty = parseInt($row.find('.return-qty-input').val()) || 0;
+                var unitPrice = parseFloat($row.find('.item-unit-price').val()) || 0;
+                var gstRate = parseFloat($row.find('.item-gst-rate').val()) || 0;
+
+                var taxable = Math.round(qty * unitPrice * 100) / 100;
+                var gst = Math.round(taxable * (gstRate / 100) * 100) / 100;
+
+                $row.find('.item-taxable-display').text('₹' + taxable.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+
+                totalQty += qty;
+                totalTaxable += taxable;
+                totalGst += gst;
+            });
+
+            var grandTotal = totalTaxable + totalGst;
+
+            $('#summaryTotalQty').text(totalQty + ' pcs');
+            $('#summaryTaxable').text('₹' + totalTaxable.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+            $('#summaryGst').text('₹' + totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+            $('#summaryGrandTotal').text('₹' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+
+            $('#btnSubmitReturn').prop('disabled', totalQty <= 0);
+        }
+
+        $(document).ready(function () {
+            $('.return-qty-input').on('input change', recalculateReturnSummary);
+            recalculateReturnSummary();
+        });
+    </script>
+}

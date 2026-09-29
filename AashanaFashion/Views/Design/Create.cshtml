@@ -228,6 +228,59 @@
                         </div>
                     </div>
 
+                    <!-- Worker & Handwork Planning -->
+                    <div class="card p-3 mb-3" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+                        <h6 class="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
+                            <span>🪡</span> Production Workers & Handwork Planning
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="af-form-group mb-0">
+                                    <label asp-for="StitchingWorkerId" class="af-label">Stitching Master / Worker</label>
+                                    <select asp-for="StitchingWorkerId" class="af-input af-select">
+                                        <option value="">— Select Stitching Worker —</option>
+                                        @foreach (var v in vendors)
+                                        {
+                                            <option value="@v.Id">@v.VendorName</option>
+                                        }
+                                    </select>
+                                    <span style="font-size:.75rem;color:#94a3b8;">Default stitching worker for this design</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="af-form-group mb-0">
+                                    <label asp-for="HandworkWorkerId" class="af-label">Handwork Karigar / Worker</label>
+                                    <select asp-for="HandworkWorkerId" class="af-input af-select">
+                                        <option value="">— Select Handwork Worker —</option>
+                                        @foreach (var v in vendors)
+                                        {
+                                            <option value="@v.Id">@v.VendorName</option>
+                                        }
+                                    </select>
+                                    <span style="font-size:.75rem;color:#94a3b8;">Default handwork karigar for this design</span>
+                                </div>
+                            </div>
+                            <div class="col-12 mt-3 pt-2 border-top">
+                                <label class="af-label mb-1">Handwork Garment Parts (Any one, any two, or all)</label>
+                                <div class="text-muted small mb-2">Select which pieces go for handwork. Pre-fills when planning a lot, and can be edited anytime.</div>
+                                <div class="d-flex flex-wrap gap-4 align-items-center">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" asp-for="HandworkCholi" id="hw_choli" />
+                                        <label class="form-check-label fw-semibold" for="hw_choli">👚 Choli (Blouse)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" asp-for="HandworkChaniya" id="hw_chaniya" />
+                                        <label class="form-check-label fw-semibold" for="hw_chaniya">👗 Chaniya (Lehenga)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" asp-for="HandworkDupatta" id="hw_dupatta" />
+                                        <label class="form-check-label fw-semibold" for="hw_dupatta">🧣 Dupatta (Chunri)</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="af-form-group">
                         <label asp-for="InternalNotes" class="af-label">Internal Notes</label>
                         <textarea asp-for="InternalNotes" class="af-input" rows="3" placeholder="Internal notes"></textarea>

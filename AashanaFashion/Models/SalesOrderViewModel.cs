@@ -11,6 +11,9 @@ public class SalesOrderViewModel
     [Required]
     public int CustomerId { get; set; }
 
+    public int? PricelistId { get; set; }
+    public string? PricelistName { get; set; }
+
     public string? CustomerPoReference { get; set; }
 
     public DateTime OrderDate { get; set; } = DateTime.Now;

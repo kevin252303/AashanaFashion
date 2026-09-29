@@ -30,6 +30,35 @@
             padding: 30px;
             border: 1px solid #cbd5e1;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .challan-watermark {
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 75% !important;
+            max-width: 500px !important;
+            pointer-events: none !important;
+            opacity: 0.10 !important;
+            z-index: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .challan-watermark img {
+            width: 100% !important;
+            height: auto !important;
+            object-fit: contain !important;
+            pointer-events: none !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .challan-container > div:not(.challan-watermark),
+        .challan-container > table {
+            position: relative;
+            z-index: 1;
         }
         .actions-bar {
             max-width: 850px;
@@ -183,9 +212,22 @@
                 box-shadow: none;
                 padding: 0;
                 max-width: 100%;
+                position: relative !important;
             }
             .actions-bar {
                 display: none;
+            }
+
+            .challan-watermark {
+                display: flex !important;
+                opacity: 0.12 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .challan-watermark img {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
     </style>
@@ -195,6 +237,9 @@
     <div class="actions-bar">
         <div style="display: flex; gap: 10px; align-items: center;">
             <button onclick="window.print()" class="btn btn-primary">🖨 Print Delivery Challan</button>
+            <a href="@Url.Action("PrintChallanEwayBill", "SalesOrder", new { id = Model.Id })" target="_blank" class="btn" style="background: #0284c7; color: white;">
+                🖨️ Print E-Way Bill
+            </a>
             <a href="@Url.Action("DownloadChallanEwayJson", "SalesOrder", new { id = Model.Id })" class="btn" style="background: #e0e7ff; color: #3730a3; border-color: #c7d2fe;">
                 🚚 Download E-Way Bill JSON (.json)
             </a>
@@ -203,6 +248,10 @@
     </div>
 
     <div class="challan-container">
+        <!-- Watermark inside Challan (Visible on Screen & in Print) -->
+        <div class="challan-watermark" aria-hidden="true">
+            <img src="/images/aashana_watermark.png" alt="Aashana Fashion Watermark" />
+        </div>
         <!-- Header -->
         <div class="header">
             <div>

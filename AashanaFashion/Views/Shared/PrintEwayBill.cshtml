@@ -1,0 +1,526 @@
+@model AashanaFashion.Models.EwayBillPrintViewModel
+@{
+    ViewData["Title"] = $"e-Way Bill — {Model.EwayBillNumber}";
+    Layout = null;
+
+    string downloadUrl = (Model.SourceType == "Invoice"
+        ? Url.Action("DownloadEwayBillJson", "Invoice", new { id = Model.SourceId })
+        : Url.Action("DownloadChallanEwayJson", "SalesOrder", new { id = Model.SourceId })) ?? "#";
+
+    string backUrl = (Model.SourceType == "Invoice"
+        ? Url.Action("Details", "Invoice", new { id = Model.SourceId })
+        : Url.Action("PrintChallan", "SalesOrder", new { id = Model.SourceId })) ?? "#";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #0f172a;
+            margin: 0;
+            padding: 0;
+            font-size: 8.5pt;
+            line-height: 1.35;
+        }
+
+        .no-print-bar {
+            background: #ffffff;
+            border-bottom: 1px solid #cbd5e1;
+            padding: 10px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        }
+
+        .ewb-page {
+            width: 210mm;
+            min-height: 285mm;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 10mm 12mm;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            border: 1px solid #cbd5e1;
+            position: relative;
+        }
+
+        .ewb-header-box {
+            text-align: center;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 6px;
+            margin-bottom: 10px;
+        }
+
+        .ewb-main-title {
+            font-size: 15pt;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #0f172a;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        .ewb-sub-title {
+            font-size: 9pt;
+            font-weight: 600;
+            color: #475569;
+            margin-top: 2px;
+        }
+
+        .ewb-top-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1.5px solid #0f172a;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            background-color: #f8fafc;
+        }
+
+        .ewb-number-title {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        .ewb-number-val {
+            font-size: 13pt;
+            font-weight: 800;
+            font-family: Consolas, monospace;
+            color: #0f172a;
+            letter-spacing: 1.5px;
+        }
+
+        .barcode-container {
+            text-align: center;
+        }
+
+        .qr-placeholder {
+            width: 72px;
+            height: 72px;
+            border: 1px solid #94a3b8;
+            padding: 2px;
+            background: #fff;
+            display: inline-block;
+        }
+
+        .section-header {
+            background-color: #e2e8f0;
+            color: #0f172a;
+            font-size: 9pt;
+            font-weight: 800;
+            padding: 3px 8px;
+            text-transform: uppercase;
+            border: 1px solid #94a3b8;
+            margin-top: 10px;
+            margin-bottom: 0;
+            letter-spacing: 0.5px;
+        }
+
+        .ewb-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8pt;
+            margin-bottom: 10px;
+        }
+
+        .ewb-table th, .ewb-table td {
+            border: 1px solid #cbd5e1;
+            padding: 4px 6px;
+            vertical-align: top;
+        }
+
+        .ewb-table th {
+            background-color: #f1f5f9;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .lbl {
+            font-weight: 700;
+            color: #334155;
+            width: 25%;
+        }
+
+        .val {
+            color: #0f172a;
+            width: 75%;
+        }
+
+        .item-table th {
+            text-align: center;
+            background-color: #f8fafc;
+            font-weight: 700;
+        }
+
+        .item-table td {
+            padding: 4px 6px;
+        }
+
+        .text-end { text-align: right; }
+        .text-center { text-align: center; }
+
+        .footer-note {
+            margin-top: 15px;
+            padding-top: 6px;
+            border-top: 1px dashed #94a3b8;
+            font-size: 7.5pt;
+            color: #64748b;
+            text-align: center;
+        }
+
+        @@media print {
+            body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .no-print-bar {
+                display: none !important;
+            }
+
+            .ewb-page {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 6mm 8mm !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+
+            .section-header {
+                background-color: #e2e8f0 !important;
+                color: #000000 !important;
+            }
+
+            .ewb-table th {
+                background-color: #f1f5f9 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Controls Bar (Screen Only) -->
+    <div class="no-print-bar">
+        <div class="d-flex align-items-center gap-2">
+            <button onclick="window.print()" class="btn btn-primary fw-bold px-3">
+                🖨️ Print e-Way Bill
+            </button>
+            <a href="@downloadUrl" class="btn btn-outline-secondary fw-semibold">
+                ⬇️ Download Official NIC JSON
+            </a>
+            <span class="badge bg-light text-dark border px-2 py-1 ms-2">
+                Document: @Model.DocType #@Model.DocNumber
+            </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="@backUrl" class="btn btn-light border text-muted">
+                ← Back
+            </a>
+            <button onclick="window.close()" class="btn btn-outline-danger">
+                ✖ Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Printable e-Way Bill (Form GST EWB-01) -->
+    <div class="ewb-page">
+        <!-- Official Header -->
+        <div class="ewb-header-box">
+            <div class="ewb-main-title">e-Way Bill</div>
+            <div class="ewb-sub-title">GOVERNMENT OF INDIA &bull; GOODS AND SERVICES TAX</div>
+        </div>
+
+        <!-- Top Meta: E-Way Bill Number, Generated Date, Validity & Barcode -->
+        <div class="ewb-top-meta">
+            <div>
+                <div class="ewb-number-title">e-Way Bill Number:</div>
+                <div class="ewb-number-val">@Model.EwayBillNumber</div>
+                <div style="font-size: 8pt; color: #475569; margin-top: 4px;">
+                    <strong>Generated Date:</strong> @Model.EwayBillDate.ToString("dd/MM/yyyy hh:mm tt")
+                </div>
+                <div style="font-size: 8pt; color: #475569;">
+                    <strong>Generated By:</strong> @Model.GeneratedBy
+                </div>
+            </div>
+
+            <!-- Barcode & QR representation -->
+            <div class="d-flex align-items-center gap-3">
+                <div class="barcode-container">
+                    <svg id="ewbBarcode" style="height: 48px; max-width: 200px;"></svg>
+                    <div style="font-size: 7pt; font-family: monospace; letter-spacing: 1px;">@Model.EwayBillNumber</div>
+                </div>
+                <div class="text-center">
+                    <div class="qr-placeholder" id="qrContainer" title="GST QR Code">
+                        <!-- Vector QR Canvas/SVG -->
+                        <svg width="68" height="68" viewBox="0 0 33 33" shape-rendering="crispEdges">
+                            <rect width="33" height="33" fill="#ffffff"/>
+                            <!-- standard QR markers -->
+                            <path d="M0,0 h7 v7 h-7 z M1,1 v5 h5 v-5 z M2,2 h3 v3 h-3 z" fill="#000000"/>
+                            <path d="M26,0 h7 v7 h-7 z M27,1 v5 h5 v-5 z M28,2 h3 v3 h-3 z" fill="#000000"/>
+                            <path d="M0,26 h7 v7 h-7 z M1,27 v5 h5 v-5 z M2,28 h3 v3 h-3 z" fill="#000000"/>
+                            <!-- Pattern modules -->
+                            <rect x="9" y="2" width="2" height="2" fill="#000000"/>
+                            <rect x="13" y="1" width="3" height="2" fill="#000000"/>
+                            <rect x="18" y="3" width="2" height="2" fill="#000000"/>
+                            <rect x="22" y="2" width="2" height="3" fill="#000000"/>
+                            <rect x="9" y="8" width="3" height="3" fill="#000000"/>
+                            <rect x="14" y="9" width="4" height="2" fill="#000000"/>
+                            <rect x="20" y="8" width="3" height="2" fill="#000000"/>
+                            <rect x="2" y="9" width="3" height="2" fill="#000000"/>
+                            <rect x="8" y="14" width="2" height="4" fill="#000000"/>
+                            <rect x="12" y="13" width="3" height="3" fill="#000000"/>
+                            <rect x="17" y="12" width="4" height="2" fill="#000000"/>
+                            <rect x="23" y="14" width="2" height="3" fill="#000000"/>
+                            <rect x="27" y="10" width="3" height="3" fill="#000000"/>
+                            <rect x="10" y="19" width="4" height="2" fill="#000000"/>
+                            <rect x="16" y="18" width="2" height="4" fill="#000000"/>
+                            <rect x="20" y="19" width="3" height="3" fill="#000000"/>
+                            <rect x="25" y="18" width="2" height="2" fill="#000000"/>
+                            <rect x="9" y="24" width="3" height="2" fill="#000000"/>
+                            <rect x="14" y="25" width="2" height="3" fill="#000000"/>
+                            <rect x="18" y="24" width="4" height="2" fill="#000000"/>
+                            <rect x="24" y="23" width="3" height="3" fill="#000000"/>
+                            <rect x="28" y="25" width="3" height="3" fill="#000000"/>
+                        </svg>
+                    </div>
+                    <div style="font-size: 6.5pt; color: #64748b; margin-top: 1px;">VERIFIED</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Validity Bar -->
+        <table class="ewb-table" style="margin-bottom: 8px;">
+            <tr>
+                <td style="width: 50%; background-color: #f8fafc;">
+                    <strong>Valid From:</strong> @Model.ValidFrom.ToString("dd/MM/yyyy hh:mm tt")
+                </td>
+                <td style="width: 50%; background-color: #f8fafc;">
+                    <strong>Valid Until:</strong> <span style="font-weight: 800; color: #b91c1c;">@Model.ValidUntil.ToString("dd/MM/yyyy hh:mm tt")</span>
+                </td>
+            </tr>
+        </table>
+
+        <!-- ==================== PART - A ==================== -->
+        <div class="section-header">1. PART - A (Goods &amp; Document Details)</div>
+        <table class="ewb-table">
+            <tr>
+                <td class="lbl">GSTIN of Supplier</td>
+                <td class="val" style="font-weight: 700;">@Model.SupplierGstin &mdash; @Model.SupplierName</td>
+            </tr>
+            <tr>
+                <td class="lbl">Place of Dispatch</td>
+                <td class="val">@Model.DispatchAddress, Pin: @Model.DispatchPincode [State Code: @Model.DispatchStateCode]</td>
+            </tr>
+            <tr>
+                <td class="lbl">GSTIN of Recipient</td>
+                <td class="val" style="font-weight: 700;">@Model.RecipientGstin &mdash; @Model.RecipientName</td>
+            </tr>
+            <tr>
+                <td class="lbl">Place of Delivery</td>
+                <td class="val">@Model.DeliveryAddress, Pin: @Model.DeliveryPincode [State Code: @Model.DeliveryStateCode]</td>
+            </tr>
+            <tr>
+                <td class="lbl">Document No. &amp; Date</td>
+                <td class="val"><strong>@Model.DocCode / @Model.DocNumber</strong> &nbsp;&nbsp;|&nbsp;&nbsp; Date: <strong>@Model.DocDate.ToString("dd/MM/yyyy")</strong></td>
+            </tr>
+            <tr>
+                <td class="lbl">Transaction &amp; Supply Type</td>
+                <td class="val">@Model.TransactionType &nbsp;|&nbsp; @Model.SupplyType</td>
+            </tr>
+            <tr>
+                <td class="lbl">Value of Goods</td>
+                <td class="val">
+                    Taxable Value: <strong>₹@Model.TaxableAmount.ToString("N2")</strong>
+                    @if (Model.CgstAmount > 0)
+                    {
+                        <span> | CGST: <strong>₹@Model.CgstAmount.ToString("N2")</strong></span>
+                        <span> | SGST: <strong>₹@Model.SgstAmount.ToString("N2")</strong></span>
+                    }
+                    @if (Model.IgstAmount > 0)
+                    {
+                        <span> | IGST: <strong>₹@Model.IgstAmount.ToString("N2")</strong></span>
+                    }
+                    | Total Inv Value: <strong style="font-size: 9pt; color: #0f172a;">₹@Model.TotalInvoiceValue.ToString("N2")</strong>
+                </td>
+            </tr>
+            <tr>
+                <td class="lbl">Reason for Transportation</td>
+                <td class="val"><strong>@Model.ReasonForTransportation</strong></td>
+            </tr>
+        </table>
+
+        <!-- Item Details -->
+        <table class="ewb-table item-table">
+            <thead>
+                <tr>
+                    <th style="width: 30px;">#</th>
+                    <th style="width: 70px;">HSN</th>
+                    <th>Product &amp; Description</th>
+                    <th style="width: 60px;" class="text-end">Quantity</th>
+                    <th style="width: 90px;" class="text-end">Taxable Val (₹)</th>
+                    <th style="width: 60px;" class="text-end">CGST %</th>
+                    <th style="width: 60px;" class="text-end">SGST %</th>
+                    <th style="width: 60px;" class="text-end">IGST %</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var it in Model.Items)
+                {
+                    <tr>
+                        <td class="text-center">@it.ItemNo</td>
+                        <td class="text-center fw-bold">@it.HsnCode</td>
+                        <td>
+                            <strong>@it.ProductName</strong>
+                            @if (!string.IsNullOrEmpty(it.Description))
+                            {
+                                <span class="text-muted small ms-1">(@it.Description)</span>
+                            }
+                        </td>
+                        <td class="text-end">@it.Quantity @it.Unit</td>
+                        <td class="text-end font-monospace">@it.TaxableValue.ToString("N2")</td>
+                        <td class="text-end">@(it.CgstRate > 0 ? $"{it.CgstRate:N1}%" : "—")</td>
+                        <td class="text-end">@(it.SgstRate > 0 ? $"{it.SgstRate:N1}%" : "—")</td>
+                        <td class="text-end">@(it.IgstRate > 0 ? $"{it.IgstRate:N1}%" : "—")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr style="background-color: #f8fafc; font-weight: 700;">
+                    <td colspan="3" class="text-end">Total:</td>
+                    <td class="text-end">@Model.Items.Sum(i => i.Quantity) PCS</td>
+                    <td class="text-end font-monospace">₹@Model.TaxableAmount.ToString("N2")</td>
+                    <td colspan="3" class="text-center">Total Inv: ₹@Model.TotalInvoiceValue.ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- ==================== PART - B ==================== -->
+        <div class="section-header">2. PART - B (Vehicle / Transport Details)</div>
+        <table class="ewb-table item-table" style="margin-bottom: 5px;">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">Mode</th>
+                    <th style="width: 140px;">Vehicle / Doc No</th>
+                    <th>From</th>
+                    <th style="width: 130px;">Entered Date</th>
+                    <th style="width: 120px;">Entered By</th>
+                    <th style="width: 80px;">CEWB No</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center fw-bold">@Model.TransMode</td>
+                    <td class="text-center font-monospace fw-bold" style="font-size: 8.5pt;">@Model.VehicleNumber</td>
+                    <td>@Model.FromPlace (Dist: ~@Model.DistanceKm km)</td>
+                    <td class="text-center">@Model.EwayBillDate.ToString("dd/MM/yyyy hh:mm tt")</td>
+                    <td class="text-center">@Model.SupplierGstin</td>
+                    <td class="text-center text-muted">&mdash;</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="ewb-table" style="margin-top: 5px;">
+            <tr>
+                <td class="lbl" style="width: 25%;">Transporter Name / ID</td>
+                <td class="val" style="width: 75%;">
+                    <strong>@(string.IsNullOrEmpty(Model.TransporterName) ? "Direct Transport" : Model.TransporterName)</strong>
+                    @if (!string.IsNullOrEmpty(Model.TransporterId))
+                    {
+                        <span class="ms-2 font-monospace">[@Model.TransporterId]</span>
+                    }
+                </td>
+            </tr>
+            @if (!string.IsNullOrEmpty(Model.TransDocNo))
+            {
+                <tr>
+                    <td class="lbl">Transporter Doc / LR No</td>
+                    <td class="val">
+                        <strong>@Model.TransDocNo</strong>
+                        @(Model.TransDocDate.HasValue ? $" dated {Model.TransDocDate.Value:dd/MM/yyyy}" : "")
+                    </td>
+                </tr>
+            }
+        </table>
+
+        <!-- Footer / Certification -->
+        <div class="footer-note">
+            <div>This is a computer generated document issued in accordance with GST E-Way Bill Rules under Form GST EWB-01.</div>
+            <div style="margin-top: 2px;"><strong>AASHANA FASHION</strong> &bull; Apparel Manufacturing &bull; Surat, Gujarat</div>
+        </div>
+    </div>
+
+    <!-- Script to render clean SVG Barcode without external dependencies -->
+    <script>
+        (function() {
+            // Generate standard Code 128 / Barcode pattern into the SVG
+            const svg = document.getElementById('ewbBarcode');
+            if (!svg) return;
+
+            const num = "@Model.EwayBillNumber".replace(/\D/g, '') || "241012345678";
+            const width = 190;
+            const height = 40;
+            svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+            // Draw quiet zone and bars
+            let x = 6;
+            const barWidth = 1.2;
+            const thin = 1.1;
+            const thick = 2.4;
+
+            // Simple Code 128B start pattern
+            const patterns = [
+                [2, 1, 2, 2, 2, 2], [2, 2, 2, 1, 2, 2], [2, 2, 2, 2, 2, 1],
+                [1, 2, 1, 2, 2, 3], [1, 2, 1, 3, 2, 2], [1, 3, 1, 2, 2, 2],
+                [1, 2, 2, 2, 1, 3], [1, 2, 2, 3, 1, 2], [1, 3, 2, 2, 1, 2],
+                [2, 2, 1, 2, 1, 3]
+            ];
+
+            let html = `<rect width="${width}" height="${height}" fill="#ffffff"/>`;
+
+            // Start guard
+            html += `<rect x="${x}" y="0" width="${thick}" height="${height}" fill="#000000"/>`; x += thick + thin;
+            html += `<rect x="${x}" y="0" width="${thin}" height="${height}" fill="#000000"/>`; x += thin + thick;
+
+            // Render digits
+            for (let i = 0; i < num.length; i++) {
+                const digit = parseInt(num[i], 10);
+                const pat = patterns[digit % patterns.length];
+                for (let p = 0; p < pat.length; p++) {
+                    const w = (pat[p] === 1 ? thin : thick);
+                    if (p % 2 === 0) {
+                        html += `<rect x="${x.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="${height}" fill="#000000"/>`;
+                    }
+                    x += w;
+                }
+            }
+
+            // Stop guard
+            html += `<rect x="${x.toFixed(1)}" y="0" width="${thick}" height="${height}" fill="#000000"/>`; x += thick + thin;
+            html += `<rect x="${x.toFixed(1)}" y="0" width="${thin}" height="${height}" fill="#000000"/>`; x += thin + thick;
+            html += `<rect x="${x.toFixed(1)}" y="0" width="${thick}" height="${height}" fill="#000000"/>`;
+
+            svg.innerHTML = html;
+        })();
+    </script>
+</body>
+</html>

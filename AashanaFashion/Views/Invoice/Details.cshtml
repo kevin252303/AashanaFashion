@@ -28,15 +28,18 @@
         <p class="text-muted mb-0">Issued on @Model.InvoiceDate.ToString("dd MMMM yyyy") | Due on @Model.DueDate.ToString("dd MMMM yyyy")</p>
         @if (!string.IsNullOrWhiteSpace(Model.EwayBillNumber))
         {
-            <div class="mt-2">
+            <div class="mt-2 d-flex align-items-center gap-2">
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 py-2 px-3">
                     🚚 E-Way Bill: <strong>@Model.EwayBillNumber</strong>
                     @(Model.EwayBillDate.HasValue ? $"({Model.EwayBillDate.Value:dd MMM yyyy})" : "")
                 </span>
                 @if (!string.IsNullOrWhiteSpace(Model.VehicleNumber))
                 {
-                    <span class="badge bg-light text-dark border ms-1">Vehicle: @Model.VehicleNumber</span>
+                    <span class="badge bg-light text-dark border">Vehicle: @Model.VehicleNumber</span>
                 }
+                <a asp-action="PrintEwayBill" asp-route-id="@Model.Id" target="_blank" class="btn btn-sm btn-primary py-1 px-3">
+                    🖨️ Print E-Way Bill
+                </a>
             </div>
         }
     </div>
@@ -46,6 +49,12 @@
                 🚚 E-Way Bill
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow">
+                <li>
+                    <a class="dropdown-item fw-bold text-primary" asp-action="PrintEwayBill" asp-route-id="@Model.Id" target="_blank">
+                        🖨️ Print Official E-Way Bill
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
                 <li>
                     <a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#ewayJsonModal">
                         📄 Download NIC JSON (.json)
@@ -67,6 +76,12 @@
         <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-dark">
             🖨️ Print GST Invoice
         </a>
+        @if (Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Cancelled)
+        {
+            <a asp-action="ReturnGoods" asp-route-id="@Model.Id" class="btn btn-outline-danger">
+                ↩️ Return Goods
+            </a>
+        }
         @if (Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Paid && Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Cancelled)
         {
             <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal">
@@ -339,6 +354,138 @@
                 }
             </div>
         </div>
+
+        <!-- Goods Returns & Credit Notes History -->
+        @if (Model.Returns != null && Model.Returns.Any())
+        {
+            <div class="card border-0 shadow-sm rounded-3 mt-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0 fw-bold">↩️ Goods Returns &amp; Credit Notes</h5>
+                    <span class="badge bg-danger-subtle text-danger">Total Returns: ₹@Model.Returns.Sum(r => r.GrandTotal).ToString("N2")</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="font-size:0.875rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Return #</th>
+                                    <th>Date</th>
+                                    <th>Reason</th>
+                                    <th>Items Returned</th>
+                                    <th class="text-end">Credit Value (₹)</th>
+                                    <th class="text-end">Comm. Deducted (₹)</th>
+                                    <th class="text-center">Restocked</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var ret in Model.Returns)
+                                {
+                                    <tr>
+                                        <td class="fw-bold text-danger">@ret.ReturnNumber</td>
+                                        <td>@ret.ReturnDate.ToString("dd/MM/yyyy")</td>
+                                        <td><span class="badge bg-light text-dark border">@ret.Reason</span></td>
+                                        <td>
+                                            @foreach (var ri in ret.Items)
+                                            {
+                                                <div class="small">@ri.Quantity pcs × @ri.Description (@ri.Colour / @ri.Size)</div>
+                                            }
+                                        </td>
+                                        <td class="text-end fw-bold text-danger">-₹@ret.GrandTotal.ToString("N2")</td>
+                                        <td class="text-end fw-semibold text-warning">-₹@ret.TotalCommissionDeducted.ToString("N2")</td>
+                                        <td class="text-center">
+                                            @if (ret.RestockInventory)
+                                            {
+                                                <span class="badge bg-success">Yes (Stock In)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">No</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Salesman Commission Breakdown -->
+        @{
+            var commEntries = ViewBag.CommissionEntries as List<AashanaFashion.Models.SalesmanCommissionEntry>;
+        }
+        @if (commEntries != null && commEntries.Any())
+        {
+            decimal netComm = commEntries.Sum(c => c.CommissionAmount);
+            <div class="card border-0 shadow-sm rounded-3 mt-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0 fw-bold">🤝 Salesman Commission Breakdown</h5>
+                    <div>
+                        <span class="badge @(netComm >= 0 ? "bg-primary-subtle text-primary" : "bg-danger-subtle text-danger") fs-6">
+                            Net Commission: ₹@netComm.ToString("N2")
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="font-size:0.875rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Salesman</th>
+                                    <th>Basis / Target</th>
+                                    <th class="text-end">Eligible Sales (₹)</th>
+                                    <th class="text-center">Rate</th>
+                                    <th class="text-end">Commission (₹)</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var comm in commEntries)
+                                {
+                                    bool isDeduction = comm.CommissionAmount < 0;
+                                    <tr class="@(isDeduction ? "table-warning bg-opacity-25" : "")">
+                                        <td class="fw-bold">
+                                            @comm.SalesmanName
+                                            @if (isDeduction)
+                                            {
+                                                <span class="badge bg-danger ms-1" style="font-size:0.7rem;">↩️ Return Deduction</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">@comm.Basis: @(comm.CategoryOrTarget ?? "All")</span>
+                                        </td>
+                                        <td class="text-end">
+                                            @(isDeduction ? $"-₹{Math.Abs(comm.SalesAmount):N2}" : $"₹{comm.SalesAmount:N2}")
+                                        </td>
+                                        <td class="text-center">
+                                            @comm.CommissionRate@(comm.CalcType == AashanaFashion.Models.CommissionCalcType.FixedAmount ? " ₹/pc" : "%")
+                                        </td>
+                                        <td class="text-end fw-bold @(isDeduction ? "text-danger" : "text-success")">
+                                            @(isDeduction ? $"-₹{Math.Abs(comm.CommissionAmount):N2}" : $"₹{comm.CommissionAmount:N2}")
+                                        </td>
+                                        <td class="text-center">
+                                            @if (comm.IsPaid)
+                                            {
+                                                <span class="badge bg-success">Paid</span>
+                                            }
+                                            else if (isDeduction)
+                                            {
+                                                <span class="badge bg-danger">Pending Clawback</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning text-dark">Pending</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 </div>
 

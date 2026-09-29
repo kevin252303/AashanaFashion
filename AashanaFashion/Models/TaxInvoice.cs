@@ -160,6 +160,7 @@ public class TaxInvoice
 
     public List<TaxInvoiceItem> Items { get; set; } = new();
     public List<PaymentReceipt> Receipts { get; set; } = new();
+    public List<SalesReturn> Returns { get; set; } = new();
 }
 
 public class TaxInvoiceItem

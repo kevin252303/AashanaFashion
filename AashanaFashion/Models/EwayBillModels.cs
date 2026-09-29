@@ -50,6 +50,77 @@ namespace AashanaFashion.Models
         public string? TransporterName { get; set; }
     }
 
+    public class EwayBillPrintViewModel
+    {
+        public string EwayBillNumber { get; set; } = string.Empty;
+        public DateTime EwayBillDate { get; set; } = DateTime.Now;
+        public DateTime ValidFrom { get; set; } = DateTime.Now;
+        public DateTime ValidUntil { get; set; } = DateTime.Now.AddDays(1);
+        public string GeneratedBy { get; set; } = string.Empty;
+
+        // Part-A: Goods / Transaction Details
+        public string SupplierGstin { get; set; } = string.Empty;
+        public string SupplierName { get; set; } = string.Empty;
+        public string DispatchAddress { get; set; } = string.Empty;
+        public string DispatchPlace { get; set; } = string.Empty;
+        public int DispatchPincode { get; set; }
+        public int DispatchStateCode { get; set; } = 24;
+
+        public string RecipientGstin { get; set; } = string.Empty;
+        public string RecipientName { get; set; } = string.Empty;
+        public string DeliveryAddress { get; set; } = string.Empty;
+        public string DeliveryPlace { get; set; } = string.Empty;
+        public int DeliveryPincode { get; set; }
+        public int DeliveryStateCode { get; set; } = 24;
+
+        public string DocType { get; set; } = "Tax Invoice";
+        public string DocCode { get; set; } = "INV";
+        public string DocNumber { get; set; } = string.Empty;
+        public DateTime DocDate { get; set; } = DateTime.Today;
+
+        public string SupplyType { get; set; } = "Outward - Supply";
+        public string TransactionType { get; set; } = "Regular";
+        public string ReasonForTransportation { get; set; } = "Supply";
+
+        public decimal TaxableAmount { get; set; }
+        public decimal CgstAmount { get; set; }
+        public decimal SgstAmount { get; set; }
+        public decimal IgstAmount { get; set; }
+        public decimal CessAmount { get; set; }
+        public decimal TotalInvoiceValue { get; set; }
+
+        public List<EwayBillPrintItemViewModel> Items { get; set; } = new();
+
+        // Part-B: Vehicle / Transporter Details
+        public string TransMode { get; set; } = "Road";
+        public string VehicleNumber { get; set; } = string.Empty;
+        public string VehicleType { get; set; } = "Regular";
+        public string TransporterName { get; set; } = string.Empty;
+        public string TransporterId { get; set; } = string.Empty;
+        public string TransDocNo { get; set; } = string.Empty;
+        public DateTime? TransDocDate { get; set; }
+        public int DistanceKm { get; set; } = 50;
+        public string FromPlace { get; set; } = "Surat, Gujarat";
+
+        public int SourceId { get; set; }
+        public string SourceType { get; set; } = "Invoice";
+    }
+
+    public class EwayBillPrintItemViewModel
+    {
+        public int ItemNo { get; set; }
+        public string HsnCode { get; set; } = "6204";
+        public string ProductName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal Quantity { get; set; }
+        public string Unit { get; set; } = "PCS";
+        public decimal TaxableValue { get; set; }
+        public decimal CgstRate { get; set; }
+        public decimal SgstRate { get; set; }
+        public decimal IgstRate { get; set; }
+        public decimal CessRate { get; set; }
+    }
+
     // =========================================================================
     // Official Government NIC E-Way Bill JSON Schema (v1.0.0421)
     // Accepted on ewaybillgst.gov.in (Bulk Generation)

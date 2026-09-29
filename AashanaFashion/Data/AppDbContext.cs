@@ -54,6 +54,12 @@ namespace AashanaFashion.Data
         public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
         public DbSet<SalaryRecord> SalaryRecords { get; set; }
         public DbSet<BiometricDevice> BiometricDevices { get; set; }
+        public DbSet<ReadyProduct> ReadyProducts { get; set; }
+        public DbSet<ReadyProductTransaction> ReadyProductTransactions { get; set; }
+        public DbSet<CustomerSalesmanCommission> CustomerSalesmanCommissions { get; set; }
+        public DbSet<SalesmanCommissionEntry> SalesmanCommissionEntries { get; set; }
+        public DbSet<SalesReturn> SalesReturns { get; set; }
+        public DbSet<SalesReturnItem> SalesReturnItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -72,6 +78,30 @@ namespace AashanaFashion.Data
                 .HasOne(d => d.ProductionOrder)
                 .WithMany(p => p.Details)
                 .HasForeignKey(d => d.ProductionOrderId);
+
+            modelBuilder.Entity<ProductionOrder>()
+                .HasOne(p => p.HandworkWorker)
+                .WithMany()
+                .HasForeignKey(p => p.HandworkWorkerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ProductionOrder>()
+                .HasOne(p => p.StitchingWorker)
+                .WithMany()
+                .HasForeignKey(p => p.StitchingWorkerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Design>()
+                .HasOne(d => d.HandworkWorker)
+                .WithMany()
+                .HasForeignKey(d => d.HandworkWorkerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Design>()
+                .HasOne(d => d.StitchingWorker)
+                .WithMany()
+                .HasForeignKey(d => d.StitchingWorkerId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Design>()
                 .Property(d => d.Price)
@@ -400,6 +430,12 @@ namespace AashanaFashion.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<SalesOrder>()
+                .HasOne(s => s.Pricelist)
+                .WithMany()
+                .HasForeignKey(s => s.PricelistId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<SalesOrder>()
                 .Property(s => s.TransportCharge)
                 .HasColumnType("decimal(18,2)");
 
@@ -649,6 +685,93 @@ namespace AashanaFashion.Data
                     .WithMany(d => d.ExtraCharges)
                     .HasForeignKey(e => e.DesignId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<ReadyProduct>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+                entity.HasOne(r => r.Design)
+                    .WithMany()
+                    .HasForeignKey(r => r.DesignId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(r => r.Transactions)
+                    .WithOne(t => t.ReadyProduct)
+                    .HasForeignKey(t => t.ReadyProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(r => new { r.DesignId, r.Colour, r.Size }).IsUnique();
+            });
+
+            modelBuilder.Entity<CustomerSalesmanCommission>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+                entity.HasOne(c => c.Customer)
+                    .WithMany(cust => cust.Commissions)
+                    .HasForeignKey(c => c.CustomerId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(c => c.User)
+                    .WithMany()
+                    .HasForeignKey(c => c.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(c => c.Design)
+                    .WithMany()
+                    .HasForeignKey(c => c.DesignId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<SalesmanCommissionEntry>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasOne(e => e.TaxInvoice)
+                    .WithMany()
+                    .HasForeignKey(e => e.TaxInvoiceId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Customer)
+                    .WithMany()
+                    .HasForeignKey(e => e.CustomerId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.AccountingTransaction)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountingTransactionId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<SalesReturn>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+                entity.HasOne(r => r.TaxInvoice)
+                    .WithMany(i => i.Returns)
+                    .HasForeignKey(r => r.TaxInvoiceId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(r => r.Customer)
+                    .WithMany()
+                    .HasForeignKey(r => r.CustomerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(r => r.Items)
+                    .WithOne(i => i.SalesReturn)
+                    .HasForeignKey(i => i.SalesReturnId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<SalesReturnItem>(entity =>
+            {
+                entity.HasKey(i => i.Id);
+                entity.HasOne(i => i.Design)
+                    .WithMany()
+                    .HasForeignKey(i => i.DesignId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(i => i.TaxInvoiceItem)
+                    .WithMany()
+                    .HasForeignKey(i => i.TaxInvoiceItemId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
         }
     }

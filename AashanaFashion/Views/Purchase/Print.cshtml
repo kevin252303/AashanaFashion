@@ -9,13 +9,58 @@
     <meta charset="utf-8" />
     <title>Purchase Order — @Model.PoNumber</title>
     <style>
+        .print-watermark-container {
+            display: none;
+        }
+
         @@media print {
             body { padding: 0; background: #fff; }
             .no-print { display: none; }
+            .po-watermark {
+                display: flex !important;
+                opacity: 0.12 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .po-watermark img {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
         @@page { margin: 15mm; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; padding: 20px; line-height: 1.4; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; padding: 20px; line-height: 1.4; position: relative; }
+        
+        .po-watermark {
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 75% !important;
+            max-width: 500px !important;
+            pointer-events: none !important;
+            opacity: 0.10 !important;
+            z-index: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .po-watermark img {
+            width: 100% !important;
+            height: auto !important;
+            object-fit: contain !important;
+            pointer-events: none !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body > div:not(.po-watermark),
+        body > table {
+            position: relative;
+            z-index: 1;
+        }
+
         .header { display: flex; justify-content: space-between; margin-bottom: 25px; }
         .company-info h1 { font-size: 24px; color: #0f172a; margin-bottom: 4px; font-weight: 700; letter-spacing: -0.5px; }
         .company-info p { color: #64748b; font-size: 11px; margin-bottom: 2px; }
@@ -52,6 +97,11 @@
     </style>
 </head>
 <body>
+
+    <!-- Watermark for Purchase Order (Visible on Screen & in Print) -->
+    <div class="po-watermark" aria-hidden="true">
+        <img src="/images/aashana_watermark.png" alt="Aashana Fashion Watermark" />
+    </div>
 
     <div class="header">
         <div class="company-info">

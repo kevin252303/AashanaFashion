@@ -1,0 +1,171 @@
+@model AashanaFashion.Models.ReadyProduct
+@{
+    Layout = null;
+    var photoSrc = !string.IsNullOrEmpty(Model.PhotoPath) ? Model.PhotoPath : (!string.IsNullOrEmpty(Model.Design?.PhotoPath) ? Model.Design.PhotoPath : "/images/placeholder-product.svg");
+    var barcodeVal = !string.IsNullOrEmpty(Model.Barcode) ? Model.Barcode : Model.Sku;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tag - @Model.DesignNumber (@Model.Colour, @Model.Size)</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #212529;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .tag-card {
+            width: 320px;
+            background: #fff;
+            border: 2px dashed #333;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 0 auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .tag-hole {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #e9ecef;
+            border: 1px solid #aaa;
+            margin: 0 auto 10px auto;
+        }
+
+        .brand-title {
+            letter-spacing: 2px;
+            font-weight: 800;
+            font-size: 16px;
+            text-transform: uppercase;
+            text-align: center;
+            border-bottom: 2px solid #212529;
+            padding-bottom: 6px;
+            margin-bottom: 10px;
+        }
+
+        .set-banner {
+            background-color: #f1f3f5;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            padding: 4px;
+            margin-bottom: 10px;
+        }
+
+        .barcode-container {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .barcode-container svg {
+            width: 100%;
+            height: 50px;
+        }
+
+        .price-tag {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0d6efd;
+            text-align: center;
+            margin: 8px 0;
+        }
+
+        @@media print {
+            body {
+                background: none;
+                padding: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .tag-card {
+                border: 1px solid #000;
+                box-shadow: none;
+                margin: 0;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print text-center mb-4">
+        <button onclick="window.print()" class="btn btn-primary btn-lg px-4 me-2">
+            🖨️ Print Garment Tag
+        </button>
+        <button onclick="window.close()" class="btn btn-outline-secondary btn-lg">
+            Close
+        </button>
+    </div>
+
+    <div class="tag-card">
+        <div class="tag-hole"></div>
+
+        <div class="brand-title">Aashana Fashion</div>
+
+        <div class="set-banner">
+            ✨ COMPLETE 3-PIECE SET ✨<br />
+            <span class="text-muted fw-normal" style="font-size: 10px;">(Chaniya + Choli + Duppata)</span>
+        </div>
+
+        <div class="row g-1 mb-2 small">
+            <div class="col-5 text-muted">Design No:</div>
+            <div class="col-7 fw-bold text-dark text-truncate">@Model.DesignNumber</div>
+
+            <div class="col-5 text-muted">Colour:</div>
+            <div class="col-7 fw-bold text-dark">@Model.Colour</div>
+
+            <div class="col-5 text-muted">Size:</div>
+            <div class="col-7 fw-bold text-dark">@Model.Size</div>
+
+            @if (!string.IsNullOrEmpty(Model.WarehouseLocation))
+            {
+                <div class="col-5 text-muted">Location:</div>
+                <div class="col-7 text-dark font-monospace">@Model.WarehouseLocation</div>
+            }
+        </div>
+
+        <div class="barcode-container">
+            <svg id="barcode"></svg>
+        </div>
+
+        <div class="price-tag">
+            MRP: ₹@Model.UnitPrice.ToString("N2")
+            <div style="font-size: 10px; font-weight: normal; color: #6c757d;">(Inclusive of all taxes)</div>
+        </div>
+
+        <div class="text-center text-muted" style="font-size: 9px; border-top: 1px dashed #ccc; padding-top: 6px;">
+            Manufactured & Packed by Aashana Fashion<br />
+            SKU: @Model.Sku
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            try {
+                JsBarcode("#barcode", "@barcodeVal", {
+                    format: "CODE128",
+                    lineColor: "#000",
+                    width: 2,
+                    height: 45,
+                    displayValue: true,
+                    fontSize: 12,
+                    font: "monospace"
+                });
+            } catch (e) {
+                console.error("Barcode generation error: ", e);
+            }
+        });
+    </script>
+</body>
+</html>

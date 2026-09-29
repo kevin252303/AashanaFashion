@@ -75,6 +75,129 @@ $(document).ready(function () {
         }
     });
 
+    // Commission row management
+    function initCommissionRowEvents($row) {
+        var $basis = $row.find('.comm-basis-select');
+        var $cat = $row.find('.comm-category-select');
+        var $des = $row.find('.comm-design-select');
+        var $text = $row.find('.comm-text-target');
+        var $targetVal = $row.find('.comm-target-val');
+        var $desId = $row.find('.comm-design-id');
+        var $calcType = $row.find('.comm-calctype-select');
+        var $unit = $row.find('.comm-rate-unit');
+
+        function updateBasisUI() {
+            var b = $basis.val();
+            if (b === '0') { // Category
+                $cat.removeClass('d-none');
+                $des.addClass('d-none');
+                $text.addClass('d-none');
+                $targetVal.val($cat.val() || '');
+                $desId.val('');
+            } else if (b === '1') { // AllProducts
+                $cat.addClass('d-none');
+                $des.addClass('d-none');
+                $text.removeClass('d-none').val('All Products').prop('readonly', true);
+                $targetVal.val('All Products');
+                $desId.val('');
+            } else if (b === '2') { // Design
+                $cat.addClass('d-none');
+                $des.removeClass('d-none');
+                $text.addClass('d-none');
+                var opt = $des.find('option:selected');
+                $targetVal.val(opt.val() || '');
+                $desId.val(opt.data('id') || '');
+            } else if (b === '3') { // FixedPerPiece
+                $cat.removeClass('d-none');
+                $des.addClass('d-none');
+                $text.addClass('d-none');
+                $targetVal.val($cat.val() || '');
+                $desId.val('');
+                $calcType.val('1'); // Fixed Amount
+                $unit.text('₹');
+            }
+        }
+
+        $basis.off('change.comm').on('change.comm', updateBasisUI);
+
+        $cat.off('change.comm').on('change.comm', function () {
+            if ($basis.val() === '0' || $basis.val() === '3') {
+                $targetVal.val($(this).val() || '');
+            }
+        });
+
+        $des.off('change.comm').on('change.comm', function () {
+            if ($basis.val() === '2') {
+                var opt = $(this).find('option:selected');
+                $targetVal.val(opt.val() || '');
+                $desId.val(opt.data('id') || '');
+            }
+        });
+
+        $calcType.off('change.comm').on('change.comm', function () {
+            $unit.text($(this).val() === '1' ? '₹' : '%');
+        });
+    }
+
+    function reindexCommissionRows() {
+        $('#commissionBody .commission-row').each(function (idx) {
+            $(this).find('[name^="Commissions["]').each(function () {
+                var name = $(this).attr('name');
+                if (name) {
+                    name = name.replace(/^Commissions\[\d+\]/, 'Commissions[' + idx + ']');
+                    $(this).attr('name', name);
+                }
+            });
+            initCommissionRowEvents($(this));
+        });
+    }
+
+    $('#commissionBody .commission-row').each(function () {
+        initCommissionRowEvents($(this));
+    });
+
+    $('#btnAddCommissionRow').click(function () {
+        var $first = $('#commissionBody .commission-row').first();
+        var $clone = $first.clone();
+        $clone.find('input[type="text"], input[type="number"], input[type="date"], select').each(function () {
+            if ($(this).hasClass('comm-basis-select')) {
+                $(this).val('0'); // default to Category
+            } else if ($(this).hasClass('comm-calctype-select')) {
+                $(this).val('0'); // default to %
+            } else if ($(this).hasClass('comm-rate-input')) {
+                $(this).val('0.00');
+            } else if ($(this).hasClass('form-check-input')) {
+                $(this).prop('checked', true);
+            } else {
+                $(this).val('');
+            }
+        });
+        $clone.find('.comm-target-val').val('');
+        $clone.find('.comm-design-id').val('');
+        $clone.find('.comm-rate-unit').text('%');
+        $clone.find('.comm-category-select').removeClass('d-none').val('');
+        $clone.find('.comm-design-select').addClass('d-none').val('');
+        $clone.find('.comm-text-target').addClass('d-none').val('');
+
+        $('#commissionBody').append($clone);
+        reindexCommissionRows();
+    });
+
+    $(document).on('click', '.remove-commission-row', function () {
+        if ($('#commissionBody .commission-row').length > 1) {
+            $(this).closest('tr').remove();
+            reindexCommissionRows();
+        } else {
+            // If only 1 row, clear it
+            var $row = $(this).closest('tr');
+            $row.find('input[type="text"], input[type="number"], input[type="date"]').val('');
+            $row.find('.comm-basis-select').val('0').trigger('change');
+            $row.find('.comm-calctype-select').val('0').trigger('change');
+            $row.find('.comm-rate-input').val('0.00');
+        }
+    });
+
     // Initial reindex to ensure contiguous indices
     reindexContactRows();
+    reindexCommissionRows();
 });

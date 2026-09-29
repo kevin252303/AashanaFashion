@@ -106,6 +106,25 @@
                     </div>
                 </div>
 
+                @{
+                    var stitchingName = Model.StitchingWorker?.VendorName ?? Model.Design?.StitchingWorker?.VendorName;
+                    var handworkName = Model.HandworkWorker?.VendorName ?? Model.Design?.HandworkWorker?.VendorName;
+                }
+                @if (!string.IsNullOrEmpty(stitchingName) || !string.IsNullOrEmpty(handworkName))
+                {
+                    <div class="row g-2 mb-3 p-2 bg-light border rounded" style="font-size: 8.5pt;">
+                        <div class="col-6">
+                            <span class="text-muted d-block" style="font-size: 7pt; font-weight: 600;">STITCHING MASTER</span>
+                            <strong>@(stitchingName ?? "—")</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block" style="font-size: 7pt; font-weight: 600;">HANDWORK KARIGAR</span>
+                            <strong>@(handworkName ?? "—")</strong>
+                            <div class="text-secondary" style="font-size: 7.5pt;">Parts: <strong>@Model.HandworkComponentsSummary</strong></div>
+                        </div>
+                    </div>
+                }
+
                 <!-- Size & Colour Matrix Table -->
                 <div class="border rounded mb-3">
                     <table class="table table-bordered table-sm mb-0 text-center" style="font-size: 8.5pt;">

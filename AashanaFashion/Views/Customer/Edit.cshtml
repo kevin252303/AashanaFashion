@@ -466,60 +466,198 @@
                     </div>
 
                     <hr style="margin:1rem 0;border-color:#e2e8f0;" />
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Commission</label>
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="af-form-group">
-                                <label asp-for="SM1Name" class="af-label">SM 1 Name</label>
-                                <input asp-for="SM1Name" class="af-input" />
-                            </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <label class="af-label mb-0" style="font-weight:700;font-size:.95rem;color:#6366f1;">
+                                💼 Salesman Commission Rules
+                            </label>
+                            <small class="text-muted d-block" style="font-size:0.75rem;">
+                                Default basis is Category-wise; flexibly configure per Category, All Products, Specific Design, or Fixed Amount per piece.
+                            </small>
                         </div>
-                        <div class="col-md-3">
-                            <div class="af-form-group">
-                                <label asp-for="SM1CommissionPct" class="af-label">SM 1 Commission %</label>
-                                <input asp-for="SM1CommissionPct" class="af-input" type="number" step="0.01" min="0" max="100" />
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="af-form-group">
-                                <label asp-for="SM2Name" class="af-label">SM 2 Name</label>
-                                <input asp-for="SM2Name" class="af-input" />
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="af-form-group">
-                                <label asp-for="SM2CommissionPct" class="af-label">SM 2 Commission %</label>
-                                <input asp-for="SM2CommissionPct" class="af-input" type="number" step="0.01" min="0" max="100" />
-                            </div>
-                        </div>
+                        <button type="button" id="btnAddCommissionRow" class="btn btn-sm btn-outline-primary fw-semibold">
+                            ➕ Add Salesman Commission
+                        </button>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="af-form-group">
-                                <label asp-for="SM3Name" class="af-label">SM 3 Name</label>
-                                <input asp-for="SM3Name" class="af-input" />
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="af-form-group">
-                                <label asp-for="SM3CommissionPct" class="af-label">SM 3 Commission %</label>
-                                <input asp-for="SM3CommissionPct" class="af-input" type="number" step="0.01" min="0" max="100" />
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="af-form-group">
-                                <label asp-for="CommissionStartDate" class="af-label">Start Date</label>
-                                <input asp-for="CommissionStartDate" class="af-input" type="date" />
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="af-form-group">
-                                <label asp-for="CommissionEndDate" class="af-label">End Date</label>
-                                <input asp-for="CommissionEndDate" class="af-input" type="date" />
-                            </div>
-                        </div>
+                    <!-- Hidden legacy inputs for compatibility -->
+                    <input type="hidden" asp-for="SM1Name" />
+                    <input type="hidden" asp-for="SM1CommissionPct" />
+                    <input type="hidden" asp-for="SM2Name" />
+                    <input type="hidden" asp-for="SM2CommissionPct" />
+                    <input type="hidden" asp-for="SM3Name" />
+                    <input type="hidden" asp-for="SM3CommissionPct" />
+                    <input type="hidden" asp-for="CommissionStartDate" />
+                    <input type="hidden" asp-for="CommissionEndDate" />
+
+                    <div class="table-responsive">
+                        <table class="af-table" id="commissionTable" style="font-size:0.85rem; width:100%;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="min-width:180px;">Salesman Name</th>
+                                    <th style="min-width:170px;">Commission Basis</th>
+                                    <th style="min-width:200px;">Target (Category / Design)</th>
+                                    <th style="min-width:140px;">Calc Type</th>
+                                    <th style="min-width:120px;">Rate</th>
+                                    <th style="min-width:130px;">Start Date</th>
+                                    <th style="min-width:130px;">End Date</th>
+                                    <th style="width:65px;text-align:center;">Active</th>
+                                    <th style="width:45px;text-align:center;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="commissionBody">
+                                @if (Model.Commissions != null && Model.Commissions.Any())
+                                {
+                                    for (int i = 0; i < Model.Commissions.Count; i++)
+                                    {
+                                        var comm = Model.Commissions[i];
+                                        <tr class="commission-row">
+                                            <td>
+                                                <input list="salesmenDatalist" name="Commissions[@i].SalesmanName" value="@comm.SalesmanName" class="af-input comm-salesman" placeholder="Salesman name" />
+                                            </td>
+                                            <td>
+                                                <select name="Commissions[@i].Basis" class="af-input af-select comm-basis-select">
+                                                    <option value="0" selected="@(comm.Basis == CommissionBasis.Category)">Category-wise (Default)</option>
+                                                    <option value="1" selected="@(comm.Basis == CommissionBasis.AllProducts)">All Products / Order Total</option>
+                                                    <option value="2" selected="@(comm.Basis == CommissionBasis.Design)">Specific Design / Product</option>
+                                                    <option value="3" selected="@(comm.Basis == CommissionBasis.FixedPerPiece)">Fixed Amount per Piece</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select class="af-input af-select comm-category-select @(comm.Basis == CommissionBasis.Category || comm.Basis == CommissionBasis.FixedPerPiece ? "" : "d-none")">
+                                                    <option value="">-- All Categories --</option>
+                                                    @if (ViewBag.Categories != null)
+                                                    {
+                                                        foreach (var cat in (List<AashanaFashion.Models.ProductCategory>)ViewBag.Categories)
+                                                        {
+                                                            <option value="@cat.CategoryName" selected="@(comm.TargetValue == cat.CategoryName)">@cat.CategoryName</option>
+                                                        }
+                                                    }
+                                                </select>
+                                                <select class="af-input af-select comm-design-select @(comm.Basis == CommissionBasis.Design ? "" : "d-none")">
+                                                    <option value="">-- Select Design --</option>
+                                                    @if (ViewBag.Designs != null)
+                                                    {
+                                                        foreach (var des in (IEnumerable<dynamic>)ViewBag.Designs)
+                                                        {
+                                                            <option value="@des.DesignNumber" data-id="@des.Id" selected="@(comm.TargetValue == des.DesignNumber || comm.DesignId == des.Id)">@des.DesignNumber</option>
+                                                        }
+                                                    }
+                                                </select>
+                                                <input type="text" class="af-input comm-text-target @(comm.Basis == CommissionBasis.AllProducts ? "" : "d-none")"
+                                                       placeholder="All Products" value="@(comm.Basis == CommissionBasis.AllProducts ? "All Products" : comm.TargetValue)" />
+
+                                                <input type="hidden" name="Commissions[@i].TargetValue" value="@comm.TargetValue" class="comm-target-val" />
+                                                <input type="hidden" name="Commissions[@i].DesignId" value="@comm.DesignId" class="comm-design-id" />
+                                            </td>
+                                            <td>
+                                                <select name="Commissions[@i].CalcType" class="af-input af-select comm-calctype-select">
+                                                    <option value="0" selected="@(comm.CalcType == CommissionCalcType.Percentage)">Percentage (%)</option>
+                                                    <option value="1" selected="@(comm.CalcType == CommissionCalcType.FixedAmount)">Fixed Amount (₹)</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm">
+                                                    <input name="Commissions[@i].CommissionRate" value="@comm.CommissionRate" type="number" step="0.01" min="0" class="form-control form-control-sm comm-rate-input" placeholder="0.00" />
+                                                    <span class="input-group-text comm-rate-unit" style="font-size:0.75rem;">@(comm.CalcType == CommissionCalcType.FixedAmount ? "₹" : "%")</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input name="Commissions[@i].StartDate" value="@(comm.StartDate?.ToString("yyyy-MM-dd"))" type="date" class="af-input form-control-sm" />
+                                            </td>
+                                            <td>
+                                                <input name="Commissions[@i].EndDate" value="@(comm.EndDate?.ToString("yyyy-MM-dd"))" type="date" class="af-input form-control-sm" />
+                                            </td>
+                                            <td class="text-center align-middle">
+                                                <input type="hidden" name="Commissions[@i].IsActive" value="false" />
+                                                <input type="checkbox" name="Commissions[@i].IsActive" value="true" class="form-check-input" @(comm.IsActive ? "checked" : "") />
+                                            </td>
+                                            <td class="text-center align-middle">
+                                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 remove-commission-row" title="Remove rule">🗑️</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr class="commission-row">
+                                        <td>
+                                            <input list="salesmenDatalist" name="Commissions[0].SalesmanName" class="af-input comm-salesman" placeholder="Salesman name" />
+                                        </td>
+                                        <td>
+                                            <select name="Commissions[0].Basis" class="af-input af-select comm-basis-select">
+                                                <option value="0" selected>Category-wise (Default)</option>
+                                                <option value="1">All Products / Order Total</option>
+                                                <option value="2">Specific Design / Product</option>
+                                                <option value="3">Fixed Amount per Piece</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="af-input af-select comm-category-select">
+                                                <option value="">-- All Categories --</option>
+                                                @if (ViewBag.Categories != null)
+                                                {
+                                                    foreach (var cat in (List<AashanaFashion.Models.ProductCategory>)ViewBag.Categories)
+                                                    {
+                                                        <option value="@cat.CategoryName">@cat.CategoryName</option>
+                                                    }
+                                                }
+                                            </select>
+                                            <select class="af-input af-select comm-design-select d-none">
+                                                <option value="">-- Select Design --</option>
+                                                @if (ViewBag.Designs != null)
+                                                {
+                                                    foreach (var des in (IEnumerable<dynamic>)ViewBag.Designs)
+                                                    {
+                                                        <option value="@des.DesignNumber" data-id="@des.Id">@des.DesignNumber</option>
+                                                    }
+                                                }
+                                            </select>
+                                            <input type="text" class="af-input comm-text-target d-none" placeholder="All Products" />
+
+                                            <input type="hidden" name="Commissions[0].TargetValue" class="comm-target-val" />
+                                            <input type="hidden" name="Commissions[0].DesignId" class="comm-design-id" />
+                                        </td>
+                                        <td>
+                                            <select name="Commissions[0].CalcType" class="af-input af-select comm-calctype-select">
+                                                <option value="0" selected>Percentage (%)</option>
+                                                <option value="1">Fixed Amount (₹)</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <div class="input-group input-group-sm">
+                                                <input name="Commissions[0].CommissionRate" value="0.00" type="number" step="0.01" min="0" class="form-control form-control-sm comm-rate-input" placeholder="0.00" />
+                                                <span class="input-group-text comm-rate-unit" style="font-size:0.75rem;">%</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <input name="Commissions[0].StartDate" type="date" class="af-input form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input name="Commissions[0].EndDate" type="date" class="af-input form-control-sm" />
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <input type="hidden" name="Commissions[0].IsActive" value="false" />
+                                            <input type="checkbox" name="Commissions[0].IsActive" value="true" class="form-check-input" checked />
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 remove-commission-row" title="Remove rule">🗑️</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
+
+                    <datalist id="salesmenDatalist">
+                        @if (ViewBag.Users != null)
+                        {
+                            foreach (var u in (List<AashanaFashion.Models.AppUser>)ViewBag.Users)
+                            {
+                                <option value="@u.FullName">@u.FullName (@u.Role)</option>
+                            }
+                        }
+                    </datalist>
                 </div>
 
                 <!-- ===== TAB 4: PARTNER ASSIGNMENT ===== -->

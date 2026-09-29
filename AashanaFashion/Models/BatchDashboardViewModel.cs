@@ -11,5 +11,8 @@ namespace AashanaFashion.Models
         public OrderStatus Status { get; set; }
         public List<string> CreationSteps { get; set; } = new();
         public Dictionary<string, bool> VerificationStatus { get; set; } = new();
+        public string? HandworkWorkerName { get; set; }
+        public string? StitchingWorkerName { get; set; }
+        public string? HandworkParts { get; set; }
     }
 }

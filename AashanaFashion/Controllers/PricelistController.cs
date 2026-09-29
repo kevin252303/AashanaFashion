@@ -293,6 +293,91 @@ public class PricelistController : Controller
     }
 
     [HttpGet]
+    public async Task<IActionResult> GetQuickDetails(int id)
+    {
+        var pl = await _context.Pricelists
+            .Include(p => p.Items)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (pl == null) return NotFound(new { success = false, message = "Pricelist not found." });
+
+        var defaultRule = pl.Items.FirstOrDefault();
+        return Json(new
+        {
+            success = true,
+            id = pl.Id,
+            name = pl.Name,
+            discountPolicy = (int)pl.DiscountPolicy,
+            description = pl.Description,
+            computationMethod = defaultRule != null ? (int)defaultRule.ComputationMethod : 1,
+            discountPercentage = defaultRule?.DiscountPercentage ?? 0,
+            fixedPrice = defaultRule?.FixedPrice ?? 0,
+            minQuantity = defaultRule?.MinQuantity ?? 1,
+            appliedOn = defaultRule != null ? (int)defaultRule.AppliedOn : 0
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> QuickUpdate([FromBody] QuickUpdatePricelistModel model)
+    {
+        if (string.IsNullOrWhiteSpace(model.Name))
+        {
+            return BadRequest(new { success = false, message = "Pricelist name is required." });
+        }
+
+        var pl = await _context.Pricelists
+            .Include(p => p.Items)
+            .FirstOrDefaultAsync(p => p.Id == model.Id);
+
+        if (pl == null) return NotFound(new { success = false, message = "Pricelist not found." });
+
+        var trimmedName = model.Name.Trim();
+        var existing = await _context.Pricelists.FirstOrDefaultAsync(p => p.Id != model.Id && p.Name.ToLower() == trimmedName.ToLower());
+        if (existing != null)
+        {
+            return BadRequest(new { success = false, message = $"Another pricelist with name '{trimmedName}' already exists." });
+        }
+
+        pl.Name = trimmedName;
+        pl.DiscountPolicy = model.DiscountPolicy;
+        pl.Description = model.Description?.Trim();
+
+        var rule = pl.Items.FirstOrDefault();
+        if (rule == null)
+        {
+            rule = new PricelistItem
+            {
+                PricelistId = pl.Id,
+                AppliedOn = model.AppliedOn,
+                ComputationMethod = model.ComputationMethod,
+                DiscountPercentage = model.DiscountPercentage,
+                FixedPrice = model.FixedPrice,
+                MinQuantity = model.MinQuantity > 0 ? model.MinQuantity : 1m
+            };
+            pl.Items.Add(rule);
+        }
+        else
+        {
+            rule.AppliedOn = model.AppliedOn;
+            rule.ComputationMethod = model.ComputationMethod;
+            rule.DiscountPercentage = model.DiscountPercentage;
+            rule.FixedPrice = model.FixedPrice;
+            rule.MinQuantity = model.MinQuantity > 0 ? model.MinQuantity : 1m;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return Json(new
+        {
+            success = true,
+            id = pl.Id,
+            name = pl.Name,
+            policy = pl.DiscountPolicyDisplay
+        });
+    }
+
+    [HttpGet]
     public async Task<IActionResult> CalculatePrice(int? pricelistId, int designId, decimal quantity, string? colour = null, string? size = null)
     {
         var result = await _pricelistService.CalculatePriceAsync(pricelistId, designId, quantity, null, colour, size);

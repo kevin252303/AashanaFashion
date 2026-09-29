@@ -117,6 +117,14 @@
                                     <span style="font-weight:600;color:#0f172a;">@item.DesignNumber</span>
                                 }
                                 <br><span style="font-size:.75rem;color:#94a3b8;">@item.LotNo</span>
+                                @if (!string.IsNullOrEmpty(item.StitchingWorkerName))
+                                {
+                                    <div style="font-size:0.73rem; color:#475569; white-space:nowrap;">🪡 Stitch: <strong>@item.StitchingWorkerName</strong></div>
+                                }
+                                @if (!string.IsNullOrEmpty(item.HandworkWorkerName))
+                                {
+                                    <div style="font-size:0.73rem; color:#475569; white-space:nowrap;">✨ Hand: <strong>@item.HandworkWorkerName</strong> <span class="text-muted">(@item.HandworkParts)</span></div>
+                                }
                             </td>
                             <td>@item.TotalQuantity <span style="color:#94a3b8;font-size:.75rem;">pcs</span></td>
                             <td><span class="af-badge @GetStageBadge(item.Status)">@item.CurrentStage</span></td>

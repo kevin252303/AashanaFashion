@@ -85,6 +85,7 @@ public class Customer
 
     // ——— Navigation ———
     public List<CustomerContact> Contacts { get; set; } = new();
+    public List<CustomerSalesmanCommission> Commissions { get; set; } = new();
 }
 
 public class CustomerContact

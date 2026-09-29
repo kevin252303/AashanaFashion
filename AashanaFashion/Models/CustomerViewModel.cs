@@ -82,4 +82,7 @@ public class CustomerViewModel
 
     // Contacts (child table)
     public List<CustomerContact> Contacts { get; set; } = new();
+
+    // Commissions (dynamic child table)
+    public List<CustomerSalesmanCommission> Commissions { get; set; } = new();
 }

@@ -14,11 +14,13 @@ public class InvoiceController : Controller
 {
     private readonly AppDbContext _context;
     private readonly IEwayBillService _ewayBillService;
+    private readonly IConfiguration _config;
 
-    public InvoiceController(AppDbContext context, IEwayBillService ewayBillService)
+    public InvoiceController(AppDbContext context, IEwayBillService ewayBillService, IConfiguration config)
     {
         _context = context;
         _ewayBillService = ewayBillService;
+        _config = config;
     }
 
     public async Task<IActionResult> Index(string? search, InvoicePaymentStatus? status)
@@ -246,6 +248,9 @@ public class InvoiceController : Controller
             CustomerId = invoice.CustomerId
         });
 
+        // Automatically calculate & post Salesman Commission entries and expense transactions
+        await ProcessSalesmanCommissionsAsync(invoice);
+
         await _context.SaveChangesAsync();
 
         TempData["Success"] = $"Tax Invoice {invoice.InvoiceNumber} created successfully.";
@@ -260,9 +265,15 @@ public class InvoiceController : Controller
             .Include(i => i.Items)
             .ThenInclude(item => item.Design)
             .Include(i => i.Receipts)
+            .Include(i => i.Returns)
+            .ThenInclude(r => r.Items)
             .FirstOrDefaultAsync(i => i.Id == id);
 
         if (invoice == null) return NotFound();
+
+        ViewBag.CommissionEntries = await _context.SalesmanCommissionEntries
+            .Where(e => e.TaxInvoiceId == id)
+            .ToListAsync();
 
         return View(invoice);
     }
@@ -366,6 +377,506 @@ public class InvoiceController : Controller
         });
     }
 
+    private async Task ProcessSalesmanCommissionsAsync(TaxInvoice invoice)
+    {
+        if (invoice.CustomerId <= 0) return;
+
+        var customer = await _context.Customers
+            .Include(c => c.Commissions)
+            .FirstOrDefaultAsync(c => c.Id == invoice.CustomerId);
+
+        if (customer == null) return;
+
+        // Collect active commission rules
+        var rules = customer.Commissions?
+            .Where(c => c.IsActive && c.CommissionRate > 0 &&
+                       (!c.StartDate.HasValue || c.StartDate.Value.Date <= invoice.InvoiceDate.Date) &&
+                       (!c.EndDate.HasValue || c.EndDate.Value.Date >= invoice.InvoiceDate.Date))
+            .ToList() ?? new List<CustomerSalesmanCommission>();
+
+        // Fallback to legacy SM1, SM2, SM3 if no rules configured
+        if (!rules.Any())
+        {
+            if (!string.IsNullOrWhiteSpace(customer.SM1Name) && customer.SM1CommissionPct > 0)
+            {
+                rules.Add(new CustomerSalesmanCommission
+                {
+                    SalesmanName = customer.SM1Name.Trim(),
+                    Basis = CommissionBasis.AllProducts,
+                    CalcType = CommissionCalcType.Percentage,
+                    CommissionRate = customer.SM1CommissionPct.Value,
+                    IsActive = true
+                });
+            }
+            if (!string.IsNullOrWhiteSpace(customer.SM2Name) && customer.SM2CommissionPct > 0)
+            {
+                rules.Add(new CustomerSalesmanCommission
+                {
+                    SalesmanName = customer.SM2Name.Trim(),
+                    Basis = CommissionBasis.AllProducts,
+                    CalcType = CommissionCalcType.Percentage,
+                    CommissionRate = customer.SM2CommissionPct.Value,
+                    IsActive = true
+                });
+            }
+            if (!string.IsNullOrWhiteSpace(customer.SM3Name) && customer.SM3CommissionPct > 0)
+            {
+                rules.Add(new CustomerSalesmanCommission
+                {
+                    SalesmanName = customer.SM3Name.Trim(),
+                    Basis = CommissionBasis.AllProducts,
+                    CalcType = CommissionCalcType.Percentage,
+                    CommissionRate = customer.SM3CommissionPct.Value,
+                    IsActive = true
+                });
+            }
+        }
+
+        if (!rules.Any()) return;
+
+        // Preload designs for items to check category / design match
+        var designIds = invoice.Items.Where(i => i.DesignId.HasValue).Select(i => i.DesignId!.Value).Distinct().ToList();
+        var designs = await _context.Designs
+            .Include(d => d.ProductCategory)
+            .Where(d => designIds.Contains(d.Id))
+            .ToDictionaryAsync(d => d.Id);
+
+        foreach (var rule in rules)
+        {
+            decimal salesAmount = 0m;
+            int quantity = 0;
+            decimal commissionAmount = 0m;
+            string targetDisplay = rule.TargetValue ?? "";
+
+            switch (rule.Basis)
+            {
+                case CommissionBasis.Category:
+                    var matchedCatItems = invoice.Items.Where(i =>
+                    {
+                        if (string.IsNullOrWhiteSpace(rule.TargetValue) || rule.TargetValue == "All" || rule.TargetValue == "-- All Categories --")
+                            return true;
+
+                        if (i.DesignId.HasValue && designs.TryGetValue(i.DesignId.Value, out var des))
+                        {
+                            return string.Equals(des.ProductCategory?.CategoryName, rule.TargetValue, StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(des.Category, rule.TargetValue, StringComparison.OrdinalIgnoreCase);
+                        }
+                        return false;
+                    }).ToList();
+
+                    salesAmount = matchedCatItems.Sum(i => i.TaxableValue);
+                    quantity = matchedCatItems.Sum(i => i.Quantity);
+                    targetDisplay = string.IsNullOrWhiteSpace(rule.TargetValue) ? "All Categories" : rule.TargetValue;
+
+                    if (rule.CalcType == CommissionCalcType.Percentage)
+                        commissionAmount = Math.Round(salesAmount * (rule.CommissionRate / 100m), 2);
+                    else
+                        commissionAmount = Math.Round(quantity * rule.CommissionRate, 2);
+                    break;
+
+                case CommissionBasis.AllProducts:
+                    salesAmount = invoice.TaxableAmount;
+                    quantity = invoice.Items.Sum(i => i.Quantity);
+                    targetDisplay = "All Products";
+
+                    if (rule.CalcType == CommissionCalcType.Percentage)
+                        commissionAmount = Math.Round(salesAmount * (rule.CommissionRate / 100m), 2);
+                    else
+                        commissionAmount = Math.Round(quantity * rule.CommissionRate, 2);
+                    break;
+
+                case CommissionBasis.Design:
+                    var matchedDesItems = invoice.Items.Where(i =>
+                        (rule.DesignId.HasValue && i.DesignId == rule.DesignId.Value) ||
+                        (!string.IsNullOrWhiteSpace(rule.TargetValue) && i.Description.Contains(rule.TargetValue, StringComparison.OrdinalIgnoreCase))
+                    ).ToList();
+
+                    salesAmount = matchedDesItems.Sum(i => i.TaxableValue);
+                    quantity = matchedDesItems.Sum(i => i.Quantity);
+                    targetDisplay = rule.TargetValue ?? (rule.DesignId.HasValue ? $"Design #{rule.DesignId}" : "Design");
+
+                    if (rule.CalcType == CommissionCalcType.Percentage)
+                        commissionAmount = Math.Round(salesAmount * (rule.CommissionRate / 100m), 2);
+                    else
+                        commissionAmount = Math.Round(quantity * rule.CommissionRate, 2);
+                    break;
+
+                case CommissionBasis.FixedPerPiece:
+                    var matchedPieceItems = invoice.Items.Where(i =>
+                    {
+                        if (string.IsNullOrWhiteSpace(rule.TargetValue) || rule.TargetValue == "All" || rule.TargetValue == "-- All Categories --")
+                            return true;
+
+                        if (i.DesignId.HasValue && designs.TryGetValue(i.DesignId.Value, out var des))
+                        {
+                            return string.Equals(des.ProductCategory?.CategoryName, rule.TargetValue, StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(des.Category, rule.TargetValue, StringComparison.OrdinalIgnoreCase);
+                        }
+                        return false;
+                    }).ToList();
+
+                    salesAmount = matchedPieceItems.Sum(i => i.TaxableValue);
+                    quantity = matchedPieceItems.Sum(i => i.Quantity);
+                    targetDisplay = string.IsNullOrWhiteSpace(rule.TargetValue) ? "All Pieces" : $"{rule.TargetValue} (Fixed/Pc)";
+                    commissionAmount = Math.Round(quantity * rule.CommissionRate, 2);
+                    break;
+            }
+
+            if (commissionAmount > 0)
+            {
+                var rateUnit = rule.CalcType == CommissionCalcType.Percentage ? "%" : "₹";
+
+                // 1. Expense in Accounting Ledger
+                var acctTx = new AccountingTransaction
+                {
+                    Date = invoice.InvoiceDate,
+                    Type = TransactionType.Expense,
+                    Amount = commissionAmount,
+                    Category = "Salesman Commission",
+                    Description = $"Sales Commission for {rule.SalesmanName} ({rule.CommissionRate}{rateUnit} on {targetDisplay}) on Invoice {invoice.InvoiceNumber}",
+                    Reference = invoice.InvoiceNumber,
+                    CustomerId = invoice.CustomerId
+                };
+                _context.AccountingTransactions.Add(acctTx);
+
+                // 2. Salesman Commission Entry
+                var entry = new SalesmanCommissionEntry
+                {
+                    TaxInvoice = invoice,
+                    CustomerId = invoice.CustomerId,
+                    SalesmanName = rule.SalesmanName,
+                    EntryDate = invoice.InvoiceDate,
+                    Basis = rule.Basis,
+                    CategoryOrTarget = targetDisplay,
+                    SalesAmount = salesAmount,
+                    Quantity = quantity,
+                    CommissionRate = rule.CommissionRate,
+                    CalcType = rule.CalcType,
+                    CommissionAmount = commissionAmount,
+                    IsPaid = false,
+                    AccountingTransaction = acctTx
+                };
+                _context.SalesmanCommissionEntries.Add(entry);
+            }
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ReturnGoods(int id)
+    {
+        var invoice = await _context.TaxInvoices
+            .Include(i => i.Items)
+            .Include(i => i.Returns)
+            .ThenInclude(r => r.Items)
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (invoice == null) return NotFound();
+
+        var model = new SalesReturnCreateViewModel
+        {
+            TaxInvoiceId = invoice.Id,
+            InvoiceNumber = invoice.InvoiceNumber,
+            InvoiceDate = invoice.InvoiceDate,
+            CustomerId = invoice.CustomerId,
+            CustomerName = invoice.CustomerName,
+            ReturnDate = DateTime.Today,
+            Reason = ReturnReason.Defective,
+            RestockInventory = true,
+            Items = invoice.Items.Select(item =>
+            {
+                var alreadyReturned = invoice.Returns
+                    .SelectMany(r => r.Items)
+                    .Where(ri => ri.TaxInvoiceItemId == item.Id)
+                    .Sum(ri => ri.Quantity);
+
+                return new SalesReturnItemInput
+                {
+                    TaxInvoiceItemId = item.Id,
+                    DesignId = item.DesignId,
+                    Description = item.Description,
+                    Colour = item.Colour,
+                    Size = item.Size,
+                    OriginalQuantity = item.Quantity,
+                    AlreadyReturnedQuantity = alreadyReturned,
+                    ReturnQuantity = 0,
+                    UnitPrice = item.UnitPrice,
+                    GstRate = item.GstRate
+                };
+            }).Where(i => i.OriginalQuantity > i.AlreadyReturnedQuantity).ToList()
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReturnGoods(SalesReturnCreateViewModel model)
+    {
+        var invoice = await _context.TaxInvoices
+            .Include(i => i.Items)
+            .Include(i => i.Returns)
+            .ThenInclude(r => r.Items)
+            .FirstOrDefaultAsync(i => i.Id == model.TaxInvoiceId);
+
+        if (invoice == null) return NotFound();
+
+        var validItems = model.Items.Where(i => i.ReturnQuantity > 0).ToList();
+        if (!validItems.Any())
+        {
+            ModelState.AddModelError("", "Please specify at least one item with a return quantity greater than 0.");
+            return View(model);
+        }
+
+        foreach (var vi in validItems)
+        {
+            var invoiceItem = invoice.Items.FirstOrDefault(i => i.Id == vi.TaxInvoiceItemId);
+            if (invoiceItem == null) continue;
+
+            var alreadyReturned = invoice.Returns
+                .SelectMany(r => r.Items)
+                .Where(ri => ri.TaxInvoiceItemId == vi.TaxInvoiceItemId)
+                .Sum(ri => ri.Quantity);
+
+            int remainingEligible = invoiceItem.Quantity - alreadyReturned;
+            if (vi.ReturnQuantity > remainingEligible)
+            {
+                ModelState.AddModelError("", $"Return quantity for '{vi.Description}' cannot exceed {remainingEligible}.");
+                return View(model);
+            }
+        }
+
+        string returnNo = await GenerateNextReturnNumberAsync();
+
+        var salesReturn = new SalesReturn
+        {
+            ReturnNumber = returnNo,
+            ReturnDate = model.ReturnDate,
+            TaxInvoiceId = invoice.Id,
+            CustomerId = invoice.CustomerId,
+            CustomerName = invoice.CustomerName,
+            Reason = model.Reason,
+            Remarks = model.Remarks?.Trim(),
+            RestockInventory = model.RestockInventory,
+            CreatedDate = DateTime.Now
+        };
+
+        decimal returnSubTotal = 0m;
+        decimal returnTaxAmount = 0m;
+
+        foreach (var vi in validItems)
+        {
+            decimal taxable = Math.Round(vi.ReturnQuantity * vi.UnitPrice, 2);
+            decimal tax = Math.Round(taxable * (vi.GstRate / 100m), 2);
+            decimal total = taxable + tax;
+
+            salesReturn.Items.Add(new SalesReturnItem
+            {
+                TaxInvoiceItemId = vi.TaxInvoiceItemId,
+                DesignId = vi.DesignId,
+                Description = vi.Description,
+                Colour = vi.Colour,
+                Size = vi.Size,
+                Quantity = vi.ReturnQuantity,
+                UnitPrice = vi.UnitPrice,
+                TaxableAmount = taxable,
+                GstRate = vi.GstRate,
+                TotalAmount = total
+            });
+
+            returnSubTotal += taxable;
+            returnTaxAmount += tax;
+
+            // Restock to ReadyProduct inventory if enabled
+            if (model.RestockInventory && vi.DesignId.HasValue && !string.IsNullOrWhiteSpace(vi.Colour) && !string.IsNullOrWhiteSpace(vi.Size))
+            {
+                var readyProduct = await _context.ReadyProducts
+                    .FirstOrDefaultAsync(r => r.DesignId == vi.DesignId.Value && r.Colour == vi.Colour && r.Size == vi.Size);
+
+                if (readyProduct != null)
+                {
+                    readyProduct.QuantityOnHand += vi.ReturnQuantity;
+                    _context.ReadyProductTransactions.Add(new ReadyProductTransaction
+                    {
+                        ReadyProductId = readyProduct.Id,
+                        CreatedDate = model.ReturnDate,
+                        TransactionType = ReadyProductTransactionType.CustomerSalesReturn,
+                        Quantity = vi.ReturnQuantity,
+                        BalanceAfter = readyProduct.QuantityOnHand,
+                        ReferenceType = "Customer Sales Return",
+                        ReferenceNumber = returnNo,
+                        Notes = $"Customer return from {invoice.CustomerName} (Invoice #{invoice.InvoiceNumber})"
+                    });
+                }
+            }
+        }
+
+        salesReturn.SubTotal = returnSubTotal;
+        salesReturn.TaxAmount = returnTaxAmount;
+        salesReturn.GrandTotal = returnSubTotal + returnTaxAmount;
+
+        _context.SalesReturns.Add(salesReturn);
+
+        // General Ledger Entry for Credit Note / Return
+        _context.AccountingTransactions.Add(new AccountingTransaction
+        {
+            Date = model.ReturnDate,
+            Type = TransactionType.Expense,
+            Amount = salesReturn.GrandTotal,
+            Category = "Sales Return / Credit Note",
+            Description = $"Credit Note / Sales Return {returnNo} against Invoice {invoice.InvoiceNumber} ({model.Reason})",
+            Reference = returnNo,
+            CustomerId = invoice.CustomerId
+        });
+
+        // Commission Deduction calculation
+        await ProcessReturnCommissionDeductionsAsync(salesReturn, invoice);
+
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = $"Goods Return {returnNo} recorded successfully! ₹{salesReturn.TotalCommissionDeducted:N2} salesman commission deducted.";
+        return RedirectToAction(nameof(Details), new { id = invoice.Id });
+    }
+
+    private async Task ProcessReturnCommissionDeductionsAsync(SalesReturn salesReturn, TaxInvoice invoice)
+    {
+        var originalCommissions = await _context.SalesmanCommissionEntries
+            .Where(e => e.TaxInvoiceId == invoice.Id && e.CommissionAmount > 0)
+            .ToListAsync();
+
+        if (!originalCommissions.Any()) return;
+
+        var designIds = salesReturn.Items.Where(i => i.DesignId.HasValue).Select(i => i.DesignId!.Value).Distinct().ToList();
+        var designs = await _context.Designs
+            .Include(d => d.ProductCategory)
+            .Where(d => designIds.Contains(d.Id))
+            .ToDictionaryAsync(d => d.Id);
+
+        decimal totalDeducted = 0m;
+
+        foreach (var original in originalCommissions)
+        {
+            decimal returnedSales = 0m;
+            int returnedQty = 0;
+            decimal deductAmount = 0m;
+
+            switch (original.Basis)
+            {
+                case CommissionBasis.Category:
+                    var matchedItems = salesReturn.Items.Where(i =>
+                    {
+                        if (string.IsNullOrWhiteSpace(original.CategoryOrTarget) || original.CategoryOrTarget == "All" || original.CategoryOrTarget == "All Categories" || original.CategoryOrTarget == "-- All Categories --")
+                            return true;
+
+                        if (i.DesignId.HasValue && designs.TryGetValue(i.DesignId.Value, out var des))
+                        {
+                            return string.Equals(des.ProductCategory?.CategoryName, original.CategoryOrTarget, StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(des.Category, original.CategoryOrTarget, StringComparison.OrdinalIgnoreCase);
+                        }
+                        return false;
+                    }).ToList();
+
+                    returnedSales = matchedItems.Sum(i => i.TaxableAmount);
+                    returnedQty = matchedItems.Sum(i => i.Quantity);
+
+                    if (original.CalcType == CommissionCalcType.Percentage)
+                        deductAmount = Math.Round(returnedSales * (original.CommissionRate / 100m), 2);
+                    else
+                        deductAmount = Math.Round(returnedQty * original.CommissionRate, 2);
+                    break;
+
+                case CommissionBasis.AllProducts:
+                    returnedSales = salesReturn.SubTotal;
+                    returnedQty = salesReturn.Items.Sum(i => i.Quantity);
+
+                    if (original.CalcType == CommissionCalcType.Percentage)
+                        deductAmount = Math.Round(returnedSales * (original.CommissionRate / 100m), 2);
+                    else
+                        deductAmount = Math.Round(returnedQty * original.CommissionRate, 2);
+                    break;
+
+                case CommissionBasis.Design:
+                    var matchedDesItems = salesReturn.Items.Where(i =>
+                        (original.CategoryOrTarget != null && i.Description.Contains(original.CategoryOrTarget, StringComparison.OrdinalIgnoreCase))
+                    ).ToList();
+
+                    returnedSales = matchedDesItems.Sum(i => i.TaxableAmount);
+                    returnedQty = matchedDesItems.Sum(i => i.Quantity);
+
+                    if (original.CalcType == CommissionCalcType.Percentage)
+                        deductAmount = Math.Round(returnedSales * (original.CommissionRate / 100m), 2);
+                    else
+                        deductAmount = Math.Round(returnedQty * original.CommissionRate, 2);
+                    break;
+
+                case CommissionBasis.FixedPerPiece:
+                    returnedQty = salesReturn.Items.Sum(i => i.Quantity);
+                    returnedSales = salesReturn.SubTotal;
+                    deductAmount = Math.Round(returnedQty * original.CommissionRate, 2);
+                    break;
+            }
+
+            if (deductAmount > 0)
+            {
+                var rateUnit = original.CalcType == CommissionCalcType.Percentage ? "%" : "₹";
+
+                // 1. Post reversal / deduction transaction to General Ledger
+                var acctTx = new AccountingTransaction
+                {
+                    Date = salesReturn.ReturnDate,
+                    Type = TransactionType.Income, // Reversing commission expense
+                    Amount = deductAmount,
+                    Category = "Salesman Commission Deduction",
+                    Description = $"Commission deduction for {original.SalesmanName} ({original.CommissionRate}{rateUnit}) on Return {salesReturn.ReturnNumber} (Invoice #{invoice.InvoiceNumber})",
+                    Reference = salesReturn.ReturnNumber,
+                    CustomerId = invoice.CustomerId
+                };
+                _context.AccountingTransactions.Add(acctTx);
+
+                // 2. Post negative entry in SalesmanCommissionEntries
+                var returnEntry = new SalesmanCommissionEntry
+                {
+                    TaxInvoice = invoice,
+                    CustomerId = invoice.CustomerId,
+                    SalesmanName = original.SalesmanName,
+                    EntryDate = salesReturn.ReturnDate,
+                    Basis = original.Basis,
+                    CategoryOrTarget = $"{original.CategoryOrTarget} (Return: {salesReturn.ReturnNumber})",
+                    SalesAmount = -returnedSales,
+                    Quantity = -returnedQty,
+                    CommissionRate = original.CommissionRate,
+                    CalcType = original.CalcType,
+                    CommissionAmount = -deductAmount, // Negative amount
+                    IsPaid = false,
+                    PaymentReference = $"CLAWBACK-{salesReturn.ReturnNumber}",
+                    AccountingTransaction = acctTx
+                };
+                _context.SalesmanCommissionEntries.Add(returnEntry);
+
+                totalDeducted += deductAmount;
+            }
+        }
+
+        salesReturn.TotalCommissionDeducted = totalDeducted;
+    }
+
+    private async Task<string> GenerateNextReturnNumberAsync()
+    {
+        var prefix = $"RET-{DateTime.Now:yyyyMM}-";
+        var last = await _context.SalesReturns
+            .Where(r => r.ReturnNumber.StartsWith(prefix))
+            .OrderByDescending(r => r.ReturnNumber)
+            .FirstOrDefaultAsync();
+
+        int nextSeq = 1;
+        if (last != null && last.ReturnNumber.Length >= prefix.Length + 4)
+        {
+            var seqStr = last.ReturnNumber.Substring(prefix.Length);
+            if (int.TryParse(seqStr, out int cur)) nextSeq = cur + 1;
+        }
+
+        return $"{prefix}{nextSeq:D4}";
+    }
+
     private async Task<string> GenerateNextInvoiceNumberAsync()
     {
         var prefix = $"INV-{DateTime.Now:yyyyMM}-";
@@ -438,5 +949,115 @@ public class InvoiceController : Controller
         await _context.SaveChangesAsync();
         TempData["Success"] = $"E-Way Bill #{invoice.EwayBillNumber} saved against Invoice {invoice.InvoiceNumber}.";
         return RedirectToAction(nameof(Details), new { id = model.Id });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> PrintEwayBill(int id)
+    {
+        var invoice = await _context.TaxInvoices
+            .Include(i => i.Customer)
+            .Include(i => i.Items)
+                .ThenInclude(it => it.Design)
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (invoice == null) return NotFound();
+
+        string fromGstin = _config["Company:GSTIN"] ?? "24AABCA1234F1Z9";
+        string fromName = _config["Company:Name"] ?? "AASHANA FASHION";
+        string fromAddr1 = _config["Company:Address1"] ?? "Plot 14-16, Garment Industrial Zone";
+        string fromAddr2 = _config["Company:Address2"] ?? "Pandesara";
+        string fromPlace = _config["Company:City"] ?? "Surat";
+        string fromState = _config["Company:State"] ?? "Gujarat";
+        int fromPin = int.TryParse(_config["Company:Pincode"], out var pinVal) ? pinVal : 394221;
+        int fromStateCode = int.TryParse(_config["Company:StateCode"], out var scVal) ? scVal : 24;
+        string fromAddr = $"{fromAddr1}, {fromAddr2}, {fromPlace}, {fromState} - {fromPin}";
+
+        string toGstin = !string.IsNullOrWhiteSpace(invoice.CustomerGstin) && invoice.CustomerGstin.Length == 15
+            ? invoice.CustomerGstin.Trim().ToUpper()
+            : "URP";
+        string toName = string.IsNullOrWhiteSpace(invoice.CustomerName) ? "Cash Buyer" : invoice.CustomerName;
+        string toAddr = string.IsNullOrWhiteSpace(invoice.ShippingAddress) ? (invoice.BillingAddress ?? "Surat, Gujarat") : invoice.ShippingAddress;
+        string toPlace = invoice.Customer?.City ?? "Surat";
+        int toPin = _ewayBillService.ExtractPincode(invoice.Customer?.PinCode ?? toAddr, 395002);
+        int toState = _ewayBillService.GetStateCode(toGstin, invoice.PlaceOfSupply ?? invoice.Customer?.State);
+
+        var ewbNo = !string.IsNullOrWhiteSpace(invoice.EwayBillNumber)
+            ? invoice.EwayBillNumber
+            : $"2410{DateTime.Now:yyMMdd}{invoice.Id:D4}";
+
+        var genDate = invoice.EwayBillDate ?? invoice.InvoiceDate;
+        var dist = invoice.DistanceKm ?? 50;
+        var days = Math.Max(1, (int)Math.Ceiling(dist / 200.0));
+        var validUntil = genDate.AddDays(days).Date.AddHours(23).AddMinutes(59);
+
+        var vm = new EwayBillPrintViewModel
+        {
+            EwayBillNumber = ewbNo,
+            EwayBillDate = genDate,
+            ValidFrom = genDate,
+            ValidUntil = validUntil,
+            GeneratedBy = $"{fromGstin} - {fromName}",
+            SupplierGstin = fromGstin,
+            SupplierName = fromName,
+            DispatchAddress = fromAddr,
+            DispatchPlace = fromPlace,
+            DispatchPincode = fromPin,
+            DispatchStateCode = fromStateCode,
+
+            RecipientGstin = toGstin,
+            RecipientName = toName,
+            DeliveryAddress = toAddr,
+            DeliveryPlace = toPlace,
+            DeliveryPincode = toPin,
+            DeliveryStateCode = toState,
+
+            DocType = "Tax Invoice",
+            DocCode = "INV",
+            DocNumber = invoice.InvoiceNumber,
+            DocDate = invoice.InvoiceDate,
+            SupplyType = "Outward - Supply",
+            TransactionType = "Regular",
+            ReasonForTransportation = "Supply",
+
+            TaxableAmount = invoice.TaxableAmount,
+            CgstAmount = invoice.CgstAmount,
+            SgstAmount = invoice.SgstAmount,
+            IgstAmount = invoice.IgstAmount,
+            CessAmount = 0m,
+            TotalInvoiceValue = invoice.GrandTotal,
+
+            TransMode = invoice.TransMode switch { "2" => "Rail", "3" => "Air", "4" => "Ship", _ => "Road" },
+            VehicleNumber = !string.IsNullOrWhiteSpace(invoice.VehicleNumber) ? invoice.VehicleNumber : "GJ-05-BX-1234",
+            VehicleType = invoice.VehicleType == "O" ? "Over Dimensional Cargo" : "Regular",
+            TransporterName = !string.IsNullOrWhiteSpace(invoice.TransporterName) ? invoice.TransporterName : "Direct Transport",
+            TransporterId = invoice.TransporterId ?? "",
+            TransDocNo = "",
+            TransDocDate = invoice.InvoiceDate,
+            DistanceKm = dist,
+            FromPlace = "Surat, Gujarat",
+
+            SourceId = invoice.Id,
+            SourceType = "Invoice"
+        };
+
+        int sr = 1;
+        foreach (var it in invoice.Items)
+        {
+            vm.Items.Add(new EwayBillPrintItemViewModel
+            {
+                ItemNo = sr++,
+                HsnCode = string.IsNullOrWhiteSpace(it.HsnCode) ? "6204" : it.HsnCode,
+                ProductName = string.IsNullOrWhiteSpace(it.Description) ? "Garments" : it.Description,
+                Description = $"{it.Colour} {it.Size}".Trim(),
+                Quantity = it.Quantity,
+                Unit = "PCS",
+                TaxableValue = it.TaxableValue,
+                CgstRate = invoice.IsInterState ? 0 : it.GstRate / 2m,
+                SgstRate = invoice.IsInterState ? 0 : it.GstRate / 2m,
+                IgstRate = invoice.IsInterState ? it.GstRate : 0
+            });
+        }
+
+        return View("~/Views/Shared/PrintEwayBill.cshtml", vm);
     }
 }

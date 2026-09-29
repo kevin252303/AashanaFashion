@@ -5,6 +5,7 @@
     var designs = ViewBag.Designs as List<AashanaFashion.Models.Design> ?? new();
     var colours = ViewBag.Colours as List<AashanaFashion.Models.Colour> ?? new();
     var sizes = ViewBag.Sizes as List<AashanaFashion.Models.Size> ?? new();
+    var pricelists = ViewBag.Pricelists as List<AashanaFashion.Models.Pricelist> ?? new();
 }
 
 <div class="page-header d-flex justify-content-between align-items-center mb-4">
@@ -37,11 +38,11 @@
     <!-- Order Header Details -->
     <div class="data-card p-4 mb-4">
         <div class="row g-3">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="af-label">SO Number</label>
                 <input class="af-input" value="@Model.SoNumber" readonly style="background:#f1f5f9;font-weight:700;" />
             </div>
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="af-label d-flex justify-content-between align-items-center mb-1">
                     <span>Customer *</span>
                     <span class="badge bg-light text-primary border d-none" id="customerPricelistBadge" style="font-size: 0.72rem;">🏷️ Pricelist</span>
@@ -56,7 +57,29 @@
                     }
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="af-label mb-0">Pricelist</label>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#quickPricelistModal" title="Create a new Pricelist inline">
+                            ➕ New
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 fw-semibold @(!Model.PricelistId.HasValue ? "d-none" : "")" id="btnEditSelectedPricelist" data-bs-toggle="modal" data-bs-target="#editPricelistModal" title="Edit currently selected Pricelist rules">
+                            ✏️ Edit
+                        </button>
+                    </div>
+                </div>
+                <select asp-for="PricelistId" class="af-input af-select" id="soPricelistSelect">
+                    <option value="">-- Standard / Base Price --</option>
+                    @foreach (var pl in pricelists)
+                    {
+                        <option value="@pl.Id" selected="@(pl.Id == Model.PricelistId ? "selected" : null)">
+                            @pl.Name (@pl.DiscountPolicyDisplay)
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label class="af-label">Status</label>
                 <select asp-for="Status" class="af-input af-select">
                     @foreach (var s in Enum.GetValues<SalesOrderStatus>())
@@ -101,8 +124,16 @@
     <!-- Line Items Table -->
     <div class="data-card mb-4">
         <div class="data-card-header d-flex justify-content-between align-items-center">
-            <span class="data-card-title">Order Line Items</span>
-            <button type="button" id="addRowBtn" class="btn-af btn-af-ghost btn-af-sm">+ Add Item</button>
+            <div>
+                <span class="data-card-title">Order Line Items</span>
+                <span style="font-size: 0.8rem; color: #64748b; margin-left: 0.5rem;">Designs, colour, size & quantity details</span>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" id="btnReapplyPricelist" class="btn-af btn-af-sm" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;" title="Recalculate rates & discounts for all items using selected pricelist">
+                    🔄 Apply Pricelist to All
+                </button>
+                <button type="button" id="addRowBtn" class="btn-af btn-af-ghost btn-af-sm">+ Add Item</button>
+            </div>
         </div>
         <div style="padding: 1rem;">
             <div style="overflow-x:auto;">
@@ -204,6 +235,141 @@
     </div>
 </form>
 
+<!-- Quick Create Pricelist Modal -->
+<div class="modal fade" id="quickPricelistModal" tabindex="-1" aria-labelledby="quickPricelistModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold" id="quickPricelistModalLabel">🏷️ Add New Pricelist</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="quickPlAlert" class="alert alert-danger d-none" role="alert"></div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Pricelist Name <span class="text-danger">*</span></label>
+                    <input type="text" id="quickPlName" class="form-control" placeholder="e.g. VIP Wholesale (10% Off)" required />
+                </div>
+                
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold small">Discount Policy</label>
+                        <select id="quickPlPolicy" class="form-select form-select-sm">
+                            <option value="0">Discount included in price</option>
+                            <option value="1">Show discount % to customer</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold small">Discount Type</label>
+                        <select id="quickPlMethod" class="form-select form-select-sm">
+                            <option value="1">Percentage (%)</option>
+                            <option value="0">Fixed Price (₹)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6" id="quickPlPctCol">
+                        <label class="form-label fw-semibold small">Discount %</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.1" min="0" max="100" id="quickPlDiscount" class="form-control text-end" value="10" />
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div class="col-6 d-none" id="quickPlFixedCol">
+                        <label class="form-label fw-semibold small">Fixed Price</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" step="0.01" min="0" id="quickPlFixed" class="form-control text-end" value="0.00" />
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold small">Min Quantity</label>
+                        <input type="number" step="1" min="1" id="quickPlMinQty" class="form-control form-control-sm text-center" value="1" />
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label fw-semibold small">Description / Notes</label>
+                    <textarea id="quickPlDesc" class="form-control form-control-sm" rows="2" placeholder="Optional notes..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-primary fw-bold px-3" id="btnSaveQuickPricelist">💾 Save &amp; Select</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Edit Pricelist Modal -->
+<div class="modal fade" id="editPricelistModal" tabindex="-1" aria-labelledby="editPricelistModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white py-3">
+                <h5 class="modal-title fw-bold" id="editPricelistModalLabel">✏️ Edit Pricelist Rules</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="editPlAlert" class="alert alert-danger d-none" role="alert"></div>
+                <input type="hidden" id="editPlId" />
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Pricelist Name <span class="text-danger">*</span></label>
+                    <input type="text" id="editPlName" class="form-control" required />
+                </div>
+                
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold small">Discount Policy</label>
+                        <select id="editPlPolicy" class="form-select form-select-sm">
+                            <option value="0">Discount included in price</option>
+                            <option value="1">Show discount % to customer</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold small">Discount Type</label>
+                        <select id="editPlMethod" class="form-select form-select-sm">
+                            <option value="1">Percentage (%)</option>
+                            <option value="0">Fixed Price (₹)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6" id="editPlPctCol">
+                        <label class="form-label fw-semibold small">Discount %</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.1" min="0" max="100" id="editPlDiscount" class="form-control text-end" value="0" />
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div class="col-6 d-none" id="editPlFixedCol">
+                        <label class="form-label fw-semibold small">Fixed Price</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" step="0.01" min="0" id="editPlFixed" class="form-control text-end" value="0.00" />
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold small">Min Quantity</label>
+                        <input type="number" step="1" min="1" id="editPlMinQty" class="form-control form-control-sm text-center" value="1" />
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label fw-semibold small">Description / Notes</label>
+                    <textarea id="editPlDesc" class="form-control form-control-sm" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-success fw-bold px-3" id="btnUpdatePricelist">💾 Save &amp; Re-apply</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <datalist id="coloursList">
     @foreach (var c in colours) { <option value="@c.ColourName" /> }
 </datalist>
@@ -224,6 +390,10 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const customerSelect = document.getElementById('customerSelect');
+    const soPricelistSelect = document.getElementById('soPricelistSelect');
+    const btnEditPricelist = document.getElementById('btnEditSelectedPricelist');
+    const btnReapplyPricelist = document.getElementById('btnReapplyPricelist');
+
     const shippingAddress = document.getElementById('shippingAddressInput');
     const transporterInput = document.getElementById('transporterInput');
     const paymentTermsInput = document.getElementById('paymentTermsInput');
@@ -233,6 +403,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const subtotalDisplay = document.getElementById('subtotalDisplay');
     const grandTotalDisplay = document.getElementById('grandTotalDisplay');
+    const transportChargeInput = document.getElementById('transportCharge');
+    const transportGSTInput = document.getElementById('transportGST');
     const roundOffInput = document.getElementById('roundOff');
 
     const designOptions = document.getElementById('designOptionsTemplate').innerHTML;
@@ -241,7 +413,16 @@ document.addEventListener('DOMContentLoaded', function () {
         return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    let currentPricelistId = null;
+    function getCurrentPricelistId() {
+        return soPricelistSelect?.value ? parseInt(soPricelistSelect.value) : null;
+    }
+
+    function updateEditButtonVisibility() {
+        const plId = getCurrentPricelistId();
+        if (btnEditPricelist) {
+            btnEditPricelist.classList.toggle('d-none', !plId);
+        }
+    }
 
     function applyPricelistToRow(row) {
         const designSelect = row.querySelector('.item-design');
@@ -256,25 +437,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!designId) return;
 
-        const plParam = currentPricelistId ? `pricelistId=${currentPricelistId}` : 'pricelistId=';
+        const plId = getCurrentPricelistId();
+        const plParam = plId ? `pricelistId=${plId}` : 'pricelistId=';
         fetch(`/Pricelist/CalculatePrice?${plParam}&designId=${designId}&quantity=${qty}&colour=${encodeURIComponent(colour)}&size=${encodeURIComponent(size)}`)
             .then(res => res.json())
             .then(res => {
                 if (res) {
                     if (rateInput && res.unitPrice > 0) rateInput.value = res.unitPrice.toFixed(2);
-                    if (discInput && res.discountPercentage > 0) discInput.value = res.discountPercentage.toFixed(2);
+                    if (discInput) discInput.value = (res.discountPercentage || 0).toFixed(2);
                     recalc();
                 }
             })
             .catch(console.error);
     }
 
+    function applyPricelistToAllRows() {
+        document.querySelectorAll('#itemsBody .item-row').forEach(applyPricelistToRow);
+    }
+
     customerSelect?.addEventListener('change', function () {
         const id = this.value;
         if (!id) {
-            currentPricelistId = null;
-            const plBadge = document.getElementById('customerPricelistBadge');
-            if (plBadge) plBadge.classList.add('d-none');
+            if (soPricelistSelect) soPricelistSelect.value = '';
+            updateEditButtonVisibility();
+            applyPricelistToAllRows();
             return;
         }
         fetch('/SalesOrder/GetCustomerDetails?id=' + id)
@@ -284,20 +470,185 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (transporterInput && data.transporter) transporterInput.value = data.transporter;
                 if (paymentTermsInput && data.paymentTerms) paymentTermsInput.value = data.paymentTerms;
 
-                currentPricelistId = data.pricelistId || null;
-                const plBadge = document.getElementById('customerPricelistBadge');
-                if (plBadge) {
-                    if (data.pricelistName) {
-                        plBadge.textContent = '🏷️ Pricelist: ' + data.pricelistName;
-                        plBadge.classList.remove('d-none');
-                    } else {
-                        plBadge.classList.add('d-none');
-                    }
+                if (soPricelistSelect && data.pricelistId) {
+                    soPricelistSelect.value = data.pricelistId;
                 }
-
-                document.querySelectorAll('#itemsBody .item-row').forEach(applyPricelistToRow);
+                updateEditButtonVisibility();
+                applyPricelistToAllRows();
             })
             .catch(console.error);
+    });
+
+    soPricelistSelect?.addEventListener('change', function () {
+        updateEditButtonVisibility();
+        applyPricelistToAllRows();
+    });
+
+    btnReapplyPricelist?.addEventListener('click', function () {
+        applyPricelistToAllRows();
+    });
+
+    // Quick Create Modal controls
+    document.getElementById('quickPlMethod')?.addEventListener('change', function () {
+        const isPct = this.value === '1';
+        document.getElementById('quickPlPctCol').classList.toggle('d-none', !isPct);
+        document.getElementById('quickPlFixedCol').classList.toggle('d-none', isPct);
+    });
+
+    document.getElementById('btnSaveQuickPricelist')?.addEventListener('click', function () {
+        const name = document.getElementById('quickPlName').value.trim();
+        const alertBox = document.getElementById('quickPlAlert');
+        if (!name) {
+            alertBox.textContent = 'Please enter a pricelist name.';
+            alertBox.classList.remove('d-none');
+            return;
+        }
+
+        const payload = {
+            name: name,
+            discountPolicy: parseInt(document.getElementById('quickPlPolicy').value),
+            computationMethod: parseInt(document.getElementById('quickPlMethod').value),
+            discountPercentage: parseFloat(document.getElementById('quickPlDiscount').value) || 0,
+            fixedPrice: parseFloat(document.getElementById('quickPlFixed').value) || 0,
+            minQuantity: parseFloat(document.getElementById('quickPlMinQty').value) || 1,
+            description: document.getElementById('quickPlDesc').value.trim()
+        };
+
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+        fetch('/Pricelist/QuickCreate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json().then(data => ({ status: res.status, body: data })))
+        .then(res => {
+            if (!res.body.success) {
+                alertBox.textContent = res.body.message || 'Error creating pricelist.';
+                alertBox.classList.remove('d-none');
+                return;
+            }
+
+            // Add to select and select it
+            const opt = new Option(`${res.body.name} (${res.body.policy})`, res.body.id, true, true);
+            soPricelistSelect.add(opt);
+            soPricelistSelect.value = res.body.id;
+            updateEditButtonVisibility();
+
+            // Close modal
+            const modalEl = document.getElementById('quickPricelistModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+
+            alertBox.classList.add('d-none');
+            document.getElementById('quickPlName').value = '';
+            document.getElementById('quickPlDesc').value = '';
+
+            applyPricelistToAllRows();
+        })
+        .catch(err => {
+            alertBox.textContent = 'Server error creating pricelist.';
+            alertBox.classList.remove('d-none');
+            console.error(err);
+        });
+    });
+
+    // Quick Edit Modal controls
+    document.getElementById('editPlMethod')?.addEventListener('change', function () {
+        const isPct = this.value === '1';
+        document.getElementById('editPlPctCol').classList.toggle('d-none', !isPct);
+        document.getElementById('editPlFixedCol').classList.toggle('d-none', isPct);
+    });
+
+    btnEditPricelist?.addEventListener('click', function () {
+        const plId = getCurrentPricelistId();
+        if (!plId) return;
+
+        const alertBox = document.getElementById('editPlAlert');
+        alertBox.classList.add('d-none');
+
+        fetch('/Pricelist/GetQuickDetails?id=' + plId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('editPlId').value = data.id;
+                    document.getElementById('editPlName').value = data.name;
+                    document.getElementById('editPlPolicy').value = data.discountPolicy;
+                    document.getElementById('editPlMethod').value = data.computationMethod;
+                    document.getElementById('editPlDiscount').value = data.discountPercentage || 0;
+                    document.getElementById('editPlFixed').value = (data.fixedPrice || 0).toFixed(2);
+                    document.getElementById('editPlMinQty').value = data.minQuantity || 1;
+                    document.getElementById('editPlDesc').value = data.description || '';
+
+                    const isPct = data.computationMethod === 1;
+                    document.getElementById('editPlPctCol').classList.toggle('d-none', !isPct);
+                    document.getElementById('editPlFixedCol').classList.toggle('d-none', isPct);
+                }
+            })
+            .catch(console.error);
+    });
+
+    document.getElementById('btnUpdatePricelist')?.addEventListener('click', function () {
+        const id = parseInt(document.getElementById('editPlId').value);
+        const name = document.getElementById('editPlName').value.trim();
+        const alertBox = document.getElementById('editPlAlert');
+
+        if (!name) {
+            alertBox.textContent = 'Please enter a pricelist name.';
+            alertBox.classList.remove('d-none');
+            return;
+        }
+
+        const payload = {
+            id: id,
+            name: name,
+            discountPolicy: parseInt(document.getElementById('editPlPolicy').value),
+            computationMethod: parseInt(document.getElementById('editPlMethod').value),
+            discountPercentage: parseFloat(document.getElementById('editPlDiscount').value) || 0,
+            fixedPrice: parseFloat(document.getElementById('editPlFixed').value) || 0,
+            minQuantity: parseFloat(document.getElementById('editPlMinQty').value) || 1,
+            description: document.getElementById('editPlDesc').value.trim()
+        };
+
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+        fetch('/Pricelist/QuickUpdate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json().then(data => ({ status: res.status, body: data })))
+        .then(res => {
+            if (!res.body.success) {
+                alertBox.textContent = res.body.message || 'Error updating pricelist.';
+                alertBox.classList.remove('d-none');
+                return;
+            }
+
+            // Update text in select
+            const opt = soPricelistSelect.querySelector(`option[value="${id}"]`);
+            if (opt) {
+                opt.textContent = `${res.body.name} (${res.body.policy})`;
+            }
+
+            // Close modal
+            const modalEl = document.getElementById('editPricelistModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+
+            applyPricelistToAllRows();
+        })
+        .catch(err => {
+            alertBox.textContent = 'Server error updating pricelist.';
+            alertBox.classList.remove('d-none');
+            console.error(err);
+        });
     });
 
     function reindex() {
@@ -412,24 +763,7 @@ document.addEventListener('DOMContentLoaded', function () {
     transportGSTInput?.addEventListener('input', recalc);
     roundOffInput?.addEventListener('input', recalc);
 
-    if (customerSelect && customerSelect.value) {
-        fetch('/SalesOrder/GetCustomerDetails?id=' + customerSelect.value)
-            .then(res => res.json())
-            .then(data => {
-                currentPricelistId = data.pricelistId || null;
-                const plBadge = document.getElementById('customerPricelistBadge');
-                if (plBadge) {
-                    if (data.pricelistName) {
-                        plBadge.textContent = '🏷️ Pricelist: ' + data.pricelistName;
-                        plBadge.classList.remove('d-none');
-                    } else {
-                        plBadge.classList.add('d-none');
-                    }
-                }
-            })
-            .catch(console.error);
-    }
-
+    updateEditButtonVisibility();
     recalc();
 });
 </script>

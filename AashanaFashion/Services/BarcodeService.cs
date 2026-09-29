@@ -24,10 +24,15 @@ public static class BarcodeService
     private const int StopCode = 106;
 
     /// <summary>
-    /// Formats standard piece barcode, e.g. AF-0042-015-CH
+    /// Formats standard piece barcode, e.g. AF-0042-015
     /// </summary>
-    public static string FormatEntityBarcode(int orderId, int slNo, string entityType)
+    public static string FormatEntityBarcode(int orderId, int slNo, string? entityType = null)
     {
+        if (string.IsNullOrWhiteSpace(entityType) || entityType == "Garment" || entityType == "Piece" || entityType == "Set")
+        {
+            return $"AF-{orderId:D4}-{slNo:D3}";
+        }
+
         string typeCode = entityType.Trim().ToUpper() switch
         {
             "CHANIYA" => "CH",
@@ -95,7 +100,7 @@ public static class BarcodeService
         int totalHeight = showText ? barHeight + 18 : barHeight + 4;
 
         var svg = new StringBuilder();
-        svg.Append($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalWidth} {totalHeight}\" width=\"100%\" height=\"auto\" style=\"display:block;max-width:100%;\">");
+        svg.Append($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalWidth} {totalHeight}\" width=\"100%\" height=\"{totalHeight}\" style=\"display:block;width:100%;height:auto;max-width:100%;\">");
         svg.Append($"<rect width=\"100%\" height=\"100%\" fill=\"#ffffff\"/>");
 
         int currentX = quietZone;

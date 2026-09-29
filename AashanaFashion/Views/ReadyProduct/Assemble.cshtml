@@ -1,0 +1,286 @@
+@model AashanaFashion.Models.ReadyProductAssemblyViewModel
+@{
+    ViewData["Title"] = "3-Piece Set Assembly";
+}
+
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a asp-action="Index" class="text-decoration-none text-muted">Ready Products</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">3-Piece Set Assembly</li>
+                </ol>
+            </nav>
+            <h3 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-puzzle text-primary me-2"></i>3-Piece Set Assembly from Production
+            </h3>
+            <p class="text-muted small mb-0">Assemble individual production pieces (Chaniya, Choli, Duppata) of identical design, colour, and size into complete Ready Products.</p>
+        </div>
+        <div>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Ready Inventory
+            </a>
+        </div>
+    </div>
+
+    <!-- Rule Explanation Card -->
+    <div class="card border-0 shadow-sm rounded-3 mb-4 border-start border-4 border-info">
+        <div class="card-body p-4">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h5 class="fw-bold text-dark mb-2">
+                        <i class="bi bi-info-circle-fill text-info me-2"></i>How Set Assembly Works
+                    </h5>
+                    <p class="text-muted mb-0 small">
+                        One ready product set requires exactly <strong>1 Chaniya</strong> + <strong>1 Choli</strong> + <strong>1 Duppata</strong> of matching <strong>Design</strong>, <strong>Colour</strong>, and <strong>Size</strong>.
+                        The table below scans all completed production pieces in the system and computes the maximum complete sets that can be assembled.
+                    </p>
+                </div>
+                <div class="col-lg-4 mt-3 mt-lg-0">
+                    <div class="d-flex align-items-center justify-content-around p-3 bg-light rounded-3 text-center">
+                        <div>
+                            <span class="fs-5 fw-bold text-primary d-block">1</span>
+                            <span class="small text-muted">Chaniya</span>
+                        </div>
+                        <span class="fs-5 text-muted">+</span>
+                        <div>
+                            <span class="fs-5 fw-bold text-primary d-block">1</span>
+                            <span class="small text-muted">Choli</span>
+                        </div>
+                        <span class="fs-5 text-muted">+</span>
+                        <div>
+                            <span class="fs-5 fw-bold text-primary d-block">1</span>
+                            <span class="small text-muted">Duppata</span>
+                        </div>
+                        <span class="fs-5 text-muted">=</span>
+                        <div>
+                            <span class="badge bg-success fs-6">1 Ready Set</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assembly Candidates Table -->
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+            <h5 class="card-title fw-bold mb-0 text-dark">
+                <i class="bi bi-list-check text-success me-2"></i>Production Matching Candidates
+            </h5>
+            <span class="badge bg-primary rounded-pill px-3 py-2">
+                @Model.Candidates.Count(c => c.AssembledSetsAvailable > 0) Combinations Ready to Assemble
+            </span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Design & Photo</th>
+                        <th>Colour</th>
+                        <th>Size</th>
+                        <th class="text-center">Chaniya (Pcs)</th>
+                        <th class="text-center">Choli (Pcs)</th>
+                        <th class="text-center">Duppata (Pcs)</th>
+                        <th class="text-center">Max Ready Sets</th>
+                        <th class="text-center">Existing Ready Stock</th>
+                        <th class="text-end pe-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Candidates.Any())
+                    {
+                        @foreach (var item in Model.Candidates)
+                        {
+                            var hasAvailable = item.AssembledSetsAvailable > 0;
+                            var photoSrc = !string.IsNullOrEmpty(item.DesignPhotoPath) ? item.DesignPhotoPath : "/images/placeholder-product.svg";
+
+                            <tr class="@(!hasAvailable ? "opacity-75" : "")">
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <img src="@photoSrc" 
+                                             alt="@item.DesignNumber" 
+                                             class="rounded-2 border object-fit-cover shadow-sm" 
+                                             style="width: 44px; height: 44px;" 
+                                             onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
+                                        <div>
+                                            <div class="fw-bold text-dark">@item.DesignNumber</div>
+                                            <div class="small text-muted">Design ID: @item.DesignId</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">@item.Colour</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-dark">@item.Size</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge @(item.ChaniyaCount > 0 ? "bg-info text-dark" : "bg-light text-muted") fs-6 px-3">
+                                        @item.ChaniyaCount
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge @(item.CholiCount > 0 ? "bg-info text-dark" : "bg-light text-muted") fs-6 px-3">
+                                        @item.CholiCount
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge @(item.DuppataCount > 0 ? "bg-info text-dark" : "bg-light text-muted") fs-6 px-3">
+                                        @item.DuppataCount
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @if (hasAvailable)
+                                    {
+                                        <span class="badge bg-success fs-6 px-3 py-2 shadow-sm">
+                                            <i class="bi bi-stars me-1"></i>@item.AssembledSetsAvailable Sets
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-muted fs-6 px-3 py-2 border">
+                                            0 Sets (Incomplete)
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-center fw-semibold text-dark">
+                                    @if (item.ExistingReadyProductId.HasValue)
+                                    {
+                                        <a asp-action="Details" asp-route-id="@item.ExistingReadyProductId.Value" class="text-decoration-none">
+                                            @item.ExistingReadyStock sets <i class="bi bi-box-arrow-up-right small"></i>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">None (New)</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-4">
+                                    @if (hasAvailable)
+                                    {
+                                        <button type="button" 
+                                                class="btn btn-primary btn-sm px-3 fw-semibold shadow-sm assemble-btn" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#assembleModal"
+                                                data-designid="@item.DesignId"
+                                                data-designnumber="@item.DesignNumber"
+                                                data-colour="@item.Colour"
+                                                data-size="@item.Size"
+                                                data-maxsets="@item.AssembledSetsAvailable">
+                                            <i class="bi bi-puzzle me-1"></i> Assemble Sets
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Requires at least 1 Chaniya, 1 Choli, and 1 Duppata">
+                                            Missing Parts
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center py-5 text-muted">
+                                <i class="bi bi-puzzle fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                                No production pieces found matching complete sets yet.<br />
+                                You can also add ready products manually via <a asp-action="Create" class="text-decoration-none">Add Ready Product</a>.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Assemble Confirmation Modal -->
+<div class="modal fade" id="assembleModal" tabindex="-1" aria-labelledby="assembleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form asp-action="AssembleSets" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="designId" id="modalDesignId" />
+                <input type="hidden" name="colour" id="modalColour" />
+                <input type="hidden" name="size" id="modalSize" />
+
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold" id="assembleModalLabel">
+                        <i class="bi bi-puzzle me-2"></i>Assemble Ready Product Sets
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Design:</span>
+                            <strong class="text-dark" id="modalDesignNumber">—</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Colour:</span>
+                            <span class="badge bg-secondary" id="modalColourBadge">—</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Size:</span>
+                            <span class="badge bg-dark" id="modalSizeBadge">—</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Max Sets Available:</span>
+                            <strong class="text-success" id="modalMaxSetsText">—</strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modalSetsToAssemble" class="form-label fw-semibold">Number of Sets to Assemble <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-boxes"></i></span>
+                            <input type="number" name="setsToAssemble" id="modalSetsToAssemble" class="form-control form-control-lg" min="1" required />
+                        </div>
+                        <div class="form-text">Each set requires 1 Chaniya + 1 Choli + 1 Duppata.</div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label for="modalNotes" class="form-label fw-semibold">Notes / Assembly Batch Reference</label>
+                        <input type="text" name="notes" id="modalNotes" class="form-control" placeholder="e.g. Assembled for Diwali dispatch" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-semibold px-4">
+                        <i class="bi bi-check-circle me-1"></i> Assemble & Inward Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('.assemble-btn').on('click', function () {
+                var designId = $(this).data('designid');
+                var designNumber = $(this).data('designnumber');
+                var colour = $(this).data('colour');
+                var size = $(this).data('size');
+                var maxSets = $(this).data('maxsets');
+
+                $('#modalDesignId').val(designId);
+                $('#modalColour').val(colour);
+                $('#modalSize').val(size);
+
+                $('#modalDesignNumber').text(designNumber);
+                $('#modalColourBadge').text(colour);
+                $('#modalSizeBadge').text(size);
+                $('#modalMaxSetsText').text(maxSets + ' sets');
+
+                $('#modalSetsToAssemble').attr('max', maxSets).val(maxSets);
+            });
+        });
+    </script>
+}

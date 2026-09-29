@@ -2,8 +2,9 @@
 @{
     ViewData["Title"] = "New Production Order";
     var designs = ViewBag.Designs as List<AashanaFashion.Models.Design> ?? new List<AashanaFashion.Models.Design>();
+    var vendors = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new List<AashanaFashion.Models.Vendor>();
     var designOptions = string.Join("", designs.Select(d => 
-        $"<option value=\"{d.Id}\" data-colours=\"{d.Colours}\" data-sizes=\"{d.Sizes}\" data-steps=\"{d.CreationFlow}\">{d.DesignNumber}</option>"));
+        $"<option value=\"{d.Id}\" data-colours=\"{d.Colours}\" data-sizes=\"{d.Sizes}\" data-steps=\"{d.CreationFlow}\" data-hw-worker=\"{d.HandworkWorkerId}\" data-st-worker=\"{d.StitchingWorkerId}\" data-hw-choli=\"{d.HandworkCholi.ToString().ToLower()}\" data-hw-chaniya=\"{d.HandworkChaniya.ToString().ToLower()}\" data-hw-dupatta=\"{d.HandworkDupatta.ToString().ToLower()}\">{d.DesignNumber}</option>"));
 }
 
 <div class="page-header">
@@ -46,14 +47,68 @@
 
                     <div class="af-form-group">
                         <label asp-for="LotNo" class="af-label">Lot No *</label>
-                        <input asp-for="LotNo" class="af-input" placeholder="e.g. LOT-001" required />
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <input asp-for="LotNo" class="af-input font-monospace fw-bold" id="lotNoInput" placeholder="LOT-202609-0001" required style="letter-spacing:0.5px;flex:1;" />
+                            <button type="button" class="btn-af btn-af-ghost btn-af-sm" id="btnRefreshLot" title="Refresh to next auto Lot No" style="white-space:nowrap;padding:0.45rem 0.75rem;">
+                                🔄 Auto
+                            </button>
+                        </div>
                         <span asp-validation-for="LotNo" class="af-error"></span>
+                        <small class="text-muted" style="font-size:0.75rem;">Auto-generated format: <code>LOT-YYYYMM-XXXX</code>. You can also edit if needed.</small>
                     </div>
 
                     <div class="af-form-group">
                         <label asp-for="Status" class="af-label">Initial Status</label>
                         <select asp-for="Status" class="af-input af-select"
                                 asp-items="Html.GetEnumSelectList<AashanaFashion.Models.OrderStatus>()"></select>
+                    </div>
+
+                    <!-- Workers & Handwork Planning for this Lot -->
+                    <div class="card p-3 mb-3" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+                        <h6 class="fw-bold mb-2 text-dark d-flex align-items-center gap-2" style="font-size:0.88rem;">
+                            <span>🪡</span> Assigned Workers & Handwork
+                        </h6>
+                        <div class="text-muted small mb-2" style="font-size:0.75rem;">Defaults loaded from design. You can modify workers and handwork pieces for this lot.</div>
+
+                        <div class="af-form-group mb-2">
+                            <label asp-for="StitchingWorkerId" class="af-label" style="font-size:0.8rem;">Stitching Master / Worker</label>
+                            <select asp-for="StitchingWorkerId" class="af-input af-select" id="stitchingWorkerSelect">
+                                <option value="">— Select Stitching Worker —</option>
+                                @foreach (var v in vendors)
+                                {
+                                    <option value="@v.Id">@v.VendorName</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="af-form-group mb-2">
+                            <label asp-for="HandworkWorkerId" class="af-label" style="font-size:0.8rem;">Handwork Karigar / Worker</label>
+                            <select asp-for="HandworkWorkerId" class="af-input af-select" id="handworkWorkerSelect">
+                                <option value="">— Select Handwork Worker —</option>
+                                @foreach (var v in vendors)
+                                {
+                                    <option value="@v.Id">@v.VendorName</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="pt-2 border-top">
+                            <label class="af-label mb-1" style="font-size:0.8rem;">Handwork Pieces (Any one, two, or all)</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" asp-for="HandworkCholi" id="lot_hw_choli" />
+                                    <label class="form-check-label fw-semibold" for="lot_hw_choli" style="font-size:0.82rem;">👚 Choli</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" asp-for="HandworkChaniya" id="lot_hw_chaniya" />
+                                    <label class="form-check-label fw-semibold" for="lot_hw_chaniya" style="font-size:0.82rem;">👗 Chaniya</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" asp-for="HandworkDupatta" id="lot_hw_dupatta" />
+                                    <label class="form-check-label fw-semibold" for="lot_hw_dupatta" style="font-size:0.82rem;">🧣 Dupatta</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="af-form-group" id="verificationSection" style="display:none;">
@@ -103,4 +158,22 @@
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
     <script src="~/js/production-create.js"></script>
+    <script>
+        document.getElementById('btnRefreshLot')?.addEventListener('click', async function() {
+            try {
+                const res = await fetch('/Production/GetNextLotNumber');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.lotNo) {
+                        const input = document.getElementById('lotNoInput');
+                        input.value = data.lotNo;
+                        input.classList.add('border-primary');
+                        setTimeout(() => input.classList.remove('border-primary'), 600);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to get next lot number', err);
+            }
+        });
+    </script>
 }
