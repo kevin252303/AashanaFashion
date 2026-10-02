@@ -1,0 +1,238 @@
+@model AashanaFashion.Models.JobSlip
+@{
+    ViewData["Title"] = $"Job Slip Details — {Model.SlipNumber}";
+    var order = Model.ProductionOrder;
+    var design = order?.Design;
+    var statusBadge = Model.Status switch {
+        "Issued" => "bg-primary text-white",
+        "In Process" => "bg-warning text-dark",
+        "Received" => "bg-success text-white",
+        "Cancelled" => "bg-danger text-white",
+        _ => "bg-secondary text-white"
+    };
+}
+
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2">
+            <h1 class="page-title mb-0">Job Slip #@Model.SlipNumber</h1>
+            <span class="badge @statusBadge px-3 py-2 fs-6">@Model.Status</span>
+        </div>
+        <p class="page-sub mb-0 mt-1">Process: <strong>@Model.ProcessName</strong> | Lot #<strong>@(order?.LotNo)</strong> | Design: <strong>@(design?.DesignNumber)</strong></p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-primary btn-sm">
+            🖨️ Print Challan
+        </a>
+        @if (order != null)
+        {
+            <a asp-action="PrintAll" asp-route-lotId="@order.Id" target="_blank" class="btn btn-outline-primary btn-sm">
+                🖨️ Print All Slips for Lot
+            </a>
+            <a asp-controller="Production" asp-action="Edit" asp-route-id="@order.Id" class="btn btn-outline-secondary btn-sm">
+                📋 Edit Lot
+            </a>
+        }
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">← Back to Slips</a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="af-alert af-alert-danger mb-3"><span class="alert-body">@TempData["Error"]</span><button class="alert-close">&times;</button></div>
+}
+
+<div class="row g-4">
+    <!-- Left Column: Details & Items -->
+    <div class="col-lg-8">
+        <!-- Vendor & Lot Summary Card -->
+        <div class="card p-3 border rounded-3 bg-white shadow-sm mb-4">
+            <div class="row g-3">
+                <div class="col-md-6 border-end">
+                    <h6 class="text-uppercase text-muted small fw-bold mb-2">Vendor / Job Worker Details</h6>
+                    <div class="fs-5 fw-bold text-dark">@(Model.Vendor?.VendorName ?? $"Vendor #{Model.VendorId}")</div>
+                    @if (!string.IsNullOrEmpty(Model.Vendor?.ContactPerson))
+                    {
+                        <div class="text-muted small">Contact: <strong>@Model.Vendor.ContactPerson</strong></div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Vendor?.Phone))
+                    {
+                        <div class="text-muted small">Phone: @Model.Vendor.Phone</div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Vendor?.Address))
+                    {
+                        <div class="text-muted small">Address: @Model.Vendor.Address</div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Vendor?.GstNumber))
+                    {
+                        <div class="text-muted small font-monospace">GSTIN: @Model.Vendor.GstNumber</div>
+                    }
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-uppercase text-muted small fw-bold mb-2">Order & Process Details</h6>
+                    <table class="table table-sm table-borderless mb-0 small">
+                        <tr>
+                            <td class="text-muted p-0" style="width:120px;">Lot Number:</td>
+                            <td class="fw-bold font-monospace p-0">@(order?.LotNo ?? "—")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted p-0">Design Number:</td>
+                            <td class="fw-bold p-0">@(design?.DesignNumber ?? "—")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted p-0">Process:</td>
+                            <td class="p-0"><span class="badge bg-dark text-white">@Model.ProcessName</span></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted p-0">Components:</td>
+                            <td class="p-0">
+                                @foreach (var c in Model.GetComponentsList())
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary border me-1">@c</span>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted p-0">Rate / Pcs:</td>
+                            <td class="fw-semibold p-0">@(Model.Rate.HasValue ? $"₹{Model.Rate.Value:N2}" : "—")</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="card border rounded-3 bg-white shadow-sm overflow-hidden mb-4">
+            <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-dark">Component & Variant Breakdown</span>
+                <span class="badge bg-primary text-white">@Model.TotalQuantity Total Pcs</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size:0.875rem;">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3" style="width:40px;">#</th>
+                            <th>Component</th>
+                            <th>Colour</th>
+                            <th class="text-center" style="width:90px;">Size</th>
+                            <th class="text-center" style="width:100px;">Quantity</th>
+                            @if (Model.Rate.HasValue && Model.Rate.Value > 0)
+                            {
+                                <th class="text-end" style="width:110px;">Rate</th>
+                                <th class="text-end" style="width:120px;">Amount</th>
+                            }
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int idx = 1;
+                            decimal sumAmount = 0;
+                        }
+                        @foreach (var item in Model.Items.OrderBy(i => i.ComponentName).ThenBy(i => i.Colour).ThenBy(i => i.Size))
+                        {
+                            var r = item.Rate ?? Model.Rate ?? 0;
+                            var amt = item.Quantity * r;
+                            sumAmount += amt;
+
+                            <tr>
+                                <td class="ps-3 text-muted">@idx</td>
+                                <td class="fw-bold">@item.ComponentName</td>
+                                <td>@item.Colour</td>
+                                <td class="text-center font-monospace">@item.Size</td>
+                                <td class="text-center fw-bold">@item.Quantity</td>
+                                @if (Model.Rate.HasValue && Model.Rate.Value > 0)
+                                {
+                                    <td class="text-end font-monospace">₹@r.ToString("N2")</td>
+                                    <td class="text-end font-monospace">₹@amt.ToString("N2")</td>
+                                }
+                                <td class="text-muted small">@item.Remarks</td>
+                            </tr>
+                            idx++;
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold table-light">
+                            <td colspan="4" class="text-end text-uppercase" style="font-size:0.8rem;">Total:</td>
+                            <td class="text-center text-primary fs-6">@Model.TotalQuantity</td>
+                            @if (Model.Rate.HasValue && Model.Rate.Value > 0)
+                            {
+                                <td class="text-end text-muted small">—</td>
+                                <td class="text-end text-primary fs-6 font-monospace">₹@sumAmount.ToString("N2")</td>
+                            }
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Status Update & Challan Meta -->
+    <div class="col-lg-4">
+        <!-- Update Status Form -->
+        <div class="card p-3 border rounded-3 bg-white shadow-sm mb-4">
+            <h6 class="fw-bold text-dark mb-3">Update Slip Status</h6>
+            <form asp-action="UpdateStatus" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Status</label>
+                    <select name="status" class="form-select form-select-sm">
+                        <option value="Issued" selected="@(Model.Status == "Issued" ? "selected" : null)">Issued (Challan given to vendor)</option>
+                        <option value="In Process" selected="@(Model.Status == "In Process" ? "selected" : null)">In Process (Work ongoing)</option>
+                        <option value="Received" selected="@(Model.Status == "Received" ? "selected" : null)">Received (Goods returned from vendor)</option>
+                        <option value="Cancelled" selected="@(Model.Status == "Cancelled" ? "selected" : null)">Cancelled</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Received Date</label>
+                    <input type="date" name="receivedDate" value="@(Model.ReceivedDate?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Remarks / Notes</label>
+                    <textarea name="remarks" rows="3" class="form-control form-control-sm" placeholder="Any comments or verification notes...">@Model.Remarks</textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    💾 Save Status Update
+                </button>
+            </form>
+        </div>
+
+        <!-- Challan Metadata -->
+        <div class="card p-3 border rounded-3 bg-white shadow-sm">
+            <h6 class="fw-bold text-dark mb-3">Challan Metadata</h6>
+            <table class="table table-sm table-borderless small mb-0">
+                <tr>
+                    <td class="text-muted p-0 py-1">Issue Date:</td>
+                    <td class="fw-semibold p-0 py-1">@Model.IssueDate.ToString("dd-MMM-yyyy")</td>
+                </tr>
+                <tr>
+                    <td class="text-muted p-0 py-1">Expected Return:</td>
+                    <td class="fw-semibold p-0 py-1">@(Model.ExpectedReturnDate.HasValue ? Model.ExpectedReturnDate.Value.ToString("dd-MMM-yyyy") : "—")</td>
+                </tr>
+                <tr>
+                    <td class="text-muted p-0 py-1">Received Date:</td>
+                    <td class="fw-semibold p-0 py-1">@(Model.ReceivedDate.HasValue ? Model.ReceivedDate.Value.ToString("dd-MMM-yyyy") : "—")</td>
+                </tr>
+                <tr>
+                    <td class="text-muted p-0 py-1">Created By:</td>
+                    <td class="p-0 py-1">@(Model.CreatedBy ?? "System")</td>
+                </tr>
+                <tr>
+                    <td class="text-muted p-0 py-1">Created Date:</td>
+                    <td class="p-0 py-1">@Model.CreatedDate.ToString("dd-MMM-yyyy HH:mm")</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>

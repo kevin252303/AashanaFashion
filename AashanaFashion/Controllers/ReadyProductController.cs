@@ -1,5 +1,6 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
+using AashanaFashion.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,11 +12,15 @@ public class ReadyProductController : Controller
 {
     private readonly AppDbContext _context;
     private readonly IWebHostEnvironment _env;
+    private readonly IReadyInventoryService _readyInventoryService;
+    private readonly ICompanyContext _companyContext;
 
-    public ReadyProductController(AppDbContext context, IWebHostEnvironment env)
+    public ReadyProductController(AppDbContext context, IWebHostEnvironment env, IReadyInventoryService readyInventoryService, ICompanyContext companyContext)
     {
         _context = context;
         _env = env;
+        _readyInventoryService = readyInventoryService;
+        _companyContext = companyContext;
     }
 
     // GET: /ReadyProduct
@@ -27,8 +32,12 @@ public class ReadyProductController : Controller
         ReadyProductStatus? status,
         string viewMode = "grid")
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+        ViewBag.ActiveCompany = activeCompany;
+
         var query = _context.ReadyProducts
             .Include(r => r.Design)
+            .Where(r => r.CompanyId == activeCompany.Id)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -67,8 +76,8 @@ public class ReadyProductController : Controller
             allItems = allItems.Where(r => r.CurrentStatus == status.Value).ToList();
         }
 
-        // Summary Calculations
-        var allProducts = await _context.ReadyProducts.ToListAsync();
+        // Summary Calculations scoped to active company
+        var allProducts = await _context.ReadyProducts.Where(r => r.CompanyId == activeCompany.Id).ToListAsync();
         var vm = new ReadyProductIndexViewModel
         {
             ReadyProducts = allItems,
@@ -163,8 +172,10 @@ public class ReadyProductController : Controller
             model.DesignNumber = design.DesignNumber;
         }
 
-        // Check if ready product for this (Design, Colour, Size) already exists
-        if (await _context.ReadyProducts.AnyAsync(r => r.DesignId == model.DesignId && r.Colour == model.Colour && r.Size == model.Size))
+        var activeCompanyId = await _companyContext.GetActiveCompanyIdAsync();
+
+        // Check if ready product for this (Design, Colour, Size) already exists in this company
+        if (await _context.ReadyProducts.AnyAsync(r => r.CompanyId == activeCompanyId && r.DesignId == model.DesignId && r.Colour == model.Colour && r.Size == model.Size))
         {
             ModelState.AddModelError("Colour", $"A ready product set for Design '{model.DesignNumber}', Colour '{model.Colour}', and Size '{model.Size}' already exists in inventory.");
         }
@@ -194,6 +205,7 @@ public class ReadyProductController : Controller
 
         var readyProduct = new ReadyProduct
         {
+            CompanyId = activeCompanyId,
             DesignId = model.DesignId,
             DesignNumber = model.DesignNumber,
             Colour = model.Colour.Trim(),
@@ -223,6 +235,7 @@ public class ReadyProductController : Controller
         {
             var tx = new ReadyProductTransaction
             {
+                CompanyId = activeCompanyId,
                 ReadyProductId = readyProduct.Id,
                 TransactionType = ReadyProductTransactionType.ManualInward,
                 Quantity = model.InitialQuantity,
@@ -388,6 +401,7 @@ public class ReadyProductController : Controller
 
         var tx = new ReadyProductTransaction
         {
+            CompanyId = product.CompanyId,
             ReadyProductId = product.Id,
             TransactionType = delta >= 0 ? ReadyProductTransactionType.StockAdjustment : ReadyProductTransactionType.DamagedScrapped,
             Quantity = delta,
@@ -406,61 +420,30 @@ public class ReadyProductController : Controller
         return RedirectToAction(nameof(Details), new { id = product.Id });
     }
 
-    // GET: /ReadyProduct/Assemble
-    // Displays piece counts for matching 1 Chaniya + 1 Choli + 1 Duppata
-    public async Task<IActionResult> Assemble()
+    // POST: /ReadyProduct/SyncCompletedLots
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin,SuperAdmin,System Admin,Manager")]
+    public async Task<IActionResult> SyncCompletedLots()
     {
-        // Find entities in PMS
-        var entities = await _context.ProductionEntities
-            .Include(e => e.ProductionOrder)
-                .ThenInclude(p => p!.Design)
-            .ToListAsync();
-
-        var existingReadyProducts = await _context.ReadyProducts.ToListAsync();
-
-        // Group by DesignId, Colour, Size
-        var groups = entities
-            .Where(e => e.ProductionOrder?.DesignId != null && !string.IsNullOrWhiteSpace(e.Colour) && !string.IsNullOrWhiteSpace(e.Size))
-            .GroupBy(e => new
-            {
-                DesignId = e.ProductionOrder!.DesignId,
-                DesignNumber = e.ProductionOrder.Design?.DesignNumber ?? "",
-                PhotoPath = e.ProductionOrder.Design?.PhotoPath,
-                Colour = e.Colour.Trim(),
-                Size = e.Size.Trim()
-            })
-            .Select(g =>
-            {
-                int chaniya = g.Count(x => string.Equals(x.EntityType, "Chaniya", StringComparison.OrdinalIgnoreCase));
-                int choli = g.Count(x => string.Equals(x.EntityType, "Choli", StringComparison.OrdinalIgnoreCase) || string.Equals(x.EntityType, "Blouse", StringComparison.OrdinalIgnoreCase));
-                int duppata = g.Count(x => string.Equals(x.EntityType, "Duppata", StringComparison.OrdinalIgnoreCase) || string.Equals(x.EntityType, "Dupatta", StringComparison.OrdinalIgnoreCase));
-
-                var existing = existingReadyProducts.FirstOrDefault(rp => rp.DesignId == g.Key.DesignId && rp.Colour == g.Key.Colour && rp.Size == g.Key.Size);
-
-                return new ReadyProductAssemblyCandidate
-                {
-                    DesignId = g.Key.DesignId,
-                    DesignNumber = g.Key.DesignNumber,
-                    DesignPhotoPath = g.Key.PhotoPath,
-                    Colour = g.Key.Colour,
-                    Size = g.Key.Size,
-                    ChaniyaCount = chaniya,
-                    CholiCount = choli,
-                    DuppataCount = duppata,
-                    ExistingReadyStock = existing?.QuantityOnHand ?? 0,
-                    ExistingReadyProductId = existing?.Id
-                };
-            })
-            .OrderByDescending(c => c.AssembledSetsAvailable)
-            .ThenBy(c => c.DesignNumber)
-            .ToList();
-
-        var vm = new ReadyProductAssemblyViewModel
+        int inwardedSets = await _readyInventoryService.SyncAllCompletedLotsAsync();
+        if (inwardedSets > 0)
         {
-            Candidates = groups
-        };
+            TempData["Success"] = $"Successfully synced and added {inwardedSets} ready 3-piece set(s) from completed production lots to inventory.";
+        }
+        else
+        {
+            TempData["Info"] = "All completed production lots are already synced to ready product inventory.";
+        }
+        return RedirectToAction(nameof(Index));
+    }
 
-        return View(vm);
+    // GET: /ReadyProduct/Assemble
+    // Redirects with notification that 3-piece set assembly is automated based on lot status
+    public IActionResult Assemble()
+    {
+        TempData["Info"] = "Manual set assembly is no longer required. 3-Piece sets (Chaniya, Choli, Dupatta) are now automatically assembled and added to ready inventory when a production lot reaches 'Ready To Dispatch'.";
+        return RedirectToAction(nameof(Index));
     }
 
     // POST: /ReadyProduct/AssembleSets

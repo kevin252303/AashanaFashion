@@ -51,21 +51,30 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-sm-6 col-lg-2">
         <div class="card border-0 shadow-sm rounded-3">
             <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Accounts Receivable (AR)</span>
+                <span class="text-muted small text-uppercase fw-semibold">AR Pending</span>
                 <h3 class="fw-bold my-1 text-warning">₹@(((decimal)ViewBag.OutstandingReceivables).ToString("N2"))</h3>
-                <small class="text-muted">Customer pending balances</small>
+                <small class="text-muted">Pending balance</small>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-sm-6 col-lg-2">
         <div class="card border-0 shadow-sm rounded-3">
             <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Overdue Invoices</span>
+                <span class="text-muted small text-uppercase fw-semibold">Overdue</span>
                 <h3 class="fw-bold my-1 text-danger">@ViewBag.OverdueCount</h3>
-                <small class="text-muted">Past payment due date</small>
+                <small class="text-muted">Past due date</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-2">
+        <div class="card border-0 shadow-sm rounded-3 bg-light">
+            <div class="card-body">
+                <span class="text-dark small text-uppercase fw-semibold">⚡ e-Invoices</span>
+                <h3 class="fw-bold my-1 text-success">@ViewBag.EInvoiceGeneratedCount</h3>
+                <small class="text-muted">IRN Generated</small>
             </div>
         </div>
     </div>
@@ -75,13 +84,13 @@
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-body py-3">
         <form method="get" class="row g-2 align-items-center">
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <div class="input-group">
                     <span class="input-group-text bg-light">🔍</span>
-                    <input type="text" name="search" class="form-control" placeholder="Search by Invoice #, Customer, GSTIN..." value="@ViewBag.Search" />
+                    <input type="text" name="search" class="form-control" placeholder="Search Invoice #, Customer, GSTIN, IRN..." value="@ViewBag.Search" />
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <select name="status" class="form-select" onchange="this.form.submit()">
                     <option value="">All Payment Statuses</option>
                     @foreach (AashanaFashion.Models.InvoicePaymentStatus s in Enum.GetValues(typeof(AashanaFashion.Models.InvoicePaymentStatus)))
@@ -90,7 +99,15 @@
                     }
                 </select>
             </div>
-            <div class="col-md-3 d-flex gap-2">
+            <div class="col-md-3">
+                <select name="eInvoiceStatus" class="form-select" onchange="this.form.submit()">
+                    <option value="">All e-Invoice Statuses</option>
+                    <option value="Generated" selected="@(ViewBag.EInvoiceStatus == "Generated")">⚡ e-Invoice: Active IRN</option>
+                    <option value="Pending" selected="@(ViewBag.EInvoiceStatus == "Pending")">⏳ e-Invoice: Pending</option>
+                    <option value="Cancelled" selected="@(ViewBag.EInvoiceStatus == "Cancelled")">❌ e-Invoice: Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
                 <button type="submit" class="btn btn-secondary flex-grow-1">Filter</button>
                 <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
             </div>
@@ -116,7 +133,8 @@
                             <th class="text-end">GST Amount</th>
                             <th class="text-end">Grand Total</th>
                             <th class="text-end">Balance Due</th>
-                            <th>Status</th>
+                            <th>Payment</th>
+                            <th>⚡ e-Invoice</th>
                             <th class="text-center">Actions</th>
                         </tr>
                     </thead>
@@ -173,10 +191,38 @@
                                         <span class="badge bg-secondary">Cancelled</span>
                                     }
                                 </td>
+                                <td>
+                                    @if (inv.EInvoiceStatus == "Generated")
+                                    {
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold" title="IRN: @inv.Irn">
+                                            ⚡ IRN Active
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(inv.EInvoiceAckNo))
+                                        {
+                                            <div class="text-muted font-monospace" style="font-size: 7pt;">Ack: @inv.EInvoiceAckNo</div>
+                                        }
+                                    }
+                                    else if (inv.EInvoiceStatus == "Cancelled")
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold" title="Cancelled on @inv.EInvoiceCancelDate?.ToString("dd/MM/yyyy")">
+                                            ❌ Cancelled
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-muted border fw-normal">
+                                            Pending
+                                        </span>
+                                    }
+                                </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                        <a asp-action="Details" asp-route-id="@inv.Id" class="btn btn-outline-secondary">View</a>
+                                        <a asp-action="Details" asp-route-id="@inv.Id" class="btn btn-outline-secondary" title="View Details">View</a>
                                         <a asp-action="Print" asp-route-id="@inv.Id" target="_blank" class="btn btn-outline-dark" title="Print GST Invoice">🖨️</a>
+                                        @if (inv.EInvoiceStatus == "Generated")
+                                        {
+                                            <a asp-action="DownloadEInvoiceJson" asp-route-id="@inv.Id" class="btn btn-outline-primary" title="Download Official INV-01 JSON">⚡</a>
+                                        }
                                     </div>
                                 </td>
                             </tr>

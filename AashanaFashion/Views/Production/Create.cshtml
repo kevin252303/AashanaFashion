@@ -3,8 +3,18 @@
     ViewData["Title"] = "New Production Order";
     var designs = ViewBag.Designs as List<AashanaFashion.Models.Design> ?? new List<AashanaFashion.Models.Design>();
     var vendors = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new List<AashanaFashion.Models.Vendor>();
-    var designOptions = string.Join("", designs.Select(d => 
-        $"<option value=\"{d.Id}\" data-colours=\"{d.Colours}\" data-sizes=\"{d.Sizes}\" data-steps=\"{d.CreationFlow}\" data-hw-worker=\"{d.HandworkWorkerId}\" data-st-worker=\"{d.StitchingWorkerId}\" data-hw-choli=\"{d.HandworkCholi.ToString().ToLower()}\" data-hw-chaniya=\"{d.HandworkChaniya.ToString().ToLower()}\" data-hw-dupatta=\"{d.HandworkDupatta.ToString().ToLower()}\">{d.DesignNumber}</option>"));
+    var designOptions = string.Join("", designs.Select(d => {
+        var discJson = System.Text.Json.JsonSerializer.Serialize(
+            (d.DiscontinuedVariants ?? new List<AashanaFashion.Models.DesignDiscontinuedVariant>())
+            .Select(v => new { colour = v.Colour ?? "", size = v.Size ?? "", reason = v.Reason ?? "" })
+        );
+        var compJson = System.Text.Json.JsonSerializer.Serialize(d.GetComponentsList());
+        var assignJson = System.Text.Json.JsonSerializer.Serialize(
+            (d.ComponentAssignments ?? new List<AashanaFashion.Models.DesignComponentAssignment>())
+            .Select(a => new { componentName = a.ComponentName, processName = a.ProcessName, vendorId = a.VendorId, rate = a.EstimatedRate })
+        );
+        return $"<option value=\"{d.Id}\" data-colours=\"{d.Colours}\" data-sizes=\"{d.Sizes}\" data-steps=\"{d.CreationFlow}\" data-hw-worker=\"{d.HandworkWorkerId}\" data-st-worker=\"{d.StitchingWorkerId}\" data-hw-choli=\"{d.HandworkCholi.ToString().ToLower()}\" data-hw-chaniya=\"{d.HandworkChaniya.ToString().ToLower()}\" data-hw-dupatta=\"{d.HandworkDupatta.ToString().ToLower()}\" data-components='{compJson}' data-assignments='{assignJson}' data-discontinued-variants='{discJson}'>{d.DesignNumber}</option>";
+    }));
 }
 
 <div class="page-header">
@@ -63,53 +73,12 @@
                                 asp-items="Html.GetEnumSelectList<AashanaFashion.Models.OrderStatus>()"></select>
                     </div>
 
-                    <!-- Workers & Handwork Planning for this Lot -->
-                    <div class="card p-3 mb-3" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
-                        <h6 class="fw-bold mb-2 text-dark d-flex align-items-center gap-2" style="font-size:0.88rem;">
-                            <span>🪡</span> Assigned Workers & Handwork
-                        </h6>
-                        <div class="text-muted small mb-2" style="font-size:0.75rem;">Defaults loaded from design. You can modify workers and handwork pieces for this lot.</div>
-
-                        <div class="af-form-group mb-2">
-                            <label asp-for="StitchingWorkerId" class="af-label" style="font-size:0.8rem;">Stitching Master / Worker</label>
-                            <select asp-for="StitchingWorkerId" class="af-input af-select" id="stitchingWorkerSelect">
-                                <option value="">— Select Stitching Worker —</option>
-                                @foreach (var v in vendors)
-                                {
-                                    <option value="@v.Id">@v.VendorName</option>
-                                }
-                            </select>
-                        </div>
-
-                        <div class="af-form-group mb-2">
-                            <label asp-for="HandworkWorkerId" class="af-label" style="font-size:0.8rem;">Handwork Karigar / Worker</label>
-                            <select asp-for="HandworkWorkerId" class="af-input af-select" id="handworkWorkerSelect">
-                                <option value="">— Select Handwork Worker —</option>
-                                @foreach (var v in vendors)
-                                {
-                                    <option value="@v.Id">@v.VendorName</option>
-                                }
-                            </select>
-                        </div>
-
-                        <div class="pt-2 border-top">
-                            <label class="af-label mb-1" style="font-size:0.8rem;">Handwork Pieces (Any one, two, or all)</label>
-                            <div class="d-flex flex-wrap gap-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" asp-for="HandworkCholi" id="lot_hw_choli" />
-                                    <label class="form-check-label fw-semibold" for="lot_hw_choli" style="font-size:0.82rem;">👚 Choli</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" asp-for="HandworkChaniya" id="lot_hw_chaniya" />
-                                    <label class="form-check-label fw-semibold" for="lot_hw_chaniya" style="font-size:0.82rem;">👗 Chaniya</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" asp-for="HandworkDupatta" id="lot_hw_dupatta" />
-                                    <label class="form-check-label fw-semibold" for="lot_hw_dupatta" style="font-size:0.82rem;">🧣 Dupatta</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Hidden legacy fallback fields -->
+                    <input type="hidden" asp-for="StitchingWorkerId" id="fallbackStitchingWorkerId" />
+                    <input type="hidden" asp-for="HandworkWorkerId" id="fallbackHandworkWorkerId" />
+                    <input type="hidden" asp-for="HandworkCholi" id="fallbackHwCholi" />
+                    <input type="hidden" asp-for="HandworkChaniya" id="fallbackHwChaniya" />
+                    <input type="hidden" asp-for="HandworkDupatta" id="fallbackHwDupatta" />
 
                     <div class="af-form-group" id="verificationSection" style="display:none;">
                         <label class="af-label">Verification Checklist</label>
@@ -153,10 +122,70 @@
             </div>
         </div>
     </div>
+
+    <!-- Garment Components & Process Vendor Assignments Matrix -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="data-card mb-3" id="componentMatrixCard">
+                <div class="data-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <span class="data-card-title">Garment Components & Process Vendor Planning Matrix</span>
+                        <span class="text-muted ms-2" style="font-size:0.8rem;">Every component (e.g. Chaniya, Choli, Dupatta, Belt, Jacket) can be assigned to different vendors for different processes.</span>
+                    </div>
+                    <span class="af-badge b-blue" id="lotComponentCountBadge">3 Components</span>
+                </div>
+                <div style="padding:1.25rem;">
+                    <!-- Components Bar -->
+                    <div class="p-3 bg-light border rounded-3 mb-3">
+                        <label class="form-label small fw-bold text-muted mb-2 text-uppercase" style="letter-spacing:0.5px;">
+                            Components for this Lot (Can have 3 or more parts):
+                        </label>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2" id="lotComponentBadgesContainer">
+                            <!-- Badges rendered by JS -->
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
+                            <span class="small text-muted fw-semibold me-1">Quick Add:</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Belt" style="font-size:0.75rem;">+ Belt</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Jacket" style="font-size:0.75rem;">+ Jacket / Shrug</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Inner" style="font-size:0.75rem;">+ Inner / Lining</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Cape" style="font-size:0.75rem;">+ Cape</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Koti" style="font-size:0.75rem;">+ Koti</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Stole" style="font-size:0.75rem;">+ Stole</button>
+                            
+                            <div class="input-group input-group-sm ms-auto" style="max-width:260px;">
+                                <input type="text" id="customLotComponentInput" class="form-control form-control-sm" placeholder="Custom component name..." />
+                                <button type="button" class="btn btn-primary btn-sm" id="btnAddCustomLotComponent">+ Add Part</button>
+                            </div>
+                        </div>
+                        <input type="hidden" asp-for="Components" id="lotComponentsHiddenInput" value="Chaniya, Choli, Dupatta" />
+                    </div>
+
+                    <!-- Matrix Table -->
+                    <div class="table-responsive bg-white border rounded-3">
+                        <table class="table table-bordered table-hover align-middle mb-0" id="lotComponentMatrixTable">
+                            <thead class="table-light">
+                                <tr id="lotMatrixHeaderRow" style="font-size:0.82rem;">
+                                    <th style="min-width:140px; background:#f1f5f9;">Component Part</th>
+                                    <th style="width:50px; text-align:center; background:#f1f5f9;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lotMatrixTableBody">
+                                <tr><td colspan="2" class="text-center text-muted py-4">Select a design above to load components and process vendor planning matrix.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </form>
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script>
+        var allVendors = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(((List<AashanaFashion.Models.Vendor>)(ViewBag.Vendors ?? new List<AashanaFashion.Models.Vendor>())).Select(v => new { id = v.Id, name = v.VendorName })));
+        var allMasterProcesses = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(((List<AashanaFashion.Models.ProcessMaster>)(ViewBag.Processes ?? new List<AashanaFashion.Models.ProcessMaster>())).Select(p => new { id = p.Id, name = p.ProcessName, order = p.DisplayOrder })));
+    </script>
     <script src="~/js/production-create.js"></script>
     <script>
         document.getElementById('btnRefreshLot')?.addEventListener('click', async function() {

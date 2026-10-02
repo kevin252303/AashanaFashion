@@ -1,0 +1,336 @@
+@model List<AashanaFashion.Models.Design>
+@{
+    ViewData["Title"] = "Archive - Discontinued Items";
+    var productStockMap = ViewBag.ProductStockMap as Dictionary<int, int> ?? new();
+    var variantItems = ViewBag.VariantItems as List<AashanaFashion.Controllers.ArchiveVariantItemViewModel> ?? new();
+    var activeTab = ViewBag.ActiveTab as string ?? "products";
+    var currentFilter = ViewBag.Filter as string ?? "";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="page-title d-flex align-items-center gap-2">
+            <span>📦</span> Archive (Discontinued Catalogue)
+        </h1>
+        <p class="page-sub mb-0">Manage discontinued products &amp; variants, liquidate remaining stock, or restore items</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-controller="SalesOrder" asp-action="Create" class="btn btn-outline-success btn-af-sm d-flex align-items-center gap-1 shadow-sm">
+            <span>🛍️</span> Create Sales Order
+        </a>
+        <a asp-controller="Design" asp-action="Index" class="btn btn-outline-secondary btn-af-sm d-flex align-items-center gap-1 shadow-sm">
+            <span>←</span> Active Products
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3">
+        <span class="alert-body">@TempData["Success"]</span>
+        <button class="alert-close">&times;</button>
+    </div>
+}
+
+<!-- KPI Metric Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card p-3 shadow-sm border-0 border-start border-4 border-danger rounded-3" style="background:#fff;">
+            <div class="text-muted small fw-bold text-uppercase">Discontinued Products</div>
+            <div class="d-flex align-items-baseline gap-2 mt-1">
+                <span class="fs-3 fw-bold text-danger">@ViewBag.TotalProducts</span>
+                <span class="text-muted small">whole styles</span>
+            </div>
+            <div class="text-muted small mt-1" style="font-size:0.75rem;">Blocked from new production orders</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 shadow-sm border-0 border-start border-4 border-warning rounded-3" style="background:#fff;">
+            <div class="text-muted small fw-bold text-uppercase">Discontinued Variants</div>
+            <div class="d-flex align-items-baseline gap-2 mt-1">
+                <span class="fs-3 fw-bold text-warning text-dark">@ViewBag.TotalVariants</span>
+                <span class="text-muted small">colour / size rules</span>
+            </div>
+            <div class="text-muted small mt-1" style="font-size:0.75rem;">Specific variants discontinued</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 shadow-sm border-0 border-start border-4 border-success rounded-3" style="background:#fff;">
+            <div class="text-muted small fw-bold text-uppercase">Remaining Stock (Sellable)</div>
+            <div class="d-flex align-items-baseline gap-2 mt-1">
+                <span class="fs-3 fw-bold text-success">@ViewBag.TotalStock</span>
+                <span class="text-muted small">ready sets</span>
+            </div>
+            <div class="text-muted small mt-1" style="font-size:0.75rem;">Can be sold until exhausted</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 shadow-sm border-0 border-start border-4 border-primary rounded-3" style="background:#fff;">
+            <div class="text-muted small fw-bold text-uppercase">Stock Retail Value</div>
+            <div class="d-flex align-items-baseline gap-2 mt-1">
+                <span class="fs-3 fw-bold text-primary">₹@(((decimal)ViewBag.TotalStockValue).ToString("N0"))</span>
+                <span class="text-muted small">est. value</span>
+            </div>
+            <div class="text-muted small mt-1" style="font-size:0.75rem;">Liquidation revenue potential</div>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Filter Controls -->
+<div class="data-card mb-4 p-3">
+    <form method="get" asp-action="Index">
+        <input type="hidden" name="tab" value="@activeTab" />
+        <div class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light">🔍</span>
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Search Design Number or Category..." value="@ViewBag.Search" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="btn-group btn-group-sm w-100" role="group">
+                    <a asp-action="Index" asp-route-tab="@activeTab" asp-route-search="@ViewBag.Search" class="btn @(string.IsNullOrEmpty(currentFilter) ? "btn-primary" : "btn-outline-secondary")">All Items</a>
+                    <a asp-action="Index" asp-route-tab="@activeTab" asp-route-filter="in_stock" asp-route-search="@ViewBag.Search" class="btn @(currentFilter == "in_stock" ? "btn-success" : "btn-outline-secondary")">With Stock (Sellable)</a>
+                    <a asp-action="Index" asp-route-tab="@activeTab" asp-route-filter="out_of_stock" asp-route-search="@ViewBag.Search" class="btn @(currentFilter == "out_of_stock" ? "btn-dark" : "btn-outline-secondary")">Out of Stock</a>
+                </div>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Apply Filter</button>
+                <a asp-action="Index" asp-route-tab="@activeTab" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Tabs Navigation -->
+<ul class="nav nav-tabs mb-3" id="archiveTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(activeTab == "products" ? "active" : "") fw-bold" id="products-tab" data-bs-toggle="tab" data-bs-target="#productsPane" type="button" role="tab">
+            👚 Discontinued Products <span class="badge bg-danger ms-1">@Model.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(activeTab == "variants" ? "active" : "") fw-bold" id="variants-tab" data-bs-toggle="tab" data-bs-target="#variantsPane" type="button" role="tab">
+            🎨 Discontinued Variants <span class="badge bg-warning text-dark ms-1">@variantItems.Count</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="archiveTabsContent">
+
+    <!-- TAB 1: WHOLE PRODUCTS -->
+    <div class="tab-pane fade @(activeTab == "products" ? "show active" : "")" id="productsPane" role="tabpanel">
+        <div class="data-card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="af-table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 60px;">Photo</th>
+                            <th>Design No</th>
+                            <th>Category</th>
+                            <th>Sales Price</th>
+                            <th class="text-center">Stock on Hand</th>
+                            <th>Stock Status</th>
+                            <th class="text-end" style="min-width: 220px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            foreach (var p in Model)
+                            {
+                                int stock = productStockMap.GetValueOrDefault(p.Id, 0);
+                                var photo = !string.IsNullOrEmpty(p.PhotoPath) ? p.PhotoPath : p.ColourImages?.FirstOrDefault()?.PhotoPath;
+                                <tr>
+                                    <td class="text-center">
+                                        @if (!string.IsNullOrEmpty(photo))
+                                        {
+                                            <img src="@photo" alt="@p.DesignNumber" class="rounded shadow-sm object-fit-cover" style="width: 44px; height: 44px;" onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
+                                        }
+                                        else
+                                        {
+                                            <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted border mx-auto" style="width: 44px; height: 44px; font-size: 1.1rem;">👗</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">@p.DesignNumber</div>
+                                        <span class="badge bg-danger" style="font-size:0.68rem;">🚫 Discontinued Product</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-primary border">@(p.ProductCategory?.CategoryName ?? p.Category ?? "Goods")</span>
+                                    </td>
+                                    <td>
+                                        ₹@((p.SalesPrice > 0 ? p.SalesPrice : p.Price).ToString("N2"))
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="fw-bold fs-6 @(stock > 0 ? "text-success" : "text-muted")">@stock pcs</span>
+                                    </td>
+                                    <td>
+                                        @if (stock > 0)
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success fw-bold">
+                                                ✅ Available to Sell (@stock pcs)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary border fw-semibold">
+                                                Zero Stock (Archived)
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="d-flex gap-1 justify-content-end align-items-center">
+                                            @if (stock > 0)
+                                            {
+                                                <a asp-controller="SalesOrder" asp-action="Create" class="btn btn-sm btn-outline-success py-1 px-2" style="font-size:0.75rem;" title="Sell available stock in Sales Order">
+                                                    🛍️ Sell Stock
+                                                </a>
+                                            }
+                                            <a asp-controller="Design" asp-action="Edit" asp-route-id="@p.Id" class="btn-af btn-af-ghost btn-af-sm py-1 px-2" style="font-size:0.75rem;">
+                                                ✏️ Edit
+                                            </a>
+                                            <form asp-action="RestoreProduct" asp-route-id="@p.Id" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-primary py-1 px-2" style="font-size:0.75rem;" onclick="return confirm('Restore product @p.DesignNumber back to active Product Master?')">
+                                                    ♻️ Restore
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <span class="fs-2 d-block mb-2">🎉</span>
+                                    No discontinued products found. All products are active.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: VARIANT DISCONTINUATIONS -->
+    <div class="tab-pane fade @(activeTab == "variants" ? "show active" : "")" id="variantsPane" role="tabpanel">
+        <div class="data-card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="af-table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 60px;">Photo</th>
+                            <th>Design No</th>
+                            <th>Discontinued Variant</th>
+                            <th>Reason</th>
+                            <th>Date</th>
+                            <th class="text-center">Stock on Hand</th>
+                            <th>Stock Status</th>
+                            <th class="text-end" style="min-width: 200px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (variantItems.Any())
+                        {
+                            foreach (var v in variantItems)
+                            {
+                                <tr>
+                                    <td class="text-center">
+                                        @if (!string.IsNullOrEmpty(v.PhotoPath))
+                                        {
+                                            <img src="@v.PhotoPath" alt="@v.DesignNumber" class="rounded shadow-sm object-fit-cover" style="width: 44px; height: 44px;" onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
+                                        }
+                                        else
+                                        {
+                                            <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted border mx-auto" style="width: 44px; height: 44px; font-size: 1.1rem;">👗</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">@v.DesignNumber</div>
+                                        <span class="badge bg-light text-primary border" style="font-size:0.7rem;">@v.CategoryName</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1">
+                                            @if (!string.IsNullOrEmpty(v.Colour))
+                                            {
+                                                <span class="badge bg-primary text-white">🎨 @v.Colour</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-light text-dark border">All Colours</span>
+                                            }
+                                            <span>/</span>
+                                            @if (!string.IsNullOrEmpty(v.Size))
+                                            {
+                                                <span class="badge bg-secondary">📏 @v.Size</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-light text-dark border">All Sizes</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="text-muted small">
+                                        @(string.IsNullOrEmpty(v.Reason) ? "No reason specified" : v.Reason)
+                                    </td>
+                                    <td class="text-muted small">
+                                        @v.DiscontinuedDate.ToString("dd-MMM-yyyy")
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="fw-bold fs-6 @(v.QuantityOnHand > 0 ? "text-success" : "text-muted")">@v.QuantityOnHand pcs</span>
+                                    </td>
+                                    <td>
+                                        @if (v.QuantityOnHand > 0)
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success fw-bold">
+                                                ✅ Available to Sell (@v.QuantityOnHand pcs)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary border fw-semibold">
+                                                Zero Stock (Archived)
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="d-flex gap-1 justify-content-end align-items-center">
+                                            @if (v.QuantityOnHand > 0)
+                                            {
+                                                <a asp-controller="SalesOrder" asp-action="Create" class="btn btn-sm btn-outline-success py-1 px-2" style="font-size:0.75rem;" title="Sell available stock in Sales Order">
+                                                    🛍️ Sell Stock
+                                                </a>
+                                            }
+                                            <a asp-controller="Design" asp-action="Edit" asp-route-id="@v.DesignId" class="btn-af btn-af-ghost btn-af-sm py-1 px-2" style="font-size:0.75rem;">
+                                                ✏️ Edit
+                                            </a>
+                                            <form asp-action="RestoreVariant" asp-route-id="@v.VariantId" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-primary py-1 px-2" style="font-size:0.75rem;" onclick="return confirm('Restore this variant back to active production?')">
+                                                    ♻️ Restore
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted">
+                                    <span class="fs-2 d-block mb-2">🎉</span>
+                                    No discontinued variants found.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

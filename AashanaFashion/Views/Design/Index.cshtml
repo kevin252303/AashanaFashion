@@ -13,10 +13,19 @@
         <h1 class="page-title">Product Master</h1>
         <p class="page-sub">Manage all products</p>
     </div>
-    @if (canCreate)
-    {
-        <a asp-action="Create" class="btn-af btn-af-primary">+ New Product</a>
-    }
+    <div class="d-flex align-items-center gap-2">
+        <a asp-controller="Archive" asp-action="Index" class="btn btn-outline-secondary btn-af-sm d-flex align-items-center gap-1 shadow-sm">
+            <span>📦</span> <span>Archive</span>
+            @if (ViewBag.ArchivedCount != null && (int)ViewBag.ArchivedCount > 0)
+            {
+                <span class="badge bg-danger rounded-pill ms-1" style="font-size:0.7rem;">@ViewBag.ArchivedCount</span>
+            }
+        </a>
+        @if (canCreate)
+        {
+            <a asp-action="Create" class="btn-af btn-af-primary">+ New Product</a>
+        }
+    </div>
 </div>
 
 @if (TempData["Success"] != null)
@@ -28,10 +37,24 @@
 <div class="data-card mb-4 p-3">
     <form method="get" asp-action="Index">
         <div class="row g-2 align-items-center">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <input type="text" name="search" class="af-input" placeholder="Search Design No, Common DNo, Colours..." value="@ViewBag.Search" style="font-size: 0.85rem;" />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <select name="companyId" class="af-input af-select" style="font-size: 0.85rem;" title="Filter products by company">
+                    <option value="">Active + Shared</option>
+                    <option value="0" selected="@(ViewBag.SelectedCompanyId != null && (int)ViewBag.SelectedCompanyId == 0 ? "selected" : null)">— All Companies —</option>
+                    <option value="-1" selected="@(ViewBag.SelectedCompanyId != null && (int)ViewBag.SelectedCompanyId == -1 ? "selected" : null)">🌐 Shared Only</option>
+                    @if (ViewBag.Companies != null)
+                    {
+                        foreach (var comp in (List<AashanaFashion.Models.Company>)ViewBag.Companies)
+                        {
+                            <option value="@comp.Id" selected="@(ViewBag.SelectedCompanyId != null && (int)ViewBag.SelectedCompanyId == comp.Id ? "selected" : null)">🏢 @comp.CompanyName (@comp.CompanyCode)</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
                 <select name="categoryId" class="af-input af-select" style="font-size: 0.85rem;">
                     <option value="">— All Categories —</option>
                     @if (ViewBag.Categories != null)
@@ -52,9 +75,13 @@
                 </select>
             </div>
             <div class="col-md-3 d-flex gap-2 align-items-center">
-                <div class="form-check me-2 mb-0" style="font-size: 0.82rem; white-space: nowrap;">
+                <div class="form-check me-1 mb-0" style="font-size: 0.82rem; white-space: nowrap;">
                     <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnlyCheck" @(ViewBag.ActiveOnly == true ? "checked" : "") />
                     <label class="form-check-label text-muted" for="activeOnlyCheck">Active</label>
+                </div>
+                <div class="form-check me-1 mb-0" style="font-size: 0.82rem; white-space: nowrap;">
+                    <input class="form-check-input" type="checkbox" name="showDiscontinued" value="true" id="showDiscontinuedCheck" @(ViewBag.ShowDiscontinued == true ? "checked" : "") />
+                    <label class="form-check-label text-danger fw-semibold" for="showDiscontinuedCheck">Discontinued</label>
                 </div>
                 <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
                 <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
@@ -68,6 +95,7 @@
         <table class="af-table">
             <thead>
                 <tr>
+                    <th style="width: 55px;">Photo</th>
                     <th>Design No</th>
                     <th>Product Type</th>
                     <th>Sales Price</th>
@@ -82,18 +110,70 @@
                 @foreach (var item in Model)
                 {
                     <tr>
-                        <td>
-                            @if (canEdit)
+                        <td class="text-center">
+                            @{
+                                var primaryPhoto = !string.IsNullOrEmpty(item.PhotoPath) ? item.PhotoPath : item.ColourImages?.FirstOrDefault()?.PhotoPath;
+                                var colourListJson = System.Text.Json.JsonSerializer.Serialize(
+                                    (item.ColourImages ?? new List<AashanaFashion.Models.DesignColourImage>()).Select(ci => new { colour = ci.Colour, code = ci.ColourCode, photoPath = ci.PhotoPath })
+                                );
+                            }
+                            @if (!string.IsNullOrEmpty(primaryPhoto))
                             {
-                                <span class="ctx-trigger" style="font-weight:600;color:#6366f1;cursor:pointer;text-decoration:underline dotted;"
-                                      data-id="@item.Id"
-                                      data-edit="@Url.Action("Edit", "Design", new { id = item.Id })"
-                                      data-can-delete="@canDelete.ToString().ToLower()">@item.DesignNumber</span>
+                                <div class="position-relative d-inline-block">
+                                    <img src="@primaryPhoto" alt="@item.DesignNumber" class="rounded shadow-sm object-fit-cover" style="width: 44px; height: 44px; cursor: pointer;" onclick='previewColourGallery("@item.DesignNumber", @Html.Raw(colourListJson), "@primaryPhoto")' onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" title="Click to view colour photos" />
+                                    @if (item.ColourImages?.Count > 1)
+                                    {
+                                        <span class="position-absolute bottom-0 end-0 badge rounded-pill bg-dark" style="font-size: 0.6rem; transform: translate(25%, 25%);" title="@item.ColourImages.Count colour photos">
+                                            🎨 @item.ColourImages.Count
+                                        </span>
+                                    }
+                                </div>
                             }
                             else
                             {
-                                <strong>@item.DesignNumber</strong>
+                                <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted border mx-auto" style="width: 44px; height: 44px; font-size: 1.1rem;" title="No photo">
+                                    👗
+                                </div>
                             }
+                        </td>
+                        <td>
+                            <div>
+                                @if (canEdit)
+                                {
+                                    <span class="ctx-trigger" style="font-weight:600;color:#6366f1;cursor:pointer;text-decoration:underline dotted;"
+                                          data-id="@item.Id"
+                                          data-edit="@Url.Action("Edit", "Design", new { id = item.Id })"
+                                          data-can-delete="@canDelete.ToString().ToLower()">@item.DesignNumber</span>
+                                }
+                                else
+                                {
+                                    <strong>@item.DesignNumber</strong>
+                                }
+
+                                @if (item.CompanyRef != null)
+                                {
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace ms-1" style="font-size:0.68rem;" title="Belongs strictly to @item.CompanyRef.CompanyName">
+                                        🏢 @item.CompanyRef.CompanyCode
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary border font-monospace ms-1" style="font-size:0.68rem;" title="Shared product — available in all companies">
+                                        🌐 All Companies
+                                    </span>
+                                }
+
+                                @if (item.Discontinued)
+                                {
+                                    <span class="badge bg-danger text-white ms-1" style="font-size:0.68rem;" title="Discontinued Whole Product">🚫 Discontinued</span>
+                                }
+                                else if (item.DiscontinuedVariants?.Any() == true)
+                                {
+                                    <span class="badge bg-warning text-dark border ms-1" style="font-size:0.68rem;" title="@string.Join(", ", item.DiscontinuedVariants.Select(v => $"{(string.IsNullOrEmpty(v.Colour) ? "All Colours" : v.Colour)}/{(string.IsNullOrEmpty(v.Size) ? "All Sizes" : v.Size)}"))">
+                                        🚫 @item.DiscontinuedVariants.Count Variant@(item.DiscontinuedVariants.Count > 1 ? "s" : "") Discontinued
+                                    </span>
+                                }
+                            </div>
                         </td>
                         <td><span class="af-badge b-blue">@item.ProductType</span></td>
                         <td>
@@ -126,6 +206,7 @@
                             }
                         </td>
                         <td>@item.Colours</td>
+                        <td>@item.Sizes</td>
                         <td>
                             @if (!string.IsNullOrEmpty(item.CreationFlow))
                             {
@@ -148,6 +229,13 @@
                             <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
                                 <a asp-action="Bom" asp-route-id="@item.Id" class="btn-af btn-af-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;" title="Bill of Materials & Costing">BOM & Cost</a>
                                 <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
+                                <form asp-action="ToggleDiscontinued" asp-route-id="@item.Id" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    <button type="submit" class="btn btn-sm @(item.Discontinued ? "btn-outline-success" : "btn-outline-secondary") py-0 px-2" style="font-size:0.75rem;" title="@(item.Discontinued ? "Restore product to active" : "Archive product")" onclick="return confirm('@(item.Discontinued ? "Restore this product to active list?" : "Discontinue and move this product to Archive?")')">
+                                        @(item.Discontinued ? "♻️ Restore" : "📦 Archive")
+                                    </button>
+                                </form>
                                 @if (canDelete)
                                 {
                                     <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;">
@@ -205,8 +293,79 @@
             a.addEventListener('mouseenter', function () { this.style.background = '#f8fafc'; });
             a.addEventListener('mouseleave', function () { this.style.background = ''; });
         });
+
+        window.previewImage = function(url, title) {
+            document.getElementById('modalPreviewImg').src = url;
+            document.getElementById('modalImageTitle').innerText = title;
+            document.getElementById('modalGalleryFooter').style.display = 'none';
+            new bootstrap.Modal(document.getElementById('imagePreviewModal')).show();
+        };
+
+        window.previewColourGallery = function(designNumber, colourImages, fallbackUrl) {
+            var titleEl = document.getElementById('modalImageTitle');
+            var imgEl = document.getElementById('modalPreviewImg');
+            var footerEl = document.getElementById('modalGalleryFooter');
+            
+            titleEl.innerText = designNumber;
+            imgEl.src = fallbackUrl || '/images/placeholder-product.svg';
+
+            if (colourImages && colourImages.length > 0) {
+                var first = colourImages[0];
+                titleEl.innerText = designNumber + ' — ' + first.colour;
+                imgEl.src = first.photoPath;
+
+                var colourTotal = {};
+                colourImages.forEach(function(ci) {
+                    colourTotal[ci.colour] = (colourTotal[ci.colour] || 0) + 1;
+                });
+                var colourCurrent = {};
+
+                var html = '<div class="d-flex flex-wrap gap-2 justify-content-center align-items-center w-100 py-1">';
+                colourImages.forEach(function(ci, idx) {
+                    colourCurrent[ci.colour] = (colourCurrent[ci.colour] || 0) + 1;
+                    var numSuffix = colourTotal[ci.colour] > 1 ? ' #' + colourCurrent[ci.colour] : '';
+                    var label = ci.colour + numSuffix;
+                    var dot = ci.code ? '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:' + ci.code + ';border:1px solid #ccc;margin-right:4px;"></span>' : '';
+                    html += '<button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 ' + (idx === 0 ? 'active' : '') + '" onclick="selectGalleryPhoto(\'' + designNumber + '\', \'' + label + '\', \'' + ci.photoPath + '\', this)">' +
+                        dot + '<strong>' + label + '</strong>' +
+                    '</button>';
+                });
+                html += '</div>';
+                footerEl.innerHTML = html;
+                footerEl.style.display = 'block';
+            } else {
+                footerEl.innerHTML = '';
+                footerEl.style.display = 'none';
+            }
+
+            new bootstrap.Modal(document.getElementById('imagePreviewModal')).show();
+        };
+
+        window.selectGalleryPhoto = function(designNumber, colourName, photoUrl, btn) {
+            document.getElementById('modalPreviewImg').src = photoUrl;
+            document.getElementById('modalImageTitle').innerText = designNumber + ' — ' + colourName;
+            var buttons = document.querySelectorAll('#modalGalleryFooter button');
+            buttons.forEach(function(b) { b.classList.remove('active'); });
+            if (btn) btn.classList.add('active');
+        };
     </script>
 }
+
+<!-- Image Preview Modal -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom py-3">
+                <h5 class="modal-title fw-bold" id="modalImageTitle">Product Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0 text-center bg-dark rounded-bottom overflow-hidden">
+                <img id="modalPreviewImg" src="" class="img-fluid" style="max-height: 75vh;" />
+            </div>
+            <div class="modal-footer bg-light border-top py-2" id="modalGalleryFooter" style="display:none;"></div>
+        </div>
+    </div>
+</div>
 
 <!-- Context Menu -->
 <ul id="ctxMenu" style="

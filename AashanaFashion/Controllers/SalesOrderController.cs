@@ -16,20 +16,25 @@ public class SalesOrderController : Controller
     private readonly AppDbContext _context;
     private readonly IEwayBillService _ewayBillService;
     private readonly IConfiguration _config;
+    private readonly ICompanyContext _companyContext;
 
-    public SalesOrderController(AppDbContext context, IEwayBillService ewayBillService, IConfiguration config)
+    public SalesOrderController(AppDbContext context, IEwayBillService ewayBillService, IConfiguration config, ICompanyContext companyContext)
     {
         _context = context;
         _ewayBillService = ewayBillService;
         _config = config;
+        _companyContext = companyContext;
     }
 
     public async Task<IActionResult> Index(string? search, SalesOrderStatus? status)
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+
         var query = _context.SalesOrders
             .Include(s => s.Customer)
             .Include(s => s.Details)
             .Include(s => s.Challans)
+            .Where(s => s.CompanyId == activeCompany.Id)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -48,22 +53,27 @@ public class SalesOrderController : Controller
         var orders = await query.OrderByDescending(s => s.OrderDate).ToListAsync();
         ViewBag.Search = search;
         ViewBag.SelectedStatus = status;
+        ViewBag.ActiveCompanyName = activeCompany.CompanyName;
         return View(orders);
     }
 
     [HttpGet]
     public async Task<IActionResult> Create()
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+
         ViewBag.Customers = await _context.Customers.Where(c => c.IsActive).OrderBy(c => c.CustomerName).ToListAsync();
-        ViewBag.Designs = await _context.Designs.Where(d => d.IsActive).OrderBy(d => d.DesignNumber).ToListAsync();
+        ViewBag.Designs = await _context.Designs.Include(d => d.ColourImages).Include(d => d.DiscontinuedVariants).Where(d => d.IsActive && (d.CompanyId == null || d.CompanyId == activeCompany.Id)).OrderBy(d => d.DesignNumber).ToListAsync();
         ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
         ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
         ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
-        ViewBag.NextSoNumber = await GenerateSoNumber();
+        
+        var nextSoNumber = await GenerateSoNumber(activeCompany);
+        ViewBag.NextSoNumber = nextSoNumber;
 
         return View(new SalesOrderViewModel
         {
-            SoNumber = await GenerateSoNumber(),
+            SoNumber = nextSoNumber,
             OrderDate = DateTime.Today,
             ExpectedDeliveryDate = DateTime.Today.AddDays(14)
         });
@@ -73,18 +83,28 @@ public class SalesOrderController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(SalesOrderViewModel model)
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+
+        await ValidateDiscontinuedStockAsync(model.Details);
+
         if (!ModelState.IsValid)
         {
             ViewBag.Customers = await _context.Customers.Where(c => c.IsActive).OrderBy(c => c.CustomerName).ToListAsync();
-            ViewBag.Designs = await _context.Designs.Where(d => d.IsActive).OrderBy(d => d.DesignNumber).ToListAsync();
+            ViewBag.Designs = await _context.Designs.Include(d => d.ColourImages).Include(d => d.DiscontinuedVariants).Where(d => d.IsActive && (d.CompanyId == null || d.CompanyId == activeCompany.Id)).OrderBy(d => d.DesignNumber).ToListAsync();
             ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
             ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
             return View(model);
         }
 
+        if (string.IsNullOrWhiteSpace(model.SoNumber))
+        {
+            model.SoNumber = await GenerateSoNumber(activeCompany);
+        }
+
         var order = new SalesOrder
         {
+            CompanyId = activeCompany.Id,
             SoNumber = model.SoNumber,
             CustomerId = model.CustomerId,
             PricelistId = model.PricelistId,
@@ -181,8 +201,10 @@ public class SalesOrderController : Controller
             }).ToList()
         };
 
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+
         ViewBag.Customers = await _context.Customers.Where(c => c.IsActive).OrderBy(c => c.CustomerName).ToListAsync();
-        ViewBag.Designs = await _context.Designs.Where(d => d.IsActive).OrderBy(d => d.DesignNumber).ToListAsync();
+        ViewBag.Designs = await _context.Designs.Include(d => d.ColourImages).Include(d => d.DiscontinuedVariants).Where(d => d.IsActive && (d.CompanyId == null || d.CompanyId == activeCompany.Id)).OrderBy(d => d.DesignNumber).ToListAsync();
         ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
         ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
         ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
@@ -194,10 +216,14 @@ public class SalesOrderController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(SalesOrderViewModel model)
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+
+        await ValidateDiscontinuedStockAsync(model.Details);
+
         if (!ModelState.IsValid)
         {
             ViewBag.Customers = await _context.Customers.Where(c => c.IsActive).OrderBy(c => c.CustomerName).ToListAsync();
-            ViewBag.Designs = await _context.Designs.Where(d => d.IsActive).OrderBy(d => d.DesignNumber).ToListAsync();
+            ViewBag.Designs = await _context.Designs.Include(d => d.ColourImages).Include(d => d.DiscontinuedVariants).Where(d => d.IsActive && (d.CompanyId == null || d.CompanyId == activeCompany.Id)).OrderBy(d => d.DesignNumber).ToListAsync();
             ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
             ViewBag.Pricelists = await _context.Pricelists.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
@@ -371,8 +397,9 @@ public class SalesOrderController : Controller
                 // Deduct from Ready Product Inventory (Outward Sales Dispatch)
                 var readyProduct = await _context.ReadyProducts
                     .FirstOrDefaultAsync(r => 
-                        (orderDetail.DesignId.HasValue && r.DesignId == orderDetail.DesignId.Value && r.Colour == orderDetail.Colour && r.Size == orderDetail.Size) ||
-                        (r.DesignNumber == orderDetail.DesignNumber && r.Colour == orderDetail.Colour && r.Size == orderDetail.Size));
+                        r.CompanyId == order.CompanyId &&
+                        ((orderDetail.DesignId.HasValue && r.DesignId == orderDetail.DesignId.Value && r.Colour == orderDetail.Colour && r.Size == orderDetail.Size) ||
+                        (r.DesignNumber == orderDetail.DesignNumber && r.Colour == orderDetail.Colour && r.Size == orderDetail.Size)));
 
                 if (readyProduct != null)
                 {
@@ -381,6 +408,7 @@ public class SalesOrderController : Controller
 
                     var readyTx = new ReadyProductTransaction
                     {
+                        CompanyId = order.CompanyId,
                         ReadyProductId = readyProduct.Id,
                         TransactionType = ReadyProductTransactionType.OutwardSales,
                         Quantity = -item.DispatchQuantity,
@@ -467,11 +495,12 @@ public class SalesOrderController : Controller
         });
     }
 
-    private async Task<string> GenerateSoNumber()
+    private async Task<string> GenerateSoNumber(Company? company = null)
     {
+        company ??= await _companyContext.GetActiveCompanyAsync();
         var year = DateTime.Now.Year;
-        var prefix = $"SO-{year}-";
-        var count = await _context.SalesOrders.CountAsync(s => s.SoNumber.StartsWith(prefix));
+        var prefix = !string.IsNullOrWhiteSpace(company.SalesOrderPrefix) ? company.SalesOrderPrefix : $"SO-{year}-";
+        var count = await _context.SalesOrders.CountAsync(s => s.CompanyId == company.Id && s.SoNumber.StartsWith(prefix));
         return $"{prefix}{(count + 1):D4}";
     }
 
@@ -525,19 +554,25 @@ public class SalesOrderController : Controller
     {
         var challan = await _context.DeliveryChallans
             .Include(c => c.Customer)
+            .Include(c => c.SalesOrder)
             .Include(c => c.Items)
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (challan == null) return NotFound();
 
-        string fromGstin = _config["Company:GSTIN"] ?? "24AABCA1234F1Z9";
-        string fromName = _config["Company:Name"] ?? "AASHANA FASHION";
-        string fromAddr1 = _config["Company:Address1"] ?? "Plot 14-16, Garment Industrial Zone";
-        string fromAddr2 = _config["Company:Address2"] ?? "Pandesara";
-        string fromPlace = _config["Company:City"] ?? "Surat";
-        string fromState = _config["Company:State"] ?? "Gujarat";
-        int fromPin = int.TryParse(_config["Company:Pincode"], out var pinVal) ? pinVal : 394221;
-        int fromStateCode = int.TryParse(_config["Company:StateCode"], out var scVal) ? scVal : 24;
+        var company = challan.SalesOrder != null 
+            ? await _context.Companies.FindAsync(challan.SalesOrder.CompanyId)
+            : await _companyContext.GetActiveCompanyAsync();
+        company ??= await _companyContext.GetActiveCompanyAsync();
+
+        string fromGstin = !string.IsNullOrWhiteSpace(company.Gstin) ? company.Gstin : (_config["Company:GSTIN"] ?? "24AABCA1234F1Z9");
+        string fromName = !string.IsNullOrWhiteSpace(company.CompanyName) ? company.CompanyName : (_config["Company:Name"] ?? "AASHANA FASHION");
+        string fromAddr1 = !string.IsNullOrWhiteSpace(company.Address1) ? company.Address1 : (_config["Company:Address1"] ?? "Plot 14-16, Garment Industrial Zone");
+        string fromAddr2 = company.Address2 ?? (_config["Company:Address2"] ?? "Pandesara");
+        string fromPlace = !string.IsNullOrWhiteSpace(company.City) ? company.City : (_config["Company:City"] ?? "Surat");
+        string fromState = !string.IsNullOrWhiteSpace(company.State) ? company.State : (_config["Company:State"] ?? "Gujarat");
+        int fromPin = int.TryParse(company.PinCode, out var pinVal) ? pinVal : (int.TryParse(_config["Company:Pincode"], out var pVal) ? pVal : 394221);
+        int fromStateCode = company.StateCode > 0 ? company.StateCode : (int.TryParse(_config["Company:StateCode"], out var scV) ? scV : 24);
         string fromAddr = $"{fromAddr1}, {fromAddr2}, {fromPlace}, {fromState} - {fromPin}";
 
         string toGstin = !string.IsNullOrWhiteSpace(challan.Customer?.GstNumber) && challan.Customer.GstNumber.Length == 15
@@ -637,5 +672,105 @@ public class SalesOrderController : Controller
         }
 
         return View("~/Views/Shared/PrintEwayBill.cshtml", vm);
+    }
+
+    private async Task ValidateDiscontinuedStockAsync(List<SalesOrderDetailViewModel> details)
+    {
+        if (details == null || !details.Any()) return;
+
+        var activeDetails = details.Where(x => x.Quantity > 0).ToList();
+        var designIds = activeDetails.Where(x => x.DesignId.HasValue && x.DesignId.Value > 0).Select(x => x.DesignId!.Value).Distinct().ToList();
+        var designNumbers = activeDetails.Where(x => !x.DesignId.HasValue || x.DesignId.Value == 0).Select(x => x.DesignNumber).Distinct().ToList();
+
+        var designs = await _context.Designs
+            .Include(d => d.DiscontinuedVariants)
+            .Where(d => designIds.Contains(d.Id) || designNumbers.Contains(d.DesignNumber))
+            .ToListAsync();
+
+        foreach (var d in activeDetails)
+        {
+            var design = designs.FirstOrDefault(x => (d.DesignId.HasValue && x.Id == d.DesignId.Value) || x.DesignNumber.Equals(d.DesignNumber, StringComparison.OrdinalIgnoreCase));
+            if (design == null) continue;
+
+            bool isWholeDiscontinued = design.Discontinued;
+            bool isVariantDiscontinued = design.IsVariantDiscontinued(d.Colour, d.Size);
+
+            if (isWholeDiscontinued || isVariantDiscontinued)
+            {
+                var col = d.Colour?.Trim() ?? "";
+                var sz = d.Size?.Trim() ?? "";
+
+                // Find ready product stock
+                var readyProduct = await _context.ReadyProducts
+                    .FirstOrDefaultAsync(rp => rp.DesignId == design.Id
+                        && rp.Colour.ToLower() == col.ToLower()
+                        && rp.Size.ToLower() == sz.ToLower()
+                        && rp.IsActive);
+
+                int stockOnHand = readyProduct?.QuantityOnHand ?? 0;
+                string label = $"{design.DesignNumber} ({col} / {sz})";
+
+                if (stockOnHand <= 0)
+                {
+                    ModelState.AddModelError("", $"'{label}' is discontinued and out of stock (0 pcs on hand). No new orders can be created for discontinued items with zero stock.");
+                }
+                else if (d.Quantity > stockOnHand)
+                {
+                    ModelState.AddModelError("", $"'{label}' is discontinued. Only {stockOnHand} pcs available in stock. Order quantity ({d.Quantity}) cannot exceed stock on hand.");
+                }
+            }
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> CheckItemStockAndDiscontinued(int designId, string? colour, string? size)
+    {
+        var design = await _context.Designs
+            .Include(d => d.DiscontinuedVariants)
+            .FirstOrDefaultAsync(d => d.Id == designId);
+
+        if (design == null) return Json(new { success = false, message = "Design not found" });
+
+        var col = colour?.Trim() ?? "";
+        var sz = size?.Trim() ?? "";
+
+        bool isDiscontinued = design.Discontinued || design.IsVariantDiscontinued(col, sz);
+
+        var readyProduct = await _context.ReadyProducts
+            .FirstOrDefaultAsync(rp => rp.DesignId == designId
+                && rp.Colour.ToLower() == col.ToLower()
+                && rp.Size.ToLower() == sz.ToLower()
+                && rp.IsActive);
+
+        int stockOnHand = readyProduct?.QuantityOnHand ?? 0;
+        int availableStock = readyProduct?.AvailableQuantity ?? 0;
+
+        string message = "";
+        bool canSell = true;
+
+        if (isDiscontinued)
+        {
+            if (stockOnHand <= 0)
+            {
+                canSell = false;
+                message = $"Item is discontinued and out of stock (0 pcs). No new orders can be created.";
+            }
+            else
+            {
+                canSell = true;
+                message = $"Item is discontinued. Only {stockOnHand} pcs in stock available to sell.";
+            }
+        }
+
+        return Json(new
+        {
+            success = true,
+            isDiscontinued,
+            isWholeDiscontinued = design.Discontinued,
+            stockOnHand,
+            availableStock,
+            canSell,
+            message
+        });
     }
 }

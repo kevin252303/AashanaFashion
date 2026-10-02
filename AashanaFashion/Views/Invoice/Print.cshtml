@@ -28,6 +28,19 @@
 
         return "Rupees " + result.Trim() + " Only";
     }
+
+    bool hasEInvoice = !string.IsNullOrEmpty(Model.Irn) || Model.EInvoiceStatus == "Generated";
+    bool isCancelledEInvoice = Model.EInvoiceStatus == "Cancelled";
+
+    var compName = Model.Company?.CompanyName ?? "AASHANA FASHION";
+    var compGstin = Model.Company?.Gstin ?? "24AABCA1234F1Z8";
+    var compState = Model.Company?.State ?? "Gujarat";
+    var compStateCode = Model.Company?.StateCode ?? 24;
+    var compAddress = Model.Company != null 
+        ? $"{Model.Company.Address1} {Model.Company.Address2}, {Model.Company.City}, {Model.Company.State} - {Model.Company.PinCode}".Trim().Trim(',').Trim()
+        : "101-104, Surat Textile Market, Ring Road, Surat, Gujarat - 395002";
+    var compEmail = Model.Company?.Email ?? "sales@aashanafashion.com";
+    var compPhone = Model.Company?.Phone ?? "+91 98765 43210";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -190,11 +203,27 @@
     <div class="no-print-bar">
         <div class="d-flex align-items-center gap-3">
             <a href="/Invoice/Details/@Model.Id" class="btn btn-sm btn-outline-secondary">← Back to Invoice</a>
-            <h5 class="mb-0 fw-bold">GST Tax Invoice — @Model.InvoiceNumber</h5>
+            <h5 class="mb-0 fw-bold">
+                @(hasEInvoice ? "⚡ Govt. Standard E-Invoice" : "GST Tax Invoice") — @Model.InvoiceNumber
+            </h5>
+            @if (hasEInvoice)
+            {
+                <span class="badge @(isCancelledEInvoice ? "bg-danger" : "bg-success")">
+                    @(isCancelledEInvoice ? "Cancelled IRN" : "IRN Verified")
+                </span>
+            }
         </div>
-        <button type="button" class="btn btn-primary fw-bold px-4" onclick="window.print()">
-            🖨️ Print Tax Invoice
-        </button>
+        <div class="d-flex gap-2">
+            @if (hasEInvoice)
+            {
+                <a asp-action="DownloadEInvoiceJson" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-dark">
+                    📥 Download INV-01 JSON
+                </a>
+            }
+            <button type="button" class="btn btn-primary fw-bold px-4" onclick="window.print()">
+                🖨️ Print Tax Invoice
+            </button>
+        </div>
     </div>
 
     <div class="invoice-page">
@@ -206,20 +235,62 @@
             <!-- Top Heading & Copy Type -->
             <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-1">
                 <div class="text-muted small" style="font-size: 8pt;">
-                    <strong>GSTIN:</strong> 24AABCA1234F1Z8 &nbsp;|&nbsp; <strong>State:</strong> Gujarat (24)
+                    <strong>GSTIN:</strong> @compGstin &nbsp;|&nbsp; <strong>State:</strong> @compState (@compStateCode)
                 </div>
-                <div class="text-uppercase fw-bold border px-2 py-0 bg-light" style="font-size: 8pt;">
-                    Tax Invoice / Original for Recipient
+                <div class="text-uppercase fw-bold border px-2 py-0 @(isCancelledEInvoice ? "bg-danger text-white border-danger" : (hasEInvoice ? "bg-dark text-white border-dark" : "bg-light text-dark"))" style="font-size: 8pt; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                    @(isCancelledEInvoice ? "TAX INVOICE (CANCELLED e-INVOICE) / Recipient Copy" : (hasEInvoice ? "TAX INVOICE (e-Invoice) / Original for Recipient" : "Tax Invoice / Original for Recipient"))
                 </div>
             </div>
 
-            <!-- Company Info Header -->
-            <div class="text-center pb-1 mb-1 border-bottom">
-                <h2 class="fw-bold mb-0 text-uppercase tracking-wide" style="font-size: 16pt; letter-spacing: 1px;">AASHANA FASHION</h2>
-                <div class="small fw-semibold text-muted" style="font-size: 8pt;">Manufacturer & Wholesaler of Exclusive Designer Ethnic Garments</div>
-                <div class="small" style="font-size: 8pt;">101-104, Surat Textile Market, Ring Road, Surat, Gujarat - 395002</div>
-                <div class="small text-muted" style="font-size: 7.5pt;">Email: sales@aashanafashion.com | Phone: +91 98765 43210</div>
+            <!-- Company Info Header & QR Code Section -->
+            <div class="row align-items-center pb-2 mb-1 border-bottom g-2">
+                <div class="@(hasEInvoice && ViewBag.EInvoiceQrSvg != null ? "col-9" : "col-12 text-center")">
+                    <h2 class="fw-bold mb-0 text-uppercase tracking-wide" style="font-size: 16pt; letter-spacing: 1px;">@compName</h2>
+                    <div class="small fw-semibold text-muted" style="font-size: 8pt;">Manufacturer & Wholesaler of Exclusive Designer Ethnic Garments</div>
+                    <div class="small" style="font-size: 8pt;">@compAddress</div>
+                    <div class="small text-muted" style="font-size: 7.5pt;">Email: @compEmail | Phone: @compPhone</div>
+                </div>
+                @if (hasEInvoice && ViewBag.EInvoiceQrSvg != null)
+                {
+                    <div class="col-3 text-end d-flex flex-column align-items-end justify-content-center">
+                        <div class="p-1 border rounded bg-white text-center shadow-sm" style="display: inline-block;">
+                            <div style="width: 100px; height: 100px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                @Html.Raw(ViewBag.EInvoiceQrSvg)
+                            </div>
+                            <div class="text-uppercase fw-bold text-muted mt-1" style="font-size: 6pt; letter-spacing: 0.5px;">GST Signed QR</div>
+                        </div>
+                    </div>
+                }
             </div>
+
+            @if (hasEInvoice && !string.IsNullOrEmpty(Model.Irn))
+            {
+                <!-- Official Government e-Invoice IRN Banner -->
+                <div class="border border-dark p-2 mb-2 bg-light text-dark" style="font-size: 8pt; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                    <div class="row g-1 align-items-center">
+                        <div class="col-12">
+                            <span class="text-muted fw-bold">IRN: </span>
+                            <span class="font-monospace fw-bold" style="word-break: break-all; font-size: 7.5pt; color: #0f172a;">@Model.Irn</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted fw-bold">Ack No: </span>
+                            <span class="font-monospace fw-bold">@(Model.EInvoiceAckNo ?? "N/A")</span>
+                        </div>
+                        <div class="col-6 text-end">
+                            <span class="text-muted fw-bold">Ack Date: </span>
+                            <span class="fw-semibold">@(Model.EInvoiceAckDate?.ToString("dd-MMM-yyyy HH:mm:ss") ?? "N/A")</span>
+                        </div>
+                        @if (isCancelledEInvoice)
+                        {
+                            <div class="col-12 mt-1">
+                                <div class="bg-danger text-white px-2 py-1 text-center fw-bold small rounded" style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                                    ⚠ THIS E-INVOICE HAS BEEN CANCELLED ON IRP (Reason: @Model.EInvoiceCancelReason - @Model.EInvoiceCancelRemarks)
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
 
             <!-- Invoice & Customer Meta Grid -->
             <div class="row g-0 border mb-1">
@@ -259,6 +330,13 @@
                             <td class="text-muted">Reverse Charge:</td>
                             <td>No</td>
                         </tr>
+                        @if (!string.IsNullOrEmpty(Model.EInvoiceSupplyType))
+                        {
+                            <tr>
+                                <td class="text-muted">Supply Type:</td>
+                                <td class="fw-semibold">@Model.EInvoiceSupplyType</td>
+                            </tr>
+                        }
                         @if (!string.IsNullOrWhiteSpace(Model.EwayBillNumber))
                         {
                             <tr>
@@ -426,7 +504,7 @@
                     </div>
                 </div>
                 <div class="col-5 text-end">
-                    <div class="small fw-bold text-uppercase mb-2">For AASHANA FASHION</div>
+                    <div class="small fw-bold text-uppercase mb-2">For @compName.ToUpper()</div>
                     <div class="border-top d-inline-block pt-1 px-3 text-muted small" style="min-width: 160px;">
                         Authorized Signatory
                     </div>

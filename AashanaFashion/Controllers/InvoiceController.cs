@@ -14,21 +14,30 @@ public class InvoiceController : Controller
 {
     private readonly AppDbContext _context;
     private readonly IEwayBillService _ewayBillService;
+    private readonly IEInvoiceService _eInvoiceService;
     private readonly IConfiguration _config;
+    private readonly ICompanyContext _companyContext;
 
-    public InvoiceController(AppDbContext context, IEwayBillService ewayBillService, IConfiguration config)
+    public InvoiceController(AppDbContext context, IEwayBillService ewayBillService, IEInvoiceService eInvoiceService, IConfiguration config, ICompanyContext companyContext)
     {
         _context = context;
         _ewayBillService = ewayBillService;
+        _eInvoiceService = eInvoiceService;
         _config = config;
+        _companyContext = companyContext;
     }
 
-    public async Task<IActionResult> Index(string? search, InvoicePaymentStatus? status)
+    public async Task<IActionResult> Index(string? search, InvoicePaymentStatus? status, string? eInvoiceStatus)
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+        ViewBag.ActiveCompany = activeCompany;
+
         var query = _context.TaxInvoices
             .Include(i => i.Customer)
             .Include(i => i.SalesOrder)
             .Include(i => i.Receipts)
+            .Include(i => i.Company)
+            .Where(i => i.CompanyId == activeCompany.Id)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -36,7 +45,8 @@ public class InvoiceController : Controller
             var sLower = search.Trim().ToLower();
             query = query.Where(i => i.InvoiceNumber.ToLower().Contains(sLower) ||
                                      i.CustomerName.ToLower().Contains(sLower) ||
-                                     (i.CustomerGstin != null && i.CustomerGstin.ToLower().Contains(sLower)));
+                                     (i.CustomerGstin != null && i.CustomerGstin.ToLower().Contains(sLower)) ||
+                                     (i.Irn != null && i.Irn.ToLower().Contains(sLower)));
         }
 
         if (status.HasValue)
@@ -44,18 +54,31 @@ public class InvoiceController : Controller
             query = query.Where(i => i.PaymentStatus == status.Value);
         }
 
-        var allInvoices = await _context.TaxInvoices.ToListAsync();
+        if (!string.IsNullOrWhiteSpace(eInvoiceStatus))
+        {
+            if (eInvoiceStatus == "Generated")
+                query = query.Where(i => i.EInvoiceStatus == "Generated");
+            else if (eInvoiceStatus == "Pending")
+                query = query.Where(i => i.EInvoiceStatus == "Not Generated" || string.IsNullOrEmpty(i.EInvoiceStatus));
+            else if (eInvoiceStatus == "Cancelled")
+                query = query.Where(i => i.EInvoiceStatus == "Cancelled");
+        }
+
+        var allInvoices = await _context.TaxInvoices.Where(i => i.CompanyId == activeCompany.Id).ToListAsync();
         var totalInvoiced = allInvoices.Sum(i => i.GrandTotal);
         var totalCollected = allInvoices.Sum(i => i.PaidAmount);
         var outstandingReceivables = allInvoices.Sum(i => i.BalanceDue);
         var overdueCount = allInvoices.Count(i => i.DueDate < DateTime.Today && i.PaymentStatus != InvoicePaymentStatus.Paid);
+        var eInvoiceGeneratedCount = allInvoices.Count(i => i.EInvoiceStatus == "Generated");
 
         ViewBag.TotalInvoiced = totalInvoiced;
         ViewBag.TotalCollected = totalCollected;
         ViewBag.OutstandingReceivables = outstandingReceivables;
         ViewBag.OverdueCount = overdueCount;
+        ViewBag.EInvoiceGeneratedCount = eInvoiceGeneratedCount;
         ViewBag.Search = search;
         ViewBag.Status = status;
+        ViewBag.EInvoiceStatus = eInvoiceStatus;
 
         var invoices = await query.OrderByDescending(i => i.InvoiceDate).ThenByDescending(i => i.Id).ToListAsync();
         return View(invoices);
@@ -65,12 +88,17 @@ public class InvoiceController : Controller
     [HttpGet]
     public async Task<IActionResult> Create(int? salesOrderId)
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
         var model = new CreateInvoiceViewModel
         {
-            InvoiceNumber = await GenerateNextInvoiceNumberAsync(),
+            InvoiceNumber = await GenerateNextInvoiceNumberAsync(activeCompany),
             InvoiceDate = DateTime.Today,
             DueDate = DateTime.Today.AddDays(15),
-            SalesOrderId = salesOrderId
+            SalesOrderId = salesOrderId,
+            BankName = activeCompany.BankName ?? "HDFC Bank",
+            BankAccountNumber = activeCompany.BankAccountNumber ?? "50200012345678",
+            BankIfsc = activeCompany.BankIfsc ?? "HDFC0001234",
+            BankBranch = activeCompany.BankBranch ?? "Surat"
         };
 
         if (salesOrderId.HasValue)
@@ -130,7 +158,7 @@ public class InvoiceController : Controller
         }
 
         ViewBag.Customers = await _context.Customers.Where(c => c.IsActive).OrderBy(c => c.CustomerName).ToListAsync();
-        ViewBag.SalesOrders = await _context.SalesOrders.Include(s => s.Customer).OrderByDescending(s => s.Id).ToListAsync();
+        ViewBag.SalesOrders = await _context.SalesOrders.Where(s => s.CompanyId == activeCompany.Id).Include(s => s.Customer).OrderByDescending(s => s.Id).ToListAsync();
 
         return View(model);
     }
@@ -140,6 +168,8 @@ public class InvoiceController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CreateInvoiceViewModel model)
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+
         if (model.CustomerId <= 0)
         {
             ModelState.AddModelError("CustomerId", "Please select a valid customer.");
@@ -153,7 +183,7 @@ public class InvoiceController : Controller
         if (!ModelState.IsValid)
         {
             ViewBag.Customers = await _context.Customers.Where(c => c.IsActive).OrderBy(c => c.CustomerName).ToListAsync();
-            ViewBag.SalesOrders = await _context.SalesOrders.Include(s => s.Customer).OrderByDescending(s => s.Id).ToListAsync();
+            ViewBag.SalesOrders = await _context.SalesOrders.Where(s => s.CompanyId == activeCompany.Id).Include(s => s.Customer).OrderByDescending(s => s.Id).ToListAsync();
             return View(model);
         }
 
@@ -162,7 +192,8 @@ public class InvoiceController : Controller
 
         var invoice = new TaxInvoice
         {
-            InvoiceNumber = string.IsNullOrWhiteSpace(model.InvoiceNumber) ? await GenerateNextInvoiceNumberAsync() : model.InvoiceNumber.Trim(),
+            CompanyId = activeCompany.Id,
+            InvoiceNumber = string.IsNullOrWhiteSpace(model.InvoiceNumber) ? await GenerateNextInvoiceNumberAsync(activeCompany) : model.InvoiceNumber.Trim(),
             InvoiceDate = model.InvoiceDate,
             DueDate = model.DueDate,
             SalesOrderId = model.SalesOrderId > 0 ? model.SalesOrderId : null,
@@ -239,6 +270,7 @@ public class InvoiceController : Controller
         // Record entry in Accounting Transactions ledger
         _context.AccountingTransactions.Add(new AccountingTransaction
         {
+            CompanyId = invoice.CompanyId,
             Date = invoice.InvoiceDate,
             Type = TransactionType.Income,
             Amount = invoice.GrandTotal,
@@ -260,6 +292,7 @@ public class InvoiceController : Controller
     public async Task<IActionResult> Details(int id)
     {
         var invoice = await _context.TaxInvoices
+            .Include(i => i.Company)
             .Include(i => i.Customer)
             .Include(i => i.SalesOrder)
             .Include(i => i.Items)
@@ -275,12 +308,18 @@ public class InvoiceController : Controller
             .Where(e => e.TaxInvoiceId == id)
             .ToListAsync();
 
+        if (!string.IsNullOrEmpty(invoice.EInvoiceSignedQrCode) || !string.IsNullOrEmpty(invoice.Irn))
+        {
+            ViewBag.EInvoiceQrSvg = _eInvoiceService.GenerateQrCodeSvg(invoice.EInvoiceSignedQrCode ?? invoice.Irn!, 130);
+        }
+
         return View(invoice);
     }
 
     public async Task<IActionResult> Print(int id)
     {
         var invoice = await _context.TaxInvoices
+            .Include(i => i.Company)
             .Include(i => i.Customer)
             .Include(i => i.SalesOrder)
             .Include(i => i.Items)
@@ -289,6 +328,11 @@ public class InvoiceController : Controller
             .FirstOrDefaultAsync(i => i.Id == id);
 
         if (invoice == null) return NotFound();
+
+        if (!string.IsNullOrEmpty(invoice.EInvoiceSignedQrCode) || !string.IsNullOrEmpty(invoice.Irn))
+        {
+            ViewBag.EInvoiceQrSvg = _eInvoiceService.GenerateQrCodeSvg(invoice.EInvoiceSignedQrCode ?? invoice.Irn!, 110);
+        }
 
         return View(invoice);
     }
@@ -314,6 +358,7 @@ public class InvoiceController : Controller
 
         var receipt = new PaymentReceipt
         {
+            CompanyId = invoice.CompanyId,
             ReceiptNumber = receiptNo,
             PaymentDate = model.PaymentDate,
             TaxInvoiceId = invoice.Id,
@@ -340,6 +385,7 @@ public class InvoiceController : Controller
         // Record receipt in Accounting Transactions
         _context.AccountingTransactions.Add(new AccountingTransaction
         {
+            CompanyId = invoice.CompanyId,
             Date = model.PaymentDate,
             Type = TransactionType.Income,
             Amount = model.Amount,
@@ -649,6 +695,7 @@ public class InvoiceController : Controller
 
         var salesReturn = new SalesReturn
         {
+            CompanyId = invoice.CompanyId,
             ReturnNumber = returnNo,
             ReturnDate = model.ReturnDate,
             TaxInvoiceId = invoice.Id,
@@ -690,13 +737,14 @@ public class InvoiceController : Controller
             if (model.RestockInventory && vi.DesignId.HasValue && !string.IsNullOrWhiteSpace(vi.Colour) && !string.IsNullOrWhiteSpace(vi.Size))
             {
                 var readyProduct = await _context.ReadyProducts
-                    .FirstOrDefaultAsync(r => r.DesignId == vi.DesignId.Value && r.Colour == vi.Colour && r.Size == vi.Size);
+                    .FirstOrDefaultAsync(r => r.CompanyId == invoice.CompanyId && r.DesignId == vi.DesignId.Value && r.Colour == vi.Colour && r.Size == vi.Size);
 
                 if (readyProduct != null)
                 {
                     readyProduct.QuantityOnHand += vi.ReturnQuantity;
                     _context.ReadyProductTransactions.Add(new ReadyProductTransaction
                     {
+                        CompanyId = invoice.CompanyId,
                         ReadyProductId = readyProduct.Id,
                         CreatedDate = model.ReturnDate,
                         TransactionType = ReadyProductTransactionType.CustomerSalesReturn,
@@ -719,6 +767,7 @@ public class InvoiceController : Controller
         // General Ledger Entry for Credit Note / Return
         _context.AccountingTransactions.Add(new AccountingTransaction
         {
+            CompanyId = invoice.CompanyId,
             Date = model.ReturnDate,
             Type = TransactionType.Expense,
             Amount = salesReturn.GrandTotal,
@@ -877,11 +926,12 @@ public class InvoiceController : Controller
         return $"{prefix}{nextSeq:D4}";
     }
 
-    private async Task<string> GenerateNextInvoiceNumberAsync()
+    private async Task<string> GenerateNextInvoiceNumberAsync(Company? company = null)
     {
-        var prefix = $"INV-{DateTime.Now:yyyyMM}-";
+        company ??= await _companyContext.GetActiveCompanyAsync();
+        var prefix = $"{company.InvoicePrefix}{DateTime.Now:yyyyMM}-";
         var last = await _context.TaxInvoices
-            .Where(i => i.InvoiceNumber.StartsWith(prefix))
+            .Where(i => i.CompanyId == company.Id && i.InvoiceNumber.StartsWith(prefix))
             .OrderByDescending(i => i.InvoiceNumber)
             .FirstOrDefaultAsync();
 
@@ -895,11 +945,12 @@ public class InvoiceController : Controller
         return $"{prefix}{nextSeq:D4}";
     }
 
-    private async Task<string> GenerateNextReceiptNumberAsync()
+    private async Task<string> GenerateNextReceiptNumberAsync(int? companyId = null)
     {
+        var cid = companyId ?? await _companyContext.GetActiveCompanyIdAsync();
         var prefix = $"REC-{DateTime.Now:yyyyMM}-";
         var last = await _context.PaymentReceipts
-            .Where(r => r.ReceiptNumber.StartsWith(prefix))
+            .Where(r => r.CompanyId == cid && r.ReceiptNumber.StartsWith(prefix))
             .OrderByDescending(r => r.ReceiptNumber)
             .FirstOrDefaultAsync();
 
@@ -952,9 +1003,104 @@ public class InvoiceController : Controller
     }
 
     [HttpGet]
+    public async Task<IActionResult> DownloadEInvoiceJson(int id)
+    {
+        var invoice = await _context.TaxInvoices.FindAsync(id);
+        if (invoice == null) return NotFound();
+
+        try
+        {
+            var json = await _eInvoiceService.GenerateStandardInv01JsonAsync(id);
+            var fileName = $"Govt_EInvoice_INV01_{invoice.InvoiceNumber}.json";
+            return File(Encoding.UTF8.GetBytes(json), "application/json", fileName);
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = $"Error generating e-invoice JSON: {ex.Message}";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GenerateEInvoice(int id, string? supplyType, bool generateEwayBill, string? vehicleNumber, string? transporterId, string? transporterName, int? distanceKm)
+    {
+        var request = new EInvoiceGenerateRequest
+        {
+            SupplyType = supplyType ?? "B2B",
+            GenerateEwayBill = generateEwayBill,
+            VehicleNumber = vehicleNumber,
+            TransporterId = transporterId,
+            TransporterName = transporterName,
+            DistanceKm = distanceKm
+        };
+
+        var result = await _eInvoiceService.GenerateEInvoiceAsync(id, request);
+        if (result.Success)
+        {
+            TempData["Success"] = $"Government E-Invoice generated successfully! IRN: {result.Irn}";
+        }
+        else
+        {
+            TempData["Error"] = $"E-Invoice Generation Failed: {result.Message}";
+        }
+
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelEInvoice(int id, string cancelReason, string cancelRemarks)
+    {
+        var request = new EInvoiceCancelRequest
+        {
+            CancelReason = cancelReason,
+            CancelRemarks = cancelRemarks
+        };
+
+        var result = await _eInvoiceService.CancelEInvoiceAsync(id, request);
+        if (result.Success)
+        {
+            TempData["Success"] = result.Message;
+        }
+        else
+        {
+            TempData["Error"] = result.Message;
+        }
+
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RecordManualEInvoice(int id, string irn, string ackNo, DateTime ackDate, string? signedQr)
+    {
+        var request = new EInvoiceManualRequest
+        {
+            Irn = irn,
+            AckNo = ackNo,
+            AckDate = ackDate,
+            SignedQrCode = signedQr
+        };
+
+        var result = await _eInvoiceService.RecordManualEInvoiceAsync(id, request);
+        if (result.Success)
+        {
+            TempData["Success"] = result.Message;
+        }
+        else
+        {
+            TempData["Error"] = result.Message;
+        }
+
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpGet]
     public async Task<IActionResult> PrintEwayBill(int id)
     {
         var invoice = await _context.TaxInvoices
+            .Include(i => i.Company)
             .Include(i => i.Customer)
             .Include(i => i.Items)
                 .ThenInclude(it => it.Design)
@@ -962,14 +1108,16 @@ public class InvoiceController : Controller
 
         if (invoice == null) return NotFound();
 
-        string fromGstin = _config["Company:GSTIN"] ?? "24AABCA1234F1Z9";
-        string fromName = _config["Company:Name"] ?? "AASHANA FASHION";
-        string fromAddr1 = _config["Company:Address1"] ?? "Plot 14-16, Garment Industrial Zone";
-        string fromAddr2 = _config["Company:Address2"] ?? "Pandesara";
-        string fromPlace = _config["Company:City"] ?? "Surat";
-        string fromState = _config["Company:State"] ?? "Gujarat";
-        int fromPin = int.TryParse(_config["Company:Pincode"], out var pinVal) ? pinVal : 394221;
-        int fromStateCode = int.TryParse(_config["Company:StateCode"], out var scVal) ? scVal : 24;
+        var company = invoice.Company ?? await _companyContext.GetActiveCompanyAsync();
+
+        string fromGstin = company.Gstin ?? _config["Company:GSTIN"] ?? "24AABCA1234F1Z9";
+        string fromName = company.CompanyName ?? _config["Company:Name"] ?? "AASHANA FASHION";
+        string fromAddr1 = company.Address1 ?? _config["Company:Address1"] ?? "Plot 14-16, Garment Industrial Zone";
+        string fromAddr2 = company.Address2 ?? _config["Company:Address2"] ?? "Pandesara";
+        string fromPlace = company.City ?? _config["Company:City"] ?? "Surat";
+        string fromState = company.State ?? _config["Company:State"] ?? "Gujarat";
+        int fromPin = int.TryParse(company.PinCode ?? _config["Company:Pincode"], out var pinVal) ? pinVal : 394221;
+        int fromStateCode = company.StateCode > 0 ? company.StateCode : (int.TryParse(_config["Company:StateCode"], out var scVal) ? scVal : 24);
         string fromAddr = $"{fromAddr1}, {fromAddr2}, {fromPlace}, {fromState} - {fromPin}";
 
         string toGstin = !string.IsNullOrWhiteSpace(invoice.CustomerGstin) && invoice.CustomerGstin.Length == 15

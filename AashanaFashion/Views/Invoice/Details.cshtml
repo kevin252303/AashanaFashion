@@ -3,91 +3,222 @@
     ViewData["Title"] = $"Tax Invoice {Model.InvoiceNumber}";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <a asp-action="Index" class="text-decoration-none text-muted small">← Back to Invoices</a>
-        <h2 class="fw-bold mt-1 mb-0">
-            Invoice @Model.InvoiceNumber
-            @if (Model.PaymentStatus == AashanaFashion.Models.InvoicePaymentStatus.Paid)
-            {
-                <span class="badge bg-success fs-6 align-middle ms-2">Paid / Settled</span>
-            }
-            else if (Model.PaymentStatus == AashanaFashion.Models.InvoicePaymentStatus.PartiallyPaid)
-            {
-                <span class="badge bg-warning text-dark fs-6 align-middle ms-2">Partially Paid</span>
-            }
-            else if (Model.PaymentStatus == AashanaFashion.Models.InvoicePaymentStatus.Unpaid)
-            {
-                <span class="badge bg-danger fs-6 align-middle ms-2">Unpaid</span>
-            }
-            else
-            {
-                <span class="badge bg-secondary fs-6 align-middle ms-2">Cancelled</span>
-            }
-        </h2>
-        <p class="text-muted mb-0">Issued on @Model.InvoiceDate.ToString("dd MMMM yyyy") | Due on @Model.DueDate.ToString("dd MMMM yyyy")</p>
-        @if (!string.IsNullOrWhiteSpace(Model.EwayBillNumber))
-        {
-            <div class="mt-2 d-flex align-items-center gap-2">
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 py-2 px-3">
-                    🚚 E-Way Bill: <strong>@Model.EwayBillNumber</strong>
-                    @(Model.EwayBillDate.HasValue ? $"({Model.EwayBillDate.Value:dd MMM yyyy})" : "")
-                </span>
-                @if (!string.IsNullOrWhiteSpace(Model.VehicleNumber))
-                {
-                    <span class="badge bg-light text-dark border">Vehicle: @Model.VehicleNumber</span>
-                }
-                <a asp-action="PrintEwayBill" asp-route-id="@Model.Id" target="_blank" class="btn btn-sm btn-primary py-1 px-3">
-                    🖨️ Print E-Way Bill
+<!-- Top Invoice Card: Header, Meta & Actions -->
+<div class="card border-0 shadow-sm rounded-3 mb-4 bg-white">
+    <div class="card-body p-3 p-md-4">
+        <!-- Top Navigation & Status Bar -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-3 mb-3 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
+                    ← Back to Invoices
                 </a>
+                <span class="text-muted small">|</span>
+                <span class="badge bg-light text-dark border">
+                    @(Model.SalesOrder != null ? $"SO Ref: {Model.SalesOrder.SoNumber}" : "Direct Invoice")
+                </span>
             </div>
-        }
-    </div>
-    <div class="d-flex gap-2">
-        <div class="dropdown">
-            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                🚚 E-Way Bill
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow">
-                <li>
-                    <a class="dropdown-item fw-bold text-primary" asp-action="PrintEwayBill" asp-route-id="@Model.Id" target="_blank">
-                        🖨️ Print Official E-Way Bill
-                    </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                    <a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#ewayJsonModal">
-                        📄 Download NIC JSON (.json)
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#ewaySaveModal">
-                        💾 Record E-Way Bill Number
-                    </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                    <a class="dropdown-item text-muted small" href="https://ewaybillgst.gov.in" target="_blank">
-                        ↗️ Open ewaybillgst.gov.in
-                    </a>
-                </li>
-            </ul>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- Payment Status Badge -->
+                @if (Model.PaymentStatus == AashanaFashion.Models.InvoicePaymentStatus.Paid)
+                {
+                    <span class="badge bg-success-subtle text-success border border-success-subtle py-1.5 px-3 fs-6">
+                        ✔ Paid / Settled
+                    </span>
+                }
+                else if (Model.PaymentStatus == AashanaFashion.Models.InvoicePaymentStatus.PartiallyPaid)
+                {
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle py-1.5 px-3 fs-6">
+                        ⏳ Partially Paid
+                    </span>
+                }
+                else if (Model.PaymentStatus == AashanaFashion.Models.InvoicePaymentStatus.Unpaid)
+                {
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle py-1.5 px-3 fs-6">
+                        ⚠️ Unpaid
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle py-1.5 px-3 fs-6">
+                        ⛔ Cancelled
+                    </span>
+                }
+
+                <!-- E-Invoice Status Badge -->
+                @if (Model.EInvoiceStatus == "Generated")
+                {
+                    <span class="badge bg-success py-1.5 px-2.5 d-inline-flex align-items-center gap-1" title="IRN: @Model.Irn">
+                        ⚡ IRN Active
+                    </span>
+                }
+                else if (Model.EInvoiceStatus == "Cancelled")
+                {
+                    <span class="badge bg-danger py-1.5 px-2.5 d-inline-flex align-items-center gap-1" title="Cancelled on @Model.EInvoiceCancelDate?.ToString("dd/MM/yyyy")">
+                        ❌ IRN Cancelled
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-warning text-dark py-1.5 px-2.5 d-inline-flex align-items-center gap-1">
+                        ⏳ E-Invoice Pending
+                    </span>
+                }
+
+                <!-- E-Way Bill Status Badge if exists -->
+                @if (!string.IsNullOrWhiteSpace(Model.EwayBillNumber))
+                {
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle py-1.5 px-2.5 d-inline-flex align-items-center gap-1">
+                        🚚 EWB: @Model.EwayBillNumber
+                    </span>
+                }
+            </div>
         </div>
-        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-dark">
-            🖨️ Print GST Invoice
-        </a>
-        @if (Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Cancelled)
-        {
-            <a asp-action="ReturnGoods" asp-route-id="@Model.Id" class="btn btn-outline-danger">
-                ↩️ Return Goods
-            </a>
-        }
-        @if (Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Paid && Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Cancelled)
-        {
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal">
-                💵 Record Payment
-            </button>
-        }
+
+        <!-- Middle Row: Invoice Title & Meta (Left) + Actions (Right) -->
+        <div class="row align-items-center g-3">
+            <div class="col-xl-5 col-lg-5">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <h2 class="fw-bold text-dark mb-0">Invoice @Model.InvoiceNumber</h2>
+                    @if (Model.IsInterState)
+                    {
+                        <span class="badge bg-info-subtle text-info border border-info-subtle">IGST (@Model.IgstRate%)</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-light text-secondary border">CGST + SGST (5%)</span>
+                    }
+                </div>
+                <div class="text-muted small mt-2 d-flex flex-wrap gap-x-3 gap-y-1 align-items-center">
+                    <span><strong>Customer:</strong> <span class="text-dark fw-semibold">@Model.CustomerName</span></span>
+                    <span class="text-muted">·</span>
+                    <span><strong>Issued:</strong> @Model.InvoiceDate.ToString("dd MMM yyyy")</span>
+                    <span class="text-muted">·</span>
+                    <span><strong>Due:</strong> <span class="@(Model.DueDate < DateTime.Today && Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Paid ? "text-danger fw-bold" : "")">@Model.DueDate.ToString("dd MMM yyyy")</span></span>
+                    @if (!string.IsNullOrWhiteSpace(Model.VehicleNumber))
+                    {
+                        <span class="text-muted">·</span>
+                        <span><strong>Vehicle:</strong> <span class="font-monospace">@Model.VehicleNumber</span></span>
+                    }
+                </div>
+            </div>
+
+            <!-- Action Toolbar (Right-aligned, uniform button heights, no vertical text wrap) -->
+            <div class="col-xl-7 col-lg-7">
+                <div class="d-flex justify-content-lg-end align-items-center gap-2 flex-wrap">
+                    <!-- Primary CTA: Record Payment -->
+                    @if (Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Paid && Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Cancelled)
+                    {
+                        <button type="button" class="btn btn-success d-inline-flex align-items-center gap-1.5 text-nowrap fw-semibold px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#paymentModal">
+                            💵 Record Payment
+                        </button>
+                    }
+
+                    <!-- Print GST Tax Invoice -->
+                    <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-dark d-inline-flex align-items-center gap-1.5 text-nowrap fw-semibold px-3">
+                        🖨️ Print Invoice
+                    </a>
+
+                    <!-- E-Invoice Compliance Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn @(Model.EInvoiceStatus == "Generated" ? "btn-outline-primary" : (Model.EInvoiceStatus == "Cancelled" ? "btn-outline-danger" : "btn-primary")) dropdown-toggle d-inline-flex align-items-center gap-1.5 text-nowrap fw-semibold" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span>⚡ E-Invoice</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2" style="min-width: 250px;">
+                            <li class="dropdown-header text-uppercase small fw-bold text-muted">Govt. E-Invoice (INV-01)</li>
+                            @if (Model.EInvoiceStatus != "Generated")
+                            {
+                                <li>
+                                    <a class="dropdown-item fw-bold text-primary py-2 rounded" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#generateEInvoiceModal">
+                                        ⚡ Generate IRN (IRP Portal)
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                            }
+                            <li>
+                                <a class="dropdown-item py-1.5 rounded" asp-action="DownloadEInvoiceJson" asp-route-id="@Model.Id">
+                                    📄 Download Govt INV-01 JSON
+                                </a>
+                            </li>
+                            @if (Model.EInvoiceStatus == "Generated")
+                            {
+                                <li>
+                                    <a class="dropdown-item text-danger py-1.5 rounded" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#cancelEInvoiceModal">
+                                        ❌ Cancel IRN (24hr Window)
+                                    </a>
+                                </li>
+                            }
+                            else
+                            {
+                                <li>
+                                    <a class="dropdown-item py-1.5 rounded" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#recordManualEInvoiceModal">
+                                        📝 Record Manual IRN / Ack
+                                    </a>
+                                </li>
+                            }
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li>
+                                <a class="dropdown-item text-muted small py-1.5 rounded" href="https://einvoice1.gst.gov.in" target="_blank">
+                                    ↗️ Open einvoice1.gst.gov.in
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- E-Way Bill Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle d-inline-flex align-items-center gap-1.5 text-nowrap" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span>🚚 E-Way Bill</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2" style="min-width: 240px;">
+                            <li class="dropdown-header text-uppercase small fw-bold text-muted">E-Way Bill Actions</li>
+                            <li>
+                                <a class="dropdown-item fw-bold text-primary py-2 rounded" asp-action="PrintEwayBill" asp-route-id="@Model.Id" target="_blank">
+                                    🖨️ Print Official E-Way Bill
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li>
+                                <a class="dropdown-item py-1.5 rounded" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#ewayJsonModal">
+                                    📄 Download NIC EWB JSON
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item py-1.5 rounded" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#ewaySaveModal">
+                                    💾 Record E-Way Bill Number
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li>
+                                <a class="dropdown-item text-muted small py-1.5 rounded" href="https://ewaybillgst.gov.in" target="_blank">
+                                    ↗️ Open ewaybillgst.gov.in
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- More Options Dropdown -->
+                    @if (Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Cancelled)
+                    {
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle d-inline-flex align-items-center gap-1 text-nowrap" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                ⋯ More
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2" style="min-width: 200px;">
+                                <li>
+                                    <a class="dropdown-item text-danger py-2 rounded d-flex align-items-center gap-2" asp-action="ReturnGoods" asp-route-id="@Model.Id">
+                                        <span>↩️</span>
+                                        <div>
+                                            <div class="fw-semibold">Return Goods</div>
+                                            <div class="small text-muted" style="font-size:0.75rem;">Issue Credit Note & Restock</div>
+                                        </div>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -105,6 +236,134 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
+
+<!-- Government E-Invoice (IRP GSTN Standard INV-01) Section -->
+@if (Model.EInvoiceStatus == "Generated")
+{
+    <div class="card border-success border-2 rounded-3 bg-white shadow-sm mb-4">
+        <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success py-2 px-3 fs-6">✔ Official GST E-Invoice Registered (INV-01)</span>
+                    <span class="badge bg-light text-dark border">Supply: @(Model.EInvoiceSupplyType ?? "B2B")</span>
+                    @if (!string.IsNullOrWhiteSpace(Model.EwayBillNumber))
+                    {
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                            🚚 E-Way Bill: <strong>@Model.EwayBillNumber</strong>
+                        </span>
+                    }
+                </div>
+                <div class="d-flex gap-2">
+                    <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-sm btn-dark">
+                        🖨️ Print e-Invoice
+                    </a>
+                    <a asp-action="DownloadEInvoiceJson" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary">
+                        📄 Download INV-01 JSON
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelEInvoiceModal">
+                        Cancel IRN
+                    </button>
+                </div>
+            </div>
+
+            <div class="row g-3 align-items-center">
+                <div class="col-md-9">
+                    <div class="mb-2">
+                        <span class="text-muted small fw-bold text-uppercase" style="letter-spacing:0.5px;">Invoice Reference Number (IRN):</span>
+                        <div class="p-2 bg-light border rounded font-monospace fw-bold text-dark d-flex justify-content-between align-items-center mt-1" style="font-size:0.85rem; word-break: break-all;">
+                            <span>@Model.Irn</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-2" onclick="navigator.clipboard.writeText('@Model.Irn'); alert('IRN copied to clipboard!');" title="Copy IRN">📋 Copy</button>
+                        </div>
+                    </div>
+                    <div class="row g-2 text-muted small">
+                        <div class="col-sm-6">
+                            <strong>Acknowledgment No:</strong> <span class="font-monospace text-dark fw-bold">@Model.EInvoiceAckNo</span>
+                        </div>
+                        <div class="col-sm-6">
+                            <strong>Ack Date & Time:</strong> <span class="text-dark fw-bold">@(Model.EInvoiceAckDate?.ToString("dd-MMM-yyyy HH:mm:ss"))</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 text-center border-start">
+                    @if (ViewBag.EInvoiceQrSvg != null)
+                    {
+                        <div class="d-inline-block p-1 bg-white border rounded shadow-sm">
+                            @Html.Raw(ViewBag.EInvoiceQrSvg)
+                        </div>
+                        <div class="small text-muted mt-1" style="font-size:0.7rem;">Official Signed QR Code</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else if (Model.EInvoiceStatus == "Cancelled")
+{
+    <div class="card border-danger border-2 rounded-3 bg-white shadow-sm mb-4">
+        <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-danger py-2 px-3 fs-6">❌ E-Invoice Cancelled on IRP Portal</span>
+                    <span class="badge bg-light text-danger border border-danger-subtle">
+                        Cancelled: @(Model.EInvoiceCancelDate?.ToString("dd MMM yyyy, HH:mm") ?? "—")
+                    </span>
+                </div>
+                <div class="d-flex gap-2">
+                    <a asp-action="DownloadEInvoiceJson" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1">
+                        📄 Download Original JSON
+                    </a>
+                </div>
+            </div>
+            <div class="p-2.5 bg-danger-subtle border border-danger-subtle rounded text-dark small mt-2">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <strong class="text-danger">Cancellation Reason:</strong>
+                        <div class="fw-semibold">@(Model.EInvoiceCancelReason ?? "Not specified")</div>
+                    </div>
+                    <div class="col-md-8">
+                        <strong class="text-danger">Remarks:</strong>
+                        <div>@(Model.EInvoiceCancelRemarks ?? "None")</div>
+                    </div>
+                    <div class="col-12 mt-1 pt-1 border-top border-danger-subtle d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div>
+                            <span class="text-muted">Cancelled IRN: </span>
+                            <span class="font-monospace fw-bold text-danger text-break">@Model.Irn</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="navigator.clipboard.writeText('@Model.Irn'); alert('Cancelled IRN copied!');">📋 Copy IRN</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card border rounded-3 bg-light shadow-sm mb-4">
+        <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-secondary">E-Invoice Pending</span>
+                    <h6 class="fw-bold text-dark mb-0">Government E-Invoicing (GST INV-01 Standard)</h6>
+                </div>
+                <small class="text-muted">
+                    Mandatory for B2B supplies under GST Rule 48(4). Register this invoice to generate 64-character IRN and digitally signed QR code.
+                </small>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary btn-sm fw-bold px-3" data-bs-toggle="modal" data-bs-target="#generateEInvoiceModal">
+                    ⚡ Generate E-Invoice (IRN)
+                </button>
+                <a asp-action="DownloadEInvoiceJson" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm">
+                    📄 Download INV-01 JSON
+                </a>
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#recordManualEInvoiceModal">
+                    📝 Record IRN
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 
 <!-- Summary Cards -->
 <div class="row g-3 mb-4">
@@ -653,3 +912,166 @@
         </form>
     </div>
 </div>
+
+<!-- Modal: Generate Government E-Invoice (IRN) -->
+<div class="modal fade" id="generateEInvoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form asp-action="GenerateEInvoice" method="post" class="modal-content">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">⚡ Generate Government E-Invoice (IRN)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">
+                    Generates the official 64-character Invoice Reference Number (IRN) and digitally signed QR Code according to Government GSTN / IRP standards (INV-01 schema).
+                </p>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Supply Type</label>
+                    <select name="supplyType" class="form-select">
+                        <option value="B2B" selected>B2B - Regular Business-to-Business</option>
+                        <option value="SEZWP">SEZWP - SEZ with Payment of Tax</option>
+                        <option value="SEZWOP">SEZWOP - SEZ without Payment of Tax</option>
+                        <option value="EXPWP">EXPWP - Export with Payment of Tax</option>
+                        <option value="EXPWOP">EXPWOP - Export without Payment of Tax</option>
+                        <option value="DEXP">DEXP - Deemed Export</option>
+                    </select>
+                </div>
+
+                <div class="p-2 bg-light border rounded mb-3 small">
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Customer GSTIN:</span>
+                        <span class="fw-bold font-monospace">@(string.IsNullOrWhiteSpace(Model.CustomerGstin) ? "Not Provided (URP)" : Model.CustomerGstin)</span>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span class="text-muted">Place of Supply:</span>
+                        <span class="fw-bold">@Model.PlaceOfSupply</span>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span class="text-muted">Total Invoice Value:</span>
+                        <span class="fw-bold text-primary">₹ @Model.GrandTotal.ToString("N2")</span>
+                    </div>
+                </div>
+
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="chkGenEway" name="generateEwayBill" value="true" @(!string.IsNullOrWhiteSpace(Model.VehicleNumber) ? "checked" : "") onchange="$('#ewayFieldsSection').toggle(this.checked);" />
+                    <label class="form-check-label fw-semibold" for="chkGenEway">Also Generate E-Way Bill Number</label>
+                </div>
+
+                <div id="ewayFieldsSection" style="display:@(!string.IsNullOrWhiteSpace(Model.VehicleNumber) ? "block" : "none");">
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Vehicle Number</label>
+                            <input type="text" name="vehicleNumber" class="form-control form-control-sm text-uppercase font-monospace" placeholder="GJ05AB1234" value="@Model.VehicleNumber" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Distance (KM)</label>
+                            <input type="number" name="distanceKm" class="form-control form-control-sm" value="@(Model.DistanceKm ?? 50)" min="1" max="4000" />
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Transporter ID</label>
+                            <input type="text" name="transporterId" class="form-control form-control-sm text-uppercase font-monospace" placeholder="15-digit GSTIN" value="@Model.TransporterId" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Transporter Name</label>
+                            <input type="text" name="transporterName" class="form-control form-control-sm" placeholder="Transport Name" value="@Model.TransporterName" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary fw-bold px-4">
+                    ⚡ Register E-Invoice Now
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Cancel E-Invoice -->
+<div class="modal fade" id="cancelEInvoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form asp-action="CancelEInvoice" method="post" class="modal-content">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold">❌ Cancel E-Invoice (IRN)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning small mb-3">
+                    <strong>Notice:</strong> Under Government rules, an IRN can be cancelled within 24 hours of generation. Once cancelled, the same invoice number cannot be used again to generate a new IRN on the portal.
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Cancellation Reason <span class="text-danger">*</span></label>
+                    <select name="cancelReason" class="form-select" required>
+                        <option value="1">1 - Duplicate Invoice</option>
+                        <option value="2">2 - Data Entry Mistake</option>
+                        <option value="3">3 - Order Cancelled by Buyer</option>
+                        <option value="4">4 - Other</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Detailed Remarks <span class="text-danger">*</span></label>
+                    <textarea name="cancelRemarks" class="form-control" rows="3" placeholder="Provide detailed explanation for cancellation..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="submit" class="btn btn-danger fw-bold" onclick="return confirm('Are you sure you want to cancel this official E-Invoice IRN? This action cannot be undone.');">
+                    Confirm E-Invoice Cancellation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Record Manual E-Invoice -->
+<div class="modal fade" id="recordManualEInvoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form asp-action="RecordManualEInvoice" method="post" class="modal-content">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">📝 Record Externally Generated E-Invoice</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">If you generated the e-invoice on the Government offline tool or third-party GSP, paste the details here to link them with this invoice.</p>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Invoice Reference Number (IRN) <span class="text-danger">*</span></label>
+                    <input type="text" name="irn" class="form-control font-monospace" placeholder="64-character hex hash" maxlength="64" minlength="64" required />
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Acknowledgment No <span class="text-danger">*</span></label>
+                        <input type="text" name="ackNo" class="form-control font-monospace" placeholder="e.g. 112610012345678" required />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Ack Date & Time <span class="text-danger">*</span></label>
+                        <input type="datetime-local" name="ackDate" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Signed QR Payload / Base64</label>
+                    <textarea name="signedQr" class="form-control font-monospace small" rows="3" placeholder="Paste the Signed QRCode text from the portal (Optional, will auto-generate if empty)"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary fw-bold">Save E-Invoice Details</button>
+            </div>
+        </form>
+    </div>
+</div>
+

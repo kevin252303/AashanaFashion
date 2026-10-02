@@ -1,6 +1,7 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
 using AashanaFashion.Authorization;
+using AashanaFashion.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,17 +12,78 @@ namespace AashanaFashion.Controllers;
 public class DesignController : Controller
 {
     private readonly AppDbContext _context;
+    private readonly IWebHostEnvironment _env;
+    private readonly ICompanyContext _companyContext;
 
-    public DesignController(AppDbContext context) => _context = context;
-
-    public async Task<IActionResult> Index(string? search, int? categoryId, string? productType, bool? activeOnly)
+    public DesignController(AppDbContext context, IWebHostEnvironment env, ICompanyContext companyContext)
     {
+        _context = context;
+        _env = env;
+        _companyContext = companyContext;
+    }
+
+    private async Task<string> SaveUploadedImageAsync(IFormFile file)
+    {
+        var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "designs");
+        if (!Directory.Exists(uploadsDir))
+        {
+            Directory.CreateDirectory(uploadsDir);
+        }
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+        if (!allowed.Contains(ext)) ext = ".jpg";
+
+        var uniqueFileName = $"design_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}{ext}";
+        var filePath = Path.Combine(uploadsDir, uniqueFileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        return $"/uploads/designs/{uniqueFileName}";
+    }
+
+    public async Task<IActionResult> Index(string? search, int? categoryId, string? productType, bool? activeOnly, int? companyId, bool showDiscontinued = false)
+    {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+
         var query = _context.Designs
+            .Include(d => d.CompanyRef)
             .Include(d => d.ProductCategory)
             .Include(d => d.ExtraCharges)
             .Include(d => d.HandworkWorker)
             .Include(d => d.StitchingWorker)
+            .Include(d => d.ColourImages)
+            .Include(d => d.DiscontinuedVariants)
             .AsQueryable();
+
+        if (!showDiscontinued)
+        {
+            query = query.Where(d => !d.Discontinued);
+        }
+
+        // Multi-company product distinction:
+        // companyId > 0: Specific company
+        // companyId == -1: Only shared across all companies (CompanyId == null)
+        // companyId == 0: All companies unrestricted
+        // companyId not set (default): Active company + shared products
+        if (companyId.HasValue)
+        {
+            if (companyId.Value > 0)
+            {
+                query = query.Where(d => d.CompanyId == companyId.Value);
+            }
+            else if (companyId.Value == -1)
+            {
+                query = query.Where(d => d.CompanyId == null);
+            }
+        }
+        else
+        {
+            query = query.Where(d => d.CompanyId == null || d.CompanyId == activeCompany.Id);
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -55,7 +117,12 @@ public class DesignController : Controller
         ViewBag.SelectedCategoryId = categoryId;
         ViewBag.SelectedProductType = productType;
         ViewBag.ActiveOnly = activeOnly;
+        ViewBag.ShowDiscontinued = showDiscontinued;
+        ViewBag.SelectedCompanyId = companyId;
+        ViewBag.ActiveCompany = activeCompany;
+        ViewBag.ArchivedCount = await _context.Designs.CountAsync(d => d.Discontinued);
         ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
+        ViewBag.Companies = await _context.Companies.Where(c => c.IsActive).OrderBy(c => c.CompanyName).ToListAsync();
 
         return View(designs);
     }
@@ -64,12 +131,16 @@ public class DesignController : Controller
     [HttpGet]
     public async Task<IActionResult> Create()
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+
         ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
         ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
         ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
         ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
         ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
-        return View(new Design());
+        ViewBag.Processes = await _context.ProcessMasters.Where(p => p.IsActive).OrderBy(p => p.DisplayOrder).ToListAsync();
+        ViewBag.Companies = await _context.Companies.Where(c => c.IsActive).OrderBy(c => c.CompanyName).ToListAsync();
+        return View(new Design { CompanyId = activeCompany.Id });
     }
 
     [PermissionAuthorize("DesignMaster", "CanCreate")]
@@ -77,11 +148,14 @@ public class DesignController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(
         Design design,
+        IFormFile? photoFile,
         List<ProductAttributeLine>? AttributeLines,
         List<ProductPricelist>? Pricelists,
         List<ProductVendor>? ProductVendors,
         List<ProductPackaging>? Packagings,
         List<ProductExtraCharge>? ExtraCharges,
+        List<DesignDiscontinuedVariant>? DiscontinuedVariants,
+        List<DesignComponentAssignment>? ComponentAssignments,
         List<int>? selectedColours,
         List<int>? selectedSizes)
     {
@@ -114,23 +188,38 @@ public class DesignController : Controller
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
             ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
             ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
+            ViewBag.Processes = await _context.ProcessMasters.Where(p => p.IsActive).OrderBy(p => p.DisplayOrder).ToListAsync();
+            ViewBag.Companies = await _context.Companies.Where(c => c.IsActive).OrderBy(c => c.CompanyName).ToListAsync();
             ViewBag.SelectedColours = design.Colours?.Split(',').Select(c => c.Trim()).ToList() ?? new List<string>();
             ViewBag.SelectedSizes = design.Sizes?.Split(',').Select(s => s.Trim()).ToList() ?? new List<string>();
             return View(design);
         }
 
-        var existing = await _context.Designs.AnyAsync(d => d.DesignNumber == design.DesignNumber);
+        var existing = await _context.Designs.AnyAsync(d => d.DesignNumber == design.DesignNumber && (d.CompanyId == design.CompanyId || d.CompanyId == null || design.CompanyId == null));
         if (existing)
         {
-            ModelState.AddModelError("DesignNumber", "Design number already exists.");
+            ModelState.AddModelError("DesignNumber", "Design number already exists for this company scope.");
             ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
             ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
             ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
             ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
+            ViewBag.Processes = await _context.ProcessMasters.Where(p => p.IsActive).OrderBy(p => p.DisplayOrder).ToListAsync();
+            ViewBag.Companies = await _context.Companies.Where(c => c.IsActive).OrderBy(c => c.CompanyName).ToListAsync();
             ViewBag.SelectedColours = design.Colours?.Split(',').Select(c => c.Trim()).ToList() ?? new List<string>();
             ViewBag.SelectedSizes = design.Sizes?.Split(',').Select(s => s.Trim()).ToList() ?? new List<string>();
             return View(design);
+        }
+
+        design.CompanyId = design.CompanyId > 0 ? design.CompanyId : null;
+        if (design.CompanyId.HasValue)
+        {
+            var comp = await _context.Companies.FindAsync(design.CompanyId.Value);
+            design.Company = comp?.CompanyName;
+        }
+        else
+        {
+            design.Company = null;
         }
 
         if (design.CategoryId.HasValue)
@@ -144,6 +233,11 @@ public class DesignController : Controller
                     design.HsnSacCode = cat.DefaultHsnCode;
                 }
             }
+        }
+
+        if (photoFile != null && photoFile.Length > 0)
+        {
+            design.PhotoPath = await SaveUploadedImageAsync(photoFile);
         }
 
         design.HandworkWorkerId = design.HandworkWorkerId > 0 ? design.HandworkWorkerId : null;
@@ -193,6 +287,87 @@ public class DesignController : Controller
                 _context.ProductExtraCharges.Add(ec);
             }
 
+        if (!string.IsNullOrWhiteSpace(design.Components))
+        {
+            design.Components = string.Join(", ", design.GetComponentsList());
+        }
+        else
+        {
+            design.Components = "Chaniya, Choli, Dupatta";
+        }
+
+        if (ComponentAssignments != null && ComponentAssignments.Any())
+        {
+            foreach (var ca in ComponentAssignments.Where(a => a.VendorId.HasValue && a.VendorId.Value > 0 && !string.IsNullOrWhiteSpace(a.ComponentName) && !string.IsNullOrWhiteSpace(a.ProcessName)))
+            {
+                _context.DesignComponentAssignments.Add(new DesignComponentAssignment
+                {
+                    DesignId = design.Id,
+                    ComponentName = ca.ComponentName.Trim(),
+                    ProcessName = ca.ProcessName.Trim(),
+                    VendorId = ca.VendorId,
+                    EstimatedRate = ca.EstimatedRate,
+                    Remarks = ca.Remarks
+                });
+            }
+        }
+
+        // Process colour-wise photos (supports multiple images per colour)
+        var allColours = await _context.Colours.Where(c => c.IsActive).ToListAsync();
+        foreach (var file in Request.Form.Files)
+        {
+            if ((file.Name.StartsWith("colourPhotos_") || file.Name.StartsWith("colourPhoto_")) && file.Length > 0)
+            {
+                string prefix = file.Name.StartsWith("colourPhotos_") ? "colourPhotos_" : "colourPhoto_";
+                string rawColourName = file.Name.Substring(prefix.Length).Trim();
+                string cleanColourName = rawColourName.TrimEnd('[', ']').Trim();
+                var colourInfo = allColours.FirstOrDefault(c => c.ColourName.Equals(cleanColourName, StringComparison.OrdinalIgnoreCase));
+                if (colourInfo == null)
+                {
+                    var lastUnderscore = cleanColourName.LastIndexOf('_');
+                    if (lastUnderscore > 0)
+                    {
+                        var possibleName = cleanColourName.Substring(0, lastUnderscore);
+                        colourInfo = allColours.FirstOrDefault(c => c.ColourName.Equals(possibleName, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+
+                var finalColourName = colourInfo?.ColourName ?? cleanColourName;
+                if (!string.IsNullOrEmpty(finalColourName))
+                {
+                    var savedPath = await SaveUploadedImageAsync(file);
+                    _context.DesignColourImages.Add(new DesignColourImage
+                    {
+                        DesignId = design.Id,
+                        Colour = finalColourName,
+                        ColourCode = colourInfo?.ColourCode,
+                        PhotoPath = savedPath,
+                        CreatedDate = DateTime.Now
+                    });
+
+                    if (string.IsNullOrEmpty(design.PhotoPath))
+                    {
+                        design.PhotoPath = savedPath;
+                    }
+                }
+            }
+        }
+
+        if (DiscontinuedVariants?.Any() == true)
+        {
+            foreach (var v in DiscontinuedVariants.Where(v => !string.IsNullOrWhiteSpace(v.Colour) || !string.IsNullOrWhiteSpace(v.Size)))
+            {
+                _context.DesignDiscontinuedVariants.Add(new DesignDiscontinuedVariant
+                {
+                    DesignId = design.Id,
+                    Colour = string.IsNullOrWhiteSpace(v.Colour) ? null : v.Colour.Trim(),
+                    Size = string.IsNullOrWhiteSpace(v.Size) ? null : v.Size.Trim(),
+                    DiscontinuedDate = v.DiscontinuedDate != default ? v.DiscontinuedDate : DateTime.Now,
+                    Reason = v.Reason?.Trim()
+                });
+            }
+        }
+
         await _context.SaveChangesAsync();
         TempData["Success"] = $"Product '{design.DesignNumber}' created successfully.";
         return RedirectToAction(nameof(Index));
@@ -210,6 +385,10 @@ public class DesignController : Controller
             .Include(d => d.ExtraCharges)
             .Include(d => d.HandworkWorker)
             .Include(d => d.StitchingWorker)
+            .Include(d => d.ColourImages)
+            .Include(d => d.DiscontinuedVariants)
+            .Include(d => d.ComponentAssignments)
+                .ThenInclude(a => a.Vendor)
             .FirstOrDefaultAsync(d => d.Id == id);
 
         if (design == null) return NotFound();
@@ -221,6 +400,8 @@ public class DesignController : Controller
         ViewBag.SelectedColours = design.Colours?.Split(',').Select(c => c.Trim()).ToList() ?? new List<string>();
         ViewBag.SelectedSizes = design.Sizes?.Split(',').Select(s => s.Trim()).ToList() ?? new List<string>();
         ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
+        ViewBag.Processes = await _context.ProcessMasters.Where(p => p.IsActive).OrderBy(p => p.DisplayOrder).ToListAsync();
+        ViewBag.Companies = await _context.Companies.Where(c => c.IsActive).OrderBy(c => c.CompanyName).ToListAsync();
 
         return View(design);
     }
@@ -230,11 +411,15 @@ public class DesignController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(
         Design design,
+        IFormFile? photoFile,
         List<ProductAttributeLine>? AttributeLines,
         List<ProductPricelist>? Pricelists,
         List<ProductVendor>? ProductVendors,
         List<ProductPackaging>? Packagings,
         List<ProductExtraCharge>? ExtraCharges,
+        List<DesignDiscontinuedVariant>? DiscontinuedVariants,
+        List<DesignComponentAssignment>? ComponentAssignments,
+        List<int>? deletedColourImageIds,
         List<int>? selectedColours,
         List<int>? selectedSizes)
     {
@@ -247,20 +432,24 @@ public class DesignController : Controller
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
             ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
             ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
+            ViewBag.Processes = await _context.ProcessMasters.Where(p => p.IsActive).OrderBy(p => p.DisplayOrder).ToListAsync();
+            ViewBag.Companies = await _context.Companies.Where(c => c.IsActive).OrderBy(c => c.CompanyName).ToListAsync();
             ViewBag.SelectedColours = selectedColours != null ? (await _context.Colours.Where(c => selectedColours.Contains(c.Id)).Select(c => c.ColourName).ToListAsync()) : new List<string>();
             ViewBag.SelectedSizes = selectedSizes != null ? (await _context.Sizes.Where(s => selectedSizes.Contains(s.Id)).Select(s => s.SizeName).ToListAsync()) : new List<string>();
             return View(design);
         }
 
-        var existing = await _context.Designs.AnyAsync(d => d.DesignNumber == design.DesignNumber && d.Id != design.Id);
+        var existing = await _context.Designs.AnyAsync(d => d.DesignNumber == design.DesignNumber && d.Id != design.Id && (d.CompanyId == design.CompanyId || d.CompanyId == null || design.CompanyId == null));
         if (existing)
         {
-            ModelState.AddModelError("DesignNumber", "Design number already exists.");
+            ModelState.AddModelError("DesignNumber", "Design number already exists for this company scope.");
             ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
             ViewBag.Colours = await _context.Colours.Where(c => c.IsActive).OrderBy(c => c.ColourName).ToListAsync();
             ViewBag.Sizes = await _context.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ThenBy(s => s.SizeName).ToListAsync();
             ViewBag.Users = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
             ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.CategoryName).ToListAsync();
+            ViewBag.Processes = await _context.ProcessMasters.Where(p => p.IsActive).OrderBy(p => p.DisplayOrder).ToListAsync();
+            ViewBag.Companies = await _context.Companies.Where(c => c.IsActive).OrderBy(c => c.CompanyName).ToListAsync();
             ViewBag.SelectedColours = selectedColours != null ? (await _context.Colours.Where(c => selectedColours.Contains(c.Id)).Select(c => c.ColourName).ToListAsync()) : new List<string>();
             ViewBag.SelectedSizes = selectedSizes != null ? (await _context.Sizes.Where(s => selectedSizes.Contains(s.Id)).Select(s => s.SizeName).ToListAsync()) : new List<string>();
             return View(design);
@@ -272,6 +461,9 @@ public class DesignController : Controller
             .Include(d => d.ProductVendors)
             .Include(d => d.Packagings)
             .Include(d => d.ExtraCharges)
+            .Include(d => d.ColourImages)
+            .Include(d => d.DiscontinuedVariants)
+            .Include(d => d.ComponentAssignments)
             .FirstOrDefaultAsync(d => d.Id == design.Id);
 
         if (dbDesign == null) return NotFound();
@@ -305,9 +497,31 @@ public class DesignController : Controller
             dbDesign.Category = design.Category;
         }
         dbDesign.HsnSacCode = design.HsnSacCode;
-        dbDesign.Company = design.Company;
-        dbDesign.Property1 = design.Property1;
+        
+        dbDesign.CompanyId = design.CompanyId > 0 ? design.CompanyId : null;
+        if (dbDesign.CompanyId.HasValue)
+        {
+            var comp = await _context.Companies.FindAsync(dbDesign.CompanyId.Value);
+            dbDesign.Company = comp?.CompanyName;
+        }
+        else
+        {
+            dbDesign.Company = null;
+        }
         dbDesign.InternalNotes = design.InternalNotes;
+
+        if (photoFile != null && photoFile.Length > 0)
+        {
+            dbDesign.PhotoPath = await SaveUploadedImageAsync(photoFile);
+        }
+        else if (Request.Form["removePhoto"] == "true")
+        {
+            dbDesign.PhotoPath = null;
+        }
+        else if (!string.IsNullOrEmpty(design.PhotoPath))
+        {
+            dbDesign.PhotoPath = design.PhotoPath;
+        }
 
         dbDesign.VisibilityOfProducts = design.VisibilityOfProducts;
         dbDesign.Website = design.Website;
@@ -359,11 +573,116 @@ public class DesignController : Controller
         dbDesign.Price = design.Price;
         dbDesign.CreationFlow = design.CreationFlow;
         dbDesign.IsActive = design.IsActive;
-        dbDesign.HandworkWorkerId = design.HandworkWorkerId > 0 ? design.HandworkWorkerId : null;
-        dbDesign.StitchingWorkerId = design.StitchingWorkerId > 0 ? design.StitchingWorkerId : null;
+
+        if (!string.IsNullOrWhiteSpace(design.Components))
+        {
+            dbDesign.Components = string.Join(", ", design.GetComponentsList());
+        }
+        else
+        {
+            dbDesign.Components = "Chaniya, Choli, Dupatta";
+        }
+
+        // Update ComponentAssignments
+        var existingAssignments = await _context.DesignComponentAssignments.Where(a => a.DesignId == dbDesign.Id).ToListAsync();
+        _context.DesignComponentAssignments.RemoveRange(existingAssignments);
+
+        if (ComponentAssignments != null && ComponentAssignments.Any())
+        {
+            foreach (var ca in ComponentAssignments.Where(a => a.VendorId.HasValue && a.VendorId.Value > 0 && !string.IsNullOrWhiteSpace(a.ComponentName) && !string.IsNullOrWhiteSpace(a.ProcessName)))
+            {
+                _context.DesignComponentAssignments.Add(new DesignComponentAssignment
+                {
+                    DesignId = dbDesign.Id,
+                    ComponentName = ca.ComponentName.Trim(),
+                    ProcessName = ca.ProcessName.Trim(),
+                    VendorId = ca.VendorId,
+                    EstimatedRate = ca.EstimatedRate,
+                    Remarks = ca.Remarks
+                });
+            }
+        }
+
+        var firstHw = ComponentAssignments?.FirstOrDefault(a => a.ProcessName.Contains("Handwork", StringComparison.OrdinalIgnoreCase) && a.VendorId.HasValue && a.VendorId > 0);
+        dbDesign.HandworkWorkerId = firstHw != null ? firstHw.VendorId : (design.HandworkWorkerId > 0 ? design.HandworkWorkerId : null);
+
+        var firstSt = ComponentAssignments?.FirstOrDefault(a => a.ProcessName.Contains("Stitching", StringComparison.OrdinalIgnoreCase) && a.VendorId.HasValue && a.VendorId > 0);
+        dbDesign.StitchingWorkerId = firstSt != null ? firstSt.VendorId : (design.StitchingWorkerId > 0 ? design.StitchingWorkerId : null);
+
         dbDesign.HandworkCholi = design.HandworkCholi;
         dbDesign.HandworkChaniya = design.HandworkChaniya;
         dbDesign.HandworkDupatta = design.HandworkDupatta;
+
+        // Process colour-wise photos (supports multiple images per colour)
+        var allColours = await _context.Colours.Where(c => c.IsActive).ToListAsync();
+        var selectedColourNames = dbDesign.Colours?.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(c => c.Trim()).ToList() ?? new List<string>();
+
+        // Handle removals
+        var deletedIdSet = new HashSet<int>();
+        if (deletedColourImageIds != null)
+        {
+            foreach (var did in deletedColourImageIds) deletedIdSet.Add(did);
+        }
+        foreach (var formVal in Request.Form["deletedColourImageIds"])
+        {
+            if (int.TryParse(formVal, out var parsedId)) deletedIdSet.Add(parsedId);
+        }
+
+        foreach (var existingImg in dbDesign.ColourImages.ToList())
+        {
+            if (deletedIdSet.Contains(existingImg.Id) ||
+                Request.Form[$"removeColourPhotos_{existingImg.Colour}"] == "true" ||
+                Request.Form[$"removeColourPhoto_{existingImg.Colour}"] == "true" ||
+                !selectedColourNames.Contains(existingImg.Colour, StringComparer.OrdinalIgnoreCase))
+            {
+                _context.DesignColourImages.Remove(existingImg);
+            }
+        }
+
+        // Handle new / additional uploads (supports multiple photos per colour)
+        foreach (var file in Request.Form.Files)
+        {
+            if ((file.Name.StartsWith("colourPhotos_") || file.Name.StartsWith("colourPhoto_")) && file.Length > 0)
+            {
+                string prefix = file.Name.StartsWith("colourPhotos_") ? "colourPhotos_" : "colourPhoto_";
+                string rawColourName = file.Name.Substring(prefix.Length).Trim();
+                string cleanColourName = rawColourName.TrimEnd('[', ']').Trim();
+                var colourInfo = allColours.FirstOrDefault(c => c.ColourName.Equals(cleanColourName, StringComparison.OrdinalIgnoreCase));
+                if (colourInfo == null)
+                {
+                    var lastUnderscore = cleanColourName.LastIndexOf('_');
+                    if (lastUnderscore > 0)
+                    {
+                        var possibleName = cleanColourName.Substring(0, lastUnderscore);
+                        colourInfo = allColours.FirstOrDefault(c => c.ColourName.Equals(possibleName, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+
+                var finalColourName = colourInfo?.ColourName ?? cleanColourName;
+                if (!string.IsNullOrEmpty(finalColourName))
+                {
+                    var savedPath = await SaveUploadedImageAsync(file);
+                    dbDesign.ColourImages.Add(new DesignColourImage
+                    {
+                        DesignId = dbDesign.Id,
+                        Colour = finalColourName,
+                        ColourCode = colourInfo?.ColourCode,
+                        PhotoPath = savedPath,
+                        CreatedDate = DateTime.Now
+                    });
+
+                    if (string.IsNullOrEmpty(dbDesign.PhotoPath))
+                    {
+                        dbDesign.PhotoPath = savedPath;
+                    }
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(dbDesign.PhotoPath) && dbDesign.ColourImages.Any())
+        {
+            dbDesign.PhotoPath = dbDesign.ColourImages.First().PhotoPath;
+        }
 
         // Replace child collections
         _context.ProductAttributeLines.RemoveRange(dbDesign.AttributeLines);
@@ -425,8 +744,38 @@ public class DesignController : Controller
                 _context.ProductExtraCharges.Add(ec);
             }
 
+        // Discontinued Variants update
+        _context.DesignDiscontinuedVariants.RemoveRange(dbDesign.DiscontinuedVariants);
+        if (DiscontinuedVariants?.Any() == true)
+        {
+            foreach (var v in DiscontinuedVariants.Where(v => !string.IsNullOrWhiteSpace(v.Colour) || !string.IsNullOrWhiteSpace(v.Size)))
+            {
+                _context.DesignDiscontinuedVariants.Add(new DesignDiscontinuedVariant
+                {
+                    DesignId = dbDesign.Id,
+                    Colour = string.IsNullOrWhiteSpace(v.Colour) ? null : v.Colour.Trim(),
+                    Size = string.IsNullOrWhiteSpace(v.Size) ? null : v.Size.Trim(),
+                    DiscontinuedDate = v.DiscontinuedDate != default ? v.DiscontinuedDate : DateTime.Now,
+                    Reason = v.Reason?.Trim()
+                });
+            }
+        }
+
         await _context.SaveChangesAsync();
         TempData["Success"] = $"Product '{dbDesign.DesignNumber}' updated successfully.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleDiscontinued(int id, string? returnUrl)
+    {
+        var design = await _context.Designs.FindAsync(id);
+        if (design == null) return NotFound();
+        design.Discontinued = !design.Discontinued;
+        await _context.SaveChangesAsync();
+        TempData["Success"] = $"Design '{design.DesignNumber}' is now {(design.Discontinued ? "discontinued & moved to Archive" : "restored to active products")}.";
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return Redirect(returnUrl);
         return RedirectToAction(nameof(Index));
     }
 
@@ -579,8 +928,8 @@ public class DesignController : Controller
 
     private void CleanOptionalChildModelErrors(Design design)
     {
-        // 1. Remove validation errors for optional child collections (attributes, pricelists, vendors, packagings, extra charges)
-        var childPrefixes = new[] { "AttributeLines", "Pricelists", "ProductVendors", "Packagings", "ExtraCharges" };
+        // 1. Remove validation errors for optional child collections (attributes, pricelists, vendors, packagings, extra charges, discontinued variants)
+        var childPrefixes = new[] { "AttributeLines", "Pricelists", "ProductVendors", "Packagings", "ExtraCharges", "DiscontinuedVariants" };
         foreach (var key in ModelState.Keys.Where(k => childPrefixes.Any(p => k.StartsWith(p, StringComparison.OrdinalIgnoreCase))).ToList())
         {
             ModelState.Remove(key);

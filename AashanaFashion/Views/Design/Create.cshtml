@@ -12,7 +12,7 @@
     <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
 </div>
 
-<form asp-action="Create" method="post" id="productForm">
+<form asp-action="Create" method="post" id="productForm" enctype="multipart/form-data">
     @Html.AntiForgeryToken()
 
     @if (!ViewData.ModelState.IsValid)
@@ -58,6 +58,26 @@
 
                 <!-- ===== TAB 1: GENERAL INFORMATION ===== -->
                 <div class="tab-pane fade show active" id="general" role="tabpanel">
+
+                    <!-- Product / Design Photo Upload Banner -->
+                    <div class="row align-items-center mb-4 p-3 bg-light rounded-3 border">
+                        <div class="col-auto">
+                            <div class="rounded-3 border overflow-hidden bg-white d-flex align-items-center justify-content-center shadow-sm" style="width: 120px; height: 120px;">
+                                <img id="designPhotoPreview" 
+                                     src="/images/placeholder-product.svg" 
+                                     alt="Design Photo Preview" 
+                                     class="img-fluid h-100 w-100 object-fit-contain" 
+                                     onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
+                            </div>
+                        </div>
+                        <div class="col">
+                            <label class="af-label fw-bold mb-1"><i class="bi bi-camera me-1 text-primary"></i> Product / Design Photo</label>
+                            <p class="text-muted small mb-2">Upload reference photo for this design. It will automatically show in Product Master, Production Orders, and Ready Inventory.</p>
+                            <div class="d-flex align-items-center gap-2" style="max-width: 440px;">
+                                <input type="file" name="photoFile" id="designPhotoInput" class="form-control form-control-sm" accept="image/*" />
+                            </div>
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
@@ -75,9 +95,22 @@
                                 <input asp-for="InvoicingPolicy" class="af-input" placeholder="Invoicing policy" />
                             </div>
                         </div>
-                        <div class="col-md-4 d-flex align-items-center" style="gap:1.5rem;padding-top:1.8rem;">
-                            <label><input asp-for="TrackInventory" /> Track Inventory</label>
-                            <label><input asp-for="Discontinued" /> Discontinued</label>
+                        <div class="col-md-5 pt-3">
+                            <div class="d-flex align-items-center gap-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" asp-for="TrackInventory" id="trackInvCheck" />
+                                    <label class="form-check-label fw-semibold" for="trackInvCheck">Track Inventory</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" asp-for="Discontinued" id="discontinuedCheck" />
+                                    <label class="form-check-label fw-bold text-danger" for="discontinuedCheck">
+                                        🚫 Discontinue Whole Product
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="text-muted small mt-1" style="font-size:0.75rem;">
+                                If discontinued, product is moved to <strong>Archive</strong> and cannot be selected for new production orders. Stock on hand remains sellable.
+                            </div>
                         </div>
                     </div>
 
@@ -156,8 +189,17 @@
                     <div class="row">
                         <div class="col-md-3">
                             <div class="af-form-group">
-                                <label asp-for="Company" class="af-label">Company</label>
-                                <input asp-for="Company" class="af-input" placeholder="Company" />
+                                <label asp-for="CompanyId" class="af-label">Company</label>
+                                <select asp-for="CompanyId" class="af-input af-select">
+                                    <option value="">— All Companies (Shared) —</option>
+                                    @if (ViewBag.Companies != null)
+                                    {
+                                        foreach (var comp in (List<AashanaFashion.Models.Company>)ViewBag.Companies)
+                                        {
+                                            <option value="@comp.Id">🏢 @comp.CompanyName (@comp.CompanyCode)</option>
+                                        }
+                                    }
+                                </select>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -218,67 +260,231 @@
                     </div>
                     <div id="extraChargesHiddenInputs"></div>
 
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="af-form-group">
-                                <label asp-for="CreationFlow" class="af-label">Creation Flow</label>
-                                <input asp-for="CreationFlow" class="af-input" placeholder="e.g. Dying,Handwork,Stitching" />
-                                <span style="font-size:.75rem;color:#94a3b8;">Comma-separated list of production steps</span>
+                    <!-- Colour-wise Image Upload Section -->
+                    <div class="card p-3 mb-4 border rounded-3 bg-light shadow-sm" id="colourPhotosSection">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                <span>🎨</span> Colour-wise Product Photos
+                            </h6>
+                            <span class="badge bg-primary text-white" id="selectedColourCountBadge">0 Colours Selected</span>
+                        </div>
+                        <p class="text-muted small mb-3">Upload multiple photos for each selected colour (e.g. front view, back view, embroidery detail). You can select multiple images at once or add more using the button.</p>
+                        
+                        <div id="noColoursSelectedMsg" class="text-muted small py-4 text-center border rounded bg-white">
+                            <span class="fs-4 d-block mb-1">🎨</span>
+                            <em>Please select one or more colours in the list above to upload photos for each colourway.</em>
+                        </div>
+                        
+                        <div id="colourPhotosGrid" class="row g-3" style="display:none;"></div>
+                    </div>
+
+                    <!-- Variant-wise Discontinuation Section -->
+                    <div class="card p-3 mb-4 border rounded-3 bg-light shadow-sm" id="discontinuedVariantsSection">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-danger mb-0 d-flex align-items-center gap-2">
+                                <span>🚫</span> Variant-wise Discontinuation
+                            </h6>
+                            <span class="badge bg-danger text-white" id="discontinuedVariantCountBadge">0 Discontinued</span>
+                        </div>
+                        <p class="text-muted small mb-3">
+                            Discontinue specific colours, sizes, or specific colour-size combinations. 
+                            <strong>No new production orders</strong> can be scheduled for discontinued variants. 
+                            However, any <strong>existing stock on hand</strong> can still be sold via Sales Orders.
+                        </p>
+
+                        <!-- Form to add discontinued variant -->
+                        <div class="p-3 bg-white border rounded-3 mb-3">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold mb-1">Colour</label>
+                                    <select id="discColourSelect" class="form-select form-select-sm">
+                                        <option value="">— All Colours —</option>
+                                        @foreach (var c in ViewBag.Colours as List<AashanaFashion.Models.Colour> ?? new())
+                                        {
+                                            <option value="@c.ColourName">@c.ColourName</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold mb-1">Size</label>
+                                    <select id="discSizeSelect" class="form-select form-select-sm">
+                                        <option value="">— All Sizes —</option>
+                                        @foreach (var s in ViewBag.Sizes as List<AashanaFashion.Models.Size> ?? new())
+                                        {
+                                            <option value="@s.SizeName">@s.SizeName</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold mb-1">Reason for Discontinuation</label>
+                                    <input type="text" id="discReasonInput" class="form-control form-control-sm" placeholder="e.g. Fabric unavailable, dying discontinued" />
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-sm btn-outline-danger w-100 fw-bold" id="btnAddDiscVariant">
+                                        ➕ Discontinue
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Table of discontinued variants -->
+                        <div class="table-responsive bg-white border rounded-3">
+                            <table class="table table-sm table-hover align-middle mb-0" id="discVariantsTable">
+                                <thead class="table-light">
+                                    <tr style="font-size: 0.8rem;">
+                                        <th>Colour</th>
+                                        <th>Size</th>
+                                        <th>Reason</th>
+                                        <th>Date</th>
+                                        <th style="width: 60px;" class="text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="discVariantsBody"></tbody>
+                            </table>
+                            <div id="noDiscVariantsMsg" class="p-3 text-center text-muted small">
+                                No variants currently discontinued for this design.
                             </div>
                         </div>
                     </div>
 
-                    <!-- Worker & Handwork Planning -->
-                    <div class="card p-3 mb-3" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
-                        <h6 class="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
-                            <span>🪡</span> Production Workers & Handwork Planning
-                        </h6>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="af-form-group mb-0">
-                                    <label asp-for="StitchingWorkerId" class="af-label">Stitching Master / Worker</label>
-                                    <select asp-for="StitchingWorkerId" class="af-input af-select">
-                                        <option value="">— Select Stitching Worker —</option>
-                                        @foreach (var v in vendors)
-                                        {
-                                            <option value="@v.Id">@v.VendorName</option>
-                                        }
-                                    </select>
-                                    <span style="font-size:.75rem;color:#94a3b8;">Default stitching worker for this design</span>
-                                </div>
+                    <!-- Process Master Creation Flow Section -->
+                    <div class="card p-3 mb-3 border rounded-3 bg-light shadow-sm" id="creationFlowSection">
+                        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                    <span>🔄</span> Creation Flow & Workflow Stages
+                                </h6>
+                                <small class="text-muted">Select production processes from Process Master. Pipeline sequence is strictly maintained order-wise.</small>
                             </div>
-                            <div class="col-md-6">
-                                <div class="af-form-group mb-0">
-                                    <label asp-for="HandworkWorkerId" class="af-label">Handwork Karigar / Worker</label>
-                                    <select asp-for="HandworkWorkerId" class="af-input af-select">
-                                        <option value="">— Select Handwork Worker —</option>
-                                        @foreach (var v in vendors)
-                                        {
-                                            <option value="@v.Id">@v.VendorName</option>
-                                        }
-                                    </select>
-                                    <span style="font-size:.75rem;color:#94a3b8;">Default handwork karigar for this design</span>
-                                </div>
-                            </div>
-                            <div class="col-12 mt-3 pt-2 border-top">
-                                <label class="af-label mb-1">Handwork Garment Parts (Any one, any two, or all)</label>
-                                <div class="text-muted small mb-2">Select which pieces go for handwork. Pre-fills when planning a lot, and can be edited anytime.</div>
-                                <div class="d-flex flex-wrap gap-4 align-items-center">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" asp-for="HandworkCholi" id="hw_choli" />
-                                        <label class="form-check-label fw-semibold" for="hw_choli">👚 Choli (Blouse)</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" asp-for="HandworkChaniya" id="hw_chaniya" />
-                                        <label class="form-check-label fw-semibold" for="hw_chaniya">👗 Chaniya (Lehenga)</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" asp-for="HandworkDupatta" id="hw_dupatta" />
-                                        <label class="form-check-label fw-semibold" for="hw_dupatta">🧣 Dupatta (Chunri)</label>
-                                    </div>
-                                </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" id="btnSelectAllProcesses" style="font-size:0.75rem;">
+                                    ✓ Select All
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="btnClearProcesses" style="font-size:0.75rem;">
+                                    ✕ Clear
+                                </button>
+                                <a asp-controller="ProcessMaster" asp-action="Index" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 text-decoration-none" style="font-size:0.75rem;" title="Manage process definitions and sequence order">
+                                    ⚙️ Manage Master
+                                </a>
                             </div>
                         </div>
+
+                        <!-- Checkbox pills sorted by ProcessMaster DisplayOrder -->
+                        <div class="p-3 bg-white border rounded-3 mb-3">
+                            <label class="form-label small fw-bold text-muted mb-2 text-uppercase" style="letter-spacing:0.5px;">
+                                Available Master Processes (In Sequence):
+                            </label>
+                            <div class="d-flex flex-wrap gap-2" id="processCheckboxesContainer">
+                                @{
+                                    var availableProcesses = ViewBag.Processes as List<AashanaFashion.Models.ProcessMaster> ?? new();
+                                }
+                                @if (availableProcesses.Any())
+                                {
+                                    @foreach (var proc in availableProcesses)
+                                    {
+                                        <div class="form-check form-check-inline process-pill-check p-0 m-0">
+                                            <input class="btn-check process-step-checkbox" type="checkbox" 
+                                                   id="proc_@proc.Id" 
+                                                   data-id="@proc.Id" 
+                                                   data-name="@proc.ProcessName" 
+                                                   data-code="@proc.ProcessCode" 
+                                                   data-order="@proc.DisplayOrder" 
+                                                   checked />
+                                            <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2 px-3 py-1 rounded-pill" for="proc_@proc.Id">
+                                                <span class="badge bg-white text-primary rounded-circle border font-monospace" style="font-size:0.7rem;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;">@proc.DisplayOrder</span>
+                                                <span class="fw-semibold">@proc.ProcessName</span>
+                                                @if (!string.IsNullOrEmpty(proc.ProcessCode))
+                                                {
+                                                    <span class="badge bg-light text-dark font-monospace" style="font-size:0.65rem;">@proc.ProcessCode</span>
+                                                }
+                                            </label>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="text-muted small fst-italic py-1">
+                                        No active processes found in Process Master. Configure processes in <a asp-controller="ProcessMaster" asp-action="Index" target="_blank">Process Master</a>.
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Live Pipeline Flow Preview -->
+                        <div class="p-3 bg-white border rounded-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small fw-bold text-muted text-uppercase" style="letter-spacing:0.5px;">Live Workflow Flowchart:</span>
+                                <span class="badge bg-success" id="processStepCountBadge">0 Steps</span>
+                            </div>
+                            <div id="creationFlowPipeline" class="d-flex flex-wrap align-items-center gap-2 p-2 bg-light rounded border" style="min-height:48px;">
+                                <!-- Dynamically populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Bound hidden input for CreationFlow -->
+                        <input type="hidden" asp-for="CreationFlow" id="creationFlowInput" />
+                    </div>
+
+                    <!-- Component & Process Vendor Assignment Matrix -->
+                    <div class="card p-3 mb-3 border rounded-3 bg-light shadow-sm" id="componentMatrixCard">
+                        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                    <span>🧩</span> Garment Components & Vendor Process Planning Matrix
+                                </h6>
+                                <small class="text-muted">Define all parts/components of this product and assign specific vendors/karigars for each creation process.</small>
+                            </div>
+                            <span class="badge bg-primary px-2 py-1" id="componentCountBadge">3 Components</span>
+                        </div>
+
+                        <!-- Components management bar -->
+                        <div class="p-3 bg-white border rounded-3 mb-3">
+                            <label class="form-label small fw-bold text-muted mb-2 text-uppercase" style="letter-spacing:0.5px;">
+                                Product Components (Can have 3 or more parts):
+                            </label>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-2" id="componentBadgesContainer">
+                                <!-- Badges dynamically rendered -->
+                            </div>
+
+                            <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
+                                <span class="small text-muted fw-semibold me-1">Quick Add:</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Belt" style="font-size:0.75rem;">+ Belt</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Jacket" style="font-size:0.75rem;">+ Jacket / Shrug</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Inner" style="font-size:0.75rem;">+ Inner / Lining</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Cape" style="font-size:0.75rem;">+ Cape</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Koti" style="font-size:0.75rem;">+ Koti</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Stole" style="font-size:0.75rem;">+ Stole</button>
+                                
+                                <div class="input-group input-group-sm ms-auto" style="max-width:260px;">
+                                    <input type="text" id="customComponentInput" class="form-control form-control-sm" placeholder="Custom component name..." />
+                                    <button type="button" class="btn btn-primary btn-sm" id="btnAddCustomComponent">+ Add Part</button>
+                                </div>
+                            </div>
+                            <input type="hidden" asp-for="Components" id="componentsHiddenInput" value="Chaniya, Choli, Dupatta" />
+                        </div>
+
+                        <!-- Matrix Table -->
+                        <div class="table-responsive bg-white border rounded-3">
+                            <table class="table table-bordered table-hover align-middle mb-0" id="componentMatrixTable">
+                                <thead class="table-light">
+                                    <tr id="matrixHeaderRow" style="font-size:0.82rem;">
+                                        <th style="min-width:140px; background:#f1f5f9;">Component Part</th>
+                                        <!-- Dynamic Process Columns injected here -->
+                                        <th style="width:50px; text-align:center; background:#f1f5f9;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="matrixTableBody">
+                                    <!-- Dynamic rows per component injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Hidden fallback inputs for legacy compatibility -->
+                        <input type="hidden" asp-for="StitchingWorkerId" id="fallbackStitchingWorkerId" />
+                        <input type="hidden" asp-for="HandworkWorkerId" id="fallbackHandworkWorkerId" />
+                        <input type="hidden" asp-for="HandworkCholi" id="fallbackHwCholi" />
+                        <input type="hidden" asp-for="HandworkChaniya" id="fallbackHwChaniya" />
+                        <input type="hidden" asp-for="HandworkDupatta" id="fallbackHwDupatta" />
                     </div>
 
                     <div class="af-form-group">
@@ -969,6 +1175,520 @@
             const modalInstance = bootstrap.Modal.getInstance(extraChargesModalEl) || new bootstrap.Modal(extraChargesModalEl);
             modalInstance.hide();
         });
+
+        // Live preview for design photo input
+        $('#designPhotoInput').on('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    $('#designPhotoPreview').attr('src', evt.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Colour-wise photos management
+        var existingColourImages = [];
+
+        function sanitizeColourKey(str) {
+            return (str || '').replace(/[^a-zA-Z0-9]/g, '_');
+        }
+
+        function updateColourPhotoCards() {
+            var checkedColours = [];
+            $('.colour-checkbox:checked').each(function() {
+                checkedColours.push({
+                    id: $(this).val(),
+                    name: $(this).data('name'),
+                    code: $(this).data('code') || ''
+                });
+            });
+
+            $('#selectedColourCountBadge').text(checkedColours.length + ' Colour' + (checkedColours.length === 1 ? '' : 's') + ' Selected');
+
+            if (checkedColours.length === 0) {
+                $('#noColoursSelectedMsg').show();
+                $('#colourPhotosGrid').hide();
+                return;
+            }
+
+            $('#noColoursSelectedMsg').hide();
+            $('#colourPhotosGrid').show();
+
+            // Collect existing cards to avoid wiping file inputs
+            var existingCards = {};
+            $('.colour-photo-card').each(function() {
+                var col = $(this).data('colour');
+                existingCards[col] = $(this);
+            });
+
+            // Remove cards for unchecked colours
+            for (var col in existingCards) {
+                var stillChecked = checkedColours.some(function(c) { return c.name.toLowerCase() === col.toLowerCase(); });
+                if (!stillChecked) {
+                    existingCards[col].remove();
+                }
+            }
+
+            // Append cards for newly checked colours
+            checkedColours.forEach(function(c) {
+                var key = sanitizeColourKey(c.name);
+                if ($('#card_colour_' + key).length === 0) {
+                    var swatchHtml = c.code ? `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background-color:${c.code}; border:1px solid #cbd5e1;"></span>` : '';
+                    var cardHtml = `
+                        <div class="col-md-6 col-lg-4 colour-photo-card" id="card_colour_${key}" data-colour="${c.name}">
+                            <div class="card h-100 border shadow-sm rounded-3 p-3 bg-white">
+                                <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                                    <div class="d-flex align-items-center gap-2">
+                                        ${swatchHtml}
+                                        <strong class="fs-6 text-dark">${c.name}</strong>
+                                    </div>
+                                    <span class="badge bg-primary text-white" id="badge_count_${key}">0 Photos</span>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 mb-2 p-2 bg-light rounded border align-items-center" id="gallery_${key}" style="min-height: 80px;">
+                                    <div class="text-muted small w-100 text-center py-2" id="hint_${key}">
+                                        <em>No photos selected for ${c.name}</em>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2 align-items-center mt-auto pt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-1 py-1" onclick="addColourPhotos('${key}', '${c.name}')">
+                                        <span>📷</span> + Add Photos (Multiple)
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" title="Clear all photos for this colour" onclick="clearAllColourPhotos('${key}', '${c.name}')">
+                                        ✕
+                                    </button>
+                                </div>
+                                <div id="file_inputs_${key}" class="d-none"></div>
+                            </div>
+                        </div>
+                    `;
+                    $('#colourPhotosGrid').append(cardHtml);
+                }
+            });
+        }
+
+        $('.colour-checkbox').on('change', updateColourPhotoCards);
+        updateColourPhotoCards();
     });
+
+    window.addColourPhotos = function(key, colourName) {
+        var picker = document.createElement('input');
+        picker.type = 'file';
+        picker.multiple = true;
+        picker.accept = 'image/*';
+        picker.onchange = function(e) {
+            if (!picker.files || picker.files.length === 0) return;
+            $('#hint_' + key).hide();
+            Array.from(picker.files).forEach(function(file) {
+                var inputId = 'file_' + key + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+                var thumbId = 'thumb_' + inputId;
+
+                var hiddenInput = document.createElement('input');
+                hiddenInput.type = 'file';
+                hiddenInput.name = 'colourPhotos_' + colourName;
+                hiddenInput.id = inputId;
+                try {
+                    var dt = new DataTransfer();
+                    dt.items.add(file);
+                    hiddenInput.files = dt.files;
+                } catch(err) {}
+                document.getElementById('file_inputs_' + key).appendChild(hiddenInput);
+
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    var tileHtml = `
+                        <div class="position-relative d-inline-block rounded border bg-white shadow-sm overflow-hidden colour-thumb-tile" id="${thumbId}" style="width: 68px; height: 68px;">
+                            <img src="${evt.target.result}" class="w-100 h-100 object-fit-cover" />
+                            <span class="position-absolute bottom-0 start-0 badge bg-dark bg-opacity-75" style="font-size: 0.6rem; border-top-right-radius: 4px; padding: 1px 3px;">New</span>
+                            <button type="button" class="btn btn-danger btn-sm p-0 position-absolute top-0 end-0 rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 18px; height: 18px; font-size: 10px; margin: 2px;" onclick="removeNewColourPhoto('${thumbId}', '${inputId}', '${key}')" title="Remove photo">
+                                ✕
+                            </button>
+                        </div>`;
+                    $('#gallery_' + key).append(tileHtml);
+                    updateColourThumbCount(key);
+                };
+                reader.readAsDataURL(file);
+            });
+        };
+        picker.click();
+    };
+
+    window.removeNewColourPhoto = function(thumbId, inputId, key) {
+        $('#' + thumbId).remove();
+        $('#' + inputId).remove();
+        updateColourThumbCount(key);
+    };
+
+    window.clearAllColourPhotos = function(key, colourName) {
+        $('#gallery_' + key + ' .colour-thumb-tile').remove();
+        $('#file_inputs_' + key).empty();
+        $('#hint_' + key).show();
+        updateColourThumbCount(key);
+    };
+
+    function updateColourThumbCount(key) {
+        var count = $('#gallery_' + key + ' .colour-thumb-tile').length;
+        $('#badge_count_' + key).text(count + (count === 1 ? ' Photo' : ' Photos'));
+        if (count === 0) {
+            $('#hint_' + key).show();
+        } else {
+            $('#hint_' + key).hide();
+        }
+    }
+
+    // ——— Discontinued Variants Manager ———
+    function updateDiscVariantIndices() {
+        var rows = $('#discVariantsBody tr');
+        rows.each(function(idx) {
+            $(this).find('input[name*=".Colour"]').attr('name', 'DiscontinuedVariants[' + idx + '].Colour');
+            $(this).find('input[name*=".Size"]').attr('name', 'DiscontinuedVariants[' + idx + '].Size');
+            $(this).find('input[name*=".Reason"]').attr('name', 'DiscontinuedVariants[' + idx + '].Reason');
+            $(this).find('input[name*=".DiscontinuedDate"]').attr('name', 'DiscontinuedVariants[' + idx + '].DiscontinuedDate');
+        });
+        var count = rows.length;
+        $('#discontinuedVariantCountBadge').text(count + ' Discontinued');
+        if (count === 0) {
+            $('#noDiscVariantsMsg').show();
+        } else {
+            $('#noDiscVariantsMsg').hide();
+        }
+    }
+
+    $(document).on('click', '#btnAddDiscVariant', function() {
+        var col = $('#discColourSelect').val() || '';
+        var sz = $('#discSizeSelect').val() || '';
+        var reason = $('#discReasonInput').val() || '';
+
+        if (!col && !sz) {
+            alert('Please select either a Colour, a Size, or both to discontinue a specific variant. To discontinue the entire product, use the "Discontinue Whole Product" checkbox under General Information.');
+            return;
+        }
+
+        var exists = false;
+        $('#discVariantsBody tr').each(function() {
+            var existingCol = $(this).find('input[name*=".Colour"]').val() || '';
+            var existingSz = $(this).find('input[name*=".Size"]').val() || '';
+            if (existingCol.toLowerCase() === col.toLowerCase() && existingSz.toLowerCase() === sz.toLowerCase()) {
+                exists = true;
+                return false;
+            }
+        });
+
+        if (exists) {
+            alert('This variant combination is already in the discontinued list.');
+            return;
+        }
+
+        var nextIdx = $('#discVariantsBody tr').length;
+        var colDisplay = col ? '<strong>' + col + '</strong>' : '<span class="text-muted fst-italic">All Colours</span>';
+        var szDisplay = sz ? '<span class="badge bg-secondary">' + sz + '</span>' : '<span class="badge bg-light text-dark border">All Sizes</span>';
+        var reasonDisplay = reason ? reason : '<span class="text-muted fst-italic">No reason specified</span>';
+        var now = new Date();
+        var dateFormatted = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        var isoDate = now.toISOString();
+
+        var rowHtml = `
+        <tr class="disc-variant-row">
+            <td>
+                ${colDisplay}
+                <input type="hidden" name="DiscontinuedVariants[${nextIdx}].Colour" value="${col}" />
+            </td>
+            <td>
+                ${szDisplay}
+                <input type="hidden" name="DiscontinuedVariants[${nextIdx}].Size" value="${sz}" />
+            </td>
+            <td class="text-muted small">
+                ${reasonDisplay}
+                <input type="hidden" name="DiscontinuedVariants[${nextIdx}].Reason" value="${reason}" />
+            </td>
+            <td class="text-muted small">
+                ${dateFormatted}
+                <input type="hidden" name="DiscontinuedVariants[${nextIdx}].DiscontinuedDate" value="${isoDate}" />
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 remove-disc-variant" title="Restore this variant">
+                    🗑️
+                </button>
+            </td>
+        </tr>`;
+
+        $('#discVariantsBody').append(rowHtml);
+        $('#discReasonInput').val('');
+        updateDiscVariantIndices();
+    });
+
+    $(document).on('click', '.remove-disc-variant', function() {
+        $(this).closest('tr').remove();
+        updateDiscVariantIndices();
+    });
+
+    // ===== COMPONENT & PROCESS VENDOR MATRIX =====
+    var allVendors = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(((List<AashanaFashion.Models.Vendor>)(ViewBag.Vendors ?? new List<AashanaFashion.Models.Vendor>())).Select(v => new { id = v.Id, name = v.VendorName })));
+    var componentsList = ['Chaniya', 'Choli', 'Dupatta'];
+    var matrixState = {}; // key: comp + '___' + proc -> { vendorId, rate }
+
+    function getActiveProcesses() {
+        var procs = [];
+        $('.process-step-checkbox:checked').each(function() {
+            procs.push({
+                id: $(this).data('id'),
+                name: $(this).data('name'),
+                order: parseInt($(this).data('order') || 0)
+            });
+        });
+        procs.sort(function(a, b) { return a.order - b.order; });
+        return procs;
+    }
+
+    function renderComponentBadges() {
+        var html = '';
+        componentsList.forEach(function(comp) {
+            var icon = '🧵';
+            var clow = comp.toLowerCase();
+            if (clow.includes('chaniya') || clow.includes('lehenga') || clow.includes('skirt')) icon = '👗';
+            else if (clow.includes('choli') || clow.includes('blouse') || clow.includes('top')) icon = '👚';
+            else if (clow.includes('dupatta') || clow.includes('chunri') || clow.includes('scarf')) icon = '🧣';
+            else if (clow.includes('jacket') || clow.includes('shrug') || clow.includes('koti')) icon = '🧥';
+            else if (clow.includes('belt')) icon = '🎗️';
+            else if (clow.includes('inner') || clow.includes('lining')) icon = '🩱';
+            else if (clow.includes('cape')) icon = '✨';
+
+            html += `
+                <span class="badge bg-white text-dark border shadow-sm p-2 d-inline-flex align-items-center gap-2">
+                    <span>${icon}</span>
+                    <span class="fw-semibold">${comp}</span>
+                    <button type="button" class="btn-close btn-close-sm remove-component-btn" data-name="${comp}" title="Remove component" style="font-size:0.65rem;"></button>
+                </span>
+            `;
+        });
+        $('#componentBadgesContainer').html(html);
+        $('#componentsHiddenInput').val(componentsList.join(', '));
+        $('#componentCountBadge').text(componentsList.length + (componentsList.length === 1 ? ' Component' : ' Components'));
+    }
+
+    function renderMatrixTable() {
+        var procs = getActiveProcesses();
+        var thead = '<th style="min-width:140px; background:#f1f5f9;">Component Part</th>';
+        procs.forEach(function(p) {
+            thead += `<th style="min-width:170px; background:#f1f5f9; text-align:center;">${p.name}</th>`;
+        });
+        thead += '<th style="width:50px; text-align:center; background:#f1f5f9;">Action</th>';
+        $('#matrixHeaderRow').html(thead);
+
+        var tbody = '';
+        var assignmentIdx = 0;
+
+        componentsList.forEach(function(comp) {
+            var icon = '🧵';
+            var clow = comp.toLowerCase();
+            if (clow.includes('chaniya') || clow.includes('lehenga')) icon = '👗';
+            else if (clow.includes('choli') || clow.includes('blouse')) icon = '👚';
+            else if (clow.includes('dupatta') || clow.includes('chunri')) icon = '🧣';
+            else if (clow.includes('jacket') || clow.includes('shrug')) icon = '🧥';
+            else if (clow.includes('belt')) icon = '🎗️';
+            else if (clow.includes('inner') || clow.includes('lining')) icon = '🩱';
+
+            tbody += `<tr>
+                <td class="fw-bold text-dark" style="white-space:nowrap; vertical-align:middle;">
+                    <span class="me-1">${icon}</span> ${comp}
+                </td>`;
+
+            procs.forEach(function(p) {
+                var key = comp + '___' + p.name;
+                var val = matrixState[key] || { vendorId: '', rate: '' };
+
+                var options = '<option value="">— In-house / None —</option>';
+                allVendors.forEach(function(v) {
+                    var sel = (val.vendorId && String(val.vendorId) === String(v.id)) ? 'selected' : '';
+                    options += `<option value="${v.id}" ${sel}>${v.name}</option>`;
+                });
+
+                tbody += `
+                    <td class="p-2">
+                        <select name="ComponentAssignments[${assignmentIdx}].VendorId" class="form-select form-select-sm matrix-vendor-select" data-comp="${comp}" data-proc="${p.name}">
+                            ${options}
+                        </select>
+                        <div class="input-group input-group-sm mt-1">
+                            <span class="input-group-text py-0 px-1 text-muted" style="font-size:0.7rem;">₹</span>
+                            <input type="number" step="0.01" min="0" name="ComponentAssignments[${assignmentIdx}].EstimatedRate" value="${val.rate || ''}" placeholder="Est. Rate" class="form-control form-control-sm py-0 matrix-rate-input" data-comp="${comp}" data-proc="${p.name}" style="font-size:0.75rem;" />
+                        </div>
+                        <input type="hidden" name="ComponentAssignments[${assignmentIdx}].ComponentName" value="${comp}" />
+                        <input type="hidden" name="ComponentAssignments[${assignmentIdx}].ProcessName" value="${p.name}" />
+                    </td>
+                `;
+                assignmentIdx++;
+            });
+
+            tbody += `
+                <td class="text-center" style="vertical-align:middle;">
+                    <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 remove-component-btn" data-name="${comp}" title="Remove ${comp}">
+                        🗑️
+                    </button>
+                </td>
+            </tr>`;
+        });
+
+        if (componentsList.length === 0) {
+            tbody = `<tr><td colspan="${procs.length + 2}" class="text-center text-muted py-4">No components defined yet. Click a quick add button or type a component name above.</td></tr>`;
+        }
+
+        $('#matrixTableBody').html(tbody);
+        syncLegacyWorkerFallbacks();
+    }
+
+    function syncLegacyWorkerFallbacks() {
+        var hwVendor = '';
+        var stVendor = '';
+        var hasHwCholi = false;
+        var hasHwChaniya = false;
+        var hasHwDupatta = false;
+
+        Object.keys(matrixState).forEach(function(key) {
+            var parts = key.split('___');
+            var c = parts[0];
+            var p = parts[1];
+            var entry = matrixState[key];
+            if (entry && entry.vendorId) {
+                if (p.toLowerCase().includes('handwork')) {
+                    if (!hwVendor) hwVendor = entry.vendorId;
+                    if (c.toLowerCase().includes('choli')) hasHwCholi = true;
+                    if (c.toLowerCase().includes('chaniya') || c.toLowerCase().includes('lehenga')) hasHwChaniya = true;
+                    if (c.toLowerCase().includes('dupatta')) hasHwDupatta = true;
+                }
+                if (p.toLowerCase().includes('stitching') && !stVendor) {
+                    stVendor = entry.vendorId;
+                }
+            }
+        });
+
+        $('#fallbackHandworkWorkerId').val(hwVendor);
+        $('#fallbackStitchingWorkerId').val(stVendor);
+        $('#fallbackHwCholi').val(hasHwCholi ? 'true' : 'false');
+        $('#fallbackHwChaniya').val(hasHwChaniya ? 'true' : 'false');
+        $('#fallbackHwDupatta').val(hasHwDupatta ? 'true' : 'false');
+    }
+
+    $(document).on('change', '.matrix-vendor-select', function() {
+        var comp = $(this).data('comp');
+        var proc = $(this).data('proc');
+        var key = comp + '___' + proc;
+        if (!matrixState[key]) matrixState[key] = {};
+        matrixState[key].vendorId = $(this).val();
+        syncLegacyWorkerFallbacks();
+    });
+
+    $(document).on('input', '.matrix-rate-input', function() {
+        var comp = $(this).data('comp');
+        var proc = $(this).data('proc');
+        var key = comp + '___' + proc;
+        if (!matrixState[key]) matrixState[key] = {};
+        matrixState[key].rate = $(this).val();
+    });
+
+    function addComponent(name) {
+        name = (name || '').trim();
+        if (!name) return;
+        if (!componentsList.some(function(c) { return c.toLowerCase() === name.toLowerCase(); })) {
+            componentsList.push(name);
+            renderComponentBadges();
+            renderMatrixTable();
+        }
+    }
+
+    function removeComponent(name) {
+        componentsList = componentsList.filter(function(c) { return c.toLowerCase() !== name.toLowerCase(); });
+        Object.keys(matrixState).forEach(function(k) {
+            if (k.startsWith(name + '___')) delete matrixState[k];
+        });
+        renderComponentBadges();
+        renderMatrixTable();
+    }
+
+    $(document).on('click', '.quick-add-comp-btn', function() {
+        var name = $(this).data('name');
+        addComponent(name);
+    });
+
+    $('#btnAddCustomComponent').on('click', function() {
+        var name = $('#customComponentInput').val();
+        if (name) {
+            addComponent(name);
+            $('#customComponentInput').val('');
+        }
+    });
+
+    $('#customComponentInput').on('keypress', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            $('#btnAddCustomComponent').click();
+        }
+    });
+
+    $(document).on('click', '.remove-component-btn', function() {
+        var name = $(this).data('name');
+        removeComponent(name);
+    });
+
+    // ===== CREATION FLOW (PROCESS MASTER) HANDLERS =====
+    function updateCreationFlowFromMaster() {
+        var checkedSteps = [];
+        $('.process-step-checkbox:checked').each(function() {
+            checkedSteps.push({
+                id: $(this).data('id'),
+                name: $(this).data('name'),
+                code: $(this).data('code'),
+                order: parseInt($(this).data('order') || 0)
+            });
+        });
+
+        // Always sort strictly by the master sequence order!
+        checkedSteps.sort(function(a, b) {
+            return a.order - b.order;
+        });
+
+        var names = checkedSteps.map(function(s) { return s.name; });
+        var flowString = names.join(' → ');
+        $('#creationFlowInput').val(flowString);
+
+        $('#processStepCountBadge').text(checkedSteps.length + (checkedSteps.length === 1 ? ' Step' : ' Steps'));
+
+        var pipelineHtml = '';
+        if (checkedSteps.length > 0) {
+            checkedSteps.forEach(function(step, idx) {
+                pipelineHtml += `
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary px-3 py-2 fs-6 shadow-sm d-flex align-items-center gap-2">
+                            <span class="badge bg-white text-primary rounded-circle" style="width:18px;height:18px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem;">${step.order}</span>
+                            ${step.name}
+                            ${step.code ? `<small class="text-white-50">(${step.code})</small>` : ''}
+                        </span>
+                        ${idx < checkedSteps.length - 1 ? '<span class="text-muted fw-bold fs-5">➔</span>' : ''}
+                    </div>`;
+            });
+        } else {
+            pipelineHtml = '<span class="text-muted small fst-italic py-1">No process steps selected. Check one or more steps above to define the creation flow.</span>';
+        }
+        $('#creationFlowPipeline').html(pipelineHtml);
+        renderMatrixTable();
+    }
+
+    $(document).on('change', '.process-step-checkbox', function() {
+        updateCreationFlowFromMaster();
+    });
+
+    $('#btnSelectAllProcesses').on('click', function() {
+        $('.process-step-checkbox').prop('checked', true);
+        updateCreationFlowFromMaster();
+    });
+
+    $('#btnClearProcesses').on('click', function() {
+        $('.process-step-checkbox').prop('checked', false);
+        updateCreationFlowFromMaster();
+    });
+
+    // Initialize creation flow and component matrix on page load
+    renderComponentBadges();
+    updateCreationFlowFromMaster();
     </script>
 }

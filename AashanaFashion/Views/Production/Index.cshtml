@@ -105,36 +105,100 @@
                         <tr>
                             <td class="ps-4 text-muted">@item.Id</td>
                             <td>
-                                @if (canEdit)
-                                {
-                                    <span class="ctx-trigger" style="font-weight:600;color:#6366f1;cursor:pointer;text-decoration:underline dotted;"
-                                          data-id="@item.Id"
-                                          data-edit="@Url.Action("Edit", "Production", new { id = item.Id })"
-                                          data-can-delete="@canDelete.ToString().ToLower()">@item.DesignNumber</span>
-                                }
-                                else
-                                {
-                                    <span style="font-weight:600;color:#0f172a;">@item.DesignNumber</span>
-                                }
-                                <br><span style="font-size:.75rem;color:#94a3b8;">@item.LotNo</span>
-                                @if (!string.IsNullOrEmpty(item.StitchingWorkerName))
-                                {
-                                    <div style="font-size:0.73rem; color:#475569; white-space:nowrap;">🪡 Stitch: <strong>@item.StitchingWorkerName</strong></div>
-                                }
-                                @if (!string.IsNullOrEmpty(item.HandworkWorkerName))
-                                {
-                                    <div style="font-size:0.73rem; color:#475569; white-space:nowrap;">✨ Hand: <strong>@item.HandworkWorkerName</strong> <span class="text-muted">(@item.HandworkParts)</span></div>
-                                }
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (!string.IsNullOrEmpty(item.PhotoPath))
+                                    {
+                                        <img src="@item.PhotoPath" alt="@item.DesignNumber" class="rounded shadow-sm object-fit-cover" style="width: 40px; height: 40px; min-width: 40px;" onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
+                                    }
+                                    <div>
+                                        @if (canEdit)
+                                        {
+                                            <span class="ctx-trigger" style="font-weight:600;color:#6366f1;cursor:pointer;text-decoration:underline dotted;"
+                                                  data-id="@item.Id"
+                                                  data-edit="@Url.Action("Edit", "Production", new { id = item.Id })"
+                                                  data-can-delete="@canDelete.ToString().ToLower()">@item.DesignNumber</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="font-weight:600;color:#0f172a;">@item.DesignNumber</span>
+                                        }
+                                        <br><span style="font-size:.75rem;color:#94a3b8;">@item.LotNo</span>
+                                        @if (item.JobSlipCount > 0)
+                                        {
+                                            <a asp-controller="JobSlip" asp-action="Index" asp-route-lotId="@item.Id" class="badge bg-light text-primary border text-decoration-none ms-1 py-1 px-2" title="View @item.JobSlipCount Job Slips for this Lot">
+                                                📑 @item.JobSlipCount Slips
+                                            </a>
+                                            <a asp-controller="JobSlip" asp-action="PrintAll" asp-route-lotId="@item.Id" target="_blank" class="badge bg-primary text-white text-decoration-none ms-1 py-1 px-2" title="Print All Slips for Lot @item.LotNo">
+                                                🖨️ Print
+                                            </a>
+                                        }
+                                        @if (item.ComponentAssignments != null && item.ComponentAssignments.Any())
+                                        {
+                                            <div class="mt-1" style="font-size:0.72rem; color:#475569;">
+                                                @foreach (var procGroup in item.ComponentAssignments.GroupBy(a => a.ProcessName))
+                                                {
+                                                    var assignmentTexts = procGroup.Select(a => $"{a.ComponentName} ➔ {(a.Vendor != null ? a.Vendor.VendorName : "Vendor #" + a.VendorId)}").ToList();
+                                                    <div class="text-truncate" style="max-width:280px;" title="@string.Join(", ", assignmentTexts)">
+                                                        <span class="badge bg-light text-dark border py-0 px-1 font-monospace" style="font-size:0.65rem;">@procGroup.Key</span>:
+                                                        @string.Join(", ", assignmentTexts)
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @if (!string.IsNullOrEmpty(item.StitchingWorkerName))
+                                            {
+                                                <div style="font-size:0.73rem; color:#475569; white-space:nowrap;">🪡 Stitch: <strong>@item.StitchingWorkerName</strong></div>
+                                            }
+                                            @if (!string.IsNullOrEmpty(item.HandworkWorkerName))
+                                            {
+                                                <div style="font-size:0.73rem; color:#475569; white-space:nowrap;">✨ Hand: <strong>@item.HandworkWorkerName</strong> <span class="text-muted">(@item.HandworkParts)</span></div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
                             </td>
                             <td>@item.TotalQuantity <span style="color:#94a3b8;font-size:.75rem;">pcs</span></td>
-                            <td><span class="af-badge @GetStageBadge(item.Status)">@item.CurrentStage</span></td>
+                            <td>
+                                <div>
+                                    @if (item.Status == AashanaFashion.Models.OrderStatus.Dispatched)
+                                    {
+                                        <span class="badge bg-secondary text-white px-2 py-1 shadow-sm d-inline-flex align-items-center gap-1">
+                                            <span>🚚</span> Dispatched
+                                        </span>
+                                    }
+                                    else if (item.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch)
+                                    {
+                                        <span class="badge bg-success text-white px-2 py-1 shadow-sm d-inline-flex align-items-center gap-1">
+                                            <span>📦</span> Ready to Dispatch
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-primary text-white px-2 py-1 shadow-sm d-inline-flex align-items-center gap-1">
+                                            <span class="badge bg-white text-primary rounded-circle" style="font-size:0.6rem;padding:1px 3px;">⚡</span>
+                                            @item.CurrentStage
+                                        </span>
+                                    }
+                                    @if (item.CreationSteps.Any())
+                                    {
+                                        <div class="mt-1 d-flex align-items-center gap-2" style="font-size: 0.72rem; color: #64748b;">
+                                            <div class="progress flex-grow-1" style="height: 5px; width: 60px;">
+                                                <div class="progress-bar @(item.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch || item.Status == AashanaFashion.Models.OrderStatus.Dispatched ? "bg-success" : "bg-primary")" role="progressbar" style="width: @item.ProgressPercentage%;" aria-valuenow="@item.ProgressPercentage" aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                            <span class="font-monospace">@(item.CompletedProcesses.Count)/@(item.CreationSteps.Count)</span>
+                                        </div>
+                                    }
+                                </div>
+                            </td>
                             <td>
                                 @if (item.Status == AashanaFashion.Models.OrderStatus.Dispatched)
                                 { <span class="af-badge b-gray">Dispatched</span> }
                                 else if (item.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch)
                                 { <span class="af-badge b-green">Ready</span> }
                                 else
-                                { <span class="af-badge b-yellow">In Progress</span> }
+                                { <span class="af-badge b-blue">In Progress</span> }
                             </td>
                         </tr>
                     }

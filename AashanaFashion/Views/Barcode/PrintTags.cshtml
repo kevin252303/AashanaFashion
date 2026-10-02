@@ -1,5 +1,7 @@
 @model AashanaFashion.Models.PrintTagsViewModel
 @{
+    var cfg = Model.Config ?? new AashanaFashion.Models.BarcodeTagConfig();
+    var dynamicFields = cfg.GetDynamicCustomFields().Where(f => f.Enabled).ToList();
     ViewData["Title"] = $"Print Barcode Tags — Lot {Model.Order?.LotNo}";
     Layout = null; // Clean print layout without sidebar navigation
 }
@@ -16,33 +18,34 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
             margin: 0;
             padding: 0;
+            color: #0f172a;
         }
 
         .no-print-bar {
             background: #ffffff;
             border-bottom: 1px solid #e2e8f0;
-            padding: 12px 24px;
+            padding: 10px 20px;
             position: sticky;
             top: 0;
-            z-index: 100;
+            z-index: 1000;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
         .labels-container {
-            padding: 24px;
+            padding: 20px;
             display: flex;
             flex-wrap: wrap;
             gap: 12px;
             justify-content: center;
         }
 
-        /* Continuous / Thermal Label format (50mm x 28mm) */
+        /* Configurable Continuous / Thermal Label format */
         .thermal-label {
-            width: 50mm;
-            min-height: 28mm;
-            max-height: 32mm;
+            width: @(cfg.TagWidthMm)mm;
+            min-height: @(cfg.TagHeightMm)mm;
             background: #ffffff;
             border: 1px dashed #cbd5e1;
             box-sizing: border-box;
@@ -50,8 +53,8 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            font-size: 8pt;
-            line-height: 1.15;
+            font-size: @(cfg.FontSize == "small" ? "7pt" : (cfg.FontSize == "large" ? "9.5pt" : "8pt"));
+            line-height: 1.18;
             color: #0f172a;
             page-break-after: always;
             break-after: page;
@@ -62,27 +65,28 @@
             justify-content: space-between;
             align-items: flex-start;
             border-bottom: 1px solid #000000;
-            padding-bottom: 1mm;
+            padding-bottom: 0.8mm;
             margin-bottom: 1mm;
         }
 
         .thermal-brand {
-            font-size: 7pt;
+            font-size: 7.2pt;
             font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.4px;
         }
 
         .thermal-design {
-            font-size: 9pt;
+            font-size: 8.8pt;
             font-weight: 800;
         }
 
         .thermal-meta {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             font-size: 7.5pt;
-            margin-bottom: 1mm;
+            margin-bottom: 0.8mm;
         }
 
         .thermal-component {
@@ -94,18 +98,28 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 2mm;
+            gap: 1.5mm;
+            margin-top: auto;
         }
 
         .thermal-barcode {
             flex-grow: 1;
-            max-width: 32mm;
+            max-width: 34mm;
         }
 
         .thermal-qr {
             width: 12mm;
             height: 12mm;
             flex-shrink: 0;
+        }
+
+        .extra-details-row {
+            font-size: 6.6pt;
+            line-height: 1.15;
+            color: #334155;
+            border-top: 0.5px dotted #cbd5e1;
+            padding-top: 0.6mm;
+            margin-top: 0.6mm;
         }
 
         /* A4 Sheet Grid Layout */
@@ -126,20 +140,51 @@
 
         .a4-label {
             border: 1px dashed #cbd5e1;
-            padding: 3mm;
+            padding: 2.5mm 3mm;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            font-size: 8.5pt;
+            font-size: 8pt;
             background: #ffffff;
+        }
+
+        /* Offcanvas Drawer for Quick Config */
+        .config-drawer {
+            position: fixed;
+            top: 0;
+            right: -420px;
+            width: 400px;
+            height: 100vh;
+            background: #ffffff;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.15);
+            z-index: 2000;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .config-drawer.open {
+            right: 0;
+        }
+        .drawer-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.3);
+            z-index: 1999;
+        }
+        .drawer-backdrop.show {
+            display: block;
         }
 
         @@media print {
             body {
-                background: transparent;
+                background: transparent !important;
             }
-            .no-print-bar {
+            .no-print-bar, .config-drawer, .drawer-backdrop {
                 display: none !important;
             }
             .labels-container {
@@ -175,68 +220,307 @@
     <!-- Controls Header (Hidden in Print) -->
     <div class="no-print-bar">
         <div class="d-flex align-items-center gap-3">
-            <a href="/PMS/ProductionEntities?orderId=@Model.Order?.Id" class="btn btn-sm btn-outline-secondary">
+            <a href="/Production/Edit/@Model.Order?.Id" class="btn btn-sm btn-outline-secondary">
                 ← Back to Order
             </a>
             <div>
-                <h5 class="mb-0 fw-bold">Garment Barcode Tags — Lot @Model.Order?.LotNo</h5>
-                <small class="text-muted">Total <strong>@Model.Tags.Count</strong> printable tags for Design @(Model.Order?.Design?.DesignNumber ?? "")</small>
+                <h6 class="mb-0 fw-bold">Garment Barcode Tags — Lot @Model.Order?.LotNo</h6>
+                <small class="text-muted">Total <strong>@Model.Tags.Count</strong> printable tags | Design: <strong>@(Model.Order?.Design?.DesignNumber ?? "")</strong></small>
             </div>
         </div>
 
         <div class="d-flex align-items-center gap-2">
-            <form method="get" class="d-flex gap-2">
+            <form method="get" class="d-flex gap-2 align-items-center">
                 <input type="hidden" name="orderId" value="@Model.Order?.Id" />
-                <select name="entityType" class="form-select form-select-sm" onchange="this.form.submit()">
+                <select name="entityType" class="form-select form-select-sm" onchange="this.form.submit()" style="width: auto;">
                     <option value="">All Components</option>
-                    <option value="Chaniya" selected="@(Model.FilterEntityType == "Chaniya")">Chaniya Only</option>
-                    <option value="Choli" selected="@(Model.FilterEntityType == "Choli")">Choli Only</option>
-                    <option value="Duppata" selected="@(Model.FilterEntityType == "Duppata")">Dupatta Only</option>
+                    @foreach (var c in Model.Order?.GetComponentsList() ?? new List<string>())
+                    {
+                        <option value="@c" selected="@(Model.FilterEntityType == c ? "selected" : null)">@c Only</option>
+                    }
                 </select>
 
-                <select name="format" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="ThermalRoll" selected="@(Model.Format == "ThermalRoll")">Thermal Roll (50x28mm)</option>
+                <select name="format" class="form-select form-select-sm" onchange="this.form.submit()" style="width: auto;">
+                    <option value="ThermalRoll" selected="@(Model.Format == "ThermalRoll")">Thermal Roll (@(cfg.TagWidthMm)x@(cfg.TagHeightMm)mm)</option>
                     <option value="A4Sheet" selected="@(Model.Format == "A4Sheet")">A4 Sticker Sheet (3x8 Grid)</option>
                 </select>
             </form>
 
-            <button type="button" class="btn btn-sm btn-primary fw-bold px-3" onclick="window.print()">
-                🖨️ Print Labels
+            <button type="button" class="btn btn-sm btn-outline-dark d-flex align-items-center gap-1" id="btnOpenConfigDrawer">
+                <span>⚙️</span> <strong>Configure Tag</strong>
+            </button>
+
+            <button type="button" class="btn btn-sm btn-primary fw-bold px-3 d-flex align-items-center gap-1" onclick="window.print()">
+                <span>🖨️</span> Print Labels
             </button>
         </div>
     </div>
 
+    <!-- Live Config Offcanvas Drawer -->
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <div class="config-drawer" id="configDrawer">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
+            <h6 class="fw-bold mb-0">⚙️ Configure Barcode Tag</h6>
+            <button type="button" class="btn-close" id="btnCloseConfigDrawer"></button>
+        </div>
+        <div class="p-3 overflow-auto flex-grow-1" style="font-size:0.85rem;">
+            <p class="text-muted small mb-3">Toggling options updates the tags on screen immediately. You can also save these settings as system default.</p>
+
+            <!-- Dimensions -->
+            <div class="mb-3 p-2 bg-light rounded border">
+                <label class="fw-bold small mb-1">Tag Dimensions</label>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="text-muted" style="font-size:0.75rem;">Width (mm)</label>
+                        <input type="number" id="drawerTagWidth" class="form-control form-control-sm" value="@cfg.TagWidthMm" />
+                    </div>
+                    <div class="col-6">
+                        <label class="text-muted" style="font-size:0.75rem;">Height (mm)</label>
+                        <input type="number" id="drawerTagHeight" class="form-control form-control-sm" value="@cfg.TagHeightMm" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Header Branding -->
+            <div class="mb-3 p-2 bg-light rounded border">
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowBrand" @(cfg.ShowBrandName ? "checked" : "") />
+                    <label class="form-check-label fw-bold small" for="drawerShowBrand">Show Brand Name</label>
+                </div>
+                <input type="text" id="drawerBrandName" class="form-control form-control-sm" value="@cfg.BrandName" placeholder="Brand Name" />
+
+                <div class="form-check form-switch mt-2 mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowSubtitle" @(cfg.ShowSubtitle ? "checked" : "") />
+                    <label class="form-check-label fw-bold small" for="drawerShowSubtitle">Show Subtitle</label>
+                </div>
+                <input type="text" id="drawerSubtitle" class="form-control form-control-sm" value="@cfg.Subtitle" placeholder="Subtitle (e.g. Ethnic Wear)" />
+            </div>
+
+            <!-- Core Garment Fields -->
+            <div class="mb-3 p-2 bg-light rounded border">
+                <label class="fw-bold small mb-2 d-block">Garment Core Fields</label>
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowDesign" @(cfg.ShowDesignNumber ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowDesign">Design Number</label>
+                </div>
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowLot" @(cfg.ShowLotNo ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowLot">Lot Number</label>
+                </div>
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowSerial" @(cfg.ShowSerialNumber ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowSerial">Serial Number (#SlNo)</label>
+                </div>
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowComponent" @(cfg.ShowComponent ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowComponent">Component / Part Name</label>
+                </div>
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowColour" @(cfg.ShowColour ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowColour">Colour</label>
+                </div>
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowSize" @(cfg.ShowSize ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowSize">Size</label>
+                </div>
+            </div>
+
+            <!-- Barcode & QR -->
+            <div class="mb-3 p-2 bg-light rounded border">
+                <label class="fw-bold small mb-2 d-block">Codes</label>
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowBarcode" @(cfg.ShowBarcode ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowBarcode">Show 1D Barcode</label>
+                </div>
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowQr" @(cfg.ShowQrCode ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowQr">Show QR Code</label>
+                </div>
+            </div>
+
+            <!-- Commercial / New Details -->
+            <div class="mb-3 p-2 bg-light rounded border">
+                <label class="fw-bold small mb-2 d-block">Commercial & Extra Details</label>
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowPrice" @(cfg.ShowPrice ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowPrice">Show M.R.P. / Price</label>
+                </div>
+                <input type="text" id="drawerPriceLabel" class="form-control form-control-sm mb-2" value="@cfg.PriceLabel" placeholder="Price Label" />
+
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowMfg" @(cfg.ShowMfgDate ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowMfg">Show Mfg Date</label>
+                </div>
+
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowCategory" @(cfg.ShowCategory ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowCategory">Show Category</label>
+                </div>
+
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowHsn" @(cfg.ShowHsnCode ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowHsn">Show HSN Code</label>
+                </div>
+
+                <!-- Custom Fields -->
+                <div class="form-check form-switch mt-2 mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowCust1" @(cfg.ShowCustomField1 ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowCust1">Fabric Details</label>
+                </div>
+                <input type="text" id="drawerCust1Val" class="form-control form-control-sm mb-2" value="@cfg.CustomField1Value" placeholder="e.g. Net / Silk / Georgette" />
+
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowCust2" @(cfg.ShowCustomField2 ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowCust2">Wash Care</label>
+                </div>
+                <input type="text" id="drawerCust2Val" class="form-control form-control-sm mb-2" value="@cfg.CustomField2Value" placeholder="e.g. Dry Clean Only" />
+
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowCust3" @(cfg.ShowCustomField3 ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowCust3">Origin</label>
+                </div>
+                <input type="text" id="drawerCust3Val" class="form-control form-control-sm mb-2" value="@cfg.CustomField3Value" placeholder="e.g. Made in India" />
+
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="drawerShowFooter" @(cfg.ShowFooterText ? "checked" : "") />
+                    <label class="form-check-label small" for="drawerShowFooter">Footer Note</label>
+                </div>
+                <input type="text" id="drawerFooterText" class="form-control form-control-sm" value="@cfg.FooterText" placeholder="(Inclusive of all taxes)" />
+            </div>
+
+            <div class="text-center mb-3">
+                <a asp-action="ConfigureTag" target="_blank" class="small text-decoration-none">
+                    Open Full Advanced Configurator ↗
+                </a>
+            </div>
+        </div>
+
+        <div class="p-3 border-top bg-light d-flex justify-content-between align-items-center">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnApplyDrawerConfig">Apply Now</button>
+            <button type="button" class="btn btn-sm btn-success fw-bold" id="btnSaveDrawerConfigDefault">💾 Save as Default</button>
+        </div>
+    </div>
+
+    <!-- Tags Content -->
     @if (Model.Format == "ThermalRoll")
     {
         <!-- Continuous Thermal Label Stream -->
-        <div class="labels-container">
+        <div class="labels-container" id="labelsWrapper">
             @foreach (var tag in Model.Tags)
             {
-                <div class="thermal-label">
-                    <div class="thermal-header">
+                <div class="thermal-label tag-item-card">
+                    <!-- Header -->
+                    <div class="thermal-header tag-header-part @(cfg.ShowBrandName || cfg.ShowSubtitle ? "" : "d-none")">
                         <div>
-                            <div class="thermal-brand">Aashana Fashion</div>
-                            <div class="thermal-design">@tag.DesignNumber</div>
+                            @if (cfg.ShowBrandName)
+                            {
+                                <div class="thermal-brand tag-brand-text">@cfg.BrandName</div>
+                            }
+                            @if (cfg.ShowSubtitle && !string.IsNullOrEmpty(cfg.Subtitle))
+                            {
+                                <div class="tag-subtitle-text text-muted" style="font-size: 6.2pt;">@cfg.Subtitle</div>
+                            }
+                            @if (cfg.ShowDesignNumber)
+                            {
+                                <div class="thermal-design tag-design-text">@tag.DesignNumber</div>
+                            }
                         </div>
                         <div class="text-end">
-                            <div class="fw-bold" style="font-size: 7.5pt;">Lot: @tag.LotNo</div>
-                            <div style="font-size: 7pt; color: #475569;">#@tag.SlNo</div>
+                            @if (cfg.ShowLotNo)
+                            {
+                                <div class="fw-bold tag-lot-text" style="font-size: 7.2pt;">@(cfg.LotNoLabel): @tag.LotNo</div>
+                            }
+                            @if (cfg.ShowSerialNumber)
+                            {
+                                <div class="tag-serial-text" style="font-size: 6.8pt; color: #475569;">@(cfg.SerialNumberLabel)@tag.SlNo</div>
+                            }
                         </div>
                     </div>
 
-                    <div class="thermal-meta">
-                        <span class="thermal-component">@tag.EntityType</span>
-                        <span><strong>@tag.Colour</strong> / <strong>@tag.Size</strong></span>
+                    <!-- Meta -->
+                    <div class="thermal-meta tag-meta-part">
+                        @if (cfg.ShowComponent)
+                        {
+                            <span class="thermal-component tag-component-text">@tag.EntityType</span>
+                        }
+                        <span>
+                            @if (cfg.ShowColour)
+                            {
+                                <strong class="tag-colour-text">@tag.Colour</strong>
+                            }
+                            @if (cfg.ShowColour && cfg.ShowSize)
+                            {
+                                <span> / </span>
+                            }
+                            @if (cfg.ShowSize)
+                            {
+                                <strong class="tag-size-text">@tag.Size</strong>
+                            }
+                        </span>
                     </div>
 
-                    <div class="thermal-codes">
-                        <div class="thermal-barcode">
-                            @Html.Raw(tag.BarcodeSvg)
-                        </div>
-                        <div class="thermal-qr">
-                            @Html.Raw(tag.QrCodeSvg)
-                        </div>
+                    <!-- Extra details (Price, Mfg Date, Fabric, Care, Dynamic fields) -->
+                    @{
+                        var hasAnyExtra = cfg.ShowPrice || cfg.ShowMfgDate || cfg.ShowCategory || cfg.ShowHsnCode ||
+                                          cfg.ShowCustomField1 || cfg.ShowCustomField2 || cfg.ShowCustomField3 || dynamicFields.Any();
+                    }
+                    <div class="extra-details-row tag-extra-part @(hasAnyExtra ? "" : "d-none")">
+                        @if (cfg.ShowPrice && tag.Price.HasValue && tag.Price > 0)
+                        {
+                            <div class="fw-bold tag-price-row">@(cfg.PriceLabel) @tag.Price.Value.ToString("N2")</div>
+                        }
+                        @if (cfg.ShowMfgDate)
+                        {
+                            <div class="tag-mfg-row text-muted">@(cfg.MfgDateLabel): @(tag.OrderDate?.ToString("MM/yyyy") ?? DateTime.Now.ToString("MM/yyyy"))</div>
+                        }
+                        @if (cfg.ShowCategory && !string.IsNullOrEmpty(tag.Category))
+                        {
+                            <div class="tag-category-row text-muted">@(cfg.CategoryLabel): @tag.Category</div>
+                        }
+                        @if (cfg.ShowHsnCode && !string.IsNullOrEmpty(tag.HsnCode))
+                        {
+                            <div class="tag-hsn-row text-muted">@(cfg.HsnLabel): @tag.HsnCode</div>
+                        }
+                        @if (cfg.ShowCustomField1 && !string.IsNullOrEmpty(cfg.CustomField1Value))
+                        {
+                            <div class="tag-cust1-row text-muted">@(cfg.CustomField1Label): @cfg.CustomField1Value</div>
+                        }
+                        @if (cfg.ShowCustomField2 && !string.IsNullOrEmpty(cfg.CustomField2Value))
+                        {
+                            <div class="tag-cust2-row text-muted">@(cfg.CustomField2Label): @cfg.CustomField2Value</div>
+                        }
+                        @if (cfg.ShowCustomField3 && !string.IsNullOrEmpty(cfg.CustomField3Value))
+                        {
+                            <div class="tag-cust3-row text-muted">@(cfg.CustomField3Label): @cfg.CustomField3Value</div>
+                        }
+                        @foreach (var df in dynamicFields)
+                        {
+                            <div class="tag-dyn-row text-muted">@df.Label: <strong>@df.Value</strong></div>
+                        }
                     </div>
+
+                    <!-- Codes -->
+                    <div class="thermal-codes tag-codes-part @(cfg.ShowBarcode || cfg.ShowQrCode ? "" : "d-none")">
+                        @if (cfg.ShowBarcode)
+                        {
+                            <div class="thermal-barcode tag-barcode-box">
+                                @Html.Raw(tag.BarcodeSvg)
+                            </div>
+                        }
+                        @if (cfg.ShowQrCode)
+                        {
+                            <div class="thermal-qr tag-qr-box">
+                                @Html.Raw(tag.QrCodeSvg)
+                            </div>
+                        }
+                    </div>
+
+                    @if (cfg.ShowFooterText && !string.IsNullOrEmpty(cfg.FooterText))
+                    {
+                        <div class="tag-footer-part text-center text-muted" style="font-size: 5.8pt; border-top: 0.5px dotted #cbd5e1; margin-top: 0.5mm; padding-top: 0.5mm;">
+                            @cfg.FooterText
+                        </div>
+                    }
                 </div>
             }
         </div>
@@ -254,30 +538,69 @@
                 <div class="a4-sheet">
                     @foreach (var tag in pageTags)
                     {
-                        <div class="a4-label">
-                            <div class="d-flex justify-content-between align-items-start border-bottom pb-1 mb-1">
+                        <div class="a4-label tag-item-card">
+                            <div class="d-flex justify-content-between align-items-start border-bottom pb-1 mb-1 tag-header-part">
                                 <div>
-                                    <div style="font-size: 7pt; font-weight: 900; letter-spacing: 0.5px;">AASHANA FASHION</div>
-                                    <div style="font-size: 9.5pt; font-weight: 800;">@tag.DesignNumber</div>
+                                    @if (cfg.ShowBrandName)
+                                    {
+                                        <div class="tag-brand-text" style="font-size: 7pt; font-weight: 900; letter-spacing: 0.5px;">@cfg.BrandName</div>
+                                    }
+                                    @if (cfg.ShowDesignNumber)
+                                    {
+                                        <div class="tag-design-text" style="font-size: 9.5pt; font-weight: 800;">@tag.DesignNumber</div>
+                                    }
                                 </div>
                                 <div class="text-end">
-                                    <div style="font-size: 8pt; font-weight: 700;">Lot: @tag.LotNo</div>
-                                    <div style="font-size: 7.5pt; color: #64748b;">#@tag.SlNo</div>
+                                    @if (cfg.ShowLotNo)
+                                    {
+                                        <div class="tag-lot-text" style="font-size: 8pt; font-weight: 700;">@(cfg.LotNoLabel): @tag.LotNo</div>
+                                    }
+                                    @if (cfg.ShowSerialNumber)
+                                    {
+                                        <div class="tag-serial-text" style="font-size: 7.5pt; color: #64748b;">@(cfg.SerialNumberLabel)@tag.SlNo</div>
+                                    }
                                 </div>
                             </div>
 
-                            <div class="d-flex justify-content-between mb-1" style="font-size: 8pt;">
-                                <strong class="text-uppercase">@tag.EntityType</strong>
-                                <span>@tag.Colour / <strong>@tag.Size</strong></span>
+                            <div class="d-flex justify-content-between mb-1 tag-meta-part" style="font-size: 8pt;">
+                                @if (cfg.ShowComponent)
+                                {
+                                    <strong class="text-uppercase tag-component-text">@tag.EntityType</strong>
+                                }
+                                <span>
+                                    @if (cfg.ShowColour)
+                                    {
+                                        <span class="tag-colour-text">@tag.Colour</span>
+                                    }
+                                    @if (cfg.ShowColour && cfg.ShowSize)
+                                    {
+                                        <span> / </span>
+                                    }
+                                    @if (cfg.ShowSize)
+                                    {
+                                        <strong class="tag-size-text">@tag.Size</strong>
+                                    }
+                                </span>
                             </div>
 
-                            <div class="d-flex align-items-center justify-content-between gap-1">
-                                <div style="flex-grow: 1; max-width: 44mm;">
-                                    @Html.Raw(tag.BarcodeSvg)
-                                </div>
-                                <div style="width: 14mm; height: 14mm; flex-shrink: 0;">
-                                    @Html.Raw(tag.QrCodeSvg)
-                                </div>
+                            @if (cfg.ShowPrice && tag.Price.HasValue && tag.Price > 0)
+                            {
+                                <div class="fw-bold tag-price-row" style="font-size: 7.2pt;">@(cfg.PriceLabel) @tag.Price.Value.ToString("N2")</div>
+                            }
+
+                            <div class="d-flex align-items-center justify-content-between gap-1 tag-codes-part">
+                                @if (cfg.ShowBarcode)
+                                {
+                                    <div class="tag-barcode-box" style="flex-grow: 1; max-width: 44mm;">
+                                        @Html.Raw(tag.BarcodeSvg)
+                                    </div>
+                                }
+                                @if (cfg.ShowQrCode)
+                                {
+                                    <div class="tag-qr-box" style="width: 14mm; height: 14mm; flex-shrink: 0;">
+                                        @Html.Raw(tag.QrCodeSvg)
+                                    </div>
+                                }
                             </div>
                         </div>
                     }
@@ -286,5 +609,156 @@
         }
     }
 
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script>
+        // Drawer toggle
+        $('#btnOpenConfigDrawer').on('click', function() {
+            $('#configDrawer').addClass('open');
+            $('#drawerBackdrop').addClass('show');
+        });
+
+        $('#btnCloseConfigDrawer, #drawerBackdrop').on('click', function() {
+            $('#configDrawer').removeClass('open');
+            $('#drawerBackdrop').removeClass('show');
+        });
+
+        function applyQuickConfig() {
+            var width = parseInt($('#drawerTagWidth').val()) || 50;
+            var height = parseInt($('#drawerTagHeight').val()) || 30;
+
+            $('.thermal-label').css({
+                'width': width + 'mm',
+                'min-height': height + 'mm'
+            });
+
+            var showBrand = $('#drawerShowBrand').is(':checked');
+            var brandName = $('#drawerBrandName').val() || 'Aashana Fashion';
+            $('.tag-brand-text').toggle(showBrand).text(brandName);
+
+            var showSubtitle = $('#drawerShowSubtitle').is(':checked');
+            var subtitle = $('#drawerSubtitle').val() || '';
+            $('.tag-subtitle-text').toggle(showSubtitle && subtitle.length > 0).text(subtitle);
+
+            var showDesign = $('#drawerShowDesign').is(':checked');
+            $('.tag-design-text').toggle(showDesign);
+
+            var showLot = $('#drawerShowLot').is(':checked');
+            $('.tag-lot-text').toggle(showLot);
+
+            var showSerial = $('#drawerShowSerial').is(':checked');
+            $('.tag-serial-text').toggle(showSerial);
+
+            var showComponent = $('#drawerShowComponent').is(':checked');
+            $('.tag-component-text').toggle(showComponent);
+
+            var showColour = $('#drawerShowColour').is(':checked');
+            $('.tag-colour-text').toggle(showColour);
+
+            var showSize = $('#drawerShowSize').is(':checked');
+            $('.tag-size-text').toggle(showSize);
+
+            var showBarcode = $('#drawerShowBarcode').is(':checked');
+            $('.tag-barcode-box').toggle(showBarcode);
+
+            var showQr = $('#drawerShowQr').is(':checked');
+            $('.tag-qr-box').toggle(showQr);
+
+            var showPrice = $('#drawerShowPrice').is(':checked');
+            $('.tag-price-row').toggle(showPrice);
+
+            var showMfg = $('#drawerShowMfg').is(':checked');
+            $('.tag-mfg-row').toggle(showMfg);
+
+            var showCat = $('#drawerShowCategory').is(':checked');
+            $('.tag-category-row').toggle(showCat);
+
+            var showHsn = $('#drawerShowHsn').is(':checked');
+            $('.tag-hsn-row').toggle(showHsn);
+
+            var showCust1 = $('#drawerShowCust1').is(':checked');
+            var cust1Val = $('#drawerCust1Val').val();
+            $('.tag-cust1-row').toggle(showCust1 && cust1Val.length > 0);
+
+            var showCust2 = $('#drawerShowCust2').is(':checked');
+            var cust2Val = $('#drawerCust2Val').val();
+            $('.tag-cust2-row').toggle(showCust2 && cust2Val.length > 0);
+
+            var showCust3 = $('#drawerShowCust3').is(':checked');
+            var cust3Val = $('#drawerCust3Val').val();
+            $('.tag-cust3-row').toggle(showCust3 && cust3Val.length > 0);
+
+            var showFooter = $('#drawerShowFooter').is(':checked');
+            var footerText = $('#drawerFooterText').val() || '';
+            $('.tag-footer-part').toggle(showFooter && footerText.length > 0).text(footerText);
+
+            var hasExtra = showPrice || showMfg || showCat || showHsn || showCust1 || showCust2 || showCust3;
+            $('.tag-extra-part').toggle(hasExtra);
+        }
+
+        // Live apply on input change
+        $('#configDrawer input').on('input change', function() {
+            applyQuickConfig();
+        });
+
+        $('#btnApplyDrawerConfig').on('click', function() {
+            applyQuickConfig();
+            $('#configDrawer').removeClass('open');
+            $('#drawerBackdrop').removeClass('show');
+        });
+
+        // Save as default via AJAX
+        $('#btnSaveDrawerConfigDefault').on('click', function() {
+            var btn = $(this);
+            btn.prop('disabled', true).text('Saving...');
+
+            var payload = {
+                TagWidthMm: parseInt($('#drawerTagWidth').val()) || 50,
+                TagHeightMm: parseInt($('#drawerTagHeight').val()) || 30,
+                ShowBrandName: $('#drawerShowBrand').is(':checked'),
+                BrandName: $('#drawerBrandName').val(),
+                ShowSubtitle: $('#drawerShowSubtitle').is(':checked'),
+                Subtitle: $('#drawerSubtitle').val(),
+                ShowDesignNumber: $('#drawerShowDesign').is(':checked'),
+                ShowLotNo: $('#drawerShowLot').is(':checked'),
+                ShowSerialNumber: $('#drawerShowSerial').is(':checked'),
+                ShowComponent: $('#drawerShowComponent').is(':checked'),
+                ShowColour: $('#drawerShowColour').is(':checked'),
+                ShowSize: $('#drawerShowSize').is(':checked'),
+                ShowBarcode: $('#drawerShowBarcode').is(':checked'),
+                ShowBarcodeText: true,
+                ShowQrCode: $('#drawerShowQr').is(':checked'),
+                ShowPrice: $('#drawerShowPrice').is(':checked'),
+                PriceLabel: $('#drawerPriceLabel').val(),
+                ShowMfgDate: $('#drawerShowMfg').is(':checked'),
+                ShowCategory: $('#drawerShowCategory').is(':checked'),
+                ShowHsnCode: $('#drawerShowHsn').is(':checked'),
+                ShowCustomField1: $('#drawerShowCust1').is(':checked'),
+                CustomField1Value: $('#drawerCust1Val').val(),
+                ShowCustomField2: $('#drawerShowCust2').is(':checked'),
+                CustomField2Value: $('#drawerCust2Val').val(),
+                ShowCustomField3: $('#drawerShowCust3').is(':checked'),
+                CustomField3Value: $('#drawerCust3Val').val(),
+                ShowFooterText: $('#drawerShowFooter').is(':checked'),
+                FooterText: $('#drawerFooterText').val()
+            };
+
+            $.ajax({
+                url: '/Barcode/SaveConfigAjax',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function(res) {
+                    btn.prop('disabled', false).text('✔ Saved!');
+                    setTimeout(function() {
+                        btn.text('💾 Save as Default');
+                    }, 2000);
+                },
+                error: function(err) {
+                    btn.prop('disabled', false).text('💾 Save as Default');
+                    alert('Error saving configuration.');
+                }
+            });
+        });
+    </script>
 </body>
 </html>

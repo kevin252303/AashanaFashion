@@ -38,6 +38,11 @@ namespace AashanaFashion.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int>("CompanyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<int?>("CustomerId")
                         .HasColumnType("int");
 
@@ -61,6 +66,8 @@ namespace AashanaFashion.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("VendorId");
@@ -81,6 +88,9 @@ namespace AashanaFashion.Migrations
 
                     b.Property<string>("ContactNumber")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("DefaultCompanyId")
+                        .HasColumnType("int");
 
                     b.Property<string>("DisplayName")
                         .HasColumnType("nvarchar(max)");
@@ -115,6 +125,8 @@ namespace AashanaFashion.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DefaultCompanyId");
 
                     b.HasIndex("Username")
                         .IsUnique();
@@ -186,6 +198,193 @@ namespace AashanaFashion.Migrations
                     b.HasIndex("EmployeeId");
 
                     b.ToTable("AttendanceRecords");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.BarcodeTagConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BarcodeHeight")
+                        .HasColumnType("int");
+
+                    b.Property<string>("BrandName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CategoryLabel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ColourLabel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ComponentLabel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ConfigName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CustomField1Label")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CustomField1Value")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CustomField2Label")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CustomField2Value")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CustomField3Label")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CustomField3Value")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("DesignNumberLabel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("DynamicCustomFieldsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FontSize")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FooterText")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("HsnLabel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LotNoLabel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("MfgDateLabel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("PriceLabel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SerialNumberLabel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("ShowBarcode")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowBarcodeText")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowBrandName")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowCategory")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowColour")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowComponent")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowCustomField1")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowCustomField2")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowCustomField3")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowDesignNumber")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowFooterText")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowHsnCode")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowLotNo")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowMfgDate")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowPrice")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowQrCode")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowSerialNumber")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowSize")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowSubtitle")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("SizeLabel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Subtitle")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("TagHeightMm")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TagWidthMm")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BarcodeTagConfigs");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.BiometricDevice", b =>
@@ -263,6 +462,145 @@ namespace AashanaFashion.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Colours");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.Company", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address1")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("Address2")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("AuthorizedSignatory")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("BankAccountNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("BankBranch")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("BankIfsc")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("BankName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CompanyCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("CompanyName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Gstin")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("InvoicePrefix")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Pan")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("PinCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("PurchaseOrderPrefix")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("SalesOrderPrefix")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("StateCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UpiId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Companies");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Address1 = "101-104, Surat Textile Market, Ring Road",
+                            Address2 = "Ring Road",
+                            AuthorizedSignatory = "Authorized Signatory",
+                            BankAccountNumber = "50200012345678",
+                            BankBranch = "Ring Road Branch, Surat",
+                            BankIfsc = "HDFC0001234",
+                            BankName = "HDFC Bank",
+                            City = "Surat",
+                            CompanyCode = "AF",
+                            CompanyName = "Aashana Fashion",
+                            CreatedDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Email = "sales@aashanafashion.com",
+                            Gstin = "24AABCA1234F1Z8",
+                            InvoicePrefix = "INV-",
+                            IsActive = true,
+                            IsDefault = true,
+                            Pan = "AABCA1234F",
+                            Phone = "+91 98765 43210",
+                            PinCode = "395002",
+                            PurchaseOrderPrefix = "PO-",
+                            SalesOrderPrefix = "SO-",
+                            State = "Gujarat",
+                            StateCode = 24
+                        });
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.Customer", b =>
@@ -691,6 +1029,13 @@ namespace AashanaFashion.Migrations
                     b.Property<string>("Company")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Components")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ControlPolicy")
                         .HasColumnType("nvarchar(max)");
 
@@ -843,6 +1188,8 @@ namespace AashanaFashion.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("HandworkWorkerId");
 
                     b.HasIndex("StitchingWorkerId");
@@ -884,6 +1231,110 @@ namespace AashanaFashion.Migrations
                     b.HasIndex("RawMaterialId");
 
                     b.ToTable("DesignBomItems");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.DesignColourImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Colour")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ColourCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DesignId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PhotoPath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DesignId");
+
+                    b.ToTable("DesignColourImages");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.DesignComponentAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ComponentName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("DesignId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("EstimatedRate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ProcessName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("VendorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DesignId");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("DesignComponentAssignments");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.DesignDiscontinuedVariant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Colour")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("DesignId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DiscontinuedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Size")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DesignId");
+
+                    b.ToTable("DesignDiscontinuedVariants");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.DesignOperationCost", b =>
@@ -1043,6 +1494,123 @@ namespace AashanaFashion.Migrations
                     b.ToTable("Employees");
                 });
 
+            modelBuilder.Entity("AashanaFashion.Models.JobSlip", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Components")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ExpectedReturnDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("IssueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ProcessName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("ProductionOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("Rate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("ReceivedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("SlipNumber")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal?>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("TotalQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VendorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductionOrderId");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("JobSlips");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.JobSlipItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Colour")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ComponentName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("JobSlipId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("Rate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ReceivedQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Size")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobSlipId");
+
+                    b.ToTable("JobSlipItems");
+                });
+
             modelBuilder.Entity("AashanaFashion.Models.PaymentReceipt", b =>
                 {
                     b.Property<int>("Id")
@@ -1053,6 +1621,11 @@ namespace AashanaFashion.Migrations
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CompanyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
@@ -1083,6 +1656,8 @@ namespace AashanaFashion.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("CustomerId");
 
@@ -1176,6 +1751,43 @@ namespace AashanaFashion.Migrations
                     b.HasIndex("PricelistId");
 
                     b.ToTable("PricelistItems");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.ProcessMaster", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ProcessCode")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("ProcessName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DisplayOrder");
+
+                    b.ToTable("ProcessMasters");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.ProcessTracking", b =>
@@ -1473,8 +2085,23 @@ namespace AashanaFashion.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("CompanyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("CompletedProcesses")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Components")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("CurrentProcess")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("DesignId")
                         .HasColumnType("int");
@@ -1506,6 +2133,9 @@ namespace AashanaFashion.Migrations
                     b.Property<bool>("IsStitchingVerified")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsStockInwarded")
+                        .HasColumnType("bit");
+
                     b.Property<string>("LotNo")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1524,6 +2154,8 @@ namespace AashanaFashion.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DesignId");
 
                     b.HasIndex("HandworkWorkerId");
@@ -1531,6 +2163,45 @@ namespace AashanaFashion.Migrations
                     b.HasIndex("StitchingWorkerId");
 
                     b.ToTable("ProductionOrders");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.ProductionOrderComponentAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ComponentName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ProcessName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("ProductionOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Rate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("VendorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductionOrderId");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("ProductionOrderComponentAssignments");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.ProductionOrderDetail", b =>
@@ -1572,6 +2243,11 @@ namespace AashanaFashion.Migrations
 
                     b.Property<string>("AgentName")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CompanyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<string>("CourierServiceName")
                         .HasColumnType("nvarchar(max)");
@@ -1617,6 +2293,8 @@ namespace AashanaFashion.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("VendorId");
 
@@ -1964,6 +2642,11 @@ namespace AashanaFashion.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<int>("CompanyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<decimal>("CostPrice")
                         .HasColumnType("decimal(18,2)");
 
@@ -1998,6 +2681,10 @@ namespace AashanaFashion.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("SetComponents")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Size")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -2020,6 +2707,8 @@ namespace AashanaFashion.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DesignId", "Colour", "Size")
                         .IsUnique();
 
@@ -2036,6 +2725,11 @@ namespace AashanaFashion.Migrations
 
                     b.Property<int>("BalanceAfter")
                         .HasColumnType("int");
+
+                    b.Property<int>("CompanyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<string>("CreatedBy")
                         .HasMaxLength(100)
@@ -2066,6 +2760,8 @@ namespace AashanaFashion.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("ReadyProductId");
 
@@ -2231,6 +2927,11 @@ namespace AashanaFashion.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("CompanyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
@@ -2281,6 +2982,8 @@ namespace AashanaFashion.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("CustomerId");
 
@@ -2350,6 +3053,11 @@ namespace AashanaFashion.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("CompanyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
@@ -2395,6 +3103,8 @@ namespace AashanaFashion.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("CustomerId");
 
@@ -2589,6 +3299,11 @@ namespace AashanaFashion.Migrations
                     b.Property<decimal>("CgstRate")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("CompanyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
@@ -2617,6 +3332,43 @@ namespace AashanaFashion.Migrations
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("EInvoiceAckDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EInvoiceAckNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("EInvoiceCancelDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EInvoiceCancelReason")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("EInvoiceCancelRemarks")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("EInvoiceErrors")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EInvoiceSignedInvoice")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EInvoiceSignedQrCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EInvoiceStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("EInvoiceSupplyType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<DateTime?>("EwayBillDate")
                         .HasColumnType("datetime2");
 
@@ -2640,6 +3392,10 @@ namespace AashanaFashion.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Irn")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("IsInterState")
                         .HasColumnType("bit");
@@ -2707,6 +3463,8 @@ namespace AashanaFashion.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("SalesOrderId");
@@ -2771,6 +3529,29 @@ namespace AashanaFashion.Migrations
                     b.HasIndex("TaxInvoiceId");
 
                     b.ToTable("TaxInvoiceItems");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.UserCompany", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserCompanies");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.UserRole", b =>
@@ -3065,6 +3846,12 @@ namespace AashanaFashion.Migrations
 
             modelBuilder.Entity("AashanaFashion.Models.AccountingTransaction", b =>
                 {
+                    b.HasOne("AashanaFashion.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AashanaFashion.Models.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -3075,9 +3862,20 @@ namespace AashanaFashion.Migrations
                         .HasForeignKey("VendorId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.Navigation("Company");
+
                     b.Navigation("Customer");
 
                     b.Navigation("Vendor");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.AppUser", b =>
+                {
+                    b.HasOne("AashanaFashion.Models.Company", "DefaultCompany")
+                        .WithMany()
+                        .HasForeignKey("DefaultCompanyId");
+
+                    b.Navigation("DefaultCompany");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.AttendanceRecord", b =>
@@ -3188,6 +3986,11 @@ namespace AashanaFashion.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("AashanaFashion.Models.Company", "CompanyRef")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AashanaFashion.Models.Vendor", "HandworkWorker")
                         .WithMany()
                         .HasForeignKey("HandworkWorkerId")
@@ -3197,6 +4000,8 @@ namespace AashanaFashion.Migrations
                         .WithMany()
                         .HasForeignKey("StitchingWorkerId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CompanyRef");
 
                     b.Navigation("HandworkWorker");
 
@@ -3224,6 +4029,46 @@ namespace AashanaFashion.Migrations
                     b.Navigation("RawMaterial");
                 });
 
+            modelBuilder.Entity("AashanaFashion.Models.DesignColourImage", b =>
+                {
+                    b.HasOne("AashanaFashion.Models.Design", "Design")
+                        .WithMany("ColourImages")
+                        .HasForeignKey("DesignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Design");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.DesignComponentAssignment", b =>
+                {
+                    b.HasOne("AashanaFashion.Models.Design", "Design")
+                        .WithMany("ComponentAssignments")
+                        .HasForeignKey("DesignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AashanaFashion.Models.Vendor", "Vendor")
+                        .WithMany()
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Design");
+
+                    b.Navigation("Vendor");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.DesignDiscontinuedVariant", b =>
+                {
+                    b.HasOne("AashanaFashion.Models.Design", "Design")
+                        .WithMany("DiscontinuedVariants")
+                        .HasForeignKey("DesignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Design");
+                });
+
             modelBuilder.Entity("AashanaFashion.Models.DesignOperationCost", b =>
                 {
                     b.HasOne("AashanaFashion.Models.Design", "Design")
@@ -3241,8 +4086,44 @@ namespace AashanaFashion.Migrations
                     b.Navigation("Vendor");
                 });
 
+            modelBuilder.Entity("AashanaFashion.Models.JobSlip", b =>
+                {
+                    b.HasOne("AashanaFashion.Models.ProductionOrder", "ProductionOrder")
+                        .WithMany("JobSlips")
+                        .HasForeignKey("ProductionOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AashanaFashion.Models.Vendor", "Vendor")
+                        .WithMany()
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ProductionOrder");
+
+                    b.Navigation("Vendor");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.JobSlipItem", b =>
+                {
+                    b.HasOne("AashanaFashion.Models.JobSlip", "JobSlip")
+                        .WithMany("Items")
+                        .HasForeignKey("JobSlipId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobSlip");
+                });
+
             modelBuilder.Entity("AashanaFashion.Models.PaymentReceipt", b =>
                 {
+                    b.HasOne("AashanaFashion.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AashanaFashion.Models.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -3254,6 +4135,8 @@ namespace AashanaFashion.Migrations
                         .HasForeignKey("TaxInvoiceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Company");
 
                     b.Navigation("Customer");
 
@@ -3382,6 +4265,12 @@ namespace AashanaFashion.Migrations
 
             modelBuilder.Entity("AashanaFashion.Models.ProductionOrder", b =>
                 {
+                    b.HasOne("AashanaFashion.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AashanaFashion.Models.Design", "Design")
                         .WithMany()
                         .HasForeignKey("DesignId")
@@ -3398,11 +4287,31 @@ namespace AashanaFashion.Migrations
                         .HasForeignKey("StitchingWorkerId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.Navigation("Company");
+
                     b.Navigation("Design");
 
                     b.Navigation("HandworkWorker");
 
                     b.Navigation("StitchingWorker");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.ProductionOrderComponentAssignment", b =>
+                {
+                    b.HasOne("AashanaFashion.Models.ProductionOrder", "ProductionOrder")
+                        .WithMany("ComponentAssignments")
+                        .HasForeignKey("ProductionOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AashanaFashion.Models.Vendor", "Vendor")
+                        .WithMany()
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ProductionOrder");
+
+                    b.Navigation("Vendor");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.ProductionOrderDetail", b =>
@@ -3418,11 +4327,19 @@ namespace AashanaFashion.Migrations
 
             modelBuilder.Entity("AashanaFashion.Models.PurchaseOrder", b =>
                 {
+                    b.HasOne("AashanaFashion.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AashanaFashion.Models.Vendor", "Vendor")
                         .WithMany()
                         .HasForeignKey("VendorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Company");
 
                     b.Navigation("Vendor");
                 });
@@ -3505,22 +4422,38 @@ namespace AashanaFashion.Migrations
 
             modelBuilder.Entity("AashanaFashion.Models.ReadyProduct", b =>
                 {
+                    b.HasOne("AashanaFashion.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AashanaFashion.Models.Design", "Design")
                         .WithMany()
                         .HasForeignKey("DesignId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("Company");
+
                     b.Navigation("Design");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.ReadyProductTransaction", b =>
                 {
+                    b.HasOne("AashanaFashion.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AashanaFashion.Models.ReadyProduct", "ReadyProduct")
                         .WithMany("Transactions")
                         .HasForeignKey("ReadyProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Company");
 
                     b.Navigation("ReadyProduct");
                 });
@@ -3549,6 +4482,12 @@ namespace AashanaFashion.Migrations
 
             modelBuilder.Entity("AashanaFashion.Models.SalesOrder", b =>
                 {
+                    b.HasOne("AashanaFashion.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AashanaFashion.Models.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -3559,6 +4498,8 @@ namespace AashanaFashion.Migrations
                         .WithMany()
                         .HasForeignKey("PricelistId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Company");
 
                     b.Navigation("Customer");
 
@@ -3585,6 +4526,12 @@ namespace AashanaFashion.Migrations
 
             modelBuilder.Entity("AashanaFashion.Models.SalesReturn", b =>
                 {
+                    b.HasOne("AashanaFashion.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AashanaFashion.Models.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -3596,6 +4543,8 @@ namespace AashanaFashion.Migrations
                         .HasForeignKey("TaxInvoiceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Company");
 
                     b.Navigation("Customer");
 
@@ -3653,6 +4602,12 @@ namespace AashanaFashion.Migrations
 
             modelBuilder.Entity("AashanaFashion.Models.TaxInvoice", b =>
                 {
+                    b.HasOne("AashanaFashion.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AashanaFashion.Models.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -3663,6 +4618,8 @@ namespace AashanaFashion.Migrations
                         .WithMany()
                         .HasForeignKey("SalesOrderId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Company");
 
                     b.Navigation("Customer");
 
@@ -3685,6 +4642,25 @@ namespace AashanaFashion.Migrations
                     b.Navigation("Design");
 
                     b.Navigation("TaxInvoice");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.UserCompany", b =>
+                {
+                    b.HasOne("AashanaFashion.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AashanaFashion.Models.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.VendorContact", b =>
@@ -3739,6 +4715,12 @@ namespace AashanaFashion.Migrations
 
                     b.Navigation("BomItems");
 
+                    b.Navigation("ColourImages");
+
+                    b.Navigation("ComponentAssignments");
+
+                    b.Navigation("DiscontinuedVariants");
+
                     b.Navigation("ExtraCharges");
 
                     b.Navigation("OperationCosts");
@@ -3755,6 +4737,11 @@ namespace AashanaFashion.Migrations
                     b.Navigation("AttendanceRecords");
 
                     b.Navigation("SalaryRecords");
+                });
+
+            modelBuilder.Entity("AashanaFashion.Models.JobSlip", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.Pricelist", b =>
@@ -3778,7 +4765,11 @@ namespace AashanaFashion.Migrations
 
             modelBuilder.Entity("AashanaFashion.Models.ProductionOrder", b =>
                 {
+                    b.Navigation("ComponentAssignments");
+
                     b.Navigation("Details");
+
+                    b.Navigation("JobSlips");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.PurchaseOrder", b =>

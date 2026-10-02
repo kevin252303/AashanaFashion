@@ -11,8 +11,13 @@ namespace AashanaFashion.Controllers;
 public class PMSController : Controller
 {
     private readonly AppDbContext _context;
+    private readonly IReadyInventoryService _readyInventoryService;
 
-    public PMSController(AppDbContext context) => _context = context;
+    public PMSController(AppDbContext context, IReadyInventoryService readyInventoryService)
+    {
+        _context = context;
+        _readyInventoryService = readyInventoryService;
+    }
 
     public async Task<IActionResult> Index()
     {
@@ -369,6 +374,8 @@ public class PMSController : Controller
         if (hasHandwork) order.IsHandworkVerified = allHandworkComplete;
         if (hasStitching) order.IsStitchingVerified = allStitchingComplete;
 
+        var prevStatus = order.Status;
+
         // Auto-promote status
         if (entities.All(e => e.Status == "Completed"))
         {
@@ -388,6 +395,18 @@ public class PMSController : Controller
         }
 
         await _context.SaveChangesAsync();
+
+        if (order.Status == OrderStatus.ReadyToDispatch || order.Status == OrderStatus.Dispatched)
+        {
+            if (!order.IsStockInwarded)
+            {
+                await _readyInventoryService.InwardLotToReadyStockAsync(order.Id);
+            }
+        }
+        else if ((prevStatus == OrderStatus.ReadyToDispatch || prevStatus == OrderStatus.Dispatched) && order.IsStockInwarded)
+        {
+            await _readyInventoryService.RevertLotFromReadyStockAsync(order.Id);
+        }
     }
 
     public async Task<IActionResult> ExportEntities(int? orderId, string? status, string? colour, string? search, string? entityType = null)

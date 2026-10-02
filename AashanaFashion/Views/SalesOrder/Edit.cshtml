@@ -164,12 +164,13 @@
                                         <option value="">— Select Design —</option>
                                         @foreach (var des in designs)
                                         {
-                                            <option value="@des.Id" data-number="@des.DesignNumber" data-rate="@des.SalesPrice" selected="@(des.Id == d.DesignId ? "selected" : null)">
-                                                @des.DesignNumber (₹@des.SalesPrice.ToString("N2"))
+                                            <option value="@des.Id" data-number="@des.DesignNumber" data-rate="@des.SalesPrice" data-discontinued="@des.Discontinued.ToString().ToLower()" selected="@(des.Id == d.DesignId ? "selected" : null)">
+                                                @des.DesignNumber (₹@des.SalesPrice.ToString("N2")) @(des.Discontinued ? "🚫 [Discontinued]" : "")
                                             </option>
                                         }
                                     </select>
                                     <input type="hidden" name="Details[@i].DesignNumber" class="item-design-number" value="@d.DesignNumber" />
+                                    <div class="item-discontinued-notice mt-1" style="display:none; font-size: 0.72rem;"></div>
                                 </td>
                                 <td>
                                     <input type="text" name="Details[@i].Colour" class="af-input item-colour" value="@d.Colour" list="coloursList" style="font-size: 0.8rem;" />
@@ -381,8 +382,8 @@
     <option value="">— Select Design —</option>
     @foreach (var d in designs)
     {
-        <option value="@d.Id" data-number="@d.DesignNumber" data-rate="@d.SalesPrice">
-            @d.DesignNumber (₹@d.SalesPrice.ToString("N2"))
+        <option value="@d.Id" data-number="@d.DesignNumber" data-rate="@d.SalesPrice" data-discontinued="@d.Discontinued.ToString().ToLower()">
+            @d.DesignNumber (₹@d.SalesPrice.ToString("N2")) @(d.Discontinued ? "🚫 [Discontinued]" : "")
         </option>
     }
 </template>
@@ -691,6 +692,52 @@ document.addEventListener('DOMContentLoaded', function () {
         if (grandTotalDisplay) grandTotalDisplay.textContent = fmt(grandTotal);
     }
 
+    function checkDiscontinuedStatus(row) {
+        const designSelect = row.querySelector('.item-design');
+        const designId = designSelect?.value;
+        const colour = row.querySelector('.item-colour')?.value?.trim() || '';
+        const size = row.querySelector('.item-size')?.value?.trim() || '';
+        const noticeEl = row.querySelector('.item-discontinued-notice');
+        const qtyInput = row.querySelector('.item-qty');
+
+        if (!designId) {
+            if (noticeEl) { noticeEl.style.display = 'none'; noticeEl.innerHTML = ''; }
+            return;
+        }
+
+        fetch(`/SalesOrder/CheckItemStockAndDiscontinued?designId=${designId}&colour=${encodeURIComponent(colour)}&size=${encodeURIComponent(size)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!noticeEl) return;
+                if (data.isDiscontinued) {
+                    noticeEl.style.display = 'block';
+                    if (!data.canSell) {
+                        noticeEl.innerHTML = '<span class="text-danger fw-bold">🚫 Discontinued &amp; Zero Stock. Cannot order.</span>';
+                        if (qtyInput) {
+                            qtyInput.classList.add('border-danger');
+                            qtyInput.title = 'Item is discontinued and out of stock';
+                        }
+                    } else {
+                        noticeEl.innerHTML = `<span class="badge bg-warning text-dark border">⚠️ Discontinued - Stock: <strong>${data.stockOnHand} pcs</strong></span>`;
+                        if (qtyInput) {
+                            qtyInput.classList.remove('border-danger');
+                            qtyInput.max = data.stockOnHand;
+                            qtyInput.title = `Maximum sellable stock: ${data.stockOnHand} pcs`;
+                        }
+                    }
+                } else {
+                    noticeEl.style.display = 'none';
+                    noticeEl.innerHTML = '';
+                    if (qtyInput) {
+                        qtyInput.classList.remove('border-danger');
+                        qtyInput.removeAttribute('max');
+                        qtyInput.title = '';
+                    }
+                }
+            })
+            .catch(console.error);
+    }
+
     function bindRow(row) {
         const designSelect = row.querySelector('.item-design');
         const designNumInput = row.querySelector('.item-design-number');
@@ -705,8 +752,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     rateInput.value = rate.toFixed(2);
                 }
                 applyPricelistToRow(row);
+                checkDiscontinuedStatus(row);
             } else if (designNumInput) {
                 designNumInput.value = '';
+                checkDiscontinuedStatus(row);
             }
             recalc();
         });
@@ -717,9 +766,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         row.querySelector('.item-colour')?.addEventListener('change', function () {
             applyPricelistToRow(row);
+            checkDiscontinuedStatus(row);
         });
         row.querySelector('.item-size')?.addEventListener('change', function () {
             applyPricelistToRow(row);
+            checkDiscontinuedStatus(row);
         });
         row.querySelector('.item-rate')?.addEventListener('input', recalc);
         row.querySelector('.item-disc')?.addEventListener('input', recalc);
@@ -730,6 +781,8 @@ document.addEventListener('DOMContentLoaded', function () {
             reindex();
             recalc();
         });
+
+        checkDiscontinuedStatus(row);
     }
 
     addRowBtn?.addEventListener('click', function () {
@@ -743,6 +796,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ${designOptions}
                 </select>
                 <input type="hidden" name="Details[${idx}].DesignNumber" class="item-design-number" />
+                <div class="item-discontinued-notice mt-1" style="display:none; font-size: 0.72rem;"></div>
             </td>
             <td><input type="text" name="Details[${idx}].Colour" class="af-input item-colour" placeholder="Colour" list="coloursList" style="font-size: 0.8rem;" /></td>
             <td><input type="text" name="Details[${idx}].Size" class="af-input item-size" placeholder="Size" list="sizesList" style="font-size: 0.8rem;" /></td>

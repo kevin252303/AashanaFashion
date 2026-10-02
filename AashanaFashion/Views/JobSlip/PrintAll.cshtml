@@ -1,0 +1,381 @@
+@model List<AashanaFashion.Models.JobSlip>
+@{
+    var order = ViewBag.ProductionOrder as AashanaFashion.Models.ProductionOrder;
+    var design = order?.Design;
+    ViewData["Title"] = $"All Job Slips — Lot #{order?.LotNo}";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        body {
+            background-color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #0f172a;
+        }
+
+        .no-print-bar {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        }
+
+        .batch-container {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .challan-sheet {
+            width: 210mm;
+            min-height: 280mm;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 15mm;
+            box-sizing: border-box;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .company-header {
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .challan-title-badge {
+            background: #0f172a;
+            color: #ffffff;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 4px 12px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            display: inline-block;
+            border-radius: 4px;
+        }
+
+        .info-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px 14px;
+            height: 100%;
+        }
+
+        .table-challan th {
+            background-color: #f1f5f9 !important;
+            color: #1e293b;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-color: #cbd5e1 !important;
+            padding: 6px 10px;
+        }
+
+        .table-challan td {
+            border-color: #e2e8f0 !important;
+            font-size: 0.85rem;
+            padding: 6px 10px;
+            vertical-align: middle;
+        }
+
+        .signature-box {
+            border-top: 1px dashed #64748b;
+            text-align: center;
+            padding-top: 6px;
+            font-size: 0.8rem;
+            color: #475569;
+            font-weight: 600;
+        }
+
+        @@media print {
+            body {
+                background: #ffffff !important;
+            }
+            .no-print-bar {
+                display: none !important;
+            }
+            .batch-container {
+                padding: 0 !important;
+                gap: 0 !important;
+            }
+            .challan-sheet {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 10mm 12mm !important;
+                width: 100% !important;
+                min-height: auto !important;
+                page-break-after: always;
+                break-after: page;
+            }
+            .challan-sheet:last-child {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print-bar">
+        <div class="d-flex align-items-center gap-3">
+            <button onclick="window.print()" class="btn btn-primary d-flex align-items-center gap-2">
+                <span>🖨️</span> <strong>Print All Job Slips (@Model.Count Slips)</strong>
+            </button>
+            <span class="text-muted small">
+                Lot #<strong>@(order?.LotNo)</strong> | Design: <strong>@(design?.DesignNumber)</strong> | Total: <strong>@Model.Count Challan(s)</strong>
+            </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            @if (order != null)
+            {
+                <a asp-controller="Production" asp-action="Edit" asp-route-id="@order.Id" class="btn btn-outline-secondary btn-sm">
+                    Back to Order Lot
+                </a>
+            }
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">All Job Slips</a>
+            <button onclick="window.close()" class="btn btn-outline-secondary btn-sm">Close</button>
+        </div>
+    </div>
+
+    <div class="batch-container">
+        @foreach (var slip in Model.OrderBy(s => s.ProcessName).ThenBy(s => s.Vendor?.VendorName))
+        {
+            <div class="challan-sheet">
+                <div>
+                    <!-- Company Header -->
+                    <div class="company-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span style="font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px; color: #0f172a;">AASHANA FASHION</span>
+                            </div>
+                            <div style="font-size: 0.8rem; color: #475569;">
+                                Manufacturer & Exporter of Designer Ethnic Wear, Chaniya Choli & Lehengas<br />
+                                Surat, Gujarat, India
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="challan-title-badge mb-1">JOB WORK CHALLAN</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #0f172a; font-family: monospace;">
+                                @slip.SlipNumber
+                            </div>
+                            <div style="font-size: 0.75rem; color: #64748b;">
+                                Status: <strong class="text-uppercase text-dark">@slip.Status</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info Grid (Vendor vs Lot Details) -->
+                    <div class="row g-3 mb-3">
+                        <!-- Vendor Details -->
+                        <div class="col-6">
+                            <div class="info-box">
+                                <div class="small fw-bold text-uppercase text-muted mb-1" style="font-size:0.7rem; letter-spacing:0.5px;">
+                                    Job Worker / Vendor Details:
+                                </div>
+                                <div class="fw-bold text-dark" style="font-size:1rem;">
+                                    @(slip.Vendor?.VendorName ?? $"Vendor #{slip.VendorId}")
+                                </div>
+                                @if (!string.IsNullOrEmpty(slip.Vendor?.ContactPerson))
+                                {
+                                    <div class="small text-muted">Attn: <strong>@slip.Vendor.ContactPerson</strong></div>
+                                }
+                                @if (!string.IsNullOrEmpty(slip.Vendor?.Phone))
+                                {
+                                    <div class="small text-muted">Phone: @slip.Vendor.Phone</div>
+                                }
+                                @if (!string.IsNullOrEmpty(slip.Vendor?.Address))
+                                {
+                                    <div class="small text-muted text-truncate" title="@slip.Vendor.Address">@slip.Vendor.Address</div>
+                                }
+                                @if (!string.IsNullOrEmpty(slip.Vendor?.GstNumber))
+                                {
+                                    <div class="small text-muted font-monospace">GSTIN: @slip.Vendor.GstNumber</div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Lot & Issue Info -->
+                        <div class="col-6">
+                            <div class="info-box">
+                                <div class="small fw-bold text-uppercase text-muted mb-1" style="font-size:0.7rem; letter-spacing:0.5px;">
+                                    Order & Challan Meta:
+                                </div>
+                                <table class="table table-sm table-borderless mb-0" style="font-size:0.82rem;">
+                                    <tr>
+                                        <td class="p-0 text-muted" style="width:110px;">Lot Number:</td>
+                                        <td class="p-0 fw-bold font-monospace">@(order?.LotNo ?? "—")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-0 text-muted">Design Number:</td>
+                                        <td class="p-0 fw-bold">@(design?.DesignNumber ?? "—")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-0 text-muted">Process Name:</td>
+                                        <td class="p-0"><span class="badge bg-dark text-white px-2 py-0">@slip.ProcessName</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-0 text-muted">Issue Date:</td>
+                                        <td class="p-0 fw-semibold">@slip.IssueDate.ToString("dd-MMM-yyyy")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-0 text-muted">Expected Return:</td>
+                                        <td class="p-0 fw-semibold">@(slip.ExpectedReturnDate.HasValue ? slip.ExpectedReturnDate.Value.ToString("dd-MMM-yyyy") : "—")</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Process & Component Assignment Banner -->
+                    <div class="p-2 px-3 bg-light border rounded mb-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="small fw-bold text-uppercase text-muted me-2" style="font-size:0.75rem;">Assigned Components:</span>
+                            @foreach (var comp in slip.GetComponentsList())
+                            {
+                                <span class="badge bg-white text-dark border px-2 py-1 fw-bold me-1">🧵 @comp</span>
+                            }
+                        </div>
+                        <div>
+                            <span class="small text-muted me-1">Total Pcs:</span>
+                            <span class="badge bg-primary text-white fs-6">@slip.TotalQuantity pcs</span>
+                        </div>
+                    </div>
+
+                    <!-- Items Breakdown Table -->
+                    <div class="mb-3">
+                        <table class="table table-bordered table-challan mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;" class="text-center">#</th>
+                                    <th>Component</th>
+                                    <th>Colour</th>
+                                    <th class="text-center" style="width: 80px;">Size</th>
+                                    <th class="text-center" style="width: 90px;">Qty (Pcs)</th>
+                                    @if (slip.Rate.HasValue && slip.Rate.Value > 0)
+                                    {
+                                        <th class="text-end" style="width: 100px;">Rate (₹)</th>
+                                        <th class="text-end" style="width: 110px;">Amount (₹)</th>
+                                    }
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    int itemIndex = 1;
+                                    decimal grandTotalAmount = 0;
+                                }
+                                @if (slip.Items != null && slip.Items.Any())
+                                {
+                                    foreach (var item in slip.Items.OrderBy(i => i.ComponentName).ThenBy(i => i.Colour).ThenBy(i => i.Size))
+                                    {
+                                        var itemRate = item.Rate ?? slip.Rate ?? 0;
+                                        var itemAmount = item.Quantity * itemRate;
+                                        grandTotalAmount += itemAmount;
+
+                                        <tr>
+                                            <td class="text-center text-muted">@itemIndex</td>
+                                            <td class="fw-semibold">@item.ComponentName</td>
+                                            <td>@item.Colour</td>
+                                            <td class="text-center font-monospace">@item.Size</td>
+                                            <td class="text-center fw-bold">@item.Quantity</td>
+                                            @if (slip.Rate.HasValue && slip.Rate.Value > 0)
+                                            {
+                                                <td class="text-end font-monospace">₹@itemRate.ToString("N2")</td>
+                                                <td class="text-end font-monospace">₹@itemAmount.ToString("N2")</td>
+                                            }
+                                            <td class="text-muted small">@item.Remarks</td>
+                                        </tr>
+                                        itemIndex++;
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-3">No specific item rows found. Total lot quantity: @slip.TotalQuantity pcs.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr class="fw-bold table-light">
+                                    <td colspan="4" class="text-end text-uppercase" style="font-size:0.8rem;">Total Quantity:</td>
+                                    <td class="text-center text-primary fs-6">@slip.TotalQuantity</td>
+                                    @if (slip.Rate.HasValue && slip.Rate.Value > 0)
+                                    {
+                                        <td class="text-end text-muted small">—</td>
+                                        <td class="text-end text-primary fs-6 font-monospace">₹@grandTotalAmount.ToString("N2")</td>
+                                    }
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(slip.Remarks))
+                    {
+                        <div class="p-2 px-3 bg-light border rounded mb-3 small">
+                            <strong>Job Work Instructions:</strong> @slip.Remarks
+                        </div>
+                    }
+                </div>
+
+                <!-- Footer / Terms & Signatures -->
+                <div>
+                    <div class="row g-2 mb-4 pt-2 border-top">
+                        <div class="col-8">
+                            <div class="text-muted" style="font-size: 0.72rem; line-height: 1.4;">
+                                <strong>Terms & Conditions:</strong><br />
+                                1. Goods issued solely for the purpose of job work process mentioned above and remain the property of Aashana Fashion.<br />
+                                2. Job worker must count, verify fabric quality and notify any defects/shortages prior to processing.<br />
+                                3. Strictly adhere to delivery deadline and return all cut-pieces, wastage and completed garments.
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <div class="small text-muted font-monospace">Generated: @DateTime.Now.ToString("dd-MMM-yyyy HH:mm")</div>
+                            <div class="small text-muted">Created By: @(slip.CreatedBy ?? "Production System")</div>
+                        </div>
+                    </div>
+
+                    <div class="row pt-4" style="margin-top: 15px;">
+                        <div class="col-4">
+                            <div class="signature-box">
+                                Prepared By / Issued By
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="signature-box">
+                                Quality Checked By
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="signature-box">
+                                Job Worker / Receiver Signature
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+</body>
+</html>

@@ -19,6 +19,8 @@ public class Design
     public ProductCategory? ProductCategory { get; set; }
     public string? Category { get; set; }
     public string? HsnSacCode { get; set; }
+    public int? CompanyId { get; set; }
+    public Company? CompanyRef { get; set; }
     public string? Company { get; set; }
     public string? Property1 { get; set; }
     public string? InternalNotes { get; set; }
@@ -88,6 +90,8 @@ public class Design
     }
 
     // ——— Navigation ———
+    public string Components { get; set; } = "Chaniya, Choli, Dupatta";
+    public List<DesignComponentAssignment> ComponentAssignments { get; set; } = new();
     public List<ProductAttributeLine> AttributeLines { get; set; } = new();
     public List<ProductPricelist> Pricelists { get; set; } = new();
     public List<ProductVendor> ProductVendors { get; set; } = new();
@@ -95,6 +99,26 @@ public class Design
     public List<ProductExtraCharge> ExtraCharges { get; set; } = new();
     public List<DesignBomItem> BomItems { get; set; } = new();
     public List<DesignOperationCost> OperationCosts { get; set; } = new();
+    public List<DesignColourImage> ColourImages { get; set; } = new();
+    public List<DesignDiscontinuedVariant> DiscontinuedVariants { get; set; } = new();
+
+    public List<string> GetComponentsList()
+    {
+        if (string.IsNullOrWhiteSpace(Components))
+            return new List<string> { "Chaniya", "Choli", "Dupatta" };
+
+        return Components
+            .Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(c => c.Trim())
+            .Where(c => !string.IsNullOrEmpty(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public void SetComponentsList(IEnumerable<string> list)
+    {
+        Components = string.Join(", ", list.Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c.Trim()).Distinct(StringComparer.OrdinalIgnoreCase));
+    }
 
     // ——— Costing & Profit Margin Helpers ———
     public decimal TotalMaterialCost => BomItems.Sum(b => b.EffectiveQuantity * (b.RawMaterial?.Rate ?? 0));
@@ -102,6 +126,30 @@ public class Design
     public decimal TotalProductionCost => TotalMaterialCost + TotalLaborCost;
     public decimal GrossProfitMargin => SalesPrice - TotalProductionCost;
     public decimal GrossProfitMarginPercent => SalesPrice > 0 ? (GrossProfitMargin / SalesPrice) * 100m : 0;
+
+    public bool IsVariantDiscontinued(string? colour, string? size)
+    {
+        if (Discontinued) return true;
+        if (DiscontinuedVariants == null || !DiscontinuedVariants.Any()) return false;
+
+        var col = colour?.Trim();
+        var sz = size?.Trim();
+
+        return DiscontinuedVariants.Any(v =>
+            // Exact match on both colour and size
+            (!string.IsNullOrEmpty(v.Colour) && !string.IsNullOrEmpty(v.Size) &&
+             string.Equals(v.Colour, col, StringComparison.OrdinalIgnoreCase) &&
+             string.Equals(v.Size, sz, StringComparison.OrdinalIgnoreCase))
+            ||
+            // Discontinued all sizes for this colour
+            (!string.IsNullOrEmpty(v.Colour) && string.IsNullOrEmpty(v.Size) &&
+             string.Equals(v.Colour, col, StringComparison.OrdinalIgnoreCase))
+            ||
+            // Discontinued all colours for this size
+            (string.IsNullOrEmpty(v.Colour) && !string.IsNullOrEmpty(v.Size) &&
+             string.Equals(v.Size, sz, StringComparison.OrdinalIgnoreCase))
+        );
+    }
 
     public List<string> GetCreationSteps()
     {

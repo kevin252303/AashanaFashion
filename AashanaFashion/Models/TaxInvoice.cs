@@ -40,6 +40,9 @@ public class TaxInvoice
 {
     public int Id { get; set; }
 
+    public int CompanyId { get; set; } = 1;
+    public Company? Company { get; set; }
+
     [Required]
     [StringLength(50)]
     public string InvoiceNumber { get; set; } = string.Empty;
@@ -156,6 +159,35 @@ public class TaxInvoice
     [StringLength(10)]
     public string? TransMode { get; set; } = "1"; // 1 = Road
 
+    // ——— Government Standard E-Invoice (IRP / GSTN INV-01) ———
+    [StringLength(100)]
+    public string? Irn { get; set; } // 64-character unique hash
+
+    [StringLength(50)]
+    public string? EInvoiceAckNo { get; set; } // 15-digit IRP acknowledgment number
+
+    public DateTime? EInvoiceAckDate { get; set; }
+
+    public string? EInvoiceSignedQrCode { get; set; } // Raw signed QR code payload
+
+    public string? EInvoiceSignedInvoice { get; set; } // Digitally signed payload
+
+    [StringLength(30)]
+    public string EInvoiceStatus { get; set; } = "Not Generated"; // "Not Generated", "Generated", "Cancelled", "Failed"
+
+    [StringLength(20)]
+    public string EInvoiceSupplyType { get; set; } = "B2B"; // "B2B", "SEZWP", "SEZWOP", "EXPWP", "EXPWOP", "DEXP"
+
+    [StringLength(50)]
+    public string? EInvoiceCancelReason { get; set; } // "1-Duplicate", "2-Data Entry Mistake", "3-Order Cancelled", "4-Other"
+
+    [StringLength(250)]
+    public string? EInvoiceCancelRemarks { get; set; }
+
+    public DateTime? EInvoiceCancelDate { get; set; }
+
+    public string? EInvoiceErrors { get; set; }
+
     public DateTime CreatedDate { get; set; } = DateTime.Now;
 
     public List<TaxInvoiceItem> Items { get; set; } = new();
@@ -207,6 +239,9 @@ public class TaxInvoiceItem
 public class PaymentReceipt
 {
     public int Id { get; set; }
+
+    public int CompanyId { get; set; } = 1;
+    public Company? Company { get; set; }
 
     [Required]
     [StringLength(50)]

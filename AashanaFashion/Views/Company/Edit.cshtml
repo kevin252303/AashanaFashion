@@ -1,0 +1,174 @@
+@model AashanaFashion.Models.Company
+@{
+    ViewData["Title"] = $"Edit Company - {Model.CompanyName}";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <a asp-action="Index" class="btn btn-outline-secondary btn-sm mb-2">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Companies
+                </a>
+                <h4 class="fw-bold mb-0"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Company: @Model.CompanyName</h4>
+            </div>
+        </div>
+
+        <form asp-action="Edit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="CreatedDate" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4"></div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-info-circle me-1"></i> Basic Company Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label asp-for="CompanyName" class="form-label fw-semibold">Company Legal Name <span class="text-danger">*</span></label>
+                            <input asp-for="CompanyName" class="form-control" required />
+                            <span asp-validation-for="CompanyName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="CompanyCode" class="form-label fw-semibold">Company Code <span class="text-danger">*</span></label>
+                            <input asp-for="CompanyCode" class="form-control text-uppercase" required />
+                            <span asp-validation-for="CompanyCode" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Gstin" class="form-label fw-semibold">GSTIN</label>
+                            <input asp-for="Gstin" class="form-control text-uppercase font-monospace" maxlength="15" />
+                            <span asp-validation-for="Gstin" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Pan" class="form-label fw-semibold">PAN Number</label>
+                            <input asp-for="Pan" class="form-control text-uppercase font-monospace" maxlength="10" />
+                            <span asp-validation-for="Pan" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Phone" class="form-label fw-semibold">Contact Phone</label>
+                            <input asp-for="Phone" class="form-control" />
+                            <span asp-validation-for="Phone" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Email" class="form-label fw-semibold">Contact Email</label>
+                            <input asp-for="Email" type="email" class="form-control" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="AuthorizedSignatory" class="form-label fw-semibold">Authorized Signatory Name</label>
+                            <input asp-for="AuthorizedSignatory" class="form-control" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-geo-alt me-1"></i> Registered Office & Address</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Address1" class="form-label fw-semibold">Address Line 1</label>
+                            <input asp-for="Address1" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Address2" class="form-label fw-semibold">Address Line 2 (Area/Locality)</label>
+                            <input asp-for="Address2" class="form-control" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="City" class="form-label fw-semibold">City</label>
+                            <input asp-for="City" class="form-control" />
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="State" class="form-label fw-semibold">State</label>
+                            <input asp-for="State" class="form-control" />
+                        </div>
+                        <div class="col-md-2">
+                            <label asp-for="StateCode" class="form-label fw-semibold">State Code</label>
+                            <input asp-for="StateCode" class="form-control font-monospace" maxlength="2" />
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="PinCode" class="form-label fw-semibold">PIN Code</label>
+                            <input asp-for="PinCode" class="form-control font-monospace" maxlength="6" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-bank me-1"></i> Bank Account Details (Printed on Invoices)</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="BankName" class="form-label fw-semibold">Bank Name</label>
+                            <input asp-for="BankName" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BankAccountNumber" class="form-label fw-semibold">Account Number</label>
+                            <input asp-for="BankAccountNumber" class="form-control font-monospace" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="BankIfsc" class="form-label fw-semibold">IFSC Code</label>
+                            <input asp-for="BankIfsc" class="form-control text-uppercase font-monospace" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="BankBranch" class="form-label fw-semibold">Branch Name</label>
+                            <input asp-for="BankBranch" class="form-control" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="UpiId" class="form-label fw-semibold">UPI ID / VPA</label>
+                            <input asp-for="UpiId" class="form-control font-monospace" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-hash me-1"></i> Document Sequence Prefixes & Status</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="InvoicePrefix" class="form-label fw-semibold">Tax Invoice Prefix</label>
+                            <input asp-for="InvoicePrefix" class="form-control font-monospace text-uppercase" />
+                            <div class="form-text small">e.g. AF/26-27/ or INV-</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="SalesOrderPrefix" class="form-label fw-semibold">Sales Order Prefix</label>
+                            <input asp-for="SalesOrderPrefix" class="form-control font-monospace text-uppercase" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="PurchaseOrderPrefix" class="form-label fw-semibold">Purchase Order Prefix</label>
+                            <input asp-for="PurchaseOrderPrefix" class="form-control font-monospace text-uppercase" />
+                        </div>
+                        <div class="col-md-6 pt-2">
+                            <div class="form-check form-switch mt-2">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveCheck">
+                                <label class="form-check-label fw-semibold" for="isActiveCheck">Active Company</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 pt-2">
+                            <div class="form-check form-switch mt-2">
+                                <input asp-for="IsDefault" class="form-check-input" type="checkbox" id="isDefaultCheck">
+                                <label class="form-check-label fw-semibold" for="isDefaultCheck">Set as Default Company</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mb-5">
+                <a asp-action="Index" class="btn btn-light border px-4">Cancel</a>
+                <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                    <i class="bi bi-check-circle me-1"></i> Update Company
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -47,6 +47,9 @@ public class ReadyProduct
 {
     public int Id { get; set; }
 
+    public int CompanyId { get; set; } = 1;
+    public Company? Company { get; set; }
+
     [Required]
     public int DesignId { get; set; }
     public Design? Design { get; set; }
@@ -81,6 +84,9 @@ public class ReadyProduct
 
     [Display(Name = "Duppata Qty / Set")]
     public int DuppataQuantityPerSet { get; set; } = 1;
+
+    [Display(Name = "Set Components Included")]
+    public string SetComponents { get; set; } = "Chaniya, Choli, Dupatta";
 
     // ——— Ready Sets Inventory ———
     [Display(Name = "Ready Sets in Stock")]
@@ -136,13 +142,29 @@ public class ReadyProduct
     }
 
     [NotMapped]
-    public string EffectivePhotoPath => !string.IsNullOrEmpty(PhotoPath) ? PhotoPath : (Design?.PhotoPath ?? "");
+    public string EffectivePhotoPath
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(PhotoPath)) return PhotoPath;
+            if (Design?.ColourImages != null && !string.IsNullOrEmpty(Colour))
+            {
+                var colourMatch = Design.ColourImages.FirstOrDefault(ci => string.Equals(ci.Colour, Colour, StringComparison.OrdinalIgnoreCase));
+                if (colourMatch != null && !string.IsNullOrEmpty(colourMatch.PhotoPath))
+                    return colourMatch.PhotoPath;
+            }
+            return Design?.PhotoPath ?? "";
+        }
+    }
 }
 
 [Table("ReadyProductTransactions")]
 public class ReadyProductTransaction
 {
     public int Id { get; set; }
+
+    public int CompanyId { get; set; } = 1;
+    public Company? Company { get; set; }
 
     [Required]
     public int ReadyProductId { get; set; }

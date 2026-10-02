@@ -18,9 +18,14 @@ var activeConnection = builder.Configuration.GetValue<string>("ActiveConnection"
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString(activeConnection)));
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient<IGstVerificationService, GstVerificationService>();
 builder.Services.AddScoped<IEwayBillService, EwayBillService>();
 builder.Services.AddScoped<IPricelistService, PricelistService>();
+builder.Services.AddScoped<IReadyInventoryService, ReadyInventoryService>();
+builder.Services.AddScoped<IJobSlipService, JobSlipService>();
+builder.Services.AddScoped<IEInvoiceService, EInvoiceService>();
+builder.Services.AddScoped<ICompanyContext, CompanyContext>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -84,7 +89,7 @@ using (var scope = app.Services.CreateScope())
         "Purchase", "Dying", "RollPress", "PMS", "RawMaterial",
         "Inventory", "SalesOrder", "Invoice", "QualityControl", "Barcode",
         "Employee", "Attendance", "Salary", "BiometricDevice", "Accounting",
-        "UserManagement", "Role"
+        "UserManagement", "Role", "ProcessMaster"
     };
 
     var standardRoles = new[]
@@ -529,6 +534,34 @@ using (var scope = app.Services.CreateScope())
         });
         db.SaveChanges();
     }
+
+    // Seed default Process Master sequence (Cutting, Dying, Roll, Handwork, Stitching, Packing)
+    var defaultProcesses = new (string Name, string Code, int Order, string Desc)[]
+    {
+        ("Cutting", "CUT", 1, "Fabric cutting process"),
+        ("Dying", "DYE", 2, "Fabric dyeing and color treatment"),
+        ("Roll", "ROLL", 3, "Roll pressing and finishing"),
+        ("Handwork", "HAND", 4, "Embroidery, zardozi and hand crafting"),
+        ("Stitching", "STITCH", 5, "Garment tailoring and stitching"),
+        ("Packing", "PACK", 6, "Final quality check, folding and packaging")
+    };
+    foreach (var dp in defaultProcesses)
+    {
+        var existingProcess = db.ProcessMasters.FirstOrDefault(p => p.ProcessName == dp.Name);
+        if (existingProcess == null)
+        {
+            db.ProcessMasters.Add(new ProcessMaster
+            {
+                ProcessName = dp.Name,
+                ProcessCode = dp.Code,
+                DisplayOrder = dp.Order,
+                Description = dp.Desc,
+                IsActive = true,
+                CreatedDate = DateTime.Now
+            });
+        }
+    }
+    db.SaveChanges();
 }
 
 #if DEBUG

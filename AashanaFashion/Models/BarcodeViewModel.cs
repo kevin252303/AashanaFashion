@@ -6,6 +6,7 @@ public class PrintTagsViewModel
     public List<EntityBarcodeTagItem> Tags { get; set; } = new();
     public string Format { get; set; } = "ThermalRoll"; // ThermalRoll or A4Sheet
     public string? FilterEntityType { get; set; }
+    public BarcodeTagConfig Config { get; set; } = new();
 }
 
 public class EntityBarcodeTagItem
@@ -21,6 +22,10 @@ public class EntityBarcodeTagItem
     public string Status { get; set; } = string.Empty;
     public string BarcodeSvg { get; set; } = string.Empty;
     public string QrCodeSvg { get; set; } = string.Empty;
+    public decimal? Price { get; set; }
+    public string? Category { get; set; }
+    public string? HsnCode { get; set; }
+    public DateTime? OrderDate { get; set; }
 }
 
 public class ScanLookupResultViewModel

@@ -60,6 +60,16 @@ namespace AashanaFashion.Data
         public DbSet<SalesmanCommissionEntry> SalesmanCommissionEntries { get; set; }
         public DbSet<SalesReturn> SalesReturns { get; set; }
         public DbSet<SalesReturnItem> SalesReturnItems { get; set; }
+        public DbSet<DesignColourImage> DesignColourImages { get; set; }
+        public DbSet<DesignDiscontinuedVariant> DesignDiscontinuedVariants { get; set; }
+        public DbSet<ProcessMaster> ProcessMasters { get; set; }
+        public DbSet<DesignComponentAssignment> DesignComponentAssignments { get; set; }
+        public DbSet<ProductionOrderComponentAssignment> ProductionOrderComponentAssignments { get; set; }
+        public DbSet<JobSlip> JobSlips { get; set; }
+        public DbSet<JobSlipItem> JobSlipItems { get; set; }
+        public DbSet<BarcodeTagConfig> BarcodeTagConfigs { get; set; }
+        public DbSet<Company> Companies { get; set; }
+        public DbSet<UserCompany> UserCompanies { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -772,6 +782,224 @@ namespace AashanaFashion.Data
                     .WithMany()
                     .HasForeignKey(i => i.TaxInvoiceItemId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<DesignColourImage>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+                entity.HasOne(c => c.Design)
+                    .WithMany(d => d.ColourImages)
+                    .HasForeignKey(c => c.DesignId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<DesignDiscontinuedVariant>(entity =>
+            {
+                entity.HasKey(v => v.Id);
+                entity.HasOne(v => v.Design)
+                    .WithMany(d => d.DiscontinuedVariants)
+                    .HasForeignKey(v => v.DesignId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<ProcessMaster>(entity =>
+            {
+                entity.HasKey(p => p.Id);
+                entity.Property(p => p.ProcessName).IsRequired().HasMaxLength(100);
+                entity.Property(p => p.ProcessCode).HasMaxLength(30);
+                entity.HasIndex(p => p.DisplayOrder);
+            });
+
+            modelBuilder.Entity<DesignComponentAssignment>(entity =>
+            {
+                entity.HasKey(a => a.Id);
+                entity.Property(a => a.ComponentName).IsRequired().HasMaxLength(100);
+                entity.Property(a => a.ProcessName).IsRequired().HasMaxLength(100);
+                entity.HasOne(a => a.Design)
+                    .WithMany(d => d.ComponentAssignments)
+                    .HasForeignKey(a => a.DesignId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(a => a.Vendor)
+                    .WithMany()
+                    .HasForeignKey(a => a.VendorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<ProductionOrderComponentAssignment>(entity =>
+            {
+                entity.HasKey(a => a.Id);
+                entity.Property(a => a.ComponentName).IsRequired().HasMaxLength(100);
+                entity.Property(a => a.ProcessName).IsRequired().HasMaxLength(100);
+                entity.HasOne(a => a.ProductionOrder)
+                    .WithMany(o => o.ComponentAssignments)
+                    .HasForeignKey(a => a.ProductionOrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(a => a.Vendor)
+                    .WithMany()
+                    .HasForeignKey(a => a.VendorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<JobSlip>(entity =>
+            {
+                entity.HasKey(j => j.Id);
+                entity.Property(j => j.SlipNumber).IsRequired().HasMaxLength(60);
+                entity.Property(j => j.ProcessName).IsRequired().HasMaxLength(100);
+                entity.HasOne(j => j.ProductionOrder)
+                    .WithMany(o => o.JobSlips)
+                    .HasForeignKey(j => j.ProductionOrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(j => j.Vendor)
+                    .WithMany()
+                    .HasForeignKey(j => j.VendorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<JobSlipItem>(entity =>
+            {
+                entity.HasKey(i => i.Id);
+                entity.Property(i => i.ComponentName).IsRequired().HasMaxLength(100);
+                entity.HasOne(i => i.JobSlip)
+                    .WithMany(j => j.Items)
+                    .HasForeignKey(i => i.JobSlipId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ——— Multi-Company Entity Configuration & Seeding ———
+            modelBuilder.Entity<Company>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+                entity.Property(c => c.CompanyName).IsRequired().HasMaxLength(150);
+                entity.Property(c => c.CompanyCode).IsRequired().HasMaxLength(20);
+
+                entity.HasData(new Company
+                {
+                    Id = 1,
+                    CompanyName = "Aashana Fashion",
+                    CompanyCode = "AF",
+                    Gstin = "24AABCA1234F1Z8",
+                    Pan = "AABCA1234F",
+                    Email = "sales@aashanafashion.com",
+                    Phone = "+91 98765 43210",
+                    Address1 = "101-104, Surat Textile Market, Ring Road",
+                    Address2 = "Ring Road",
+                    City = "Surat",
+                    State = "Gujarat",
+                    StateCode = 24,
+                    PinCode = "395002",
+                    BankName = "HDFC Bank",
+                    BankAccountNumber = "50200012345678",
+                    BankIfsc = "HDFC0001234",
+                    BankBranch = "Ring Road Branch, Surat",
+                    InvoicePrefix = "INV-",
+                    SalesOrderPrefix = "SO-",
+                    PurchaseOrderPrefix = "PO-",
+                    IsActive = true,
+                    IsDefault = true,
+                    CreatedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Unspecified)
+                });
+            });
+
+            modelBuilder.Entity<UserCompany>(entity =>
+            {
+                entity.HasKey(uc => uc.Id);
+                entity.HasOne(uc => uc.User)
+                    .WithMany()
+                    .HasForeignKey(uc => uc.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(uc => uc.Company)
+                    .WithMany()
+                    .HasForeignKey(uc => uc.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<ReadyProduct>(entity =>
+            {
+                entity.Property(r => r.CompanyId).HasDefaultValue(1);
+                entity.HasOne(r => r.Company)
+                    .WithMany()
+                    .HasForeignKey(r => r.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<ReadyProductTransaction>(entity =>
+            {
+                entity.Property(r => r.CompanyId).HasDefaultValue(1);
+                entity.HasOne(r => r.Company)
+                    .WithMany()
+                    .HasForeignKey(r => r.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<TaxInvoice>(entity =>
+            {
+                entity.Property(t => t.CompanyId).HasDefaultValue(1);
+                entity.HasOne(t => t.Company)
+                    .WithMany()
+                    .HasForeignKey(t => t.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<PaymentReceipt>(entity =>
+            {
+                entity.Property(p => p.CompanyId).HasDefaultValue(1);
+                entity.HasOne(p => p.Company)
+                    .WithMany()
+                    .HasForeignKey(p => p.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<SalesOrder>(entity =>
+            {
+                entity.Property(s => s.CompanyId).HasDefaultValue(1);
+                entity.HasOne(s => s.Company)
+                    .WithMany()
+                    .HasForeignKey(s => s.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<PurchaseOrder>(entity =>
+            {
+                entity.Property(p => p.CompanyId).HasDefaultValue(1);
+                entity.HasOne(p => p.Company)
+                    .WithMany()
+                    .HasForeignKey(p => p.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<ProductionOrder>(entity =>
+            {
+                entity.Property(p => p.CompanyId).HasDefaultValue(1);
+                entity.HasOne(p => p.Company)
+                    .WithMany()
+                    .HasForeignKey(p => p.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<SalesReturn>(entity =>
+            {
+                entity.Property(s => s.CompanyId).HasDefaultValue(1);
+                entity.HasOne(s => s.Company)
+                    .WithMany()
+                    .HasForeignKey(s => s.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<AccountingTransaction>(entity =>
+            {
+                entity.Property(a => a.CompanyId).HasDefaultValue(1);
+                entity.HasOne(a => a.Company)
+                    .WithMany()
+                    .HasForeignKey(a => a.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Design>(entity =>
+            {
+                entity.HasOne(d => d.CompanyRef)
+                    .WithMany()
+                    .HasForeignKey(d => d.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

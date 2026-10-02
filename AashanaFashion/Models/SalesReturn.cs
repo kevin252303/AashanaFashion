@@ -28,6 +28,9 @@ public class SalesReturn
 {
     public int Id { get; set; }
 
+    public int CompanyId { get; set; } = 1;
+    public Company? Company { get; set; }
+
     [Required]
     [StringLength(50)]
     public string ReturnNumber { get; set; } = string.Empty; // e.g. "RET-202609-0001"

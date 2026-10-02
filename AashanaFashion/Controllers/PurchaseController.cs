@@ -1,6 +1,7 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
 using AashanaFashion.Authorization;
+using AashanaFashion.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,15 +12,23 @@ namespace AashanaFashion.Controllers;
 public class PurchaseController : Controller
 {
     private readonly AppDbContext _context;
+    private readonly ICompanyContext _companyContext;
 
-    public PurchaseController(AppDbContext context) => _context = context;
+    public PurchaseController(AppDbContext context, ICompanyContext companyContext)
+    {
+        _context = context;
+        _companyContext = companyContext;
+    }
 
     [PermissionAuthorize("Purchase", "CanView")]
     public async Task<IActionResult> Index(string? search, PurchaseOrderStatus? status, int? vendorId)
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+
         var query = _context.PurchaseOrders
             .Include(p => p.Vendor)
             .Include(p => p.Details)
+            .Where(p => p.CompanyId == activeCompany.Id)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -47,6 +56,7 @@ public class PurchaseController : Controller
         ViewBag.SelectedStatus = status;
         ViewBag.SelectedVendorId = vendorId;
         ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+        ViewBag.ActiveCompanyName = activeCompany.CompanyName;
 
         return View(orders);
     }
@@ -55,10 +65,14 @@ public class PurchaseController : Controller
     [HttpGet]
     public async Task<IActionResult> Create()
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+
         ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
         ViewBag.RawMaterials = await _context.RawMaterials.OrderBy(m => m.Name).ToListAsync();
-        ViewBag.NextPoNumber = await GeneratePoNumber();
-        return View(new PurchaseOrderViewModel());
+        
+        var nextPoNumber = await GeneratePoNumber(activeCompany);
+        ViewBag.NextPoNumber = nextPoNumber;
+        return View(new PurchaseOrderViewModel { PoNumber = nextPoNumber });
     }
 
     [PermissionAuthorize("Purchase", "CanCreate")]
@@ -66,16 +80,24 @@ public class PurchaseController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(PurchaseOrderViewModel model)
     {
+        var activeCompany = await _companyContext.GetActiveCompanyAsync();
+
         if (!ModelState.IsValid)
         {
             ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
             ViewBag.RawMaterials = await _context.RawMaterials.OrderBy(m => m.Name).ToListAsync();
-            ViewBag.NextPoNumber = await GeneratePoNumber();
+            ViewBag.NextPoNumber = await GeneratePoNumber(activeCompany);
             return View(model);
+        }
+
+        if (string.IsNullOrWhiteSpace(model.PoNumber))
+        {
+            model.PoNumber = await GeneratePoNumber(activeCompany);
         }
 
         var order = new PurchaseOrder
         {
+            CompanyId = activeCompany.Id,
             PoNumber = model.PoNumber,
             VendorId = model.VendorId,
             AgentName = model.AgentName,
@@ -419,18 +441,22 @@ public class PurchaseController : Controller
         });
     }
 
-    private async Task<string> GeneratePoNumber()
+    private async Task<string> GeneratePoNumber(Company? company = null)
     {
+        company ??= await _companyContext.GetActiveCompanyAsync();
+        var prefix = !string.IsNullOrWhiteSpace(company.PurchaseOrderPrefix) ? company.PurchaseOrderPrefix : "PO-";
         var lastPo = await _context.PurchaseOrders
+            .Where(p => p.CompanyId == company.Id && p.PoNumber.StartsWith(prefix))
             .OrderByDescending(p => p.Id)
             .Select(p => p.PoNumber)
             .FirstOrDefaultAsync();
 
-        if (lastPo == null) return "PO-0001";
+        if (lastPo == null) return $"{prefix}0001";
 
-        if (int.TryParse(lastPo.Replace("PO-", ""), out int lastNum))
-            return $"PO-{(lastNum + 1):D4}";
+        var numPart = lastPo.Substring(prefix.Length);
+        if (int.TryParse(numPart, out int lastNum))
+            return $"{prefix}{(lastNum + 1):D4}";
 
-        return "PO-0001";
+        return $"{prefix}0001";
     }
 }

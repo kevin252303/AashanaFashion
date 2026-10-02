@@ -6,6 +6,9 @@ public class SalesOrder
 {
     public int Id { get; set; }
 
+    public int CompanyId { get; set; } = 1;
+    public Company? Company { get; set; }
+
     [Required]
     public string SoNumber { get; set; } = string.Empty;
 

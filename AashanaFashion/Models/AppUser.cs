@@ -19,6 +19,9 @@ namespace AashanaFashion.Models
         public string? Address { get; set; }
         public bool IsActive { get; set; } = true;
 
+        public int? DefaultCompanyId { get; set; }
+        public Company? DefaultCompany { get; set; }
+
         [NotMapped]
         public string FullName => string.Join(" ", new[] { FirstName, MiddleName, LastName }.Where(s => !string.IsNullOrWhiteSpace(s)));
     }
