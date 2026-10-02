@@ -1,0 +1,274 @@
+@model AashanaFashion.Models.Gstr3bViewModel
+@{
+    ViewData["Title"] = $"GSTR-3B Return — {Model.MonthName} {Model.Year}";
+    int selectedYear = ViewBag.SelectedYear;
+    int selectedMonth = ViewBag.SelectedMonth;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a asp-action="Index" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-sm btn-outline-secondary">
+                ← Back to GST Hub
+            </a>
+            <h1 class="page-title mb-0">📋 GSTR-3B Monthly Return Sheet</h1>
+        </div>
+        <p class="page-sub mb-0 text-muted">
+            Auto-calculated tax liability from Sales and Input Tax Credit (ITC) from Purchases for <strong>@Model.MonthName @Model.Year</strong>
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+            🖨️ Print / Save as PDF
+        </button>
+        <a asp-action="Index" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-primary">
+            🏛️ Return to GSTR-1
+        </a>
+    </div>
+</div>
+
+<!-- Header info card -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-3">
+        <div class="row align-items-center">
+            <div class="col-md-3">
+                <span class="text-muted small d-block">Taxpayer Name</span>
+                <strong class="fs-6">@Model.Company.CompanyName</strong>
+            </div>
+            <div class="col-md-3">
+                <span class="text-muted small d-block">GSTIN</span>
+                <span class="font-monospace fw-bold text-primary fs-6">@(Model.Company.Gstin ?? "Not Set")</span>
+            </div>
+            <div class="col-md-3">
+                <span class="text-muted small d-block">State & Code</span>
+                <span class="fw-semibold">@Model.Company.State (@Model.Company.StateCode)</span>
+            </div>
+            <div class="col-md-3 text-md-end">
+                <span class="text-muted small d-block">Return Period</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 px-3 py-1">
+                    @Model.MonthName @Model.Year
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table 3.1: Outward Supplies -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold">3.1 Details of Outward Supplies and Inward Supplies Liable to Reverse Charge</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+                <tr>
+                    <th style="width: 40%;">Nature of Supplies</th>
+                    <th class="text-end">Total Taxable Value (₹)</th>
+                    <th class="text-end">Integrated Tax (IGST) (₹)</th>
+                    <th class="text-end">Central Tax (CGST) (₹)</th>
+                    <th class="text-end">State/UT Tax (SGST) (₹)</th>
+                    <th class="text-end">Cess (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="fw-semibold">
+                        (a) Outward taxable supplies (other than zero rated, nil rated and exempted)
+                    </td>
+                    <td class="text-end fw-bold">@Model.OutwardTaxableSupplies.TotalTaxableValue.ToString("N2")</td>
+                    <td class="text-end">@Model.OutwardTaxableSupplies.IntegratedTax.ToString("N2")</td>
+                    <td class="text-end">@Model.OutwardTaxableSupplies.CentralTax.ToString("N2")</td>
+                    <td class="text-end">@Model.OutwardTaxableSupplies.StateTax.ToString("N2")</td>
+                    <td class="text-end">0.00</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">(b) Outward taxable supplies (zero rated)</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">0.00</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">(c) Other outward supplies (Nil rated, exempted)</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">(d) Inward supplies (liable to reverse charge)</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">(e) Non-GST outward supplies</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                </tr>
+            </tbody>
+            <tfoot class="table-light fw-bold">
+                <tr>
+                    <td>Total Outward Tax Liability</td>
+                    <td class="text-end">₹@Model.OutwardTaxableSupplies.TotalTaxableValue.ToString("N2")</td>
+                    <td class="text-end">₹@Model.OutwardTaxableSupplies.IntegratedTax.ToString("N2")</td>
+                    <td class="text-end">₹@Model.OutwardTaxableSupplies.CentralTax.ToString("N2")</td>
+                    <td class="text-end">₹@Model.OutwardTaxableSupplies.StateTax.ToString("N2")</td>
+                    <td class="text-end">₹0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Table 4: Eligible ITC -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold">4. Eligible Input Tax Credit (ITC Available from Purchases)</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+                <tr>
+                    <th style="width: 40%;">Details</th>
+                    <th class="text-end">Integrated Tax (IGST) (₹)</th>
+                    <th class="text-end">Central Tax (CGST) (₹)</th>
+                    <th class="text-end">State/UT Tax (SGST) (₹)</th>
+                    <th class="text-end">Cess (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="table-light">
+                    <td colspan="5" class="fw-bold text-uppercase small text-secondary">(A) ITC Available (whether in full or part)</td>
+                </tr>
+                <tr>
+                    <td class="ps-4 text-muted">(1) Import of goods</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">0.00</td>
+                </tr>
+                <tr>
+                    <td class="ps-4 text-muted">(2) Import of services</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">0.00</td>
+                </tr>
+                <tr>
+                    <td class="ps-4 text-muted">(3) Inward supplies liable to reverse charge</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                </tr>
+                <tr>
+                    <td class="ps-4 text-muted">(4) Inward supplies from ISD</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                </tr>
+                <tr>
+                    <td class="ps-4 fw-semibold text-primary">
+                        (5) All other ITC (Purchases of Raw Materials, Fabrics & Trims)
+                    </td>
+                    <td class="text-end fw-bold text-success">@Model.ItcAllOtherPurchases.IntegratedTax.ToString("N2")</td>
+                    <td class="text-end fw-bold text-success">@Model.ItcAllOtherPurchases.CentralTax.ToString("N2")</td>
+                    <td class="text-end fw-bold text-success">@Model.ItcAllOtherPurchases.StateTax.ToString("N2")</td>
+                    <td class="text-end">0.00</td>
+                </tr>
+                <tr class="table-light">
+                    <td colspan="5" class="fw-bold text-uppercase small text-secondary">(B) ITC Reversed</td>
+                </tr>
+                <tr>
+                    <td class="ps-4 text-muted">(1) As per rules 42 & 43 of CGST Rules</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                </tr>
+                <tr>
+                    <td class="ps-4 text-muted">(2) Others</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                </tr>
+            </tbody>
+            <tfoot class="table-light fw-bold">
+                <tr>
+                    <td class="text-success">(C) Net ITC Available (A) – (B)</td>
+                    <td class="text-end text-success">₹@Model.NetItcAvailable.IntegratedTax.ToString("N2")</td>
+                    <td class="text-end text-success">₹@Model.NetItcAvailable.CentralTax.ToString("N2")</td>
+                    <td class="text-end text-success">₹@Model.NetItcAvailable.StateTax.ToString("N2")</td>
+                    <td class="text-end">₹0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Table 6.1: Payment of Tax & Cash Payable -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold">6.1 Payment of Tax (Net Tax Payable in Cash after ITC Utilization)</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+                <tr>
+                    <th>Description</th>
+                    <th class="text-end">Total Tax Payable (₹)</th>
+                    <th class="text-end">Paid Through ITC (₹)</th>
+                    <th class="text-end text-danger">Tax Payable in Cash (₹)</th>
+                    <th class="text-end">Interest (₹)</th>
+                    <th class="text-end">Late Fee (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="fw-bold text-info">Integrated Tax (IGST)</td>
+                    <td class="text-end">@Model.OutwardTaxableSupplies.IntegratedTax.ToString("N2")</td>
+                    <td class="text-end text-success">@Math.Min(Model.OutwardTaxableSupplies.IntegratedTax, Model.NetItcAvailable.IntegratedTax).ToString("N2")</td>
+                    <td class="text-end fw-bold text-danger">@Model.NetPayableIgst.ToString("N2")</td>
+                    <td class="text-end">0.00</td>
+                    <td class="text-end">0.00</td>
+                </tr>
+                <tr>
+                    <td class="fw-bold text-primary">Central Tax (CGST)</td>
+                    <td class="text-end">@Model.OutwardTaxableSupplies.CentralTax.ToString("N2")</td>
+                    <td class="text-end text-success">@Math.Min(Model.OutwardTaxableSupplies.CentralTax, Model.NetItcAvailable.CentralTax).ToString("N2")</td>
+                    <td class="text-end fw-bold text-danger">@Model.NetPayableCgst.ToString("N2")</td>
+                    <td class="text-end">0.00</td>
+                    <td class="text-end">0.00</td>
+                </tr>
+                <tr>
+                    <td class="fw-bold text-primary">State/UT Tax (SGST)</td>
+                    <td class="text-end">@Model.OutwardTaxableSupplies.StateTax.ToString("N2")</td>
+                    <td class="text-end text-success">@Math.Min(Model.OutwardTaxableSupplies.StateTax, Model.NetItcAvailable.StateTax).ToString("N2")</td>
+                    <td class="text-end fw-bold text-danger">@Model.NetPayableSgst.ToString("N2")</td>
+                    <td class="text-end">0.00</td>
+                    <td class="text-end">0.00</td>
+                </tr>
+            </tbody>
+            <tfoot class="table-light fw-bold fs-6">
+                <tr>
+                    <td>Total Cash Liability</td>
+                    <td class="text-end">₹@Model.OutwardTaxableSupplies.TotalTax.ToString("N2")</td>
+                    <td class="text-end text-success">₹@(Math.Min(Model.OutwardTaxableSupplies.IntegratedTax, Model.NetItcAvailable.IntegratedTax) + Math.Min(Model.OutwardTaxableSupplies.CentralTax, Model.NetItcAvailable.CentralTax) + Math.Min(Model.OutwardTaxableSupplies.StateTax, Model.NetItcAvailable.StateTax)).ToString("N2")</td>
+                    <td class="text-end text-danger fs-5">₹@Model.TotalCashPayable.ToString("N2")</td>
+                    <td class="text-end">₹0.00</td>
+                    <td class="text-end">₹0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

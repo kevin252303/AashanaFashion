@@ -262,9 +262,45 @@
                    asp-controller="Invoice" asp-action="Index">
                     <span class="ico">🧾</span> Tax Invoices
                 </a>
+                <a class="s-link @(ctrl == "Accounting" && action == "ChartOfAccounts" ? "active" : "")"
+                   asp-controller="Accounting" asp-action="ChartOfAccounts">
+                    <span class="ico">🏛️</span> Chart of Accounts
+                </a>
+                <a class="s-link @(ctrl == "Accounting" && action == "JournalEntries" ? "active" : "")"
+                   asp-controller="Accounting" asp-action="JournalEntries">
+                    <span class="ico">📖</span> Journal Entries
+                </a>
+                <a class="s-link @(ctrl == "Accounting" && action == "TrialBalance" ? "active" : "")"
+                   asp-controller="Accounting" asp-action="TrialBalance">
+                    <span class="ico">⚖️</span> Trial Balance
+                </a>
+                <a class="s-link @(ctrl == "Accounting" && action == "ProfitAndLoss" ? "active" : "")"
+                   asp-controller="Accounting" asp-action="ProfitAndLoss">
+                    <span class="ico">📈</span> Profit &amp; Loss
+                </a>
+                <a class="s-link @(ctrl == "Accounting" && action == "BalanceSheet" ? "active" : "")"
+                   asp-controller="Accounting" asp-action="BalanceSheet">
+                    <span class="ico">📊</span> Balance Sheet
+                </a>
+                <a class="s-link @(ctrl == "GstReturn" ? "active" : "")"
+                   asp-controller="GstReturn" asp-action="Index">
+                    <span class="ico">🇮🇳</span> GST Returns &amp; Filing
+                </a>
                 <a class="s-link @(ctrl == "Accounting" && action == "Index" ? "active" : "")"
                    asp-controller="Accounting" asp-action="Index">
-                    <span class="ico">💰</span> General Ledger
+                    <span class="ico">💰</span> Cash &amp; Bank Ledger
+                </a>
+                <a class="s-link @(ctrl == "Accounting" && action == "AgedReceivables" ? "active" : "")"
+                   asp-controller="Accounting" asp-action="AgedReceivables">
+                    <span class="ico">👥</span> Aged Receivables (AR)
+                </a>
+                <a class="s-link @(ctrl == "Accounting" && action == "AgedPayables" ? "active" : "")"
+                   asp-controller="Accounting" asp-action="AgedPayables">
+                    <span class="ico">🏢</span> Aged Payables (AP)
+                </a>
+                <a class="s-link @(ctrl == "Accounting" && action == "ThreeWayMatching" ? "active" : "")"
+                   asp-controller="Accounting" asp-action="ThreeWayMatching">
+                    <span class="ico">🔍</span> 3-Way Matching
                 </a>
                 <a class="s-link @(ctrl == "Accounting" && action == "Commissions" ? "active" : "")"
                    asp-controller="Accounting" asp-action="Commissions">

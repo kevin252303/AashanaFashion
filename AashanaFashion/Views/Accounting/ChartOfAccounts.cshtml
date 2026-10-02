@@ -1,0 +1,211 @@
+@model IEnumerable<AashanaFashion.Models.Account>
+@{
+    ViewData["Title"] = "Chart of Accounts (COA)";
+    var balances = ViewBag.Balances as Dictionary<int, (decimal TotalDebit, decimal TotalCredit)> ?? new();
+    var selectedType = ViewBag.SelectedType as AashanaFashion.Models.AccountType?;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="page-title mb-1">🏛️ Chart of Accounts (COA)</h1>
+        <p class="page-sub mb-0 text-muted">Double-entry ledger accounts structured for manufacturing, inventory, taxes, and financial statements</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="JournalEntries" class="btn btn-outline-secondary">📖 Journal Entries</a>
+        <a asp-action="TrialBalance" class="btn btn-outline-primary">⚖️ Trial Balance</a>
+        <a asp-action="ProfitAndLoss" class="btn btn-outline-success">📈 Profit &amp; Loss</a>
+        <a asp-action="BalanceSheet" class="btn btn-outline-info">📊 Balance Sheet</a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newAccountModal">
+            + New Account
+        </button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Success!</strong> @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Error:</strong> @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Filter by Type -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-2 d-flex gap-2 flex-wrap align-items-center">
+        <span class="small fw-bold text-secondary ps-2">Filter by Class:</span>
+        <a asp-action="ChartOfAccounts" class="btn btn-sm @(!selectedType.HasValue ? "btn-dark" : "btn-light border")">All Accounts</a>
+        <a asp-action="ChartOfAccounts" asp-route-type="Asset" class="btn btn-sm @(selectedType == AashanaFashion.Models.AccountType.Asset ? "btn-primary" : "btn-light border")">Assets</a>
+        <a asp-action="ChartOfAccounts" asp-route-type="Liability" class="btn btn-sm @(selectedType == AashanaFashion.Models.AccountType.Liability ? "btn-danger" : "btn-light border")">Liabilities</a>
+        <a asp-action="ChartOfAccounts" asp-route-type="Equity" class="btn btn-sm @(selectedType == AashanaFashion.Models.AccountType.Equity ? "btn-info" : "btn-light border")">Equity</a>
+        <a asp-action="ChartOfAccounts" asp-route-type="Income" class="btn btn-sm @(selectedType == AashanaFashion.Models.AccountType.Income ? "btn-success" : "btn-light border")">Income</a>
+        <a asp-action="ChartOfAccounts" asp-route-type="Expense" class="btn btn-sm @(selectedType == AashanaFashion.Models.AccountType.Expense ? "btn-warning" : "btn-light border")">Expenses</a>
+    </div>
+</div>
+
+<!-- Accounts Table Grouped by Type -->
+@{
+    var groups = Model.GroupBy(a => a.Type).OrderBy(g => g.Key);
+}
+
+@foreach (var grp in groups)
+{
+    string headerBadgeClass = grp.Key switch
+    {
+        AashanaFashion.Models.AccountType.Asset => "bg-primary-subtle text-primary border-primary",
+        AashanaFashion.Models.AccountType.Liability => "bg-danger-subtle text-danger border-danger",
+        AashanaFashion.Models.AccountType.Equity => "bg-info-subtle text-info border-info",
+        AashanaFashion.Models.AccountType.Income => "bg-success-subtle text-success border-success",
+        _ => "bg-warning-subtle text-warning border-warning"
+    };
+
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                <span class="badge @headerBadgeClass px-2 py-1 fs-6">@grp.Key</span>
+                <span>Accounts</span>
+            </h6>
+            <span class="text-muted small">@grp.Count() account(s)</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th style="width: 120px;">Code</th>
+                        <th>Account Name</th>
+                        <th>Classification</th>
+                        <th class="text-end">Total Debit (₹)</th>
+                        <th class="text-end">Total Credit (₹)</th>
+                        <th class="text-end">Net Balance (₹)</th>
+                        <th class="text-center" style="width: 140px;">Ledger</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var acc in grp.OrderBy(a => a.Code))
+                    {
+                        var hasBal = balances.TryGetValue(acc.Id, out var bal);
+                        decimal dr = hasBal ? bal.TotalDebit : 0m;
+                        decimal cr = hasBal ? bal.TotalCredit : 0m;
+                        decimal net = 0m;
+                        string balLabel = "";
+
+                        if (acc.Type == AashanaFashion.Models.AccountType.Asset || acc.Type == AashanaFashion.Models.AccountType.Expense)
+                        {
+                            net = dr - cr;
+                            balLabel = net >= 0 ? "Dr" : "Cr";
+                        }
+                        else
+                        {
+                            net = cr - dr;
+                            balLabel = net >= 0 ? "Cr" : "Dr";
+                        }
+
+                        <tr>
+                            <td><span class="font-monospace fw-bold text-dark">@acc.Code</span></td>
+                            <td>
+                                <strong class="text-dark">@acc.Name</strong>
+                                @if (acc.IsSystemAccount)
+                                {
+                                    <span class="badge bg-light text-muted border ms-1" style="font-size: 0.65rem;">System</span>
+                                }
+                                @if (acc.IsReconcilable)
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size: 0.65rem;">Reconcilable</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">@acc.Classification</span>
+                            </td>
+                            <td class="text-end text-muted font-monospace">@dr.ToString("N2")</td>
+                            <td class="text-end text-muted font-monospace">@cr.ToString("N2")</td>
+                            <td class="text-end fw-bold font-monospace @(Math.Abs(net) > 0 ? "text-dark" : "text-muted")">
+                                ₹@Math.Abs(net).ToString("N2") <small class="text-muted fw-normal">@balLabel</small>
+                            </td>
+                            <td class="text-center">
+                                <a asp-action="GeneralLedger" asp-route-accountId="@acc.Id" class="btn btn-sm btn-outline-secondary py-1 px-2">
+                                    📜 View Ledger
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Modal for New Account -->
+<div class="modal fade" id="newAccountModal" tabindex="-1" aria-labelledby="newAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <form method="post" asp-action="CreateAccount">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="newAccountModalLabel">+ Create Ledger Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Account Code</label>
+                        <input type="text" name="Code" class="form-control" placeholder="e.g. 102100 or 608000" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Account Name</label>
+                        <input type="text" name="Name" class="form-control" placeholder="e.g. HDFC Current Account" required />
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Type</label>
+                            <select name="Type" class="form-select">
+                                <option value="Asset">Asset</option>
+                                <option value="Liability">Liability</option>
+                                <option value="Equity">Equity</option>
+                                <option value="Income">Income</option>
+                                <option value="Expense">Expense</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Classification</label>
+                            <select name="Classification" class="form-select">
+                                <option value="BankAndCash">Bank &amp; Cash</option>
+                                <option value="AccountsReceivable">Accounts Receivable</option>
+                                <option value="Inventory">Inventory</option>
+                                <option value="FixedAsset">Fixed Asset</option>
+                                <option value="CurrentAsset">Current Asset</option>
+                                <option value="AccountsPayable">Accounts Payable</option>
+                                <option value="DutiesAndTaxes">Duties &amp; Taxes</option>
+                                <option value="CurrentLiability">Current Liability</option>
+                                <option value="Equity">Equity</option>
+                                <option value="OperatingRevenue">Operating Revenue</option>
+                                <option value="CostOfGoodsSold">Cost of Goods Sold</option>
+                                <option value="DirectManufacturingExpense">Direct Manufacturing</option>
+                                <option value="OperatingExpense">Operating Expense</option>
+                                <option value="FinancialExpense">Financial Expense</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Description / Purpose</label>
+                        <textarea name="Description" class="form-control" rows="2" placeholder="Optional notes..."></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="IsReconcilable" value="true" id="isReconcilableCheck" />
+                        <label class="form-check-label small" for="isReconcilableCheck">
+                            Allow statement / invoice reconciliation
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-bold">Save Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

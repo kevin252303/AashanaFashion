@@ -1,0 +1,168 @@
+@model AashanaFashion.Models.GeneralLedgerAccountViewModel
+@{
+    ViewData["Title"] = Model != null ? $"General Ledger — {Model.Account.Code} {Model.Account.Name}" : "General Ledger";
+    var accounts = ViewBag.Accounts as List<AashanaFashion.Models.Account> ?? new();
+    int? selectedAccountId = ViewBag.SelectedAccountId;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="page-title mb-1">📜 General Ledger (Account Drill-Down)</h1>
+        <p class="page-sub mb-0 text-muted">Chronological statement of debit and credit entries with running balances for individual ledger accounts</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="ChartOfAccounts" class="btn btn-outline-secondary">🏛️ Chart of Accounts</a>
+        <a asp-action="JournalEntries" class="btn btn-outline-primary">📖 Journal Entries</a>
+        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">🖨️ Print Ledger</button>
+    </div>
+</div>
+
+<!-- Account & Date Selector -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-3">
+        <form method="get" asp-action="GeneralLedger" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <select name="accountId" class="form-select form-select-sm" onchange="this.form.submit()">
+                    @foreach (var a in accounts)
+                    {
+                        <option value="@a.Id" selected="@(a.Id == selectedAccountId)">
+                            @a.Code — @a.Name (@a.Type)
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="date" name="fromDate" value="@ViewBag.FromDate" class="form-control form-control-sm" placeholder="From Date" />
+            </div>
+            <div class="col-md-3">
+                <input type="date" name="toDate" value="@ViewBag.ToDate" class="form-control form-control-sm" placeholder="To Date" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-dark w-100">Load Ledger</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model != null)
+{
+    <!-- Account KPI Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-body p-3">
+                    <span class="text-muted small text-uppercase fw-semibold d-block">Opening Balance</span>
+                    <h4 class="fw-bold my-1 text-secondary">₹@Math.Abs(Model.OpeningBalance).ToString("N2")</h4>
+                    <small class="text-muted">@(Model.OpeningBalance >= 0 ? "Debit" : "Credit") at start of period</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-body p-3">
+                    <span class="text-muted small text-uppercase fw-semibold d-block">Period Debits</span>
+                    <h4 class="fw-bold my-1 text-primary">₹@Model.TotalDebit.ToString("N2")</h4>
+                    <small class="text-muted">Total incoming debits</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-body p-3">
+                    <span class="text-muted small text-uppercase fw-semibold d-block">Period Credits</span>
+                    <h4 class="fw-bold my-1 text-info">₹@Model.TotalCredit.ToString("N2")</h4>
+                    <small class="text-muted">Total incoming credits</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-3 bg-light border">
+                <div class="card-body p-3">
+                    <span class="text-muted small text-uppercase fw-semibold d-block">Closing Balance</span>
+                    <h4 class="fw-bold my-1 text-dark">₹@Math.Abs(Model.ClosingBalance).ToString("N2")</h4>
+                    <small class="text-muted fw-semibold">@(Model.ClosingBalance >= 0 ? "Debit Balance" : "Credit Balance")</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ledger Entries Table -->
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold">
+                Account: <span class="font-monospace text-primary">@Model.Account.Code</span> — @Model.Account.Name
+                <span class="badge bg-light text-dark border ms-2">@Model.Account.Type</span>
+            </h6>
+            <span class="text-muted small">@Model.Rows.Count transactions</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th style="width: 110px;">Date</th>
+                        <th style="width: 140px;">Voucher #</th>
+                        <th style="width: 70px;">Journal</th>
+                        <th>Reference</th>
+                        <th>Party / Partner</th>
+                        <th>Narration / Label</th>
+                        <th class="text-end" style="width: 140px;">Debit (₹)</th>
+                        <th class="text-end" style="width: 140px;">Credit (₹)</th>
+                        <th class="text-end" style="width: 160px;">Balance (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-light">
+                        <td colspan="6" class="fw-bold text-muted ps-3">Opening Balance</td>
+                        <td class="text-end font-monospace text-muted">—</td>
+                        <td class="text-end font-monospace text-muted">—</td>
+                        <td class="text-end font-monospace fw-bold">₹@Math.Abs(Model.OpeningBalance).ToString("N2")</td>
+                    </tr>
+                    @if (!Model.Rows.Any())
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">
+                                No transactions found for this account in the selected date range.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var r in Model.Rows)
+                        {
+                            <tr>
+                                <td class="small text-muted">@r.Date.ToString("dd-MMM-yyyy")</td>
+                                <td>
+                                    <a asp-action="JournalEntryDetails" asp-route-id="@r.EntryId" class="font-monospace fw-bold text-decoration-none">
+                                        @r.EntryNumber
+                                    </a>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">@r.JournalCode</span></td>
+                                <td class="font-monospace small">@(r.Reference ?? "—")</td>
+                                <td class="fw-semibold">@(r.PartnerName ?? "—")</td>
+                                <td class="small text-muted">@r.Narration</td>
+                                <td class="text-end font-monospace fw-semibold @(r.Debit > 0 ? "text-dark" : "text-muted")">
+                                    @(r.Debit > 0 ? r.Debit.ToString("N2") : "—")
+                                </td>
+                                <td class="text-end font-monospace fw-semibold @(r.Credit > 0 ? "text-dark" : "text-muted")">
+                                    @(r.Credit > 0 ? r.Credit.ToString("N2") : "—")
+                                </td>
+                                <td class="text-end font-monospace fw-bold @(r.RunningBalance >= 0 ? "text-primary" : "text-danger")">
+                                    ₹@Math.Abs(r.RunningBalance).ToString("N2")
+                                    <small class="text-muted fw-normal">@(r.RunningBalance >= 0 ? "Dr" : "Cr")</small>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+                <tfoot class="table-light fw-bold fs-6">
+                    <tr>
+                        <td colspan="6" class="text-uppercase small">Period Totals:</td>
+                        <td class="text-end font-monospace">₹@Model.TotalDebit.ToString("N2")</td>
+                        <td class="text-end font-monospace">₹@Model.TotalCredit.ToString("N2")</td>
+                        <td class="text-end font-monospace text-dark">₹@Math.Abs(Model.ClosingBalance).ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+}

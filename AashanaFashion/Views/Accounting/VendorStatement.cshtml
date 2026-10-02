@@ -1,0 +1,154 @@
+@model AashanaFashion.Models.VendorStatementViewModel
+@{
+    ViewData["Title"] = $"Vendor Statement — {Model.Vendor.VendorName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 d-print-none">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a asp-action="AgedPayables" class="btn btn-sm btn-outline-secondary">
+                ← Back to Aged Payables
+            </a>
+            <h1 class="page-title mb-0">📜 Vendor Statement of Account</h1>
+        </div>
+        <p class="page-sub mb-0 text-muted">Purchase bills, supplier payments, and running liability balance for <strong>@Model.Vendor.VendorName</strong></p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-primary" onclick="window.print()">
+            🖨️ Print / Save PDF
+        </button>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3 p-4">
+    <!-- Header -->
+    <div class="row align-items-start border-bottom pb-4 mb-4">
+        <div class="col-sm-7">
+            <h3 class="fw-bold text-dark mb-1">@Model.Company.CompanyName</h3>
+            <p class="small text-muted mb-1">
+                @Model.Company.Address1 @Model.Company.Address2<br />
+                @Model.Company.City, @Model.Company.State - @Model.Company.PinCode
+            </p>
+            <div class="small">
+                <strong>GSTIN:</strong> <span class="font-monospace fw-bold text-primary">@(Model.Company.Gstin ?? "Not Set")</span>
+            </div>
+        </div>
+        <div class="col-sm-5 text-sm-end">
+            <span class="badge bg-danger text-white text-uppercase px-3 py-1 mb-2 fs-6">Vendor Statement</span>
+            <div class="small text-muted">Statement Period:</div>
+            <strong class="fs-6 text-dark">@Model.FromDate.ToString("dd-MMM-yyyy") to @Model.ToDate.ToString("dd-MMM-yyyy")</strong>
+        </div>
+    </div>
+
+    <!-- Vendor Details & Bank Account Details -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="border rounded-3 p-3 bg-light h-100">
+                <span class="small text-muted text-uppercase fw-bold d-block mb-1">Vendor / Supplier Details</span>
+                <h5 class="fw-bold mb-1 text-dark">@Model.Vendor.VendorName</h5>
+                <div class="small text-muted mb-1">@(Model.Vendor.Address ?? "Address on file")</div>
+                <div class="small text-muted">@(Model.Vendor.City ?? ""), @(Model.Vendor.State ?? "")</div>
+                <div class="small mt-2">
+                    <strong>GSTIN:</strong> <span class="font-monospace fw-bold text-dark">@(Model.Vendor.GstNumber ?? "URP")</span><br />
+                    <strong>Contact:</strong> @(Model.Vendor.ContactPerson ?? "N/A") (@(Model.Vendor.Phone ?? "N/A"))
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="border rounded-3 p-3 bg-light h-100">
+                <span class="small text-muted text-uppercase fw-bold d-block mb-1">Vendor Registered Bank Account (for Payout)</span>
+                <div class="small"><strong>Bank:</strong> @(Model.Vendor.BankName ?? "Not Provided")</div>
+                <div class="small"><strong>A/c Number:</strong> <span class="font-monospace fw-bold">@(Model.Vendor.AccountNumber ?? "Not Provided")</span></div>
+                <div class="small"><strong>IFSC Code:</strong> <span class="font-monospace fw-bold">@(Model.Vendor.IfscCode ?? "Not Provided")</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row g-2 mb-4 text-center">
+        <div class="col-4">
+            <div class="p-2 border rounded bg-light">
+                <span class="small text-muted d-block">Opening Payable</span>
+                <strong class="fs-6 font-monospace">₹@Model.OpeningBalance.ToString("N2")</strong>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="p-2 border rounded bg-light">
+                <span class="small text-muted d-block">Billed (+)</span>
+                <strong class="fs-6 text-danger font-monospace">₹@Model.TotalBilled.ToString("N2")</strong>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="p-2 border rounded bg-danger-subtle border-danger">
+                <span class="small text-danger fw-bold d-block">Net Payable Due</span>
+                <strong class="fs-5 text-danger font-monospace">₹@Model.ClosingBalance.ToString("N2")</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="table-responsive mb-4">
+        <table class="table table-bordered table-sm align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+                <tr>
+                    <th style="width: 110px;">Date</th>
+                    <th style="width: 90px;">Type</th>
+                    <th style="width: 140px;">Doc / PO #</th>
+                    <th>Description</th>
+                    <th class="text-end" style="width: 140px;">Billed (₹)</th>
+                    <th class="text-end" style="width: 140px;">Paid (₹)</th>
+                    <th class="text-end" style="width: 150px;">Balance Due (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="table-light">
+                    <td colspan="4" class="fw-bold text-muted ps-3">Opening Balance as on @Model.FromDate.ToString("dd-MMM-yyyy")</td>
+                    <td class="text-end font-monospace text-muted">—</td>
+                    <td class="text-end font-monospace text-muted">—</td>
+                    <td class="text-end font-monospace fw-bold">₹@Model.OpeningBalance.ToString("N2")</td>
+                </tr>
+                @if (!Model.Transactions.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-3 text-muted">
+                            No bills or payments recorded in this period.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var t in Model.Transactions)
+                    {
+                        <tr>
+                            <td class="small text-muted">@t.Date.ToString("dd-MMM-yyyy")</td>
+                            <td>
+                                <span class="badge @(t.Type == "Bill" ? "bg-danger-subtle text-danger" : "bg-success-subtle text-success")" style="font-size: 0.72rem;">
+                                    @t.Type
+                                </span>
+                            </td>
+                            <td class="font-monospace fw-bold small">@t.ReferenceNumber</td>
+                            <td class="small">@t.Description</td>
+                            <td class="text-end font-monospace @(t.Debit > 0 ? "fw-semibold text-danger" : "text-muted")">
+                                @(t.Debit > 0 ? $"₹{t.Debit:N2}" : "—")
+                            </td>
+                            <td class="text-end font-monospace text-success @(t.Credit > 0 ? "fw-semibold" : "text-muted")">
+                                @(t.Credit > 0 ? $"₹{t.Credit:N2}" : "—")
+                            </td>
+                            <td class="text-end font-monospace fw-bold text-dark">
+                                ₹@t.RunningBalance.ToString("N2")
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+            <tfoot class="table-light fw-bold fs-6">
+                <tr>
+                    <td colspan="4" class="text-uppercase small">Total Period Activity &amp; Closing Payable:</td>
+                    <td class="text-end font-monospace text-danger">₹@Model.TotalBilled.ToString("N2")</td>
+                    <td class="text-end font-monospace text-success">₹@Model.TotalPaid.ToString("N2")</td>
+                    <td class="text-end font-monospace text-danger fs-5">₹@Model.ClosingBalance.ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

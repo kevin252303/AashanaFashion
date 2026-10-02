@@ -1,0 +1,128 @@
+@model AashanaFashion.Models.TrialBalanceViewModel
+@{
+    ViewData["Title"] = $"Trial Balance — As of {Model.AsOfDate:dd MMM yyyy}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="page-title mb-1">⚖️ Trial Balance</h1>
+        <p class="page-sub mb-0 text-muted">Summary of all double-entry debit and credit balances verifying ledger mathematical accuracy</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+            🖨️ Print / Save PDF
+        </button>
+        <a asp-action="ProfitAndLoss" class="btn btn-outline-success">
+            📈 Profit &amp; Loss
+        </a>
+        <a asp-action="BalanceSheet" class="btn btn-outline-info">
+            📊 Balance Sheet
+        </a>
+    </div>
+</div>
+
+<!-- Date Filter & Balance Indicator -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-3">
+        <form method="get" asp-action="TrialBalance" class="row g-2 align-items-center">
+            <div class="col-md-auto">
+                <span class="small fw-bold text-secondary">As of Date:</span>
+            </div>
+            <div class="col-md-3">
+                <input type="date" name="asOfDate" value="@Model.AsOfDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-sm btn-dark">Update</button>
+            </div>
+            <div class="col-md-auto ms-auto d-flex align-items-center gap-2">
+                @if (Model.IsBalanced)
+                {
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
+                        ✅ Books in Balance: ₹@Model.TotalDebit.ToString("N2")
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fs-6">
+                        ⚠️ Imbalance Detected (Diff: ₹@Math.Abs(Model.TotalDebit - Model.TotalCredit).ToString("N2"))
+                    </span>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Trial Balance Table -->
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold">General Ledger Accounts (@Model.Rows.Count accounts)</h6>
+        <span class="text-muted small">Company: <strong>@Model.Company.CompanyName</strong></span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+                <tr>
+                    <th style="width: 120px;">Code</th>
+                    <th>Account Name</th>
+                    <th>Type</th>
+                    <th class="text-end" style="width: 160px;">Period Debit (₹)</th>
+                    <th class="text-end" style="width: 160px;">Period Credit (₹)</th>
+                    <th class="text-end" style="width: 160px;">Closing Debit (₹)</th>
+                    <th class="text-end" style="width: 160px;">Closing Credit (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Rows.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            No accounts found.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-action="GeneralLedger" asp-route-accountId="@r.AccountId" class="font-monospace fw-bold text-decoration-none">
+                                    @r.Code
+                                </a>
+                            </td>
+                            <td>
+                                <a asp-action="GeneralLedger" asp-route-accountId="@r.AccountId" class="text-dark fw-semibold text-decoration-none">
+                                    @r.Name
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">@r.Type</span>
+                            </td>
+                            <td class="text-end font-monospace text-muted">
+                                @(r.PeriodDebit > 0 ? r.PeriodDebit.ToString("N2") : "—")
+                            </td>
+                            <td class="text-end font-monospace text-muted">
+                                @(r.PeriodCredit > 0 ? r.PeriodCredit.ToString("N2") : "—")
+                            </td>
+                            <td class="text-end font-monospace fw-bold @(r.ClosingDebit > 0 ? "text-dark" : "text-muted")">
+                                @(r.ClosingDebit > 0 ? $"₹{r.ClosingDebit:N2}" : "—")
+                            </td>
+                            <td class="text-end font-monospace fw-bold @(r.ClosingCredit > 0 ? "text-dark" : "text-muted")">
+                                @(r.ClosingCredit > 0 ? $"₹{r.ClosingCredit:N2}" : "—")
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+            <tfoot class="table-light fw-bold fs-6">
+                <tr>
+                    <td colspan="3" class="text-uppercase small">Grand Totals:</td>
+                    <td class="text-end font-monospace">₹@Model.Rows.Sum(r => r.PeriodDebit).ToString("N2")</td>
+                    <td class="text-end font-monospace">₹@Model.Rows.Sum(r => r.PeriodCredit).ToString("N2")</td>
+                    <td class="text-end font-monospace text-primary">₹@Model.TotalDebit.ToString("N2")</td>
+                    <td class="text-end font-monospace text-primary">₹@Model.TotalCredit.ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

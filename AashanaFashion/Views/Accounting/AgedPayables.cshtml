@@ -1,0 +1,188 @@
+@model AashanaFashion.Models.AgedPayablesViewModel
+@{
+    ViewData["Title"] = $"Aged Payables — As of {Model.AsOfDate:dd MMM yyyy}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="page-title mb-1">🏢 Accounts Payable (AP) Aging Analysis</h1>
+        <p class="page-sub mb-0 text-muted">Vendor bill liabilities and upcoming cash outflow scheduling (30 / 60 / 90+ days)</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="ThreeWayMatching" class="btn btn-outline-info">
+            🔍 3-Way Purchase Matching
+        </a>
+        <a asp-action="AgedReceivables" class="btn btn-outline-primary">
+            👥 Customer Receivables
+        </a>
+        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+            🖨️ Print Report
+        </button>
+    </div>
+</div>
+
+<!-- Date Filter -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-3">
+        <form method="get" asp-action="AgedPayables" class="row g-2 align-items-center">
+            <div class="col-md-auto">
+                <span class="small fw-bold text-secondary">Payables As Of Date:</span>
+            </div>
+            <div class="col-md-3">
+                <input type="date" name="asOfDate" value="@Model.AsOfDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-sm btn-dark">Recalculate</button>
+            </div>
+            <div class="col-md-auto ms-auto">
+                <span class="text-muted small">Company: <strong>@Model.Company.CompanyName</strong></span>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2">
+        <div class="card border-0 shadow-sm rounded-3 h-100 bg-danger-subtle text-danger border-danger">
+            <div class="card-body p-3">
+                <span class="small text-uppercase fw-bold d-block text-danger">Total Payables</span>
+                <h4 class="fw-bold my-1 text-danger">₹@Model.TotalOutstanding.ToString("N2")</h4>
+                <small class="text-dark fw-semibold">Across @Model.Vendors.Count vendor(s)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-3">
+                <span class="text-muted small text-uppercase fw-semibold d-block">Current (Not Due)</span>
+                <h4 class="fw-bold my-1 text-success">₹@Model.TotalCurrent.ToString("N2")</h4>
+                <small class="text-muted">Within payment terms</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-3">
+                <span class="text-muted small text-uppercase fw-semibold d-block">1 – 30 Days Due</span>
+                <h4 class="fw-bold my-1 text-warning">₹@Model.Total1To30.ToString("N2")</h4>
+                <small class="text-muted">Due this month</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-3">
+                <span class="text-muted small text-uppercase fw-semibold d-block">31 – 60 Days Overdue</span>
+                <h4 class="fw-bold my-1" style="color: #fd7e14;">₹@Model.Total31To60.ToString("N2")</h4>
+                <small class="text-muted">Supplier follow-up</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-3">
+                <span class="text-muted small text-uppercase fw-semibold d-block">61 – 90 Days Overdue</span>
+                <h4 class="fw-bold my-1 text-danger">₹@Model.Total61To90.ToString("N2")</h4>
+                <small class="text-muted">Urgent payout</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card border-0 shadow-sm rounded-3 h-100 bg-dark-subtle border-dark">
+            <div class="card-body p-3">
+                <span class="text-dark small text-uppercase fw-bold d-block">90+ Days Overdue</span>
+                <h4 class="fw-bold my-1 text-dark">₹@Model.Total90Plus.ToString("N2")</h4>
+                <small class="text-muted">Critical vendor credit</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Aged Payables Grid -->
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold">Vendor Payable Breakdown</h6>
+        <span class="text-muted small">@Model.Vendors.Count vendor(s)</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+                <tr>
+                    <th>Vendor / Supplier</th>
+                    <th>City</th>
+                    <th class="text-center">Bills</th>
+                    <th class="text-end">Total Payable (₹)</th>
+                    <th class="text-end text-success">Current (₹)</th>
+                    <th class="text-end text-warning">1-30 Days</th>
+                    <th class="text-end" style="color: #fd7e14;">31-60 Days</th>
+                    <th class="text-end text-danger">61-90 Days</th>
+                    <th class="text-end text-danger">90+ Days</th>
+                    <th class="text-center" style="width: 150px;">Statement</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Vendors.Any())
+                {
+                    <tr>
+                        <td colspan="10" class="text-center py-5 text-muted">
+                            🎉 No pending vendor liabilities as of @Model.AsOfDate.ToString("dd-MMM-yyyy")!
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var v in Model.Vendors)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-action="VendorStatement" asp-route-vendorId="@v.VendorId" class="fw-bold text-decoration-none">
+                                    @v.VendorName
+                                </a>
+                                @if (!string.IsNullOrEmpty(v.Gstin))
+                                {
+                                    <small class="d-block font-monospace text-muted" style="font-size: 0.72rem;">@v.Gstin</small>
+                                }
+                            </td>
+                            <td class="small text-muted">@(v.City ?? "—")</td>
+                            <td class="text-center"><span class="badge bg-light text-dark border">@v.BillCount</span></td>
+                            <td class="text-end fw-bold font-monospace text-danger">₹@v.TotalOutstanding.ToString("N2")</td>
+                            <td class="text-end font-monospace @(v.CurrentNotDue > 0 ? "text-success fw-semibold" : "text-muted")">
+                                @(v.CurrentNotDue > 0 ? $"₹{v.CurrentNotDue:N2}" : "—")
+                            </td>
+                            <td class="text-end font-monospace @(v.Days1To30 > 0 ? "text-warning fw-semibold" : "text-muted")">
+                                @(v.Days1To30 > 0 ? $"₹{v.Days1To30:N2}" : "—")
+                            </td>
+                            <td class="text-end font-monospace @(v.Days31To60 > 0 ? "fw-semibold" : "text-muted")" style="@(v.Days31To60 > 0 ? "color: #fd7e14;" : "")">
+                                @(v.Days31To60 > 0 ? $"₹{v.Days31To60:N2}" : "—")
+                            </td>
+                            <td class="text-end font-monospace @(v.Days61To90 > 0 ? "text-danger fw-semibold" : "text-muted")">
+                                @(v.Days61To90 > 0 ? $"₹{v.Days61To90:N2}" : "—")
+                            </td>
+                            <td class="text-end font-monospace @(v.Days90Plus > 0 ? "text-danger fw-bold" : "text-muted")">
+                                @(v.Days90Plus > 0 ? $"₹{v.Days90Plus:N2}" : "—")
+                            </td>
+                            <td class="text-center">
+                                <a asp-action="VendorStatement" asp-route-vendorId="@v.VendorId" class="btn btn-sm btn-outline-secondary py-1 px-2">
+                                    📜 Statement
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+            <tfoot class="table-light fw-bold fs-6">
+                <tr>
+                    <td colspan="3">Grand Total Payables:</td>
+                    <td class="text-end font-monospace text-danger">₹@Model.TotalOutstanding.ToString("N2")</td>
+                    <td class="text-end font-monospace text-success">₹@Model.TotalCurrent.ToString("N2")</td>
+                    <td class="text-end font-monospace text-warning">₹@Model.Total1To30.ToString("N2")</td>
+                    <td class="text-end font-monospace" style="color: #fd7e14;">₹@Model.Total31To60.ToString("N2")</td>
+                    <td class="text-end font-monospace text-danger">₹@Model.Total61To90.ToString("N2")</td>
+                    <td class="text-end font-monospace text-danger">₹@Model.Total90Plus.ToString("N2")</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

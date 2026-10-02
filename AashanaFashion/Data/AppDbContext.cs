@@ -70,6 +70,10 @@ namespace AashanaFashion.Data
         public DbSet<BarcodeTagConfig> BarcodeTagConfigs { get; set; }
         public DbSet<Company> Companies { get; set; }
         public DbSet<UserCompany> UserCompanies { get; set; }
+        public DbSet<Account> Accounts { get; set; }
+        public DbSet<Journal> Journals { get; set; }
+        public DbSet<JournalEntry> JournalEntries { get; set; }
+        public DbSet<JournalEntryLine> JournalEntryLines { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -1000,6 +1004,36 @@ namespace AashanaFashion.Data
                     .WithMany()
                     .HasForeignKey(d => d.CompanyId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Account>(entity =>
+            {
+                entity.HasIndex(a => new { a.CompanyId, a.Code }).IsUnique();
+                entity.HasOne(a => a.Company).WithMany().HasForeignKey(a => a.CompanyId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(a => a.ParentAccount).WithMany().HasForeignKey(a => a.ParentAccountId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Journal>(entity =>
+            {
+                entity.HasIndex(j => new { j.CompanyId, j.Code }).IsUnique();
+                entity.HasOne(j => j.Company).WithMany().HasForeignKey(j => j.CompanyId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(j => j.DefaultDebitAccount).WithMany().HasForeignKey(j => j.DefaultDebitAccountId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(j => j.DefaultCreditAccount).WithMany().HasForeignKey(j => j.DefaultCreditAccountId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<JournalEntry>(entity =>
+            {
+                entity.HasIndex(e => new { e.CompanyId, e.EntryNumber }).IsUnique();
+                entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Journal).WithMany().HasForeignKey(e => e.JournalId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasMany(e => e.Lines).WithOne(l => l.JournalEntry).HasForeignKey(l => l.JournalEntryId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<JournalEntryLine>(entity =>
+            {
+                entity.HasOne(l => l.Account).WithMany(a => a.Lines).HasForeignKey(l => l.AccountId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(l => l.Customer).WithMany().HasForeignKey(l => l.CustomerId).OnDelete(DeleteBehavior.SetNull);
+                entity.HasOne(l => l.Vendor).WithMany().HasForeignKey(l => l.VendorId).OnDelete(DeleteBehavior.SetNull);
             });
         }
     }

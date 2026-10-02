@@ -1,0 +1,242 @@
+@model AashanaFashion.Models.Gstr2bReconciliationViewModel
+@{
+    ViewData["Title"] = $"GSTR-2B ITC Matching — {Model.MonthName} {Model.Year}";
+    int selectedYear = ViewBag.SelectedYear;
+    int selectedMonth = ViewBag.SelectedMonth;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a asp-action="Index" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-sm btn-outline-secondary">
+                ← Back to GST Hub
+            </a>
+            <h1 class="page-title mb-0">🔍 GSTR-2B Input Tax Credit (ITC) Reconciliation</h1>
+        </div>
+        <p class="page-sub mb-0 text-muted">
+            Reconcile internal Purchase Bills with auto-drafted GSTR-2B statements from suppliers to safeguard your Input Tax Credit.
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-outline-primary">
+            🏛️ GSTR-1 & 3B Hub
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Success!</strong> @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Error:</strong> @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Upload & Filter Card -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <form method="post" asp-action="ReconcileGstr2b" enctype="multipart/form-data" class="row g-3 align-items-center">
+            @Html.AntiForgeryToken()
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-secondary mb-1">Tax Month</label>
+                <select name="month" class="form-select form-select-sm">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        var mName = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m);
+                        <option value="@m" selected="@(m == selectedMonth)">@mName</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-secondary mb-1">Financial Year</label>
+                <select name="year" class="form-select form-select-sm">
+                    @for (int y = DateTime.Today.Year; y >= DateTime.Today.Year - 3; y--)
+                    {
+                        <option value="@y" selected="@(y == selectedYear)">@y</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small fw-bold text-secondary mb-1">Upload GSTR-2B File (JSON from gst.gov.in)</label>
+                <input type="file" name="gstr2bFile" class="form-control form-control-sm" accept=".json" required />
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                    🚀 Run Reconciliation Match
+                </button>
+            </div>
+        </form>
+        @if (Model.HasUploadedFile && !string.IsNullOrEmpty(Model.FileName))
+        {
+            <div class="mt-2 text-muted small">
+                📄 Active File: <span class="badge bg-light text-dark border">@Model.FileName</span> for period <strong>@Model.MonthName @Model.Year</strong>
+            </div>
+        }
+    </div>
+</div>
+
+@if (Model.HasUploadedFile)
+{
+    <!-- Reconciliation Summary KPI Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm rounded-3 h-100 bg-success-subtle border-success">
+                <div class="card-body p-3">
+                    <span class="small text-uppercase fw-bold text-success d-block">Matched Invoices</span>
+                    <h3 class="fw-bold my-1 text-success">@Model.MatchedCount</h3>
+                    <small class="text-success">₹@Model.SafeEligibleItc.ToString("N2") Safe ITC to Claim</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm rounded-3 h-100 bg-warning-subtle border-warning">
+                <div class="card-body p-3">
+                    <span class="small text-uppercase fw-bold text-warning d-block">Missing in GSTR-2B</span>
+                    <h3 class="fw-bold my-1 text-warning">@Model.MissingIn2bCount</h3>
+                    <small class="text-dark">₹@Model.AtRiskItc.ToString("N2") ITC at risk (Follow up)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm rounded-3 h-100 bg-info-subtle border-info">
+                <div class="card-body p-3">
+                    <span class="small text-uppercase fw-bold text-info d-block">Missing in ERP</span>
+                    <h3 class="fw-bold my-1 text-info">@Model.MissingInErpCount</h3>
+                    <small class="text-dark">Supplier filed, but bill not in ERP</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm rounded-3 h-100 bg-danger-subtle border-danger">
+                <div class="card-body p-3">
+                    <span class="small text-uppercase fw-bold text-danger d-block">Value Mismatch</span>
+                    <h3 class="fw-bold my-1 text-danger">@Model.MismatchedCount</h3>
+                    <small class="text-danger">Taxable value / Tax diff detected</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Results Grid -->
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold">Detailed Reconciliation Comparison Sheet</h6>
+            <span class="badge bg-light text-dark border">@Model.Items.Count items total</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th>Status</th>
+                        <th>Supplier GSTIN</th>
+                        <th>Supplier / Vendor</th>
+                        <th>Invoice #</th>
+                        <th>Date</th>
+                        <th class="text-end">ERP Taxable</th>
+                        <th class="text-end">ERP Tax</th>
+                        <th class="text-end">2B Taxable</th>
+                        <th class="text-end">2B Tax</th>
+                        <th class="text-end">Diff</th>
+                        <th>Action Required</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Items.Any())
+                    {
+                        <tr>
+                            <td colspan="11" class="text-center py-4 text-muted">
+                                No records to compare for this tax period.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    @if (item.MatchStatus == "Matched")
+                                    {
+                                        <span class="badge bg-success-subtle text-success">✅ Matched</span>
+                                    }
+                                    else if (item.MatchStatus == "Missing in GSTR-2B")
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning">⚠️ Missing in 2B</span>
+                                    }
+                                    else if (item.MatchStatus == "Missing in ERP")
+                                    {
+                                        <span class="badge bg-info-subtle text-info">ℹ️ In 2B Only</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger">❌ Diff</span>
+                                    }
+                                </td>
+                                <td><span class="font-monospace fw-bold">@item.SupplierGstin</span></td>
+                                <td class="fw-semibold">@item.SupplierName</td>
+                                <td class="font-monospace">@item.InvoiceNumber</td>
+                                <td class="small text-muted">@(item.InvoiceDate?.ToString("dd-MMM-yyyy") ?? "—")</td>
+                                <td class="text-end">₹@item.ErpTaxableValue.ToString("N2")</td>
+                                <td class="text-end fw-semibold">₹@item.ErpTaxAmount.ToString("N2")</td>
+                                <td class="text-end">₹@item.Gstr2bTaxableValue.ToString("N2")</td>
+                                <td class="text-end fw-semibold">₹@item.Gstr2bTaxAmount.ToString("N2")</td>
+                                <td class="text-end fw-bold @(item.Difference == 0 ? "text-success" : "text-danger")">
+                                    ₹@item.Difference.ToString("N2")
+                                </td>
+                                <td class="small">
+                                    @if (item.MatchStatus == "Matched")
+                                    {
+                                        <span class="text-success fw-semibold">Eligible for GSTR-3B ITC</span>
+                                    }
+                                    else if (item.MatchStatus == "Missing in GSTR-2B")
+                                    {
+                                        <span class="text-danger fw-semibold">Ask supplier to file GSTR-1</span>
+                                    }
+                                    else if (item.MatchStatus == "Missing in ERP")
+                                    {
+                                        <a asp-controller="Purchase" asp-action="Create" class="btn btn-xs btn-outline-primary py-0 px-1 text-decoration-none">
+                                            + Enter PO Bill
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger">Review tax discrepancy</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Explanatory banner before file is uploaded -->
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4 text-center py-5">
+            <div class="display-6 mb-3">📑</div>
+            <h5 class="fw-bold mb-2">Upload GSTR-2B Statement to Start Reconciliation</h5>
+            <p class="text-muted mx-auto" style="max-width: 600px;">
+                You currently have <strong>@Model.TotalErpBillsCount purchase bills</strong> (₹@Model.TotalErpItc.ToString("N2") Input Tax Credit) recorded in Aashana Fashion for @Model.MonthName @Model.Year.
+            </p>
+            <div class="card bg-light border-0 mx-auto text-start p-3 mt-4" style="max-width: 650px;">
+                <h6 class="fw-bold mb-2">📌 How to get your GSTR-2B JSON file:</h6>
+                <ol class="small text-muted mb-0 ps-3">
+                    <li>Log in to the <a href="https://services.gst.gov.in" target="_blank" class="fw-semibold">GST Portal</a> after the 14th of the month.</li>
+                    <li>Navigate to <strong>Return Dashboard</strong> &rarr; Select Financial Year & Return Period (<strong>@Model.MonthName @Model.Year</strong>).</li>
+                    <li>Under <strong>Auto-drafted ITC Statement for the month GSTR-2B</strong>, click <strong>Download</strong>.</li>
+                    <li>Click <strong>Generate JSON file to download</strong>, save it to your computer, and upload it above.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+}

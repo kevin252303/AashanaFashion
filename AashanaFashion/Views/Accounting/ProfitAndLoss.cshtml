@@ -1,0 +1,180 @@
+@model AashanaFashion.Models.ProfitAndLossViewModel
+@{
+    ViewData["Title"] = $"Profit & Loss Statement ({Model.FromDate:dd MMM yyyy} to {Model.ToDate:dd MMM yyyy})";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="page-title mb-1">📈 Profit &amp; Loss Statement (Income Statement)</h1>
+        <p class="page-sub mb-0 text-muted">Operating revenue, direct garment manufacturing costs, overhead expenses, and bottom-line profitability</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+            🖨️ Print / Save PDF
+        </button>
+        <a asp-action="BalanceSheet" class="btn btn-outline-primary">
+            📊 Balance Sheet
+        </a>
+    </div>
+</div>
+
+<!-- Date Filter Bar -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-3">
+        <form method="get" asp-action="ProfitAndLoss" class="row g-2 align-items-center">
+            <div class="col-md-auto">
+                <span class="small fw-bold text-secondary">Period:</span>
+            </div>
+            <div class="col-md-3">
+                <input type="date" name="fromDate" value="@Model.FromDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-auto">to</div>
+            <div class="col-md-3">
+                <input type="date" name="toDate" value="@Model.ToDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-sm btn-dark">Update Report</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-3">
+                <span class="text-muted small text-uppercase fw-semibold d-block">Total Revenue</span>
+                <h3 class="fw-bold my-1 text-primary">₹@Model.TotalIncome.ToString("N2")</h3>
+                <small class="text-muted">Net sales &amp; job work</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-3">
+                <span class="text-muted small text-uppercase fw-semibold d-block">Cost of Sales (COGS)</span>
+                <h3 class="fw-bold my-1 text-secondary">₹@Model.CostOfGoodsSold.TotalAmount.ToString("N2")</h3>
+                <small class="text-muted">Direct fabric &amp; job charges</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100 bg-info-subtle border-info">
+            <div class="card-body p-3">
+                <span class="text-info small text-uppercase fw-bold d-block">Gross Profit</span>
+                <h3 class="fw-bold my-1 text-info">₹@Model.GrossProfit.ToString("N2")</h3>
+                <small class="text-dark fw-semibold">@Model.GrossMarginPercentage.ToString("F1")% Gross Margin</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100 @(Model.NetProfit >= 0 ? "bg-success-subtle border-success" : "bg-danger-subtle border-danger")">
+            <div class="card-body p-3">
+                <span class="@(Model.NetProfit >= 0 ? "text-success" : "text-danger") small text-uppercase fw-bold d-block">Net Profit</span>
+                <h3 class="fw-bold my-1 @(Model.NetProfit >= 0 ? "text-success" : "text-danger")">₹@Model.NetProfit.ToString("N2")</h3>
+                <small class="text-dark fw-semibold">@Model.NetMarginPercentage.ToString("F1")% Net Margin</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Formal Profit & Loss Statement Table -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold">Statement of Profit &amp; Loss</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+                <tr>
+                    <th>Particulars</th>
+                    <th style="width: 150px;">Account Code</th>
+                    <th class="text-end" style="width: 220px;">Amount (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 1. Income -->
+                <tr class="table-light">
+                    <td colspan="3" class="fw-bold text-uppercase small text-primary">I. Revenue from Operations</td>
+                </tr>
+                @foreach (var line in Model.OperatingRevenue.Lines)
+                {
+                    <tr>
+                        <td class="ps-4">@line.Name</td>
+                        <td class="font-monospace text-muted">@line.Code</td>
+                        <td class="text-end font-monospace">@line.Amount.ToString("N2")</td>
+                    </tr>
+                }
+                @if (Model.OtherIncome.Lines.Any())
+                {
+                    <tr class="table-light">
+                        <td colspan="3" class="fw-bold text-uppercase small text-secondary">II. Other Income</td>
+                    </tr>
+                    @foreach (var line in Model.OtherIncome.Lines)
+                    {
+                        <tr>
+                            <td class="ps-4">@line.Name</td>
+                            <td class="font-monospace text-muted">@line.Code</td>
+                            <td class="text-end font-monospace">@line.Amount.ToString("N2")</td>
+                        </tr>
+                    }
+                }
+                <tr class="fw-bold table-light">
+                    <td colspan="2">TOTAL REVENUE (I + II)</td>
+                    <td class="text-end font-monospace text-primary fs-6">₹@Model.TotalIncome.ToString("N2")</td>
+                </tr>
+
+                <!-- 2. Cost of Sales -->
+                <tr class="table-light">
+                    <td colspan="3" class="fw-bold text-uppercase small text-secondary">III. Cost of Goods Sold (Direct Costs)</td>
+                </tr>
+                @foreach (var line in Model.CostOfGoodsSold.Lines)
+                {
+                    <tr>
+                        <td class="ps-4">@line.Name</td>
+                        <td class="font-monospace text-muted">@line.Code</td>
+                        <td class="text-end font-monospace">@line.Amount.ToString("N2")</td>
+                    </tr>
+                }
+                <tr class="fw-bold" style="background-color: #f1f8ff;">
+                    <td colspan="2" class="text-info fs-6">GROSS PROFIT (Total Revenue – Cost of Sales)</td>
+                    <td class="text-end font-monospace text-info fs-6">₹@Model.GrossProfit.ToString("N2")</td>
+                </tr>
+
+                <!-- 3. Operating Expenses -->
+                <tr class="table-light">
+                    <td colspan="3" class="fw-bold text-uppercase small text-secondary">IV. Operating &amp; Administrative Expenses</td>
+                </tr>
+                @foreach (var line in Model.OperatingExpenses.Lines)
+                {
+                    <tr>
+                        <td class="ps-4">@line.Name</td>
+                        <td class="font-monospace text-muted">@line.Code</td>
+                        <td class="text-end font-monospace">@line.Amount.ToString("N2")</td>
+                    </tr>
+                }
+                @if (Model.FinancialExpenses.Lines.Any())
+                {
+                    <tr class="table-light">
+                        <td colspan="3" class="fw-bold text-uppercase small text-secondary">V. Financial Expenses</td>
+                    </tr>
+                    @foreach (var line in Model.FinancialExpenses.Lines)
+                    {
+                        <tr>
+                            <td class="ps-4">@line.Name</td>
+                            <td class="font-monospace text-muted">@line.Code</td>
+                            <td class="text-end font-monospace">@line.Amount.ToString("N2")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+            <tfoot class="fw-bold fs-5 @(Model.NetProfit >= 0 ? "table-success" : "table-danger")">
+                <tr>
+                    <td colspan="2">NET PROFIT / (LOSS) FOR THE PERIOD</td>
+                    <td class="text-end font-monospace">₹@Model.NetProfit.ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

@@ -1,5 +1,6 @@
 using AashanaFashion.Data;
 using AashanaFashion.Models;
+using AashanaFashion.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -11,10 +12,16 @@ namespace AashanaFashion.Controllers;
 public class AccountingController : Controller
 {
     private readonly AppDbContext _context;
+    private readonly IDoubleEntryService _doubleEntryService;
+    private readonly ICompanyContext _companyContext;
+    private readonly IAgingAndMatchingService _agingService;
 
-    public AccountingController(AppDbContext context)
+    public AccountingController(AppDbContext context, IDoubleEntryService doubleEntryService, ICompanyContext companyContext, IAgingAndMatchingService agingService)
     {
         _context = context;
+        _doubleEntryService = doubleEntryService;
+        _companyContext = companyContext;
+        _agingService = agingService;
     }
 
     // GET: /Accounting
@@ -357,4 +364,302 @@ public class AccountingController : Controller
         TempData["Success"] = $"Commission of ₹{entry.CommissionAmount:N2} marked as paid to {entry.SalesmanName}.";
         return RedirectToAction(nameof(Commissions));
     }
+
+    // ——— DOUBLE-ENTRY GENERAL LEDGER & CHART OF ACCOUNTS (OPTION B) ———
+
+    // GET: /Accounting/ChartOfAccounts
+    public async Task<IActionResult> ChartOfAccounts(AccountType? type)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        var accounts = await _doubleEntryService.GetAccountsAsync(companyId, type);
+
+        // Precompute current balances from JournalEntryLines
+        var accountIds = accounts.Select(a => a.Id).ToList();
+        var lines = await _context.JournalEntryLines
+            .Include(l => l.JournalEntry)
+            .Where(l => accountIds.Contains(l.AccountId) &&
+                        l.JournalEntry!.CompanyId == companyId &&
+                        l.JournalEntry.Status == JournalEntryStatus.Posted)
+            .GroupBy(l => l.AccountId)
+            .Select(g => new
+            {
+                AccountId = g.Key,
+                TotalDebit = g.Sum(x => x.Debit),
+                TotalCredit = g.Sum(x => x.Credit)
+            })
+            .ToDictionaryAsync(x => x.AccountId, x => (x.TotalDebit, x.TotalCredit));
+
+        ViewBag.Balances = lines;
+        ViewBag.SelectedType = type;
+        return View(accounts);
+    }
+
+    // POST: /Accounting/CreateAccount
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateAccount(Account model)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        model.CompanyId = companyId;
+
+        if (string.IsNullOrWhiteSpace(model.Code) || string.IsNullOrWhiteSpace(model.Name))
+        {
+            TempData["Error"] = "Account Code and Name are required.";
+            return RedirectToAction(nameof(ChartOfAccounts));
+        }
+
+        bool codeExists = await _context.Accounts.AnyAsync(a => a.CompanyId == companyId && a.Code == model.Code.Trim());
+        if (codeExists)
+        {
+            TempData["Error"] = $"Account code '{model.Code}' already exists.";
+            return RedirectToAction(nameof(ChartOfAccounts));
+        }
+
+        model.Code = model.Code.Trim();
+        model.Name = model.Name.Trim();
+        await _doubleEntryService.CreateAccountAsync(model);
+
+        TempData["Success"] = $"Account '{model.Code} - {model.Name}' created successfully.";
+        return RedirectToAction(nameof(ChartOfAccounts));
+    }
+
+    // GET: /Accounting/JournalEntries
+    public async Task<IActionResult> JournalEntries(DateTime? startDate, DateTime? endDate, int? journalId)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        var entries = await _doubleEntryService.GetJournalEntriesAsync(companyId, startDate, endDate, journalId);
+        ViewBag.Journals = await _doubleEntryService.GetJournalsAsync(companyId);
+        ViewBag.SelectedJournalId = journalId;
+        ViewBag.StartDate = startDate?.ToString("yyyy-MM-dd");
+        ViewBag.EndDate = endDate?.ToString("yyyy-MM-dd");
+
+        return View(entries);
+    }
+
+    // GET: /Accounting/JournalEntryDetails/5
+    public async Task<IActionResult> JournalEntryDetails(int id)
+    {
+        var entry = await _doubleEntryService.GetJournalEntryDetailsAsync(id);
+        if (entry == null) return NotFound();
+        return View(entry);
+    }
+
+    // GET: /Accounting/CreateJournalEntry
+    public async Task<IActionResult> CreateJournalEntry()
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        ViewBag.Journals = await _doubleEntryService.GetJournalsAsync(companyId);
+        ViewBag.Accounts = await _doubleEntryService.GetAccountsAsync(companyId);
+        ViewBag.Customers = await _context.Customers.Where(c => c.IsActive).OrderBy(c => c.CustomerName).ToListAsync();
+        ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+
+        var model = new CreateJournalEntryViewModel
+        {
+            Date = DateTime.Today
+        };
+        // Add two default lines
+        model.Lines.Add(new CreateJournalLineItem());
+        model.Lines.Add(new CreateJournalLineItem());
+
+        return View(model);
+    }
+
+    // POST: /Accounting/CreateJournalEntry
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateJournalEntry(CreateJournalEntryViewModel model)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+
+        var user = User.Identity?.Name ?? "Admin";
+        var result = await _doubleEntryService.CreateManualJournalEntryAsync(companyId, model, user);
+
+        if (!result.Success)
+        {
+            TempData["Error"] = result.ErrorMessage;
+            ViewBag.Journals = await _doubleEntryService.GetJournalsAsync(companyId);
+            ViewBag.Accounts = await _doubleEntryService.GetAccountsAsync(companyId);
+            ViewBag.Customers = await _context.Customers.Where(c => c.IsActive).OrderBy(c => c.CustomerName).ToListAsync();
+            ViewBag.Vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+            return View(model);
+        }
+
+        TempData["Success"] = $"Journal Entry {result.Entry?.EntryNumber} posted successfully.";
+        return RedirectToAction(nameof(JournalEntries));
+    }
+
+    // GET: /Accounting/TrialBalance
+    public async Task<IActionResult> TrialBalance(DateTime? asOfDate, DateTime? fromDate)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        DateTime targetDate = asOfDate ?? DateTime.Today;
+        var model = await _doubleEntryService.GetTrialBalanceAsync(companyId, targetDate, fromDate);
+        return View(model);
+    }
+
+    // GET: /Accounting/ProfitAndLoss
+    public async Task<IActionResult> ProfitAndLoss(DateTime? fromDate, DateTime? toDate)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        DateTime start = fromDate ?? new DateTime(DateTime.Today.Year, 1, 1);
+        DateTime end = toDate ?? DateTime.Today;
+
+        var model = await _doubleEntryService.GetProfitAndLossAsync(companyId, start, end);
+        return View(model);
+    }
+
+    // GET: /Accounting/BalanceSheet
+    public async Task<IActionResult> BalanceSheet(DateTime? asOfDate)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        DateTime targetDate = asOfDate ?? DateTime.Today;
+        var model = await _doubleEntryService.GetBalanceSheetAsync(companyId, targetDate);
+        return View(model);
+    }
+
+    // GET: /Accounting/GeneralLedger
+    public async Task<IActionResult> GeneralLedger(int? accountId, DateTime? fromDate, DateTime? toDate)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        var accounts = await _doubleEntryService.GetAccountsAsync(companyId);
+        ViewBag.Accounts = accounts;
+
+        DateTime start = fromDate ?? new DateTime(DateTime.Today.Year, 1, 1);
+        DateTime end = toDate ?? DateTime.Today;
+
+        ViewBag.FromDate = start.ToString("yyyy-MM-dd");
+        ViewBag.ToDate = end.ToString("yyyy-MM-dd");
+        ViewBag.SelectedAccountId = accountId;
+
+        if (!accountId.HasValue && accounts.Any())
+        {
+            // Default to Accounts Receivable or Cash
+            var defaultAcc = accounts.FirstOrDefault(a => a.Code == "103000") ?? accounts.First();
+            accountId = defaultAcc.Id;
+            ViewBag.SelectedAccountId = accountId;
+        }
+
+        if (accountId.HasValue)
+        {
+            var model = await _doubleEntryService.GetGeneralLedgerAccountAsync(companyId, accountId.Value, start, end);
+            return View(model);
+        }
+
+        return View(null);
+    }
+
+    // POST: /Accounting/SyncHistoricalEntries
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncHistoricalEntries()
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        await _doubleEntryService.EnsureDefaultChartOfAccountsAsync(companyId);
+
+        int invoiceCount = 0;
+        int receiptCount = 0;
+        int poCount = 0;
+        int paymentCount = 0;
+
+        // 1. Sync Tax Invoices
+        var invoices = await _context.TaxInvoices
+            .Where(i => i.CompanyId == companyId && i.PaymentStatus != InvoicePaymentStatus.Cancelled)
+            .Select(i => i.Id)
+            .ToListAsync();
+
+        foreach (var invId in invoices)
+        {
+            var entry = await _doubleEntryService.PostTaxInvoiceAsync(invId);
+            if (entry != null) invoiceCount++;
+        }
+
+        // 2. Sync Payment Receipts
+        var receipts = await _context.PaymentReceipts
+            .Where(r => r.CompanyId == companyId)
+            .Select(r => r.Id)
+            .ToListAsync();
+
+        foreach (var recId in receipts)
+        {
+            var entry = await _doubleEntryService.PostPaymentReceiptAsync(recId);
+            if (entry != null) receiptCount++;
+        }
+
+        // 3. Sync Purchase Orders
+        var pos = await _context.PurchaseOrders
+            .Where(p => p.CompanyId == companyId && p.Status != PurchaseOrderStatus.Cancelled)
+            .Select(p => p.Id)
+            .ToListAsync();
+
+        foreach (var poId in pos)
+        {
+            var entry = await _doubleEntryService.PostPurchaseOrderBillAsync(poId);
+            if (entry != null) poCount++;
+        }
+
+        // 4. Sync Vendor Payments
+        var payments = await _context.VendorPayments
+            .Select(p => p.Id)
+            .ToListAsync();
+
+        foreach (var payId in payments)
+        {
+            var entry = await _doubleEntryService.PostVendorPaymentAsync(payId);
+            if (entry != null) paymentCount++;
+        }
+
+        TempData["Success"] = $"Double-entry synchronization complete! Synchronized: {invoiceCount} Sales Invoices, {receiptCount} Receipts, {poCount} Purchase Bills, {paymentCount} Vendor Payouts.";
+        return RedirectToAction(nameof(JournalEntries));
+    }
+
+    // ——— AGING ANALYSIS & 3-WAY MATCHING (OPTION C) ———
+
+    // GET: /Accounting/AgedReceivables
+    public async Task<IActionResult> AgedReceivables(DateTime? asOfDate)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        DateTime target = asOfDate ?? DateTime.Today;
+        var model = await _agingService.GetAgedReceivablesAsync(companyId, target);
+        return View(model);
+    }
+
+    // GET: /Accounting/CustomerStatement?customerId=5
+    public async Task<IActionResult> CustomerStatement(int customerId, DateTime? fromDate, DateTime? toDate)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        DateTime start = fromDate ?? new DateTime(DateTime.Today.Year, 1, 1);
+        DateTime end = toDate ?? DateTime.Today;
+
+        var model = await _agingService.GetCustomerStatementAsync(companyId, customerId, start, end);
+        return View(model);
+    }
+
+    // GET: /Accounting/AgedPayables
+    public async Task<IActionResult> AgedPayables(DateTime? asOfDate)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        DateTime target = asOfDate ?? DateTime.Today;
+        var model = await _agingService.GetAgedPayablesAsync(companyId, target);
+        return View(model);
+    }
+
+    // GET: /Accounting/VendorStatement?vendorId=3
+    public async Task<IActionResult> VendorStatement(int vendorId, DateTime? fromDate, DateTime? toDate)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        DateTime start = fromDate ?? new DateTime(DateTime.Today.Year, 1, 1);
+        DateTime end = toDate ?? DateTime.Today;
+
+        var model = await _agingService.GetVendorStatementAsync(companyId, vendorId, start, end);
+        return View(model);
+    }
+
+    // GET: /Accounting/ThreeWayMatching
+    public async Task<IActionResult> ThreeWayMatching(string? status)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        var model = await _agingService.GetThreeWayMatchingAsync(companyId, status);
+        return View(model);
+    }
 }
+

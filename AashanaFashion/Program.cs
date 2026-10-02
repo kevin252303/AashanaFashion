@@ -26,6 +26,9 @@ builder.Services.AddScoped<IReadyInventoryService, ReadyInventoryService>();
 builder.Services.AddScoped<IJobSlipService, JobSlipService>();
 builder.Services.AddScoped<IEInvoiceService, EInvoiceService>();
 builder.Services.AddScoped<ICompanyContext, CompanyContext>();
+builder.Services.AddScoped<IGstReturnService, GstReturnService>();
+builder.Services.AddScoped<IDoubleEntryService, DoubleEntryService>();
+builder.Services.AddScoped<IAgingAndMatchingService, AgingAndMatchingService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -89,7 +92,7 @@ using (var scope = app.Services.CreateScope())
         "Purchase", "Dying", "RollPress", "PMS", "RawMaterial",
         "Inventory", "SalesOrder", "Invoice", "QualityControl", "Barcode",
         "Employee", "Attendance", "Salary", "BiometricDevice", "Accounting",
-        "UserManagement", "Role", "ProcessMaster"
+        "UserManagement", "Role", "ProcessMaster", "GstReturn"
     };
 
     var standardRoles = new[]
