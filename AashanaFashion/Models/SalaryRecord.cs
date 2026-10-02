@@ -11,9 +11,10 @@ namespace AashanaFashion.Models
     }
 
     [Table("SalaryRecords")]
-    public class SalaryRecord
+    public class SalaryRecord : IMustHaveTenant
     {
         public int Id { get; set; }
+        public int TenantId { get; set; } = 1;
 
         [Required]
         public int EmployeeId { get; set; }

@@ -1,12 +1,21 @@
 using AashanaFashion.Models;
+using AashanaFashion.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace AashanaFashion.Data
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+        private readonly ITenantContext? _tenantContext;
 
+        public AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext? tenantContext = null) : base(options)
+        {
+            _tenantContext = tenantContext;
+        }
+
+        public int CurrentTenantId => _tenantContext?.CurrentTenantId ?? 1;
+
+        public DbSet<Tenant> Tenants { get; set; }
         public DbSet<ProductionOrder> ProductionOrders { get; set; }
         public DbSet<ProductionOrderDetail> ProductionOrderDetails { get; set; }
         public DbSet<AppUser> Users { get; set; }
@@ -134,7 +143,7 @@ namespace AashanaFashion.Data
                 .HasColumnType("decimal(18,2)");
 
             modelBuilder.Entity<AppUser>()
-                .HasIndex(u => u.Username)
+                .HasIndex(u => new { u.TenantId, u.Username })
                 .IsUnique();
 
             modelBuilder.Entity<AppUser>()
@@ -594,7 +603,7 @@ namespace AashanaFashion.Data
 
             // ——— HR, Attendance & Payroll entities ———
             modelBuilder.Entity<Employee>()
-                .HasIndex(e => e.EmployeeCode)
+                .HasIndex(e => new { e.TenantId, e.EmployeeCode })
                 .IsUnique();
 
             modelBuilder.Entity<Employee>()
@@ -869,6 +878,27 @@ namespace AashanaFashion.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // ——— Multi-Tenancy SaaS Core Configuration & Seeding ———
+            modelBuilder.Entity<Tenant>(entity =>
+            {
+                entity.HasKey(t => t.Id);
+                entity.HasIndex(t => t.Subdomain).IsUnique();
+
+                entity.HasData(new Tenant
+                {
+                    Id = 1,
+                    Subdomain = "default",
+                    BusinessName = "Aashana Fashion",
+                    PlanType = SubscriptionTier.Growth,
+                    Status = TenantStatus.Active,
+                    AllowedErpSeats = 10,
+                    AllowedEmployeeRecords = 50,
+                    TrialEndsAt = new DateTime(2099, 1, 1),
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1)
+                });
+            });
+
             // ——— Multi-Company Entity Configuration & Seeding ———
             modelBuilder.Entity<Company>(entity =>
             {
@@ -879,6 +909,7 @@ namespace AashanaFashion.Data
                 entity.HasData(new Company
                 {
                     Id = 1,
+                    TenantId = 1,
                     CompanyName = "Aashana Fashion",
                     CompanyCode = "AF",
                     Gstin = "24AABCA1234F1Z8",
@@ -1035,6 +1066,53 @@ namespace AashanaFashion.Data
                 entity.HasOne(l => l.Customer).WithMany().HasForeignKey(l => l.CustomerId).OnDelete(DeleteBehavior.SetNull);
                 entity.HasOne(l => l.Vendor).WithMany().HasForeignKey(l => l.VendorId).OnDelete(DeleteBehavior.SetNull);
             });
+
+            // ——— Multi-Tenancy Global Query Filters for all entities implementing IMustHaveTenant ———
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                if (typeof(IMustHaveTenant).IsAssignableFrom(entityType.ClrType))
+                {
+                    modelBuilder.Entity(entityType.ClrType)
+                        .Property(nameof(IMustHaveTenant.TenantId))
+                        .HasDefaultValue(1);
+
+                    var method = typeof(AppDbContext)
+                        .GetMethod(nameof(ConfigureTenantFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                        .MakeGenericMethod(entityType.ClrType);
+                    method?.Invoke(this, new object[] { modelBuilder });
+                }
+            }
+        }
+
+        private void ConfigureTenantFilter<TEntity>(ModelBuilder modelBuilder) where TEntity : class, IMustHaveTenant
+        {
+            modelBuilder.Entity<TEntity>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
+        }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            SetTenantIds();
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+
+        public override int SaveChanges()
+        {
+            SetTenantIds();
+            return base.SaveChanges();
+        }
+
+        private void SetTenantIds()
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0) tenantId = 1;
+
+            foreach (var entry in ChangeTracker.Entries<IMustHaveTenant>())
+            {
+                if (entry.State == EntityState.Added && entry.Entity.TenantId == 0)
+                {
+                    entry.Entity.TenantId = tenantId;
+                }
+            }
         }
     }
 }

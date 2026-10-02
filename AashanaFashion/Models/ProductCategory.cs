@@ -3,9 +3,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AashanaFashion.Models;
 
-public class ProductCategory
+public class ProductCategory : IMustHaveTenant
 {
     public int Id { get; set; }
+    public int TenantId { get; set; } = 1;
 
     [Required(ErrorMessage = "Category Name is required.")]
     [StringLength(100)]

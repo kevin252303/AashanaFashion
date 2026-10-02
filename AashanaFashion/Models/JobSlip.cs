@@ -6,9 +6,10 @@ using System.Linq;
 
 namespace AashanaFashion.Models;
 
-public class JobSlip
+public class JobSlip : IMustHaveTenant
 {
     public int Id { get; set; }
+    public int TenantId { get; set; } = 1;
 
     [Required]
     [MaxLength(60)]

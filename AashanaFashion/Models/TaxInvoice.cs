@@ -36,10 +36,11 @@ public enum PaymentMode
     Card
 }
 
-public class TaxInvoice
+public class TaxInvoice : IMustHaveTenant
 {
     public int Id { get; set; }
 
+    public int TenantId { get; set; } = 1;
     public int CompanyId { get; set; } = 1;
     public Company? Company { get; set; }
 
@@ -236,10 +237,11 @@ public class TaxInvoiceItem
     public decimal TotalAmount { get; set; }
 }
 
-public class PaymentReceipt
+public class PaymentReceipt : IMustHaveTenant
 {
     public int Id { get; set; }
 
+    public int TenantId { get; set; } = 1;
     public int CompanyId { get; set; } = 1;
     public Company? Company { get; set; }
 
@@ -270,9 +272,10 @@ public class PaymentReceipt
     public DateTime CreatedDate { get; set; } = DateTime.Now;
 }
 
-public class VendorPayment
+public class VendorPayment : IMustHaveTenant
 {
     public int Id { get; set; }
+    public int TenantId { get; set; } = 1;
 
     [Required]
     [StringLength(50)]

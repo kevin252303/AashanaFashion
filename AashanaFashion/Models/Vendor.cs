@@ -2,9 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AashanaFashion.Models;
 
-public class Vendor
+public class Vendor : IMustHaveTenant
 {
     public int Id { get; set; }
+    public int TenantId { get; set; } = 1;
 
     // ——— Existing fields ———
     [Required]

@@ -43,10 +43,11 @@ public enum ReadyProductTransactionType
 }
 
 [Table("ReadyProducts")]
-public class ReadyProduct
+public class ReadyProduct : IMustHaveTenant
 {
     public int Id { get; set; }
 
+    public int TenantId { get; set; } = 1;
     public int CompanyId { get; set; } = 1;
     public Company? Company { get; set; }
 

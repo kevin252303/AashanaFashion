@@ -33,12 +33,19 @@ namespace AashanaFashion.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            var user = _context.Users.FirstOrDefault(u =>
-                u.Username == model.Username && u.IsActive);
+            var user = _context.Users.FirstOrDefault(u => u.Username == model.Username && u.IsActive)
+                       ?? _context.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Username == model.Username && u.IsActive);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
             {
                 ModelState.AddModelError(string.Empty, "Invalid username or password.");
+                return View(model);
+            }
+
+            var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == user.TenantId);
+            if (tenant != null && tenant.Status == TenantStatus.Suspended)
+            {
+                ModelState.AddModelError(string.Empty, "Your company's subscription is suspended. Please contact billing/support.");
                 return View(model);
             }
 
@@ -47,7 +54,8 @@ namespace AashanaFashion.Controllers
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Role, user.Role),
                 new Claim("FullName", user.FullName),
-                new Claim("UserId", user.Id.ToString())
+                new Claim("UserId", user.Id.ToString()),
+                new Claim("TenantId", user.TenantId.ToString())
             };
 
             // SuperAdmin gets all roles as claims so every [Authorize(Roles=...)] passes
@@ -81,6 +89,14 @@ namespace AashanaFashion.Controllers
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 new ClaimsPrincipal(identity),
                 authProperties);
+
+            Response.Cookies.Append("AF_ACTIVE_TENANT_ID", user.TenantId.ToString(), new CookieOptions
+            {
+                Expires = DateTimeOffset.UtcNow.AddYears(1),
+                HttpOnly = true,
+                SameSite = SameSiteMode.Lax,
+                IsEssential = true
+            });
 
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return Redirect(returnUrl);

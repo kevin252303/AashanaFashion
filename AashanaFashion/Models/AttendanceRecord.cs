@@ -22,9 +22,10 @@ namespace AashanaFashion.Models
     }
 
     [Table("AttendanceRecords")]
-    public class AttendanceRecord
+    public class AttendanceRecord : IMustHaveTenant
     {
         public int Id { get; set; }
+        public int TenantId { get; set; } = 1;
 
         [Required]
         public int EmployeeId { get; set; }

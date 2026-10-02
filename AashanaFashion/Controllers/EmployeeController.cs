@@ -41,6 +41,14 @@ namespace AashanaFashion.Controllers
             }
 
             var employees = await query.OrderBy(e => e.EmployeeCode).ToListAsync();
+            var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
+            var activeEmployeeCount = await _context.Employees.CountAsync(e => e.IsActive);
+            var allowedEmployeeRecords = tenant?.AllowedEmployeeRecords ?? 50;
+
+            ViewBag.ActiveEmployeeCount = activeEmployeeCount;
+            ViewBag.AllowedEmployeeRecords = allowedEmployeeRecords;
+            ViewBag.RecordsRemaining = Math.Max(0, allowedEmployeeRecords - activeEmployeeCount);
+            ViewBag.IsQuotaFull = activeEmployeeCount >= allowedEmployeeRecords;
 
             ViewBag.Departments = await _context.Employees
                 .Select(e => e.Department)
@@ -56,8 +64,18 @@ namespace AashanaFashion.Controllers
         }
 
         // GET: /Employee/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
+            var activeCount = await _context.Employees.CountAsync(e => e.IsActive);
+            var allowed = tenant?.AllowedEmployeeRecords ?? 50;
+
+            if (activeCount >= allowed)
+            {
+                TempData["Error"] = $"Your organization has reached the limit of {allowed} Floor Worker records. Upgrade your subscription plan or add worker capacity in the Subscription portal.";
+                return RedirectToAction(nameof(Index));
+            }
+
             // Auto generate next code e.g. EMP-001
             var lastEmp = _context.Employees.OrderByDescending(e => e.Id).FirstOrDefault();
             var nextId = (lastEmp?.Id ?? 0) + 1;
@@ -81,6 +99,16 @@ namespace AashanaFashion.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Employee employee)
         {
+            var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
+            var activeCount = await _context.Employees.CountAsync(e => e.IsActive);
+            var allowed = tenant?.AllowedEmployeeRecords ?? 50;
+
+            if (activeCount >= allowed)
+            {
+                ModelState.AddModelError(string.Empty, $"Cannot register employee: Floor Worker quota reached ({activeCount}/{allowed} records used). Please purchase additional worker records in the Subscription module.");
+                return View(employee);
+            }
+
             if (await _context.Employees.AnyAsync(e => e.EmployeeCode == employee.EmployeeCode))
             {
                 ModelState.AddModelError("EmployeeCode", "An employee with this Employee Code already exists.");
@@ -246,6 +274,18 @@ namespace AashanaFashion.Controllers
             var employee = await _context.Employees.FindAsync(id);
             if (employee != null)
             {
+                if (!employee.IsActive)
+                {
+                    var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
+                    var activeCount = await _context.Employees.CountAsync(e => e.IsActive);
+                    var allowed = tenant?.AllowedEmployeeRecords ?? 50;
+                    if (activeCount >= allowed)
+                    {
+                        TempData["Error"] = $"Cannot activate employee '{employee.FullName}': Floor Worker records quota reached ({activeCount}/{allowed} records used). Please upgrade in the Subscription portal.";
+                        return RedirectToAction(nameof(Index));
+                    }
+                }
+
                 employee.IsActive = !employee.IsActive;
                 await _context.SaveChangesAsync();
                 TempData["Success"] = $"Employee '{employee.FullName}' {(employee.IsActive ? "activated" : "deactivated")}.";

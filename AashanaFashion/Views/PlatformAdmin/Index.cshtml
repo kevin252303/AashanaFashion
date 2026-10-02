@@ -1,0 +1,476 @@
+@model AashanaFashion.Models.PlatformDashboardViewModel
+
+@{
+    ViewData["Title"] = "SaaS Platform Owner Dashboard";
+    var search = ViewBag.Search as string;
+    var planFilter = ViewBag.PlanFilter as SubscriptionTier?;
+    var statusFilter = ViewBag.StatusFilter as TenantStatus?;
+    var expiringOnly = (bool)(ViewBag.ExpiringSoonOnly ?? false);
+}
+
+<div class="container-fluid py-3">
+    <!-- Top Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-warning text-dark px-2.5 py-1.5 fw-bold fs-7">
+                    <i class="bi bi-shield-shaded me-1"></i> PLATFORM OWNER
+                </span>
+                <h2 class="h3 fw-bold mb-0 text-dark">SaaS Client &amp; Revenue Operations</h2>
+            </div>
+            <p class="text-muted mb-0 small mt-1">
+                Central control for all subscribed client companies, recurring revenue (MRR/ARR), license seat allocations, and renewal cycles.
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+            <a asp-action="SwitchToDefault" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-house me-1"></i> Reset Context
+            </a>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTenantModal">
+                <i class="bi bi-plus-circle me-1"></i> Onboard New Client
+            </button>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-1"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- SaaS Metrics Overview (Top Cards) -->
+    <div class="row g-3 mb-4">
+        <!-- Metric 1: MRR & ARR -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card shadow-sm border-0 border-start border-primary border-4 h-100">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Monthly Recurring Revenue</span>
+                            <h3 class="fw-bold text-primary mb-1 mt-1">₹@Model.TotalMrr.ToString("N0")</h3>
+                            <small class="text-muted">
+                                ARR Run Rate: <strong class="text-dark">₹@Model.TotalArr.ToString("N0")</strong>
+                            </small>
+                        </div>
+                        <div class="bg-primary-subtle text-primary p-2.5 rounded-3">
+                            <i class="bi bi-currency-rupee fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 2: Active Clients -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card shadow-sm border-0 border-start border-success border-4 h-100">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Client Companies</span>
+                            <h3 class="fw-bold text-success mb-1 mt-1">@Model.ActiveTenants Active</h3>
+                            <small class="text-muted">
+                                @Model.TotalTenants Total &bull; @Model.TrialTenants in Trial &bull; @Model.SuspendedTenants Suspended
+                            </small>
+                        </div>
+                        <div class="bg-success-subtle text-success p-2.5 rounded-3">
+                            <i class="bi bi-buildings-fill fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 3: Expiring Soon Alert -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card shadow-sm border-0 border-start @(Model.ExpiringSoonCount > 0 ? "border-danger bg-danger-subtle" : "border-info") border-4 h-100">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Expiring Soon (≤7 Days)</span>
+                            <h3 class="fw-bold @(Model.ExpiringSoonCount > 0 ? "text-danger" : "text-dark") mb-1 mt-1">
+                                @Model.ExpiringSoonCount Clients
+                            </h3>
+                            <small class="text-muted">Requires renewal follow-up</small>
+                        </div>
+                        <div class="@(Model.ExpiringSoonCount > 0 ? "bg-danger text-white" : "bg-info-subtle text-info") p-2.5 rounded-3">
+                            <i class="bi bi-hourglass-split fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 4: Seat Capacity Utilization -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card shadow-sm border-0 border-start border-warning border-4 h-100">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">License Capacities</span>
+                            <h4 class="fw-bold text-dark mb-0 mt-1">
+                                @Model.TotalErpSeatsUsed / @Model.TotalErpSeatsAllocated <small class="fs-7 text-muted">Desk</small>
+                            </h4>
+                            <small class="text-muted">
+                                Workers: <strong class="text-dark">@Model.TotalWorkerRecordsUsed / @Model.TotalWorkerRecordsAllocated</strong> slots
+                            </small>
+                        </div>
+                        <div class="bg-warning-subtle text-warning p-2.5 rounded-3">
+                            <i class="bi bi-pie-chart-fill fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expiring Soon Callout Banner (if applicable) -->
+    @if (Model.ExpiringSoonCount > 0)
+    {
+        <div class="alert alert-danger shadow-sm border-0 rounded-3 mb-4 d-flex flex-wrap justify-content-between align-items-center py-2.5 px-3">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill fs-3 me-3 text-danger"></i>
+                <div>
+                    <strong>Action Required:</strong> @Model.ExpiringSoonCount client tenant(s) have subscriptions or trials expiring within the next 7 days.
+                </div>
+            </div>
+            <div class="mt-2 mt-md-0">
+                <a asp-action="Index" asp-route-expiringSoonOnly="true" class="btn btn-sm btn-danger">
+                    <i class="bi bi-filter me-1"></i> Filter Expiring Clients
+                </a>
+            </div>
+        </div>
+    }
+
+    <!-- Filter & Search Controls -->
+    <div class="card shadow-sm border-0 rounded-3 mb-4">
+        <div class="card-body p-3">
+            <form method="get" asp-action="Index" class="row g-2 align-items-center">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                        <input type="text" name="search" class="form-control border-start-0" placeholder="Search business, subdomain, email, phone..." value="@search" />
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select name="planFilter" class="form-select">
+                        <option value="">All Subscription Plans</option>
+                        <option value="@SubscriptionTier.Starter" selected="@(planFilter == SubscriptionTier.Starter)">Starter</option>
+                        <option value="@SubscriptionTier.Growth" selected="@(planFilter == SubscriptionTier.Growth)">Growth</option>
+                        <option value="@SubscriptionTier.Enterprise" selected="@(planFilter == SubscriptionTier.Enterprise)">Enterprise</option>
+                        <option value="@SubscriptionTier.FreeTrial" selected="@(planFilter == SubscriptionTier.FreeTrial)">Free Trial</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="statusFilter" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="@TenantStatus.Active" selected="@(statusFilter == TenantStatus.Active)">Active</option>
+                        <option value="@TenantStatus.Suspended" selected="@(statusFilter == TenantStatus.Suspended)">Suspended</option>
+                        <option value="@TenantStatus.PastDue" selected="@(statusFilter == TenantStatus.PastDue)">Past Due</option>
+                        <option value="@TenantStatus.Cancelled" selected="@(statusFilter == TenantStatus.Cancelled)">Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-check ms-1">
+                        <input class="form-check-input" type="checkbox" name="expiringSoonOnly" value="true" id="expiringCheck" @(expiringOnly ? "checked" : "") />
+                        <label class="form-check-label small" for="expiringCheck">Expiring (≤7d) only</label>
+                    </div>
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                    @if (!string.IsNullOrWhiteSpace(search) || planFilter.HasValue || statusFilter.HasValue || expiringOnly)
+                    {
+                        <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+                    }
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Client Tenants Table -->
+    <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-buildings text-primary me-2"></i>Client Organizations Directory (@Model.Tenants.Count)
+            </h5>
+            <span class="text-muted small">Total System MRR: <strong>₹@Model.TotalMrr.ToString("N0")</strong></span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-uppercase small text-muted">
+                    <tr>
+                        <th>Client Organization</th>
+                        <th>Subdomain</th>
+                        <th>Plan &amp; Revenue</th>
+                        <th>Status</th>
+                        <th>ERP Seats</th>
+                        <th>Floor Workers</th>
+                        <th>Activity</th>
+                        <th>Expires / Days</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Tenants.Any())
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center py-5 text-muted">
+                                <i class="bi bi-search display-6 d-block mb-2"></i>
+                                No client tenants found matching current filters.
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var item in Model.Tenants)
+                    {
+                        var t = item.Tenant;
+                        var isWarning = item.IsExpiringSoon;
+                        var isPast = item.IsExpired;
+
+                        <tr class="@(isWarning ? "table-warning" : (t.Status == TenantStatus.Suspended ? "table-light text-muted" : ""))">
+                            <td>
+                                <div class="fw-bold text-dark">@t.BusinessName</div>
+                                <small class="text-muted">
+                                    <i class="bi bi-envelope me-1"></i>@(t.AdminEmail ?? "N/A") 
+                                    @if (!string.IsNullOrEmpty(t.Phone))
+                                    {
+                                        <span class="ms-1">&bull; <i class="bi bi-telephone me-1"></i>@t.Phone</span>
+                                    }
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-primary border font-monospace">@t.Subdomain</span>
+                                <a href="http://@(t.Subdomain).localhost:5000" target="_blank" class="text-decoration-none ms-1 text-muted small" title="Open workspace">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge @(t.PlanType == SubscriptionTier.Enterprise ? "bg-dark" : (t.PlanType == SubscriptionTier.Growth ? "bg-primary" : "bg-secondary")) mb-1">
+                                    @t.PlanType
+                                </span>
+                                <div class="fw-semibold text-success small">₹@item.MonthlyRevenue.ToString("N0")/mo</div>
+                            </td>
+                            <td>
+                                <span class="badge @(t.Status == TenantStatus.Active ? "bg-success" : (t.Status == TenantStatus.Suspended ? "bg-danger" : "bg-warning text-dark"))">
+                                    @t.Status
+                                </span>
+                            </td>
+                            <td>
+                                <div class="small fw-semibold">@item.ActiveErpUsers / @t.AllowedErpSeats</div>
+                                <div class="progress" style="height: 5px; width: 80px;">
+                                    @{
+                                        var seatPct = t.AllowedErpSeats > 0 ? (item.ActiveErpUsers * 100 / t.AllowedErpSeats) : 0;
+                                    }
+                                    <div class="progress-bar @(seatPct >= 90 ? "bg-danger" : "bg-primary")" style="width: @seatPct%;"></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="small fw-semibold">@item.ActiveEmployees / @t.AllowedEmployeeRecords</div>
+                                <div class="progress" style="height: 5px; width: 80px;">
+                                    @{
+                                        var empPct = t.AllowedEmployeeRecords > 0 ? (item.ActiveEmployees * 100 / t.AllowedEmployeeRecords) : 0;
+                                    }
+                                    <div class="progress-bar @(empPct >= 90 ? "bg-danger" : "bg-success")" style="width: @empPct%;"></div>
+                                </div>
+                            </td>
+                            <td>
+                                <small class="text-muted d-block">@item.TotalOrdersCount lots</small>
+                                <small class="text-muted d-block">@item.TotalInvoicesCount invs</small>
+                            </td>
+                            <td>
+                                <div class="fw-semibold @(isWarning ? "text-danger fw-bold" : (isPast ? "text-muted" : "text-dark"))">
+                                    @(item.DaysLeft > 0 ? $"{item.DaysLeft} days left" : "Expired")
+                                </div>
+                                <small class="text-muted">
+                                    @((t.SubscriptionEndsAt ?? t.TrialEndsAt).ToString("dd MMM yyyy"))
+                                </small>
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <!-- 1. Quick Extend (+30 Days) -->
+                                    <form asp-action="QuickExtend" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="tenantId" value="@t.Id" />
+                                        <input type="hidden" name="days" value="30" />
+                                        <button type="submit" class="btn btn-outline-success" title="Extend 30 Days">
+                                            +30d
+                                        </button>
+                                    </form>
+
+                                    <!-- 2. Switch Context (Inspect Tenant Workspace) -->
+                                    <a asp-action="SwitchToTenant" asp-route-tenantId="@t.Id" class="btn btn-outline-primary" title="Impersonate / View Client Workspace">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+
+                                    <!-- 3. Edit Quotas & Plan Modal Trigger -->
+                                    <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editTenantModal_@t.Id" title="Edit Quotas & Plan">
+                                        <i class="bi bi-sliders"></i>
+                                    </button>
+
+                                    <!-- 4. Suspend / Reactivate Toggle -->
+                                    <form asp-action="ToggleSuspend" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to @(t.Status == TenantStatus.Active ? "SUSPEND" : "REACTIVATE") this client?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="tenantId" value="@t.Id" />
+                                        <button type="submit" class="btn @(t.Status == TenantStatus.Active ? "btn-outline-danger" : "btn-outline-success")" title="@(t.Status == TenantStatus.Active ? "Suspend Access" : "Reactivate Access")">
+                                            <i class="bi @(t.Status == TenantStatus.Active ? "bi-slash-circle" : "bi-check-circle")"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Edit Tenant Modal -->
+                                <div class="modal fade text-start" id="editTenantModal_@t.Id" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form asp-action="UpdateTenant" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="tenantId" value="@t.Id" />
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title fw-bold">Manage Client: @t.BusinessName</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Subscription Plan Tier</label>
+                                                        <select name="plan" class="form-select">
+                                                            <option value="@SubscriptionTier.Starter" selected="@(t.PlanType == SubscriptionTier.Starter)">Starter (₹2,499/mo)</option>
+                                                            <option value="@SubscriptionTier.Growth" selected="@(t.PlanType == SubscriptionTier.Growth)">Growth (₹6,999/mo)</option>
+                                                            <option value="@SubscriptionTier.Enterprise" selected="@(t.PlanType == SubscriptionTier.Enterprise)">Enterprise (₹18,999/mo)</option>
+                                                            <option value="@SubscriptionTier.FreeTrial" selected="@(t.PlanType == SubscriptionTier.FreeTrial)">Free Trial</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Account Status</label>
+                                                        <select name="status" class="form-select">
+                                                            <option value="@TenantStatus.Active" selected="@(t.Status == TenantStatus.Active)">Active</option>
+                                                            <option value="@TenantStatus.Suspended" selected="@(t.Status == TenantStatus.Suspended)">Suspended</option>
+                                                            <option value="@TenantStatus.PastDue" selected="@(t.Status == TenantStatus.PastDue)">Past Due</option>
+                                                            <option value="@TenantStatus.Cancelled" selected="@(t.Status == TenantStatus.Cancelled)">Cancelled</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="row g-2 mb-3">
+                                                        <div class="col-6">
+                                                            <label class="form-label fw-semibold">Allowed ERP Desk Seats</label>
+                                                            <input type="number" name="allowedErpSeats" class="form-control" value="@t.AllowedErpSeats" min="1" max="1000" required />
+                                                            <small class="text-muted">Web portal logins</small>
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label class="form-label fw-semibold">Allowed Floor Workers</label>
+                                                            <input type="number" name="allowedEmployeeRecords" class="form-control" value="@t.AllowedEmployeeRecords" min="0" max="10000" step="10" required />
+                                                            <small class="text-muted">Face/Biometric staff</small>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Subscription Expiry Date</label>
+                                                        <input type="date" name="subscriptionEndsAt" class="form-control" value="@((t.SubscriptionEndsAt ?? t.TrialEndsAt).ToString("yyyy-MM-dd"))" />
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Onboard New Client Tenant -->
+<div class="modal fade" id="newTenantModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form asp-action="CreateTenant" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-plus-circle text-primary me-2"></i>Onboard New Client Organization
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Client Company / Brand Name</label>
+                            <input type="text" name="businessName" class="form-control" placeholder="e.g. Surat Tex Fab" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Assigned Subdomain</label>
+                            <div class="input-group">
+                                <input type="text" name="subdomain" class="form-control" placeholder="surattex" required />
+                                <span class="input-group-text bg-light small">.aashanafashion.com</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Subscription Plan</label>
+                            <select name="planType" class="form-select">
+                                <option value="@SubscriptionTier.Growth" selected>Growth (₹6,999/mo)</option>
+                                <option value="@SubscriptionTier.Starter">Starter (₹2,499/mo)</option>
+                                <option value="@SubscriptionTier.Enterprise">Enterprise (₹18,999/mo)</option>
+                                <option value="@SubscriptionTier.FreeTrial">14-Day Free Trial</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">ERP Desk Seats</label>
+                            <input type="number" name="allowedErpSeats" class="form-control" value="15" min="1" max="500" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Floor Workers Limit</label>
+                            <input type="number" name="allowedEmployeeRecords" class="form-control" value="100" min="0" max="5000" step="25" required />
+                        </div>
+                    </div>
+
+                    <hr class="my-3" />
+                    <h6 class="fw-bold text-primary mb-3">Tenant Primary Admin Credentials</h6>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Admin Full Name</label>
+                            <input type="text" name="adminFullName" class="form-control" placeholder="e.g. Deepak Patel" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Admin Email</label>
+                            <input type="email" name="adminEmail" class="form-control" placeholder="deepak@texfab.com" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Contact Phone</label>
+                            <input type="text" name="phone" class="form-control" placeholder="+91 98765 00000" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Username</label>
+                            <input type="text" name="adminUsername" class="form-control" placeholder="admin" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Initial Password</label>
+                            <input type="password" name="adminPassword" class="form-control" placeholder="Password@123" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-rocket-takeoff me-1"></i> Provision Client Tenant
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -4,9 +4,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace AashanaFashion.Models
 {
     [Table("BiometricDevices")]
-    public class BiometricDevice
+    public class BiometricDevice : IMustHaveTenant
     {
         public int Id { get; set; }
+        public int TenantId { get; set; } = 1;
 
         [Required]
         [StringLength(100)]

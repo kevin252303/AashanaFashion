@@ -307,6 +307,19 @@
                     <span class="ico">🤝</span> Salesman Commission
                 </a>
             }
+
+            @if (isAdmin)
+            {
+                <div class="nav-label">SaaS &amp; Organization</div>
+                <a class="s-link @(ctrl == "PlatformAdmin" ? "active" : "")"
+                   asp-controller="PlatformAdmin" asp-action="Index">
+                    <span class="ico">👑</span> SaaS Client Operations
+                </a>
+                <a class="s-link @(ctrl == "Subscription" ? "active" : "")"
+                   asp-controller="Subscription" asp-action="Index">
+                    <span class="ico">☁️</span> Subscription &amp; Quotas
+                </a>
+            }
         </nav>
 
         <div class="role-pill rp-@role">@role</div>
@@ -317,6 +330,14 @@
             <span class="page-title">@(ViewData["Title"] ?? "Dashboard")</span>
         </div>
         <div class="d-flex align-items-center gap-2.5">
+            @if (isAdmin)
+            {
+                <a asp-controller="PlatformAdmin" asp-action="Index" class="btn btn-sm btn-outline-warning d-flex align-items-center gap-1.5 shadow-sm px-2.5 py-1 text-dark" style="border-radius: 20px; font-weight: 600; font-size: 0.78rem; text-decoration: none;" title="Platform Owner Client & Revenue Operations">
+                    <i class="bi bi-shield-shaded text-warning"></i>
+                    <span>SaaS Hub</span>
+                </a>
+            }
+
             <!-- Odoo-Style Company Switcher -->
             <div class="dropdown">
                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-2 bg-white px-3 py-1.5 shadow-sm border" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 20px; font-weight: 500; font-size: 0.82rem;">
@@ -384,6 +405,14 @@
                         <li>
                             <a class="dropdown-item py-2 d-flex align-items-center gap-2" asp-controller="UserManagement" asp-action="Index">
                                 <span>👥</span> User Management
+                            </a>
+                        </li>
+                    }
+                    @if (isAdmin)
+                    {
+                        <li>
+                            <a class="dropdown-item py-2 d-flex align-items-center gap-2 text-primary fw-semibold" asp-controller="Subscription" asp-action="Index">
+                                <span>☁️</span> SaaS Subscription & Quotas
                             </a>
                         </li>
                     }

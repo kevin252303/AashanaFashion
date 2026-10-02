@@ -99,9 +99,10 @@ public enum ReworkStatus
     Scrapped
 }
 
-public class QualityInspection
+public class QualityInspection : IMustHaveTenant
 {
     public int Id { get; set; }
+    public int TenantId { get; set; } = 1;
 
     [Required]
     [StringLength(50)]

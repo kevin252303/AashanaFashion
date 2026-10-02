@@ -36,9 +36,10 @@ public enum PricelistComputeMethod
     Formula
 }
 
-public class Pricelist
+public class Pricelist : IMustHaveTenant
 {
     public int Id { get; set; }
+    public int TenantId { get; set; } = 1;
 
     [Required]
     [StringLength(150)]

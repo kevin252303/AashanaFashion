@@ -11,10 +11,11 @@ namespace AashanaFashion.Models
     }
 
     [Table("AccountingTransactions")]
-    public class AccountingTransaction
+    public class AccountingTransaction : IMustHaveTenant
     {
         public int Id { get; set; }
 
+        public int TenantId { get; set; } = 1;
         public int CompanyId { get; set; } = 1;
         public Company? Company { get; set; }
 

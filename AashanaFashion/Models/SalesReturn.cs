@@ -24,10 +24,11 @@ public enum ReturnReason
     Other
 }
 
-public class SalesReturn
+public class SalesReturn : IMustHaveTenant
 {
     public int Id { get; set; }
 
+    public int TenantId { get; set; } = 1;
     public int CompanyId { get; set; } = 1;
     public Company? Company { get; set; }
 

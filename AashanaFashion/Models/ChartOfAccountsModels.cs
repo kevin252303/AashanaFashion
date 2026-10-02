@@ -34,10 +34,11 @@ public enum AccountClassification
     FinancialExpense
 }
 
-public class Account
+public class Account : IMustHaveTenant
 {
     public int Id { get; set; }
 
+    public int TenantId { get; set; } = 1;
     public int CompanyId { get; set; } = 1;
     public Company? Company { get; set; }
 
@@ -77,10 +78,11 @@ public enum JournalType
     General
 }
 
-public class Journal
+public class Journal : IMustHaveTenant
 {
     public int Id { get; set; }
 
+    public int TenantId { get; set; } = 1;
     public int CompanyId { get; set; } = 1;
     public Company? Company { get; set; }
 
@@ -110,10 +112,11 @@ public enum JournalEntryStatus
     Cancelled
 }
 
-public class JournalEntry
+public class JournalEntry : IMustHaveTenant
 {
     public int Id { get; set; }
 
+    public int TenantId { get; set; } = 1;
     public int CompanyId { get; set; } = 1;
     public Company? Company { get; set; }
 

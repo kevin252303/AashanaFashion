@@ -42,6 +42,15 @@ namespace AashanaFashion.Controllers
             }
 
             var users = await query.ToListAsync();
+            var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
+            var activeErpCount = await _context.Users.CountAsync(u => u.IsActive);
+            var allowedErpSeats = tenant?.AllowedErpSeats ?? 10;
+
+            ViewBag.ActiveErpSeats = activeErpCount;
+            ViewBag.AllowedErpSeats = allowedErpSeats;
+            ViewBag.SeatsRemaining = Math.Max(0, allowedErpSeats - activeErpCount);
+            ViewBag.IsQuotaFull = activeErpCount >= allowedErpSeats;
+
             ViewBag.UserRoles = await _context.UserRoles.ToDictionaryAsync(r => r.RoleName, r => r.Id);
             ViewBag.Roles = await _context.UserRoles.Where(r => r.IsActive).Select(r => r.RoleName).Distinct().OrderBy(r => r).ToListAsync();
             ViewBag.Search = search;
@@ -55,6 +64,16 @@ namespace AashanaFashion.Controllers
         [PermissionAuthorize("UserManagement", "CanCreate")]
         public async Task<IActionResult> Create()
         {
+            var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
+            var activeCount = await _context.Users.CountAsync(u => u.IsActive);
+            var allowedSeats = tenant?.AllowedErpSeats ?? 10;
+
+            if (activeCount >= allowedSeats)
+            {
+                TempData["Error"] = $"Your organization has reached the limit of {allowedSeats} ERP User Seats. Upgrade your plan or purchase additional seats in the Subscription portal.";
+                return RedirectToAction(nameof(Index));
+            }
+
             var roles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
             return View(new UserFormViewModel { AvailableRoles = roles });
         }
@@ -65,6 +84,17 @@ namespace AashanaFashion.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(UserFormViewModel model)
         {
+            var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
+            var activeCount = await _context.Users.CountAsync(u => u.IsActive);
+            var allowedSeats = tenant?.AllowedErpSeats ?? 10;
+
+            if (activeCount >= allowedSeats)
+            {
+                ModelState.AddModelError(string.Empty, $"Cannot create user: ERP User Seats quota reached ({activeCount}/{allowedSeats} seats used). Please purchase additional desk user seats in the Subscription module.");
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
+                return View(model);
+            }
+
             if (string.IsNullOrWhiteSpace(model.Password))
                 ModelState.AddModelError("Password", "Password is required for new users.");
 
@@ -200,6 +230,18 @@ namespace AashanaFashion.Controllers
             var user = await _context.Users.FindAsync(id);
             if (user != null)
             {
+                if (!user.IsActive)
+                {
+                    var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
+                    var activeCount = await _context.Users.CountAsync(u => u.IsActive);
+                    var allowedSeats = tenant?.AllowedErpSeats ?? 10;
+                    if (activeCount >= allowedSeats)
+                    {
+                        TempData["Error"] = $"Cannot activate user '{user.Username}': ERP User Seats quota reached ({activeCount}/{allowedSeats} seats). Please purchase more seats in the Subscription portal.";
+                        return RedirectToAction(nameof(Index));
+                    }
+                }
+
                 user.IsActive = !user.IsActive;
                 await _context.SaveChangesAsync();
                 TempData["Success"] = $"User '{user.Username}' {(user.IsActive ? "activated" : "deactivated")}.";

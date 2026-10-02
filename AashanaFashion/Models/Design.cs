@@ -1,8 +1,9 @@
 namespace AashanaFashion.Models;
 
-public class Design
+public class Design : IMustHaveTenant
 {
     public int Id { get; set; }
+    public int TenantId { get; set; } = 1;
 
     // ——— General Information ———
     public string DesignNumber { get; set; } = string.Empty;

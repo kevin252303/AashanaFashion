@@ -16,9 +16,12 @@ namespace AashanaFashion.Models
     }
 
     [Table("Employees")]
-    public class Employee
+    public class Employee : IMustHaveTenant
     {
         public int Id { get; set; }
+
+        public int TenantId { get; set; } = 1;
+        public Tenant? Tenant { get; set; }
 
         [Required]
         [StringLength(20)]

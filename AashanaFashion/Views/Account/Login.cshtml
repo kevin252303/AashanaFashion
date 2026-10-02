@@ -60,7 +60,14 @@
             <button type="submit" class="lb-btn">Sign In →</button>
         </form>
 
-        <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid #f1f5f9;">
+        <div style="margin-top:1.25rem; text-align:center;">
+            <span style="font-size:0.85rem; color:#64748b;">New garment business? </span>
+            <a asp-controller="Subscription" asp-action="RegisterTenant" style="font-size:0.85rem; color:#4f46e5; text-decoration:none; font-weight:600;">
+                Start 14-day free trial &rarr;
+            </a>
+        </div>
+
+        <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid #f1f5f9;">
             <div style="font-size:.72rem;color:#cbd5e1;text-align:center;">
                 © @DateTime.Now.Year Aashana Fashion · Production Management System
             </div>

@@ -29,6 +29,7 @@ builder.Services.AddScoped<ICompanyContext, CompanyContext>();
 builder.Services.AddScoped<IGstReturnService, GstReturnService>();
 builder.Services.AddScoped<IDoubleEntryService, DoubleEntryService>();
 builder.Services.AddScoped<IAgingAndMatchingService, AgingAndMatchingService>();
+builder.Services.AddScoped<ITenantContext, TenantContext>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -72,6 +73,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseRouting();
+app.UseMiddleware<TenantResolverMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -212,6 +214,46 @@ using (var scope = app.Services.CreateScope())
         {
             existing.Role = u.Role;
         }
+    }
+    db.SaveChanges();
+
+    // Seed sample client tenants for SaaS Platform Owner overview
+    if (!db.Tenants.IgnoreQueryFilters().Any(t => t.Subdomain == "surattex"))
+    {
+        db.Tenants.Add(new Tenant
+        {
+            Subdomain = "surattex",
+            BusinessName = "Surat Tex Fab",
+            PlanType = SubscriptionTier.Starter,
+            Status = TenantStatus.Active,
+            AllowedErpSeats = 5,
+            AllowedEmployeeRecords = 25,
+            TrialEndsAt = DateTime.Today.AddDays(4), // Expiring in 4 days
+            SubscriptionEndsAt = DateTime.Today.AddDays(4),
+            AdminEmail = "contact@surattex.com",
+            Phone = "+91 98251 12345",
+            IsActive = true,
+            CreatedAt = DateTime.Now.AddDays(-26)
+        });
+    }
+
+    if (!db.Tenants.IgnoreQueryFilters().Any(t => t.Subdomain == "shreeji"))
+    {
+        db.Tenants.Add(new Tenant
+        {
+            Subdomain = "shreeji",
+            BusinessName = "Shreeji Silk Mills",
+            PlanType = SubscriptionTier.Enterprise,
+            Status = TenantStatus.Active,
+            AllowedErpSeats = 50,
+            AllowedEmployeeRecords = 500,
+            TrialEndsAt = DateTime.Today.AddDays(14),
+            SubscriptionEndsAt = DateTime.Today.AddDays(180),
+            AdminEmail = "admin@shreejisilk.com",
+            Phone = "+91 98980 99999",
+            IsActive = true,
+            CreatedAt = DateTime.Now.AddDays(-45)
+        });
     }
     db.SaveChanges();
 

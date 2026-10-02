@@ -1,8 +1,9 @@
 namespace AashanaFashion.Models;
 
-public class RawMaterial
+public class RawMaterial : IMustHaveTenant
 {
     public int Id { get; set; }
+    public int TenantId { get; set; } = 1;
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string Unit { get; set; } = string.Empty;

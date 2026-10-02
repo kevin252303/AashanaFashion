@@ -1,8 +1,9 @@
 namespace AashanaFashion.Models
 {
-    public class ProductionOrder
+    public class ProductionOrder : IMustHaveTenant
     {
         public int Id { get; set; }
+        public int TenantId { get; set; } = 1;
         public int CompanyId { get; set; } = 1;
         public Company? Company { get; set; }
         public int DesignId { get; set; }

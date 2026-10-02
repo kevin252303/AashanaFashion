@@ -1,0 +1,182 @@
+@model AashanaFashion.Models.RegisterTenantViewModel
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Start Free Trial — Garment ERP SaaS";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-4">
+                <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold mb-2">
+                    <i class="bi bi-stars me-1"></i> 14-Day Full Access Free Trial &bull; No Credit Card Required
+                </span>
+                <h1 class="display-6 fw-bold text-dark">Get Your Garment Business on the Cloud</h1>
+                <p class="text-muted lead fs-6">
+                    Join hundreds of textile brands, garment factories, and job workers streamlining production, payroll, and GST accounting.
+                </p>
+            </div>
+
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-4 p-md-5">
+                    <form asp-controller="Subscription" asp-action="RegisterTenant" method="post" id="registerForm">
+                        @Html.AntiForgeryToken()
+
+                        @if (!ViewData.ModelState.IsValid && ViewData.ModelState[string.Empty]?.Errors.Count > 0)
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                @foreach (var error in ViewData.ModelState[string.Empty]!.Errors)
+                                {
+                                    <div><i class="bi bi-exclamation-circle me-1"></i> @error.ErrorMessage</div>
+                                }
+                            </div>
+                        }
+
+                        <!-- Step 1: Business Details -->
+                        <h5 class="fw-bold text-primary mb-3">
+                            <i class="bi bi-building me-2"></i>1. Business Information
+                        </h5>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label asp-for="BusinessName" class="form-label fw-semibold"></label>
+                                <input asp-for="BusinessName" class="form-control form-control-lg" placeholder="e.g. Surat Textile Mills" required id="bizNameInput" />
+                                <span asp-validation-for="BusinessName" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Subdomain" class="form-label fw-semibold"></label>
+                                <div class="input-group input-group-lg">
+                                    <input asp-for="Subdomain" class="form-control" placeholder="surattextile" required id="subdomainInput" />
+                                    <span class="input-group-text bg-light text-muted small">.aashanafashion.com</span>
+                                </div>
+                                <span asp-validation-for="Subdomain" class="text-danger small"></span>
+                                <small class="text-muted" id="subdomainPreview">Your workspace URL: https://[subdomain].aashanafashion.com</small>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Admin Login Account -->
+                        <h5 class="fw-bold text-primary mb-3">
+                            <i class="bi bi-person-lock me-2"></i>2. Administrator Account
+                        </h5>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label asp-for="AdminFullName" class="form-label fw-semibold"></label>
+                                <input asp-for="AdminFullName" class="form-control" placeholder="e.g. Rajesh Shah" required />
+                                <span asp-validation-for="AdminFullName" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="AdminEmail" class="form-label fw-semibold"></label>
+                                <input asp-for="AdminEmail" type="email" class="form-control" placeholder="rajesh@surattextile.com" required />
+                                <span asp-validation-for="AdminEmail" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Phone" class="form-label fw-semibold"></label>
+                                <input asp-for="Phone" class="form-control" placeholder="+91 98765 43210" />
+                                <span asp-validation-for="Phone" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Username" class="form-label fw-semibold"></label>
+                                <input asp-for="Username" class="form-control" placeholder="admin" required />
+                                <span asp-validation-for="Username" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Password" class="form-label fw-semibold"></label>
+                                <input asp-for="Password" type="password" class="form-control" placeholder="At least 6 characters" required />
+                                <span asp-validation-for="Password" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="ConfirmPassword" class="form-label fw-semibold"></label>
+                                <input asp-for="ConfirmPassword" type="password" class="form-control" placeholder="Repeat your password" required />
+                                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Choose Your Initial Plan Tier -->
+                        <h5 class="fw-bold text-primary mb-3">
+                            <i class="bi bi-award me-2"></i>3. Select Your Plan (Free during 14-day trial)
+                        </h5>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="card h-100 p-3 border rounded-3 cursor-pointer text-center" for="planOptStarter">
+                                    <input type="radio" class="form-check-input mx-auto mb-2" id="planOptStarter" name="PlanType" value="@SubscriptionTier.Starter" />
+                                    <h6 class="fw-bold mb-1">Starter</h6>
+                                    <div class="text-primary fw-bold mb-2">₹2,499<small class="text-muted">/mo</small></div>
+                                    <small class="text-muted">5 Desk Seats &bull; 25 Workers</small>
+                                </label>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="card h-100 p-3 border border-primary bg-primary-subtle rounded-3 cursor-pointer text-center" for="planOptGrowth">
+                                    <input type="radio" class="form-check-input mx-auto mb-2" id="planOptGrowth" name="PlanType" value="@SubscriptionTier.Growth" checked />
+                                    <h6 class="fw-bold mb-1">Growth (Recommended)</h6>
+                                    <div class="text-primary fw-bold mb-2">₹6,999<small class="text-muted">/mo</small></div>
+                                    <small class="text-muted">15 Desk Seats &bull; 100 Workers</small>
+                                </label>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="card h-100 p-3 border rounded-3 cursor-pointer text-center" for="planOptEnterprise">
+                                    <input type="radio" class="form-check-input mx-auto mb-2" id="planOptEnterprise" name="PlanType" value="@SubscriptionTier.Enterprise" />
+                                    <h6 class="fw-bold mb-1">Enterprise</h6>
+                                    <div class="text-primary fw-bold mb-2">₹18,999<small class="text-muted">/mo</small></div>
+                                    <small class="text-muted">50 Desk Seats &bull; 500 Workers</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-primary btn-lg fw-bold py-3 shadow">
+                                <i class="bi bi-rocket-takeoff me-2"></i> Launch My 14-Day Free Trial
+                            </button>
+                        </div>
+
+                        <p class="text-center text-muted small mb-0">
+                            Already have an account? <a asp-controller="Account" asp-action="Login" class="text-primary fw-semibold">Sign in here</a>
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const bizInput = document.getElementById('bizNameInput');
+            const subInput = document.getElementById('subdomainInput');
+            const preview = document.getElementById('subdomainPreview');
+
+            bizInput.addEventListener('input', function () {
+                if (!subInput.dataset.manual) {
+                    const slug = bizInput.value.toLowerCase()
+                        .replace(/[^a-z0-9]/g, '-')
+                        .replace(/-+/g, '-')
+                        .replace(/^-|-$/g, '');
+                    subInput.value = slug;
+                    updatePreview();
+                }
+            });
+
+            subInput.addEventListener('input', function () {
+                subInput.dataset.manual = 'true';
+                updatePreview();
+            });
+
+            function updatePreview() {
+                const val = subInput.value || '[subdomain]';
+                preview.textContent = 'Your workspace URL: https://' + val + '.aashanafashion.com';
+            }
+        });
+    </script>
+}

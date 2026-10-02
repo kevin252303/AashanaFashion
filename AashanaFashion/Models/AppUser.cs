@@ -4,9 +4,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace AashanaFashion.Models
 {
     [Table("UserList")]
-    public class AppUser
+    public class AppUser : IMustHaveTenant
     {
         public int Id { get; set; }
+        public int TenantId { get; set; } = 1;
+        public Tenant? Tenant { get; set; }
         public string Username { get; set; } = string.Empty;
         public string PasswordHash { get; set; } = string.Empty;
         public string Role { get; set; } = "Viewer";
