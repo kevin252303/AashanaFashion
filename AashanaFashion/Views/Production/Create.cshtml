@@ -19,10 +19,10 @@
 
 <div class="page-header">
     <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Production orders</a>
         <h1 class="page-title">New Production Order</h1>
-        <p class="page-sub">Create a new production order</p>
+        <p class="page-sub">Pick a design, enter the colour × size quantities and plan vendors per component.</p>
     </div>
-    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
 </div>
 
 <form asp-action="Create" method="post" id="orderForm">
@@ -45,9 +45,9 @@
                 <div class="data-card-header">
                     <div class="data-card-title">Order Details</div>
                 </div>
-                <div style="padding:1.5rem;">
+                <div class="data-card-body">
                     <div class="af-form-group">
-                        <label class="af-label">Design *</label>
+                        <label class="af-label">Design <span class="req">*</span></label>
                         <select asp-for="DesignId" class="af-input af-select" id="designSelect" required>
                             <option value="">— Select Design —</option>
                             @Html.Raw(designOptions)
@@ -56,15 +56,15 @@
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="LotNo" class="af-label">Lot No *</label>
-                        <div style="display:flex;gap:0.5rem;align-items:center;">
-                            <input asp-for="LotNo" class="af-input font-monospace fw-bold" id="lotNoInput" placeholder="LOT-202609-0001" required style="letter-spacing:0.5px;flex:1;" />
-                            <button type="button" class="btn-af btn-af-ghost btn-af-sm" id="btnRefreshLot" title="Refresh to next auto Lot No" style="white-space:nowrap;padding:0.45rem 0.75rem;">
-                                🔄 Auto
+                        <label asp-for="LotNo" class="af-label">Lot No <span class="req">*</span></label>
+                        <div class="input-group">
+                            <input asp-for="LotNo" class="af-input font-monospace fw-medium" id="lotNoInput" placeholder="LOT-202609-0001" required />
+                            <button type="button" class="btn btn-secondary" id="btnRefreshLot" title="Refresh to next auto Lot No">
+                                <i class="bi bi-arrow-repeat"></i> Auto
                             </button>
                         </div>
                         <span asp-validation-for="LotNo" class="af-error"></span>
-                        <small class="text-muted" style="font-size:0.75rem;">Auto-generated format: <code>LOT-YYYYMM-XXXX</code>. You can also edit if needed.</small>
+                        <span class="af-hint">Auto-generated as <span class="mono-id">LOT-YYYYMM-XXXX</span>. You can edit it if needed.</span>
                     </div>
 
                     <div class="af-form-group">
@@ -82,16 +82,11 @@
 
                     <div class="af-form-group" id="verificationSection" style="display:none;">
                         <label class="af-label">Verification Checklist</label>
-                        <div style="background:#f8fafc;border-radius:10px;padding:1rem;display:flex;flex-direction:column;gap:.75rem;" id="verificationContainer">
+                        <div class="panel-inset d-flex flex-column gap-2 mb-0" id="verificationContainer">
                         </div>
                     </div>
 
                     <input type="hidden" id="totalQuantity" name="TotalQuantity" value="0" />
-
-                    <div style="display:flex;gap:.75rem;margin-top:1rem;">
-                        <button type="submit" class="btn-af btn-af-primary">Create Order</button>
-                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
-                    </div>
                 </div>
             </div>
         </div>
@@ -99,19 +94,20 @@
         <div class="col-lg-8">
             <div class="data-card">
                 <div class="data-card-header">
-                    <div class="data-card-title">Colour & Size Matrix</div>
-                    <span class="af-badge b-blue" id="totalPieces">Total: 0 pcs</span>
+                    <div class="data-card-title">Colour &amp; size quantities</div>
+                    <span class="af-badge b-indigo" id="totalPieces">Total: 0 pcs</span>
                 </div>
-                <div style="padding:1rem;">
+                <div>
                     <div id="matrixContainer">
-                        <div class="text-center p-4 text-muted" id="matrixPlaceholder">
-                            Select a design to see colour/size matrix
+                        <div class="empty-state py-5" id="matrixPlaceholder">
+                            <div class="es-icon"><i class="bi bi-grid-3x3"></i></div>
+                            <p>Select a design to see its colour / size matrix.</p>
                         </div>
-                        <div id="matrixGrid" style="overflow-x:auto;">
-                            <table class="af-table" id="matrixTable" style="min-width:100%;">
+                        <div id="matrixGrid" class="table-scroll">
+                            <table class="af-table table-edit matrix-table" id="matrixTable" style="min-width:100%;">
                                 <thead>
                                     <tr id="matrixHeader">
-                                        <th style="min-width:100px;">Colour ↓ / Size →</th>
+                                        <th style="min-width:110px;">Colour \ Size</th>
                                     </tr>
                                 </thead>
                                 <tbody id="matrixBody"></tbody>
@@ -127,46 +123,44 @@
     <div class="row mt-4">
         <div class="col-12">
             <div class="data-card mb-3" id="componentMatrixCard">
-                <div class="data-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="data-card-header">
                     <div>
-                        <span class="data-card-title">Garment Components & Process Vendor Planning Matrix</span>
-                        <span class="text-muted ms-2" style="font-size:0.8rem;">Every component (e.g. Chaniya, Choli, Dupatta, Belt, Jacket) can be assigned to different vendors for different processes.</span>
+                        <span class="data-card-title">Garment components &amp; vendor planning</span>
+                        <span class="data-card-sub d-block">Each component (Chaniya, Choli, Dupatta, Belt, Jacket…) can go to a different vendor for each process.</span>
                     </div>
-                    <span class="af-badge b-blue" id="lotComponentCountBadge">3 Components</span>
+                    <span class="af-badge b-indigo" id="lotComponentCountBadge">3 Components</span>
                 </div>
-                <div style="padding:1.25rem;">
+                <div class="data-card-body">
                     <!-- Components Bar -->
-                    <div class="p-3 bg-light border rounded-3 mb-3">
-                        <label class="form-label small fw-bold text-muted mb-2 text-uppercase" style="letter-spacing:0.5px;">
-                            Components for this Lot (Can have 3 or more parts):
-                        </label>
+                    <div class="panel-inset">
+                        <span class="micro-label">Components for this lot (3 or more parts)</span>
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-2" id="lotComponentBadgesContainer">
                             <!-- Badges rendered by JS -->
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
-                            <span class="small text-muted fw-semibold me-1">Quick Add:</span>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Belt" style="font-size:0.75rem;">+ Belt</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Jacket" style="font-size:0.75rem;">+ Jacket / Shrug</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Inner" style="font-size:0.75rem;">+ Inner / Lining</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Cape" style="font-size:0.75rem;">+ Cape</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Koti" style="font-size:0.75rem;">+ Koti</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Stole" style="font-size:0.75rem;">+ Stole</button>
+                            <span class="text-xs text-muted me-1">Quick add</span>
+                            <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Belt"><i class="bi bi-plus"></i> Belt</button>
+                            <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Jacket"><i class="bi bi-plus"></i> Jacket / Shrug</button>
+                            <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Inner"><i class="bi bi-plus"></i> Inner / Lining</button>
+                            <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Cape"><i class="bi bi-plus"></i> Cape</button>
+                            <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Koti"><i class="bi bi-plus"></i> Koti</button>
+                            <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Stole"><i class="bi bi-plus"></i> Stole</button>
                             
-                            <div class="input-group input-group-sm ms-auto" style="max-width:260px;">
+                            <div class="input-group input-group-sm ms-auto" style="max-width:280px;">
                                 <input type="text" id="customLotComponentInput" class="form-control form-control-sm" placeholder="Custom component name..." />
-                                <button type="button" class="btn btn-primary btn-sm" id="btnAddCustomLotComponent">+ Add Part</button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="btnAddCustomLotComponent"><i class="bi bi-plus"></i> Add part</button>
                             </div>
                         </div>
                         <input type="hidden" asp-for="Components" id="lotComponentsHiddenInput" value="Chaniya, Choli, Dupatta" />
                     </div>
 
                     <!-- Matrix Table -->
-                    <div class="table-responsive bg-white border rounded-3">
-                        <table class="table table-bordered table-hover align-middle mb-0" id="lotComponentMatrixTable">
-                            <thead class="table-light">
-                                <tr id="lotMatrixHeaderRow" style="font-size:0.82rem;">
-                                    <th style="min-width:140px; background:#f1f5f9;">Component Part</th>
-                                    <th style="width:50px; text-align:center; background:#f1f5f9;">Action</th>
+                    <div class="grid-card">
+                        <table class="af-table table-edit" id="lotComponentMatrixTable">
+                            <thead>
+                                <tr id="lotMatrixHeaderRow">
+                                    <th style="min-width:140px;">Component</th>
+                                    <th style="width:50px;"></th>
                                 </tr>
                             </thead>
                             <tbody id="lotMatrixTableBody">
@@ -177,6 +171,11 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="form-footer">
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Create Order</button>
     </div>
 </form>
 

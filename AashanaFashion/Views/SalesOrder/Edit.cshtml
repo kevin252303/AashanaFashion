@@ -8,14 +8,11 @@
     var pricelists = ViewBag.Pricelists as List<AashanaFashion.Models.Pricelist> ?? new();
 }
 
-<div class="page-header d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
     <div>
-        <h1 class="page-title">Edit Sales Order — @Model.SoNumber</h1>
-        <p class="page-sub">Update items, schedule, or pricing</p>
-    </div>
-    <div style="display:flex;gap:.5rem;">
-        <a asp-action="Details" asp-route-id="@Model.Id" class="btn-af btn-af-ghost btn-af-sm">View Order</a>
-        <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back to Orders</a>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="page-back"><i class="bi bi-arrow-left"></i> @Model.SoNumber</a>
+        <h1 class="page-title">Edit sales order</h1>
+        <p class="page-sub">Update items, schedule or pricing for <span class="font-monospace">@Model.SoNumber</span>.</p>
     </div>
 </div>
 
@@ -24,31 +21,28 @@
     <input type="hidden" asp-for="Id" />
     <input type="hidden" asp-for="SoNumber" />
 
-    @if (!ViewData.ModelState.IsValid)
-    {
-        <div class="af-alert af-alert-danger mb-3">
-            <div class="alert-body">
-                @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-                { <div>@e.ErrorMessage</div> }
-            </div>
-            <button class="alert-close">&times;</button>
-        </div>
-    }
+    <div asp-validation-summary="All" class="af-alert af-alert-danger"></div>
 
-    <!-- Order Header Details -->
-    <div class="data-card p-4 mb-4">
+    <div class="data-card mb-4">
+        <div class="data-card-header">
+            <div>
+                <div class="data-card-title">Order details</div>
+                <div class="data-card-sub">Picking a customer fills address, transporter, terms and pricelist.</div>
+            </div>
+        </div>
+        <div class="data-card-body">
         <div class="row g-3">
             <div class="col-md-2">
-                <label class="af-label">SO Number</label>
-                <input class="af-input" value="@Model.SoNumber" readonly style="background:#f1f5f9;font-weight:700;" />
+                <label class="form-label">SO number</label>
+                <input class="af-input font-monospace fw-semibold" value="@Model.SoNumber" readonly />
             </div>
             <div class="col-md-4">
-                <label class="af-label d-flex justify-content-between align-items-center mb-1">
-                    <span>Customer *</span>
-                    <span class="badge bg-light text-primary border d-none" id="customerPricelistBadge" style="font-size: 0.72rem;">🏷️ Pricelist</span>
+                <label class="form-label d-flex justify-content-between align-items-center">
+                    <span>Customer <span class="req">*</span></span>
+                    <span class="af-badge b-indigo d-none" id="customerPricelistBadge">Pricelist</span>
                 </label>
                 <select asp-for="CustomerId" class="af-input af-select" id="customerSelect" required>
-                    <option value="">— Select Customer —</option>
+                    <option value="">Select customer</option>
                     @foreach (var c in customers)
                     {
                         <option value="@c.Id" selected="@(c.Id == Model.CustomerId ? "selected" : null)">
@@ -58,19 +52,15 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <label class="af-label mb-0">Pricelist</label>
-                    <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#quickPricelistModal" title="Create a new Pricelist inline">
-                            ➕ New
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 fw-semibold @(!Model.PricelistId.HasValue ? "d-none" : "")" id="btnEditSelectedPricelist" data-bs-toggle="modal" data-bs-target="#editPricelistModal" title="Edit currently selected Pricelist rules">
-                            ✏️ Edit
-                        </button>
-                    </div>
+                <div class="label-row">
+                    <label class="form-label" for="soPricelistSelect">Pricelist</label>
+                    <span class="d-inline-flex gap-3">
+                        <button type="button" class="label-action" data-bs-toggle="modal" data-bs-target="#quickPricelistModal" title="Create a new pricelist"><i class="bi bi-plus-lg"></i> New</button>
+                        <button type="button" class="label-action @(!Model.PricelistId.HasValue ? "d-none" : "")" id="btnEditSelectedPricelist" data-bs-toggle="modal" data-bs-target="#editPricelistModal" title="Edit the selected pricelist"><i class="bi bi-pencil"></i> Edit</button>
+                    </span>
                 </div>
                 <select asp-for="PricelistId" class="af-input af-select" id="soPricelistSelect">
-                    <option value="">-- Standard / Base Price --</option>
+                    <option value="">Standard / base price</option>
                     @foreach (var pl in pricelists)
                     {
                         <option value="@pl.Id" selected="@(pl.Id == Model.PricelistId ? "selected" : null)">
@@ -80,72 +70,71 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="af-label">Status</label>
+                <label class="form-label">Status</label>
                 <select asp-for="Status" class="af-input af-select">
                     @foreach (var s in Enum.GetValues<SalesOrderStatus>())
                     {
-                        <option value="@s" selected="@(s == Model.Status ? "selected" : null)">@s</option>
+                        <option value="@s" selected="@(s == Model.Status ? "selected" : null)">@s.Humanize()</option>
                     }
                 </select>
             </div>
 
             <div class="col-md-3">
-                <label class="af-label">Customer PO Ref</label>
+                <label class="form-label">Customer PO ref</label>
                 <input asp-for="CustomerPoReference" class="af-input" placeholder="e.g. PO-8891" />
             </div>
             <div class="col-md-3">
-                <label class="af-label">Order Date *</label>
+                <label class="form-label">Order date <span class="req">*</span></label>
                 <input asp-for="OrderDate" type="date" class="af-input" value="@Model.OrderDate.ToString("yyyy-MM-dd")" required />
             </div>
             <div class="col-md-3">
-                <label class="af-label">Expected Delivery Date</label>
+                <label class="form-label">Expected delivery</label>
                 <input asp-for="ExpectedDeliveryDate" type="date" class="af-input" value="@(Model.ExpectedDeliveryDate?.ToString("yyyy-MM-dd"))" />
             </div>
             <div class="col-md-3">
-                <label class="af-label">Transporter / Courier</label>
+                <label class="form-label">Transporter / courier</label>
                 <input asp-for="TransporterName" class="af-input" id="transporterInput" />
             </div>
 
             <div class="col-md-6">
-                <label class="af-label">Shipping / Delivery Address</label>
+                <label class="form-label">Delivery address</label>
                 <input asp-for="ShippingAddress" class="af-input" id="shippingAddressInput" />
             </div>
             <div class="col-md-6">
-                <label class="af-label">Payment Terms</label>
+                <label class="form-label">Payment terms</label>
                 <input asp-for="PaymentTerms" class="af-input" id="paymentTermsInput" />
             </div>
             <div class="col-12">
-                <label class="af-label">Notes / Instructions</label>
+                <label class="form-label">Notes / instructions</label>
                 <input asp-for="Notes" class="af-input" />
             </div>
         </div>
+        </div>
     </div>
 
-    <!-- Line Items Table -->
-    <div class="data-card mb-4">
-        <div class="data-card-header d-flex justify-content-between align-items-center">
+    <div class="table-card mb-4">
+        <div class="data-card-header">
             <div>
-                <span class="data-card-title">Order Line Items</span>
-                <span style="font-size: 0.8rem; color: #64748b; margin-left: 0.5rem;">Designs, colour, size & quantity details</span>
+                <div class="data-card-title">Line items</div>
+                <div class="data-card-sub">Design, colour, size and quantity.</div>
             </div>
-            <div class="d-flex gap-2">
-                <button type="button" id="btnReapplyPricelist" class="btn-af btn-af-sm" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;" title="Recalculate rates & discounts for all items using selected pricelist">
-                    🔄 Apply Pricelist to All
+            <div class="btn-row">
+                <button type="button" id="btnReapplyPricelist" class="btn btn-sm btn-secondary" title="Recalculate rates &amp; discounts for all items using the selected pricelist">
+                    <i class="bi bi-arrow-repeat"></i> Apply pricelist
                 </button>
-                <button type="button" id="addRowBtn" class="btn-af btn-af-ghost btn-af-sm">+ Add Item</button>
+                <button type="button" id="addRowBtn" class="btn btn-sm btn-secondary"><i class="bi bi-plus-lg"></i> Add item</button>
             </div>
         </div>
-        <div style="padding: 1rem;">
-            <div style="overflow-x:auto;">
-                <table class="af-table" id="itemsTable" style="min-width: 1000px; font-size: 0.85rem;">
+            <div class="table-scroll">
+                <table class="af-table table-edit" id="itemsTable" style="min-width: 1000px;">
                     <thead>
                         <tr>
-                            <th style="width: 40px;" class="text-center">Sr</th>
-                            <th style="min-width: 200px;">Design / Product *</th>
+                            <th style="width: 44px;" class="text-center">#</th>
+                            <th style="min-width: 200px;">Design <span class="req">*</span></th>
                             <th style="width: 140px;">Colour</th>
                             <th style="width: 110px;">Size</th>
-                            <th style="width: 90px;" class="text-end">Qty *</th>
-                            <th style="width: 120px;" class="text-end">Rate (₹) *</th>
+                            <th style="width: 90px;" class="text-end">Qty <span class="req">*</span></th>
+                            <th style="width: 120px;" class="text-end">Rate (₹) <span class="req">*</span></th>
                             <th style="width: 90px;" class="text-end">Disc %</th>
                             <th style="width: 90px;" class="text-end">GST %</th>
                             <th style="width: 120px;" class="text-end">Gross (₹)</th>
@@ -160,109 +149,106 @@
                                 <td class="text-center sr-no">@(i + 1)</td>
                                 <td>
                                     <input type="hidden" name="Details[@i].Id" value="@d.Id" />
-                                    <select name="Details[@i].DesignId" class="af-input af-select item-design" required style="font-size: 0.8rem;">
-                                        <option value="">— Select Design —</option>
+                                    <select name="Details[@i].DesignId" class="af-input af-input-sm af-select item-design" required>
+                                        <option value="">Select design</option>
                                         @foreach (var des in designs)
                                         {
                                             <option value="@des.Id" data-number="@des.DesignNumber" data-rate="@des.SalesPrice" data-discontinued="@des.Discontinued.ToString().ToLower()" selected="@(des.Id == d.DesignId ? "selected" : null)">
-                                                @des.DesignNumber (₹@des.SalesPrice.ToString("N2")) @(des.Discontinued ? "🚫 [Discontinued]" : "")
+                                                @des.DesignNumber (₹@des.SalesPrice.ToString("N2")) @(des.Discontinued ? "· discontinued" : "")
                                             </option>
                                         }
                                     </select>
                                     <input type="hidden" name="Details[@i].DesignNumber" class="item-design-number" value="@d.DesignNumber" />
-                                    <div class="item-discontinued-notice mt-1" style="display:none; font-size: 0.72rem;"></div>
+                                    <div class="item-discontinued-notice mt-1 text-xs" style="display:none;"></div>
                                 </td>
                                 <td>
-                                    <input type="text" name="Details[@i].Colour" class="af-input item-colour" value="@d.Colour" list="coloursList" style="font-size: 0.8rem;" />
+                                    <input type="text" name="Details[@i].Colour" class="af-input af-input-sm item-colour" value="@d.Colour" list="coloursList" />
                                 </td>
                                 <td>
-                                    <input type="text" name="Details[@i].Size" class="af-input item-size" value="@d.Size" list="sizesList" style="font-size: 0.8rem;" />
+                                    <input type="text" name="Details[@i].Size" class="af-input af-input-sm item-size" value="@d.Size" list="sizesList" />
                                 </td>
                                 <td>
-                                    <input type="number" min="1" name="Details[@i].Quantity" class="af-input text-end item-qty" value="@d.Quantity" required style="font-size: 0.8rem;" />
+                                    <input type="number" min="1" name="Details[@i].Quantity" class="af-input af-input-sm text-end item-qty" value="@d.Quantity" required />
                                 </td>
                                 <td>
-                                    <input type="number" step="0.01" min="0" name="Details[@i].UnitPrice" class="af-input text-end item-rate" value="@d.UnitPrice" required style="font-size: 0.8rem;" />
+                                    <input type="number" step="0.01" min="0" name="Details[@i].UnitPrice" class="af-input af-input-sm text-end item-rate" value="@d.UnitPrice" required />
                                 </td>
                                 <td>
-                                    <input type="number" step="0.01" min="0" max="100" name="Details[@i].DiscountPercentage" class="af-input text-end item-disc" value="@d.DiscountPercentage" style="font-size: 0.8rem;" />
+                                    <input type="number" step="0.01" min="0" max="100" name="Details[@i].DiscountPercentage" class="af-input af-input-sm text-end item-disc" value="@d.DiscountPercentage" />
                                 </td>
                                 <td>
-                                    <input type="number" step="0.01" min="0" max="100" name="Details[@i].GstPercentage" class="af-input text-end item-gst" value="@d.GstPercentage" style="font-size: 0.8rem;" />
+                                    <input type="number" step="0.01" min="0" max="100" name="Details[@i].GstPercentage" class="af-input af-input-sm text-end item-gst" value="@d.GstPercentage" />
                                 </td>
-                                <td class="text-end font-weight-bold item-net" style="font-weight: 700;">₹@d.NetAmount.ToString("N2")</td>
+                                <td class="cell-num text-foreground fw-semibold item-net">₹@d.NetAmount.ToString("N2")</td>
                                 <td class="text-center">
-                                    <button type="button" class="btn-af btn-af-danger btn-af-sm remove-row">×</button>
+                                    <button type="button" class="row-action danger remove-row" title="Remove" aria-label="Remove"><i class="bi bi-trash"></i></button>
                                 </td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
-        </div>
     </div>
 
-    <!-- Charges, Taxes & Grand Total -->
-    <div class="row g-3 justify-content-end mb-4">
-        <div class="col-md-5">
-            <div class="data-card p-3">
-                <div class="d-flex justify-content-between py-1 border-bottom">
-                    <span style="color: #64748b;">Subtotal:</span>
-                    <strong id="subtotalDisplay">₹0.00</strong>
+    <div class="row g-4 justify-content-end mb-4">
+        <div class="col-md-6 col-lg-5">
+            <div class="data-card">
+                <div class="data-card-header">
+                    <div class="data-card-title">Order total</div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span style="color: #64748b;">Transport Charge:</span>
-                    <input type="number" step="0.01" min="0" asp-for="TransportCharge" class="af-input text-end" id="transportCharge" style="width: 120px;" value="@Model.TransportCharge" />
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span style="color: #64748b;">Transport GST %:</span>
-                    <input type="number" step="0.01" min="0" max="100" asp-for="TransportChargeGST" class="af-input text-end" id="transportGST" style="width: 120px;" value="@Model.TransportChargeGST" />
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span style="color: #64748b;">Round Off:</span>
-                    <input type="number" step="0.01" asp-for="RoundOff" class="af-input text-end" id="roundOff" style="width: 120px;" value="@Model.RoundOff" />
-                </div>
-                <div class="d-flex justify-content-between py-2 mt-1" style="font-size: 1.2rem;">
-                    <span style="font-weight: 700; color: #0f172a;">Grand Total:</span>
-                    <strong id="grandTotalDisplay" style="color: #16a34a;">₹@Model.TotalAmount.ToString("N2")</strong>
+                <div class="data-card-body">
+                    <div class="kv-row"><span class="k">Subtotal</span><span class="v" id="subtotalDisplay">₹0.00</span></div>
+                    <div class="kv-row align-items-center">
+                        <label class="k mb-0" for="transportCharge">Transport charge (₹)</label>
+                        <input type="number" step="0.01" min="0" asp-for="TransportCharge" class="af-input af-input-sm text-end" id="transportCharge" style="width: 120px;" value="@Model.TransportCharge" />
+                    </div>
+                    <div class="kv-row align-items-center">
+                        <label class="k mb-0" for="transportGST">Transport GST %</label>
+                        <input type="number" step="0.01" min="0" max="100" asp-for="TransportChargeGST" class="af-input af-input-sm text-end" id="transportGST" style="width: 120px;" value="@Model.TransportChargeGST" />
+                    </div>
+                    <div class="kv-row align-items-center">
+                        <label class="k mb-0" for="roundOff">Round off (₹)</label>
+                        <input type="number" step="0.01" asp-for="RoundOff" class="af-input af-input-sm text-end" id="roundOff" style="width: 120px;" value="@Model.RoundOff" />
+                    </div>
+                    <div class="bill-total"><span class="k">Grand total</span><span class="v" id="grandTotalDisplay">₹@Model.TotalAmount.ToString("N2")</span></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="d-flex justify-content-end gap-2 mb-5">
-        <a asp-action="Details" asp-route-id="@Model.Id" class="btn-af btn-af-ghost">Cancel</a>
-        <button type="submit" class="btn-af btn-af-primary">Update Sales Order</button>
+    <div class="form-footer">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Update sales order</button>
     </div>
 </form>
 
 <!-- Quick Create Pricelist Modal -->
 <div class="modal fade" id="quickPricelistModal" tabindex="-1" aria-labelledby="quickPricelistModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-primary text-white py-3">
-                <h5 class="modal-title fw-bold" id="quickPricelistModalLabel">🏷️ Add New Pricelist</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="quickPricelistModalLabel">New pricelist</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
-                <div id="quickPlAlert" class="alert alert-danger d-none" role="alert"></div>
+            <div class="modal-body">
+                <div id="quickPlAlert" class="af-alert af-alert-danger d-none" role="alert"></div>
                 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold small">Pricelist Name <span class="text-danger">*</span></label>
-                    <input type="text" id="quickPlName" class="form-control" placeholder="e.g. VIP Wholesale (10% Off)" required />
+                    <label class="form-label">Pricelist name <span class="req">*</span></label>
+                    <input type="text" id="quickPlName" class="af-input" placeholder="e.g. VIP Wholesale (10% Off)" required />
                 </div>
                 
                 <div class="row g-2 mb-3">
                     <div class="col-6">
-                        <label class="form-label fw-semibold small">Discount Policy</label>
-                        <select id="quickPlPolicy" class="form-select form-select-sm">
+                        <label class="form-label">Discount policy</label>
+                        <select id="quickPlPolicy" class="af-input af-select">
                             <option value="0">Discount included in price</option>
                             <option value="1">Show discount % to customer</option>
                         </select>
                     </div>
                     <div class="col-6">
-                        <label class="form-label fw-semibold small">Discount Type</label>
-                        <select id="quickPlMethod" class="form-select form-select-sm">
+                        <label class="form-label">Discount type</label>
+                        <select id="quickPlMethod" class="af-input af-select">
                             <option value="1">Percentage (%)</option>
                             <option value="0">Fixed Price (₹)</option>
                         </select>
@@ -271,33 +257,33 @@
 
                 <div class="row g-2 mb-3">
                     <div class="col-6" id="quickPlPctCol">
-                        <label class="form-label fw-semibold small">Discount %</label>
+                        <label class="form-label">Discount %</label>
                         <div class="input-group input-group-sm">
-                            <input type="number" step="0.1" min="0" max="100" id="quickPlDiscount" class="form-control text-end" value="10" />
+                            <input type="number" step="0.1" min="0" max="100" id="quickPlDiscount" class="af-input text-end" value="10" />
                             <span class="input-group-text">%</span>
                         </div>
                     </div>
                     <div class="col-6 d-none" id="quickPlFixedCol">
-                        <label class="form-label fw-semibold small">Fixed Price</label>
+                        <label class="form-label">Fixed price</label>
                         <div class="input-group input-group-sm">
                             <span class="input-group-text">₹</span>
-                            <input type="number" step="0.01" min="0" id="quickPlFixed" class="form-control text-end" value="0.00" />
+                            <input type="number" step="0.01" min="0" id="quickPlFixed" class="af-input text-end" value="0.00" />
                         </div>
                     </div>
                     <div class="col-6">
-                        <label class="form-label fw-semibold small">Min Quantity</label>
-                        <input type="number" step="1" min="1" id="quickPlMinQty" class="form-control form-control-sm text-center" value="1" />
+                        <label class="form-label">Min quantity</label>
+                        <input type="number" step="1" min="1" id="quickPlMinQty" class="af-input text-center" value="1" />
                     </div>
                 </div>
 
                 <div class="mb-2">
-                    <label class="form-label fw-semibold small">Description / Notes</label>
-                    <textarea id="quickPlDesc" class="form-control form-control-sm" rows="2" placeholder="Optional notes..."></textarea>
+                    <label class="form-label">Description / notes</label>
+                    <textarea id="quickPlDesc" class="af-input" rows="2" placeholder="Optional notes..."></textarea>
                 </div>
             </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-sm btn-primary fw-bold px-3" id="btnSaveQuickPricelist">💾 Save &amp; Select</button>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btnSaveQuickPricelist">Save &amp; Select</button>
             </div>
         </div>
     </div>
@@ -306,31 +292,31 @@
 <!-- Quick Edit Pricelist Modal -->
 <div class="modal fade" id="editPricelistModal" tabindex="-1" aria-labelledby="editPricelistModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-dark text-white py-3">
-                <h5 class="modal-title fw-bold" id="editPricelistModalLabel">✏️ Edit Pricelist Rules</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editPricelistModalLabel">Edit pricelist rules</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
-                <div id="editPlAlert" class="alert alert-danger d-none" role="alert"></div>
+            <div class="modal-body">
+                <div id="editPlAlert" class="af-alert af-alert-danger d-none" role="alert"></div>
                 <input type="hidden" id="editPlId" />
                 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold small">Pricelist Name <span class="text-danger">*</span></label>
-                    <input type="text" id="editPlName" class="form-control" required />
+                    <label class="form-label">Pricelist name <span class="req">*</span></label>
+                    <input type="text" id="editPlName" class="af-input" required />
                 </div>
                 
                 <div class="row g-2 mb-3">
                     <div class="col-6">
-                        <label class="form-label fw-semibold small">Discount Policy</label>
-                        <select id="editPlPolicy" class="form-select form-select-sm">
+                        <label class="form-label">Discount policy</label>
+                        <select id="editPlPolicy" class="af-input af-select">
                             <option value="0">Discount included in price</option>
                             <option value="1">Show discount % to customer</option>
                         </select>
                     </div>
                     <div class="col-6">
-                        <label class="form-label fw-semibold small">Discount Type</label>
-                        <select id="editPlMethod" class="form-select form-select-sm">
+                        <label class="form-label">Discount type</label>
+                        <select id="editPlMethod" class="af-input af-select">
                             <option value="1">Percentage (%)</option>
                             <option value="0">Fixed Price (₹)</option>
                         </select>
@@ -339,33 +325,33 @@
 
                 <div class="row g-2 mb-3">
                     <div class="col-6" id="editPlPctCol">
-                        <label class="form-label fw-semibold small">Discount %</label>
+                        <label class="form-label">Discount %</label>
                         <div class="input-group input-group-sm">
-                            <input type="number" step="0.1" min="0" max="100" id="editPlDiscount" class="form-control text-end" value="0" />
+                            <input type="number" step="0.1" min="0" max="100" id="editPlDiscount" class="af-input text-end" value="0" />
                             <span class="input-group-text">%</span>
                         </div>
                     </div>
                     <div class="col-6 d-none" id="editPlFixedCol">
-                        <label class="form-label fw-semibold small">Fixed Price</label>
+                        <label class="form-label">Fixed price</label>
                         <div class="input-group input-group-sm">
                             <span class="input-group-text">₹</span>
-                            <input type="number" step="0.01" min="0" id="editPlFixed" class="form-control text-end" value="0.00" />
+                            <input type="number" step="0.01" min="0" id="editPlFixed" class="af-input text-end" value="0.00" />
                         </div>
                     </div>
                     <div class="col-6">
-                        <label class="form-label fw-semibold small">Min Quantity</label>
-                        <input type="number" step="1" min="1" id="editPlMinQty" class="form-control form-control-sm text-center" value="1" />
+                        <label class="form-label">Min quantity</label>
+                        <input type="number" step="1" min="1" id="editPlMinQty" class="af-input text-center" value="1" />
                     </div>
                 </div>
 
                 <div class="mb-2">
-                    <label class="form-label fw-semibold small">Description / Notes</label>
-                    <textarea id="editPlDesc" class="form-control form-control-sm" rows="2"></textarea>
+                    <label class="form-label">Description / notes</label>
+                    <textarea id="editPlDesc" class="af-input" rows="2"></textarea>
                 </div>
             </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-sm btn-success fw-bold px-3" id="btnUpdatePricelist">💾 Save &amp; Re-apply</button>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btnUpdatePricelist">Save &amp; Re-apply</button>
             </div>
         </div>
     </div>
@@ -379,11 +365,11 @@
 </datalist>
 
 <template id="designOptionsTemplate">
-    <option value="">— Select Design —</option>
+    <option value="">Select design</option>
     @foreach (var d in designs)
     {
         <option value="@d.Id" data-number="@d.DesignNumber" data-rate="@d.SalesPrice" data-discontinued="@d.Discontinued.ToString().ToLower()">
-            @d.DesignNumber (₹@d.SalesPrice.ToString("N2")) @(d.Discontinued ? "🚫 [Discontinued]" : "")
+            @d.DesignNumber (₹@d.SalesPrice.ToString("N2")) @(d.Discontinued ? "· discontinued" : "")
         </option>
     }
 </template>
@@ -712,13 +698,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.isDiscontinued) {
                     noticeEl.style.display = 'block';
                     if (!data.canSell) {
-                        noticeEl.innerHTML = '<span class="text-danger fw-bold">🚫 Discontinued &amp; Zero Stock. Cannot order.</span>';
+                        noticeEl.innerHTML = '<span class="text-danger fw-semibold"><i class="bi bi-slash-circle"></i> Discontinued with zero stock — cannot order.</span>';
                         if (qtyInput) {
                             qtyInput.classList.add('border-danger');
                             qtyInput.title = 'Item is discontinued and out of stock';
                         }
                     } else {
-                        noticeEl.innerHTML = `<span class="badge bg-warning text-dark border">⚠️ Discontinued - Stock: <strong>${data.stockOnHand} pcs</strong></span>`;
+                        noticeEl.innerHTML = `<span class="af-badge b-yellow">Discontinued · ${data.stockOnHand} pcs in stock</span>`;
                         if (qtyInput) {
                             qtyInput.classList.remove('border-danger');
                             qtyInput.max = data.stockOnHand;
@@ -792,20 +778,20 @@ document.addEventListener('DOMContentLoaded', function () {
         tr.innerHTML = `
             <td class="text-center sr-no">${idx + 1}</td>
             <td>
-                <select name="Details[${idx}].DesignId" class="af-input af-select item-design" required style="font-size: 0.8rem;">
+                <select name="Details[${idx}].DesignId" class="af-input af-input-sm af-select item-design" required>
                     ${designOptions}
                 </select>
                 <input type="hidden" name="Details[${idx}].DesignNumber" class="item-design-number" />
-                <div class="item-discontinued-notice mt-1" style="display:none; font-size: 0.72rem;"></div>
+                <div class="item-discontinued-notice mt-1 text-xs" style="display:none;"></div>
             </td>
-            <td><input type="text" name="Details[${idx}].Colour" class="af-input item-colour" placeholder="Colour" list="coloursList" style="font-size: 0.8rem;" /></td>
-            <td><input type="text" name="Details[${idx}].Size" class="af-input item-size" placeholder="Size" list="sizesList" style="font-size: 0.8rem;" /></td>
-            <td><input type="number" min="1" name="Details[${idx}].Quantity" class="af-input text-end item-qty" value="1" required style="font-size: 0.8rem;" /></td>
-            <td><input type="number" step="0.01" min="0" name="Details[${idx}].UnitPrice" class="af-input text-end item-rate" value="0.00" required style="font-size: 0.8rem;" /></td>
-            <td><input type="number" step="0.01" min="0" max="100" name="Details[${idx}].DiscountPercentage" class="af-input text-end item-disc" value="0" style="font-size: 0.8rem;" /></td>
-            <td><input type="number" step="0.01" min="0" max="100" name="Details[${idx}].GstPercentage" class="af-input text-end item-gst" value="12" style="font-size: 0.8rem;" /></td>
-            <td class="text-end font-weight-bold item-net" style="font-weight: 700;">₹0.00</td>
-            <td class="text-center"><button type="button" class="btn-af btn-af-danger btn-af-sm remove-row">×</button></td>
+            <td><input type="text" name="Details[${idx}].Colour" class="af-input af-input-sm item-colour" placeholder="Colour" list="coloursList" /></td>
+            <td><input type="text" name="Details[${idx}].Size" class="af-input af-input-sm item-size" placeholder="Size" list="sizesList" /></td>
+            <td><input type="number" min="1" name="Details[${idx}].Quantity" class="af-input af-input-sm text-end item-qty" value="1" required /></td>
+            <td><input type="number" step="0.01" min="0" name="Details[${idx}].UnitPrice" class="af-input af-input-sm text-end item-rate" value="0.00" required /></td>
+            <td><input type="number" step="0.01" min="0" max="100" name="Details[${idx}].DiscountPercentage" class="af-input af-input-sm text-end item-disc" value="0" /></td>
+            <td><input type="number" step="0.01" min="0" max="100" name="Details[${idx}].GstPercentage" class="af-input af-input-sm text-end item-gst" value="12" /></td>
+            <td class="cell-num text-foreground fw-semibold item-net">₹0.00</td>
+            <td class="text-center"><button type="button" class="row-action danger remove-row" title="Remove" aria-label="Remove"><i class="bi bi-trash"></i></button></td>
         `;
         itemsBody.appendChild(tr);
         bindRow(tr);

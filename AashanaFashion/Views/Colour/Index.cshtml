@@ -6,6 +6,7 @@
     bool canCreate = isAdmin || User.HasClaim("Permission.VendorMaster.CanCreate", "true");
     bool canEdit   = isAdmin || User.HasClaim("Permission.VendorMaster.CanEdit",   "true");
     bool canDelete = isAdmin || User.HasClaim("Permission.VendorMaster.CanDelete", "true");
+    bool filtered  = !string.IsNullOrEmpty(ViewBag.Search as string) || ViewBag.ActiveOnly == true;
 }
 
 <div class="page-header">
@@ -15,95 +16,115 @@
     </div>
     @if (canCreate)
     {
-        <a asp-action="Create" class="btn-af btn-af-primary">+ New Colour</a>
+        <div class="page-actions">
+            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Colour</a>
+        </div>
     }
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
-}
-
-<!-- Search & Filter -->
-<div class="data-card mb-4 p-3">
-    <form method="get" asp-action="Index" class="row g-2 align-items-center">
-        <div class="col-md-7">
-            <input type="text" name="search" class="af-input" placeholder="Search colour name, hex code..." value="@ViewBag.Search" />
-        </div>
-        <div class="col-md-3">
-            <div class="form-check ms-1">
-                <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnly" @(ViewBag.ActiveOnly == true ? "checked" : "") />
-                <label class="form-check-label small" for="activeOnly">Active Only</label>
+<div class="table-card">
+    <form method="get" asp-action="Index" class="table-toolbar">
+        <div class="toolbar-filters">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="Search colour name, hex code…" value="@ViewBag.Search" />
+            </div>
+            <div class="form-check m-0">
+                <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnly" @(ViewBag.ActiveOnly == true ? "checked" : "") onchange="this.form.submit()" />
+                <label class="form-check-label" for="activeOnly">Active only</label>
             </div>
         </div>
-        <div class="col-md-2 d-flex gap-2">
-            <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
-            <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
+        <div class="toolbar-actions">
+            @if (filtered)
+            {
+                <a asp-action="Index" class="btn btn-ghost">Clear</a>
+            }
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
         </div>
     </form>
-</div>
 
-<div class="data-card">
-    <table class="af-table">
-        <thead>
-            <tr>
-                <th>Colour Name</th>
-                <th>Visual Hex</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
-                <tr>
-                    <td><strong>@item.ColourName</strong></td>
-                    <td>
-                        @if (!string.IsNullOrEmpty(item.ColourCode))
-                        {
-                            <div style="display:flex;align-items:center;gap:.5rem;">
-                                <span style="display:inline-block;width:24px;height:24px;border-radius:4px;background-color:@item.ColourCode;border:1px solid #cbd5e1;"></span>
-                                <code>@item.ColourCode</code>
-                            </div>
-                        }
-                        else
-                        {
-                            <span style="color:#94a3b8;">—</span>
-                        }
-                    </td>
-                    <td>
-                        <span class="af-badge @(item.IsActive ? "b-green" : "b-gray")">
-                            @(item.IsActive ? "Active" : "Inactive")
-                        </span>
-                    </td>
-                    <td>
-                        @if (canEdit || canDelete)
-                        {
-                            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-                                @if (canEdit)
-                                {
-                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
-                                }
-                                @if (canDelete)
-                                {
-                                    <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete this colour?')">Delete</button>
-                                    </form>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <span style="font-size:.75rem;color:#cbd5e1;">View only</span>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-    @if (!Model.Any())
+    @if (Model.Any())
     {
-        <div class="text-center p-4 text-muted">No colours found. <a asp-action="Create">Add the first one</a>.</div>
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>Colour</th>
+                        <th>Hex Code</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="swatch swatch-lg" style="background-color:@(string.IsNullOrEmpty(item.ColourCode) ? "transparent" : item.ColourCode);"></span>
+                                    <span class="cell-title">@item.ColourName</span>
+                                </div>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(item.ColourCode))
+                                {
+                                    <span class="font-monospace text-xs">@item.ColourCode.ToUpperInvariant()</span>
+                                }
+                                else
+                                {
+                                    <span class="text-placeholder">—</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="af-badge @(item.IsActive ? "b-green" : "b-gray")">
+                                    @(item.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </td>
+                            <td class="cell-actions">
+                                @if (canEdit || canDelete)
+                                {
+                                    <div class="row-actions">
+                                        @if (canEdit)
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@item.Id" class="row-action" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                        }
+                                        @if (canDelete)
+                                        {
+                                            <form asp-action="Delete" asp-route-id="@item.Id" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="row-action danger" onclick="return confirm('Delete this colour?')" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-xs text-placeholder">View only</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> @(Model.Count() == 1 ? "colour" : "colours")</span>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi @(filtered ? "bi-search" : "bi-palette")"></i></div>
+            <div class="es-title">@(filtered ? "No results found" : "No colours yet")</div>
+            <p>@(filtered ? "No colours match your search. Try adjusting the filters." : "Add the colours your designs are produced in.")</p>
+            @if (filtered)
+            {
+                <a asp-action="Index" class="btn btn-secondary">Clear search</a>
+            }
+            else if (canCreate)
+            {
+                <a asp-action="Create" class="btn btn-secondary">New Colour</a>
+            }
+        </div>
     }
 </div>

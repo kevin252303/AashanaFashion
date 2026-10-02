@@ -8,6 +8,7 @@
     var prevYear = month == 1 ? year - 1 : year;
     var nextMonth = month == 12 ? 1 : month + 1;
     var nextYear = month == 12 ? year + 1 : year;
+    bool canManage = role == "Admin" || role == "Manager";
 }
 
 <div class="page-header">
@@ -15,148 +16,140 @@
         <h1 class="page-title">Dying Entry</h1>
         <p class="page-sub">Track cloth sent for dying</p>
     </div>
-    @if (role == "Admin" || role == "Manager")
+    @if (canManage)
     {
-        <a asp-action="Create" class="btn-af btn-af-primary">+ Add Entry</a>
+        <div class="page-actions">
+            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Entry</a>
+        </div>
     }
 </div>
 
-<!-- Month Navigation -->
-<div class="row g-3 mb-4">
-    <div class="col-12">
-        <div class="data-card" style="padding:1rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <a asp-action="Index" asp-route-month="@prevMonth" asp-route-year="@prevYear" class="btn-af btn-af-ghost btn-af-sm">← Previous</a>
-                <h4 style="margin:0;font-weight:700;">@ViewBag.MonthName</h4>
-                <a asp-action="Index" asp-route-month="@nextMonth" asp-route-year="@nextYear" class="btn-af btn-af-ghost btn-af-sm">Next →</a>
-            </div>
-        </div>
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total meters</div>
+        <div class="metric-value">@ViewBag.TotalMeters <span class="metric-suffix">m</span></div>
+        <div class="metric-meta">@ViewBag.MonthName</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Total entries</div>
+        <div class="metric-value">@Model.Entries.Count</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Lots</div>
+        <div class="metric-value">@Model.Summary.Count</div>
     </div>
 </div>
 
-<!-- Search Bar -->
-<div class="data-card mb-4 p-3">
-    <form method="get" asp-action="Index">
+<div class="table-card mb-4">
+    <form method="get" asp-action="Index" class="table-toolbar">
         <input type="hidden" name="month" value="@ViewBag.Month" />
         <input type="hidden" name="year" value="@ViewBag.Year" />
-        <div class="row g-2 align-items-center">
-            <div class="col-md-9">
-                <input type="text" name="search" class="af-input" placeholder="Search Lot Number or Remarks..." value="@ViewBag.Search" style="font-size: 0.85rem;" />
+        <div class="toolbar-filters">
+            <div class="period-nav">
+                <a asp-action="Index" asp-route-month="@prevMonth" asp-route-year="@prevYear" class="btn btn-ghost btn-icon btn-sm" title="Previous month" aria-label="Previous month"><i class="bi bi-chevron-left"></i></a>
+                <span class="period-label">@ViewBag.MonthName</span>
+                <a asp-action="Index" asp-route-month="@nextMonth" asp-route-year="@nextYear" class="btn btn-ghost btn-icon btn-sm" title="Next month" aria-label="Next month"><i class="bi bi-chevron-right"></i></a>
             </div>
-            <div class="col-md-3 d-flex gap-2">
-                <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Search</button>
-                <a asp-action="Index" asp-route-month="@ViewBag.Month" asp-route-year="@ViewBag.Year" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="Search lot number or remarks…" value="@ViewBag.Search" />
             </div>
+        </div>
+        <div class="toolbar-actions">
+            <a asp-action="Index" asp-route-month="@ViewBag.Month" asp-route-year="@ViewBag.Year" class="btn btn-ghost">Reset</a>
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-search"></i> Search</button>
         </div>
     </form>
-</div>
 
-<!-- Summary Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-purple">📏</div>
-            <div><div class="stat-val">@ViewBag.TotalMeters</div><div class="stat-lbl">Total Meters</div></div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-blue">📋</div>
-            <div><div class="stat-val">@Model.Entries.Count</div><div class="stat-lbl">Total Entries</div></div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-green">📦</div>
-            <div><div class="stat-val">@Model.Summary.Count</div><div class="stat-lbl">Lots</div></div>
-        </div>
-    </div>
-</div>
-
-<!-- Summary by Lot -->
-@if (Model.Summary.Any())
-{
-    <div class="data-card mb-4">
-        <div class="data-card-header">
-            <span class="data-card-title">Summary by Lot (for Payment)</span>
-        </div>
-        <table class="af-table">
-            <thead>
-                <tr>
-                    <th>Lot No</th>
-                    <th>Total Meters</th>
-                    <th>Entries</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model.Summary)
-                {
-                    <tr>
-                        <td><strong>@item.LotNo</strong></td>
-                        <td><strong>@item.TotalMeters</strong> m</td>
-                        <td>@item.EntryCount</td>
-                    </tr>
-                }
-            </tbody>
-            <tfoot>
-                <tr style="background:#f8fafc;font-weight:bold;">
-                    <td>Grand Total</td>
-                    <td>@ViewBag.TotalMeters m</td>
-                    <td>@Model.Entries.Count</td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-}
-
-<!-- Daily Entries -->
-<div class="data-card">
-    <div class="data-card-header">
-        <span class="data-card-title">Daily Entries</span>
-    </div>
-    
     @if (!Model.Entries.Any())
     {
         <div class="empty-state">
-            <div class="es-icon">📏</div>
-            <p>No dying entries for this month</p>
+            <div class="es-icon"><i class="bi bi-droplet"></i></div>
+            <div class="es-title">No dying entries this month</div>
+            <p>Entries for cloth sent to dying appear here.</p>
+            @if (canManage)
+            {
+                <a asp-action="Create" class="btn btn-secondary">Add Entry</a>
+            }
         </div>
     }
     else
     {
-        <table class="af-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Lot No</th>
-                    <th>Meters</th>
-                    <th>Remarks</th>
-                    @if (role == "Admin" || role == "Manager")
-                    {
-                        <th>Actions</th>
-                    }
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var entry in Model.Entries)
-                {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
                     <tr>
-                        <td>@entry.EntryDate.ToString("dd MMM yyyy")</td>
-                        <td><strong>@entry.LotNo</strong></td>
-                        <td><strong>@entry.Meters</strong> m</td>
-                        <td>@entry.Remarks</td>
-                        @if (role == "Admin" || role == "Manager")
+                        <th>Date</th>
+                        <th>Lot No</th>
+                        <th class="text-end">Meters</th>
+                        <th>Remarks</th>
+                        @if (canManage)
                         {
-                            <td>
-                                <form asp-action="Delete" asp-route-id="@entry.Id" method="post" style="display:inline;">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete this entry?')">Delete</button>
-                                </form>
-                            </td>
+                            <th class="text-end">Actions</th>
                         }
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var entry in Model.Entries)
+                    {
+                        <tr>
+                            <td class="text-nowrap">@entry.EntryDate.ToString("dd MMM yyyy")</td>
+                            <td><span class="mono-id">@entry.LotNo</span></td>
+                            <td class="cell-num text-foreground fw-medium">@entry.Meters <span class="text-xs text-muted">m</span></td>
+                            <td class="text-muted">@entry.Remarks</td>
+                            @if (canManage)
+                            {
+                                <td class="cell-actions">
+                                    <form asp-action="Delete" asp-route-id="@entry.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="row-action danger" title="Delete" aria-label="Delete" onclick="return confirm('Delete this entry?')"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Entries.Count</strong> entries</span>
+        </div>
     }
 </div>
+
+@if (Model.Summary.Any())
+{
+    <div class="table-card">
+        <div class="data-card-header">
+            <span class="data-card-title">Summary by lot (for payment)</span>
+        </div>
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>Lot No</th>
+                        <th class="text-end">Total Meters</th>
+                        <th class="text-end">Entries</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Summary)
+                    {
+                        <tr>
+                            <td><span class="mono-id">@item.LotNo</span></td>
+                            <td class="cell-num text-foreground fw-medium">@item.TotalMeters <span class="text-xs text-muted">m</span></td>
+                            <td class="cell-num">@item.EntryCount</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td>Grand total</td>
+                        <td class="cell-num">@ViewBag.TotalMeters m</td>
+                        <td class="cell-num">@Model.Entries.Count</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+}

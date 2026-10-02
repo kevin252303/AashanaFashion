@@ -1,159 +1,151 @@
 @model IEnumerable<AashanaFashion.Models.JournalEntry>
 @{
-    ViewData["Title"] = "Journal Entries (Double-Entry Ledger)";
+    ViewData["Title"] = "Journal Entries";
     var journals = ViewBag.Journals as List<AashanaFashion.Models.Journal> ?? new();
     int? selectedJournalId = ViewBag.SelectedJournalId;
+    bool filtered = selectedJournalId.HasValue || !string.IsNullOrEmpty(ViewBag.StartDate as string) || !string.IsNullOrEmpty(ViewBag.EndDate as string);
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="page-header">
     <div>
-        <h1 class="page-title mb-1">📖 Double-Entry Journal Entries</h1>
-        <p class="page-sub mb-0 text-muted">Complete financial transaction book with balanced debits and credits across all journals</p>
+        <h1 class="page-title">Journal Entries</h1>
+        <p class="page-sub">Balanced debit and credit vouchers across all journals.</p>
     </div>
-    <div class="d-flex gap-2 flex-wrap">
-        <a asp-action="ChartOfAccounts" class="btn btn-outline-secondary">🏛️ Chart of Accounts</a>
-        <a asp-action="TrialBalance" class="btn btn-outline-primary">⚖️ Trial Balance</a>
-        <form method="post" asp-action="SyncHistoricalEntries" class="d-inline" onsubmit="return confirm('Synchronize existing sales invoices, receipts, and purchase bills into double-entry journal entries?');">
+    <div class="page-actions">
+        <a asp-action="ChartOfAccounts" class="btn btn-secondary"><i class="bi bi-diagram-3"></i> Chart of accounts</a>
+        <form method="post" asp-action="SyncHistoricalEntries" onsubmit="return confirm('Create double-entry journal entries for existing sales invoices, receipts and purchase bills?');">
             @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-warning text-dark fw-semibold">
-                🔄 Sync Invoices &amp; Bills
-            </button>
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-arrow-repeat"></i> Sync invoices &amp; bills</button>
         </form>
-        <a asp-action="CreateJournalEntry" class="btn btn-primary fw-bold">
-            + New Journal Entry
-        </a>
+        <a asp-action="CreateJournalEntry" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New journal entry</a>
     </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <strong>Success!</strong> @TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Vouchers</div>
+        <div class="metric-value">@Model.Count()</div>
+        <div class="metric-meta">in the selected range</div>
     </div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <strong>Error:</strong> @TempData["Error"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <div class="metric-card">
+        <div class="metric-label">Total volume</div>
+        <div class="metric-value">₹@Model.Sum(e => e.TotalAmount).ToString("N2")</div>
+        <div class="metric-meta">sum of voucher amounts</div>
     </div>
-}
+</div>
 
-<!-- Filters -->
-<div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-body p-3">
-        <form method="get" asp-action="JournalEntries" class="row g-2 align-items-center">
-            <div class="col-md-3">
-                <select name="journalId" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">All Journals</option>
+<div class="table-card">
+    <form method="get" asp-action="JournalEntries" class="table-toolbar align-end">
+        <div class="toolbar-filters align-items-end">
+            <div class="toolbar-field">
+                <label for="jeJournal">Journal</label>
+                <select id="jeJournal" name="journalId" class="af-input af-select" onchange="this.form.submit()">
+                    <option value="">All journals</option>
                     @foreach (var j in journals)
                     {
                         <option value="@j.Id" selected="@(j.Id == selectedJournalId)">@j.Name (@j.Code)</option>
                     }
                 </select>
             </div>
-            <div class="col-md-3">
-                <input type="date" name="startDate" value="@ViewBag.StartDate" class="form-control form-control-sm" placeholder="Start Date" />
+            <div class="toolbar-field">
+                <label for="jeFrom">From</label>
+                <input type="date" id="jeFrom" name="startDate" value="@ViewBag.StartDate" class="af-input" />
             </div>
-            <div class="col-md-3">
-                <input type="date" name="endDate" value="@ViewBag.EndDate" class="form-control form-control-sm" placeholder="End Date" />
+            <div class="toolbar-field">
+                <label for="jeTo">To</label>
+                <input type="date" id="jeTo" name="endDate" value="@ViewBag.EndDate" class="af-input" />
             </div>
-            <div class="col-md-3 d-flex gap-2">
-                <button type="submit" class="btn btn-sm btn-dark w-50">Filter</button>
-                <a asp-action="JournalEntries" class="btn btn-sm btn-outline-secondary w-50">Reset</a>
-            </div>
-        </form>
-    </div>
-</div>
+        </div>
+        <div class="toolbar-actions">
+            @if (filtered)
+            {
+                <a asp-action="JournalEntries" class="btn btn-ghost">Clear</a>
+            }
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
 
-<!-- Journal Entries List -->
-<div class="card border-0 shadow-sm rounded-3">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <h6 class="mb-0 fw-bold">Journal Vouchers (@Model.Count() entries)</h6>
-        <span class="text-muted small">Total Volume: ₹@Model.Sum(e => e.TotalAmount).ToString("N2")</span>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light small text-uppercase">
-                <tr>
-                    <th style="width: 140px;">Entry #</th>
-                    <th style="width: 120px;">Date</th>
-                    <th>Journal</th>
-                    <th>Reference</th>
-                    <th>Narration</th>
-                    <th class="text-end" style="width: 140px;">Amount (₹)</th>
-                    <th class="text-center" style="width: 100px;">Status</th>
-                    <th class="text-center" style="width: 100px;">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (!Model.Any())
-                {
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi @(filtered ? "bi-search" : "bi-journal-text")"></i></div>
+            <div class="es-title">@(filtered ? "No results found" : "No journal entries yet")</div>
+            <p>@(filtered ? "No vouchers match your filters." : "Use “Sync invoices & bills” to create entries for past sales and purchases, or post one manually.")</p>
+            @if (filtered)
+            {
+                <a asp-action="JournalEntries" class="btn btn-secondary">Clear filters</a>
+            }
+            else
+            {
+                <a asp-action="CreateJournalEntry" class="btn btn-secondary">New journal entry</a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
                     <tr>
-                        <td colspan="8" class="text-center py-5 text-muted">
-                            <p class="mb-2">No journal entries found matching filters.</p>
-                            <small>Click <strong>"Sync Invoices &amp; Bills"</strong> above to auto-create journal entries for your past sales &amp; purchase bills.</small>
-                        </td>
+                        <th>Entry</th>
+                        <th>Date</th>
+                        <th>Journal</th>
+                        <th>Reference</th>
+                        <th>Narration</th>
+                        <th class="text-end">Amount</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
                     </tr>
-                }
-                else
-                {
+                </thead>
+                <tbody>
                     @foreach (var entry in Model)
                     {
-                        string badgeClass = entry.Journal?.Type switch
-                        {
-                            AashanaFashion.Models.JournalType.Sales => "bg-primary-subtle text-primary border-primary",
-                            AashanaFashion.Models.JournalType.Purchase => "bg-warning-subtle text-dark border-warning",
-                            AashanaFashion.Models.JournalType.Bank => "bg-info-subtle text-info border-info",
-                            AashanaFashion.Models.JournalType.Cash => "bg-success-subtle text-success border-success",
-                            _ => "bg-secondary-subtle text-secondary"
-                        };
-
                         <tr>
+                            <td><a asp-action="JournalEntryDetails" asp-route-id="@entry.Id" class="cell-title font-monospace">@entry.EntryNumber</a></td>
+                            <td class="text-nowrap text-muted tabular">@entry.Date.ToString("dd MMM yyyy")</td>
+                            <td><span class="af-badge @JournalBadge(entry.Journal?.Type)">@(entry.Journal?.Name ?? "Journal")</span></td>
                             <td>
-                                <a asp-action="JournalEntryDetails" asp-route-id="@entry.Id" class="font-monospace fw-bold text-decoration-none">
-                                    @entry.EntryNumber
-                                </a>
-                            </td>
-                            <td class="small text-muted">@entry.Date.ToString("dd-MMM-yyyy")</td>
-                            <td>
-                                <span class="badge @badgeClass px-2 py-1">
-                                    @(entry.Journal?.Name ?? "Journal")
-                                </span>
-                            </td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(entry.Reference))
-                                {
-                                    <span class="font-monospace fw-semibold small">@entry.Reference</span>
-                                }
-                                else
+                                @if (string.IsNullOrEmpty(entry.Reference))
                                 {
                                     <span class="text-muted">—</span>
                                 }
+                                else
+                                {
+                                    <span class="mono-id">@entry.Reference</span>
+                                }
                             </td>
-                            <td>
-                                <div class="text-truncate" style="max-width: 320px;" title="@entry.Narration">
-                                    @entry.Narration
+                            <td class="text-muted text-truncate" style="max-width: 320px;" title="@entry.Narration">@entry.Narration</td>
+                            <td class="cell-num text-foreground fw-semibold">₹@entry.TotalAmount.ToString("N2")</td>
+                            <td><span class="af-badge @StatusBadge(entry.Status)">@entry.Status.Humanize()</span></td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    <a asp-action="JournalEntryDetails" asp-route-id="@entry.Id" class="row-action" title="View debit / credit lines" aria-label="View @entry.EntryNumber"><i class="bi bi-eye"></i></a>
                                 </div>
-                            </td>
-                            <td class="text-end fw-bold font-monospace">
-                                ₹@entry.TotalAmount.ToString("N2")
-                            </td>
-                            <td class="text-center">
-                                <span class="badge bg-success-subtle text-success">
-                                    @entry.Status
-                                </span>
-                            </td>
-                            <td class="text-center">
-                                <a asp-action="JournalEntryDetails" asp-route-id="@entry.Id" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.8rem;">
-                                    View Dr/Cr 👁️
-                                </a>
                             </td>
                         </tr>
                     }
-                }
-            </tbody>
-        </table>
-    </div>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> @(Model.Count() == 1 ? "entry" : "entries")</span>
+        </div>
+    }
 </div>
+
+@functions {
+    string JournalBadge(AashanaFashion.Models.JournalType? t) => t switch
+    {
+        AashanaFashion.Models.JournalType.Sales => "b-blue",
+        AashanaFashion.Models.JournalType.Purchase => "b-yellow",
+        AashanaFashion.Models.JournalType.Bank => "b-cyan",
+        AashanaFashion.Models.JournalType.Cash => "b-green",
+        _ => "b-gray"
+    };
+    string StatusBadge(AashanaFashion.Models.JournalEntryStatus s) => s switch
+    {
+        AashanaFashion.Models.JournalEntryStatus.Posted => "b-green",
+        AashanaFashion.Models.JournalEntryStatus.Draft => "b-yellow",
+        _ => "b-gray"
+    };
+}

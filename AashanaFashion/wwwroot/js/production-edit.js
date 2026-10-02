@@ -69,7 +69,7 @@ $(document).ready(function () {
         // Generate matrix rows
         currentColours.forEach(function (colour, rowIdx) {
             var row = $('<tr>');
-            row.append('<td><strong>' + colour + '</strong></td>');
+            row.append('<td class="cell-title">' + colour + '</td>');
 
             currentSizes.forEach(function (size, sizeIdx) {
                 var existingQty = 0;
@@ -84,26 +84,26 @@ $(document).ready(function () {
                     '<td class="text-center">' +
                     '<input type="hidden" name="Details[' + detailIndex + '].Colour" value="' + colour + '" />' +
                     '<input type="hidden" name="Details[' + detailIndex + '].Size" value="' + size + '" />' +
-                    '<input type="number" class="matrix-input" data-row="' + rowIdx + '" data-col="' + sizeIdx + '" ' +
+                    '<input type="number" class="af-input af-input-sm matrix-input" data-row="' + rowIdx + '" data-col="' + sizeIdx + '" ' +
                     'name="Details[' + detailIndex + '].Quantity" ' +
-                    'min="0" value="' + existingQty + '" style="width:70px;text-align:center;padding:.4rem;" />' +
+                    'min="0" value="' + existingQty + '" />' +
                     '</td>'
                 );
                 detailIndex++;
             });
 
             // Row total
-            row.append('<td class="text-center" style="background:#f0fdf4;"><strong class="row-total" data-row="' + rowIdx + '">0</strong></td>');
+            row.append('<td class="cell-total"><span class="row-total" data-row="' + rowIdx + '">0</span></td>');
             tbody.append(row);
         });
 
         // Add column totals row
-        var totalRow = $('<tr style="background:#f8fafc;font-weight:bold;">');
-        totalRow.append('<td><strong>Total</strong></td>');
+        var totalRow = $('<tr class="matrix-total-row">');
+        totalRow.append('<td>Total</td>');
         currentSizes.forEach(function (size, colIdx) {
-            totalRow.append('<td class="text-center" style="background:#f0fdf4;"><strong class="col-total" data-col="' + colIdx + '">0</strong></td>');
+            totalRow.append('<td><span class="col-total" data-col="' + colIdx + '">0</span></td>');
         });
-        totalRow.append('<td class="text-center" style="background:#dcfce7;"><strong id="grandTotal">0</strong></td>');
+        totalRow.append('<td class="grand-total"><span id="grandTotal">0</span></td>');
         tbody.append(totalRow);
 
         // Add event listeners
@@ -159,8 +159,8 @@ $(document).ready(function () {
             if (fieldName) {
                 var isChecked = useInitialValues && initialVerification[fieldName];
                 container.append(
-                    '<label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">' +
-                    '<input type="checkbox" name="' + fieldName + '" ' + (isChecked ? 'checked' : '') + ' style="accent-color:#6366f1;width:16px;height:16px;" />' +
+                    '<label class="check-item">' +
+                    '<input type="checkbox" class="form-check-input m-0" name="' + fieldName + '" ' + (isChecked ? 'checked' : '') + ' />' +
                     step + ' Verified' +
                     '</label>'
                 );

@@ -6,128 +6,114 @@
     bool isBalanced = Math.Abs(totalDebit - totalCredit) < 0.01m;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="page-header">
     <div>
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <a asp-action="JournalEntries" class="btn btn-sm btn-outline-secondary">
-                ← Back to Entries
-            </a>
-            <h1 class="page-title mb-0">Journal Entry: <span class="font-monospace text-primary">@Model.EntryNumber</span></h1>
+        <a asp-action="JournalEntries" class="page-back"><i class="bi bi-arrow-left"></i> Journal entries</a>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h1 class="page-title font-monospace">@Model.EntryNumber</h1>
+            <span class="af-badge @(Model.Status == AashanaFashion.Models.JournalEntryStatus.Posted ? "b-green" : Model.Status == AashanaFashion.Models.JournalEntryStatus.Draft ? "b-yellow" : "b-gray")">@Model.Status.Humanize()</span>
         </div>
-        <p class="page-sub mb-0 text-muted">Posted in <strong>@(Model.Journal?.Name ?? "Journal")</strong> on @Model.Date.ToString("dd MMMM yyyy")</p>
+        <p class="page-sub">@(Model.Journal?.Name ?? "Journal") · @Model.Date.ToString("dd MMM yyyy")</p>
     </div>
-    <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
-            🖨️ Print Voucher
-        </button>
-        <a asp-action="CreateJournalEntry" class="btn btn-primary">
-            + New Entry
-        </a>
+    <div class="page-actions d-print-none">
+        <button type="button" class="btn btn-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print voucher</button>
+        <a asp-action="CreateJournalEntry" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New entry</a>
     </div>
 </div>
 
-<!-- Header Card -->
-<div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-body p-4">
-        <div class="row g-3">
-            <div class="col-md-3">
-                <span class="text-muted small d-block">Journal</span>
-                <span class="fw-bold fs-6">@(Model.Journal?.Name ?? "General") (@Model.Journal?.Code)</span>
+<div class="data-card mb-4">
+    <div class="data-card-body">
+        <div class="info-grid cols-4">
+            <div>
+                <div class="info-label">Journal</div>
+                <div class="info-value">@(Model.Journal?.Name ?? "General") <span class="text-muted font-monospace text-xs">@Model.Journal?.Code</span></div>
             </div>
-            <div class="col-md-3">
-                <span class="text-muted small d-block">Accounting Date</span>
-                <span class="fw-semibold">@Model.Date.ToString("dd-MMM-yyyy")</span>
+            <div>
+                <div class="info-label">Accounting date</div>
+                <div class="info-value">@Model.Date.ToString("dd MMM yyyy")</div>
             </div>
-            <div class="col-md-3">
-                <span class="text-muted small d-block">Reference / Document</span>
-                <span class="font-monospace fw-bold">@(string.IsNullOrEmpty(Model.Reference) ? "None" : Model.Reference)</span>
+            <div>
+                <div class="info-label">Reference</div>
+                <div class="info-value font-monospace">@(string.IsNullOrEmpty(Model.Reference) ? "—" : Model.Reference)</div>
             </div>
-            <div class="col-md-3">
-                <span class="text-muted small d-block">Status</span>
-                <span class="badge bg-success-subtle text-success fs-6 px-3 py-1">@Model.Status</span>
+            <div>
+                <div class="info-label">Total</div>
+                <div class="info-value tabular">₹@totalDebit.ToString("N2")</div>
             </div>
             @if (!string.IsNullOrEmpty(Model.Narration))
             {
-                <div class="col-12 border-top pt-2">
-                    <span class="text-muted small d-block">Narration / Notes:</span>
-                    <span class="text-dark">@Model.Narration</span>
+                <div style="grid-column: 1 / -1;">
+                    <div class="info-label">Narration</div>
+                    <div class="info-value">@Model.Narration</div>
                 </div>
             }
         </div>
     </div>
 </div>
 
-<!-- Balanced Debit & Credit Lines Table -->
-<div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <h6 class="mb-0 fw-bold">Journal Entry Lines (Double-Entry Breakdown)</h6>
+<div class="table-card">
+    <div class="data-card-header">
+        <div class="data-card-title">Debit &amp; credit lines</div>
         @if (isBalanced)
         {
-            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                ✅ Balanced (Debit = Credit)
-            </span>
+            <span class="af-badge b-green"><i class="bi bi-check2"></i> Balanced</span>
         }
         else
         {
-            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
-                ⚠️ Out of Balance
-            </span>
+            <span class="af-badge b-red"><i class="bi bi-exclamation-triangle"></i> Out of balance</span>
         }
     </div>
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light small text-uppercase">
+    <div class="table-scroll">
+        <table class="af-table">
+            <thead>
                 <tr>
-                    <th style="width: 120px;">Account Code</th>
-                    <th>Account Name</th>
-                    <th>Partner (Debtor/Creditor)</th>
-                    <th>Label / Description</th>
-                    <th class="text-end" style="width: 160px;">Debit (₹)</th>
-                    <th class="text-end" style="width: 160px;">Credit (₹)</th>
+                    <th style="width: 110px;">Code</th>
+                    <th>Account</th>
+                    <th>Partner</th>
+                    <th>Description</th>
+                    <th class="text-end">Debit</th>
+                    <th class="text-end">Credit</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var l in Model.Lines)
                 {
                     <tr>
+                        <td><a asp-action="GeneralLedger" asp-route-accountId="@l.AccountId" class="mono-id">@(l.Account?.Code ?? "—")</a></td>
                         <td>
-                            <a asp-action="GeneralLedger" asp-route-accountId="@l.AccountId" class="font-monospace fw-bold text-decoration-none">
-                                @(l.Account?.Code ?? "—")
-                            </a>
-                        </td>
-                        <td>
-                            <strong class="text-dark">@(l.Account?.Name ?? "Account")</strong>
-                            <small class="text-muted d-block" style="font-size: 0.75rem;">@l.Account?.Classification</small>
+                            <span class="cell-title">@(l.Account?.Name ?? "Account")</span>
+                            @if (l.Account != null)
+                            {
+                                <span class="cell-sub">@l.Account.Classification.Humanize()</span>
+                            }
                         </td>
                         <td>
                             @if (l.Customer != null)
                             {
-                                <span class="badge bg-primary-subtle text-primary">Customer: @l.Customer.CustomerName</span>
+                                <span class="text-foreground">@l.Customer.CustomerName</span>
+                                <span class="cell-sub">Customer</span>
                             }
                             else if (l.Vendor != null)
                             {
-                                <span class="badge bg-warning-subtle text-dark">Vendor: @l.Vendor.VendorName</span>
+                                <span class="text-foreground">@l.Vendor.VendorName</span>
+                                <span class="cell-sub">Vendor</span>
                             }
                             else
                             {
                                 <span class="text-muted">—</span>
                             }
                         </td>
-                        <td class="text-muted small">@l.Description</td>
-                        <td class="text-end font-monospace fw-semibold @(l.Debit > 0 ? "text-dark" : "text-muted")">
-                            @(l.Debit > 0 ? $"₹{l.Debit:N2}" : "—")
-                        </td>
-                        <td class="text-end font-monospace fw-semibold @(l.Credit > 0 ? "text-dark" : "text-muted")">
-                            @(l.Credit > 0 ? $"₹{l.Credit:N2}" : "—")
-                        </td>
+                        <td class="text-muted">@(string.IsNullOrEmpty(l.Description) ? "—" : l.Description)</td>
+                        <td class="cell-num @(l.Debit > 0 ? "text-foreground fw-semibold" : "text-muted")">@(l.Debit > 0 ? $"₹{l.Debit:N2}" : "—")</td>
+                        <td class="cell-num @(l.Credit > 0 ? "text-foreground fw-semibold" : "text-muted")">@(l.Credit > 0 ? $"₹{l.Credit:N2}" : "—")</td>
                     </tr>
                 }
             </tbody>
-            <tfoot class="table-light fw-bold fs-6">
+            <tfoot>
                 <tr>
-                    <td colspan="4" class="text-end text-uppercase small text-secondary">Total Balanced Amount:</td>
-                    <td class="text-end font-monospace text-primary">₹@totalDebit.ToString("N2")</td>
-                    <td class="text-end font-monospace text-primary">₹@totalCredit.ToString("N2")</td>
+                    <td colspan="4" class="text-end">Total</td>
+                    <td class="text-end tabular">₹@totalDebit.ToString("N2")</td>
+                    <td class="text-end tabular">₹@totalCredit.ToString("N2")</td>
                 </tr>
             </tfoot>
         </table>

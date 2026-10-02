@@ -6,10 +6,10 @@
 
 <div class="page-header">
     <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Back</a>
         <h1 class="page-title">New Product</h1>
         <p class="page-sub">Add a new product with all details</p>
     </div>
-    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
 </div>
 
 <form asp-action="Create" method="post" id="productForm" enctype="multipart/form-data">
@@ -30,10 +30,10 @@
         <div class="data-card-header">
             <div class="data-card-title">Product Details</div>
         </div>
-        <div style="padding:0;">
+        <div>
 
             <!-- Tabs -->
-            <ul class="nav nav-tabs" id="productTabs" role="tablist" style="padding:0 1.5rem;border-bottom:2px solid #e2e8f0;">
+            <ul class="nav nav-tabs card-tabs" id="productTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">General Information</button>
                 </li>
@@ -54,15 +54,15 @@
                 </li>
             </ul>
 
-            <div class="tab-content" style="padding:1.5rem;">
+            <div class="tab-content">
 
                 <!-- ===== TAB 1: GENERAL INFORMATION ===== -->
                 <div class="tab-pane fade show active" id="general" role="tabpanel">
 
                     <!-- Product / Design Photo Upload Banner -->
-                    <div class="row align-items-center mb-4 p-3 bg-light rounded-3 border">
-                        <div class="col-auto">
-                            <div class="rounded-3 border overflow-hidden bg-white d-flex align-items-center justify-content-center shadow-sm" style="width: 120px; height: 120px;">
+                    <div class="panel d-flex align-items-center gap-4 flex-wrap">
+                        <div>
+                            <div class="photo-frame">
                                 <img id="designPhotoPreview" 
                                      src="/images/placeholder-product.svg" 
                                      alt="Design Photo Preview" 
@@ -70,11 +70,11 @@
                                      onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
                             </div>
                         </div>
-                        <div class="col">
-                            <label class="af-label fw-bold mb-1"><i class="bi bi-camera me-1 text-primary"></i> Product / Design Photo</label>
-                            <p class="text-muted small mb-2">Upload reference photo for this design. It will automatically show in Product Master, Production Orders, and Ready Inventory.</p>
-                            <div class="d-flex align-items-center gap-2" style="max-width: 440px;">
-                                <input type="file" name="photoFile" id="designPhotoInput" class="form-control form-control-sm" accept="image/*" />
+                        <div class="flex-grow-1">
+                            <div class="panel-title"><i class="bi bi-camera"></i> Product / Design Photo</div>
+                            <p class="panel-sub mb-3">Upload a reference photo for this design. It shows in Product Master, Production Orders, and Ready Inventory.</p>
+                            <div style="max-width: 440px;">
+                                <input type="file" name="photoFile" id="designPhotoInput" class="form-control" accept="image/*" />
                             </div>
                         </div>
                     </div>
@@ -82,7 +82,7 @@
                         <div class="col-md-4">
                             <div class="af-form-group">
                                 <label class="af-label">Product Type</label>
-                                <div style="display:flex;gap:1rem;padding:.5rem 0;">
+                                <div class="choice-group">
                                     <label><input type="radio" name="ProductType" value="Goods" checked="@(Model.ProductType == "Goods")" /> Goods</label>
                                     <label><input type="radio" name="ProductType" value="Service" checked="@(Model.ProductType == "Service")" /> Service</label>
                                     <label><input type="radio" name="ProductType" value="Combo" checked="@(Model.ProductType == "Combo")" /> Combo</label>
@@ -95,20 +95,18 @@
                                 <input asp-for="InvoicingPolicy" class="af-input" placeholder="Invoicing policy" />
                             </div>
                         </div>
-                        <div class="col-md-5 pt-3">
-                            <div class="d-flex align-items-center gap-4">
+                        <div class="col-md-4">
+                            <div class="choice-group field-check mb-1">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" asp-for="TrackInventory" id="trackInvCheck" />
-                                    <label class="form-check-label fw-semibold" for="trackInvCheck">Track Inventory</label>
+                                    <label class="form-check-label" for="trackInvCheck">Track Inventory</label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" asp-for="Discontinued" id="discontinuedCheck" />
-                                    <label class="form-check-label fw-bold text-danger" for="discontinuedCheck">
-                                        🚫 Discontinue Whole Product
-                                    </label>
+                                    <label class="form-check-label text-danger" for="discontinuedCheck">Discontinue whole product</label>
                                 </div>
                             </div>
-                            <div class="text-muted small mt-1" style="font-size:0.75rem;">
+                            <div class="af-hint mb-3">
                                 If discontinued, product is moved to <strong>Archive</strong> and cannot be selected for new production orders. Stock on hand remains sellable.
                             </div>
                         </div>
@@ -117,7 +115,7 @@
                     <div class="row">
                         <div class="col-md-3">
                             <div class="af-form-group">
-                                <label asp-for="DesignNumber" class="af-label">Design Number *</label>
+                                <label asp-for="DesignNumber" class="af-label">Design Number <span class="req">*</span></label>
                                 <input asp-for="DesignNumber" class="af-input" placeholder="e.g. AF-001" required />
                                 <span asp-validation-for="DesignNumber" class="af-error"></span>
                             </div>
@@ -145,10 +143,10 @@
                     <div class="row">
                         <div class="col-md-3">
                             <div class="af-form-group">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <label asp-for="CategoryId" class="af-label mb-0">Category</label>
-                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#quickCategoryModal" title="Create a new Category inline">
-                                        ➕ New
+                                <div class="label-row">
+                                    <label asp-for="CategoryId" class="af-label">Category</label>
+                                    <button type="button" class="label-action" data-bs-toggle="modal" data-bs-target="#quickCategoryModal" title="Create a new Category inline">
+                                        <i class="bi bi-plus-lg"></i> New
                                     </button>
                                 </div>
                                 <select asp-for="CategoryId" class="af-input af-select" id="productCategorySelect">
@@ -196,7 +194,7 @@
                                     {
                                         foreach (var comp in (List<AashanaFashion.Models.Company>)ViewBag.Companies)
                                         {
-                                            <option value="@comp.Id">🏢 @comp.CompanyName (@comp.CompanyCode)</option>
+                                            <option value="@comp.Id">@comp.CompanyName (@comp.CompanyCode)</option>
                                         }
                                     }
                                 </select>
@@ -210,17 +208,17 @@
                         </div>
                         <div class="col-md-3">
                             <div class="af-form-group">
-                                <label class="af-label">Colours *</label>
-                                <div style="max-height: 120px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: .5rem; background: #fff;">
+                                <label class="af-label">Colours <span class="req">*</span></label>
+                                <div class="check-list">
                                     @foreach (var c in ViewBag.Colours as List<AashanaFashion.Models.Colour> ?? new())
                                     {
-                                        <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.25rem; font-size:.875rem;">
+                                        <div class="check-item">
                                             <input type="checkbox" name="selectedColours" value="@c.Id" id="colour_@c.Id" data-name="@c.ColourName" data-code="@c.ColourCode" class="colour-checkbox" />
                                             @if (!string.IsNullOrEmpty(c.ColourCode))
                                             {
-                                                <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:@c.ColourCode; border:1px solid #cbd5e1;"></span>
+                                                <span class="swatch-dot" style="background-color:@c.ColourCode;"></span>
                                             }
-                                            <label for="colour_@c.Id" style="cursor:pointer; margin-bottom:0;">@c.ColourName</label>
+                                            <label for="colour_@c.Id" >@c.ColourName</label>
                                         </div>
                                     }
                                 </div>
@@ -228,18 +226,18 @@
                         </div>
                         <div class="col-md-3">
                             <div class="af-form-group">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <label class="af-label mb-0">Sizes *</label>
-                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#extraChargesModal" title="Configure extra charges according to Colour or Size">
-                                        ⚙️ Configure Charges
+                                <div class="label-row">
+                                    <label class="af-label">Sizes <span class="req">*</span></label>
+                                    <button type="button" class="label-action" data-bs-toggle="modal" data-bs-target="#extraChargesModal" title="Configure extra charges according to Colour or Size">
+                                        <i class="bi bi-sliders"></i> Extra charges
                                     </button>
                                 </div>
-                                <div style="max-height: 120px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: .5rem; background: #fff;">
+                                <div class="check-list">
                                     @foreach (var s in ViewBag.Sizes as List<AashanaFashion.Models.Size> ?? new())
                                     {
-                                        <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.25rem; font-size:.875rem;">
+                                        <div class="check-item">
                                             <input type="checkbox" name="selectedSizes" value="@s.Id" id="size_@s.Id" data-name="@s.SizeName" class="size-checkbox" />
-                                            <label for="size_@s.Id" style="cursor:pointer; margin-bottom:0;">@s.SizeName</label>
+                                            <label for="size_@s.Id" >@s.SizeName</label>
                                         </div>
                                     }
                                 </div>
@@ -249,55 +247,50 @@
 
                     <div id="extraChargesSummaryRow" class="row mb-2" style="display:none;">
                         <div class="col-md-12">
-                            <div class="alert alert-light border py-1 px-3 d-flex justify-content-between align-items-center small mb-0">
-                                <div>
-                                    <strong class="text-primary">🏷️ Variant Extra Charges:</strong>
-                                    <span id="extraChargesSummaryText" class="text-dark ms-1"></span>
+                            <div class="af-alert af-alert-info mb-3">
+                                <div class="alert-body">
+                                    <span class="alert-title">Variant extra charges</span>
+                                    <span id="extraChargesSummaryText"></span>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none" data-bs-toggle="modal" data-bs-target="#extraChargesModal">Edit Charges</button>
+                                <button type="button" class="label-action flex-shrink-0" data-bs-toggle="modal" data-bs-target="#extraChargesModal">Edit charges</button>
                             </div>
                         </div>
                     </div>
                     <div id="extraChargesHiddenInputs"></div>
 
                     <!-- Colour-wise Image Upload Section -->
-                    <div class="card p-3 mb-4 border rounded-3 bg-light shadow-sm" id="colourPhotosSection">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                                <span>🎨</span> Colour-wise Product Photos
-                            </h6>
-                            <span class="badge bg-primary text-white" id="selectedColourCountBadge">0 Colours Selected</span>
+                    <div class="panel" id="colourPhotosSection">
+                        <div class="panel-head mb-1">
+                            <h6 class="panel-title"><i class="bi bi-images"></i> Colour-wise Product Photos</h6>
+                            <span class="af-badge b-indigo" id="selectedColourCountBadge">0 Colours Selected</span>
                         </div>
-                        <p class="text-muted small mb-3">Upload multiple photos for each selected colour (e.g. front view, back view, embroidery detail). You can select multiple images at once or add more using the button.</p>
+                        <p class="panel-sub mb-3">Upload multiple photos for each selected colour (e.g. front view, back view, embroidery detail). You can select multiple images at once or add more using the button.</p>
                         
-                        <div id="noColoursSelectedMsg" class="text-muted small py-4 text-center border rounded bg-white">
-                            <span class="fs-4 d-block mb-1">🎨</span>
-                            <em>Please select one or more colours in the list above to upload photos for each colourway.</em>
+                        <div id="noColoursSelectedMsg" class="panel-inset text-center text-muted text-sm py-4">
+                            Select one or more colours above to upload photos for each colourway.
                         </div>
                         
                         <div id="colourPhotosGrid" class="row g-3" style="display:none;"></div>
                     </div>
 
                     <!-- Variant-wise Discontinuation Section -->
-                    <div class="card p-3 mb-4 border rounded-3 bg-light shadow-sm" id="discontinuedVariantsSection">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="fw-bold text-danger mb-0 d-flex align-items-center gap-2">
-                                <span>🚫</span> Variant-wise Discontinuation
-                            </h6>
-                            <span class="badge bg-danger text-white" id="discontinuedVariantCountBadge">0 Discontinued</span>
+                    <div class="panel" id="discontinuedVariantsSection">
+                        <div class="panel-head mb-1">
+                            <h6 class="panel-title"><i class="bi bi-slash-circle"></i> Variant-wise Discontinuation</h6>
+                            <span class="af-badge b-red" id="discontinuedVariantCountBadge">0 Discontinued</span>
                         </div>
-                        <p class="text-muted small mb-3">
+                        <p class="panel-sub mb-3">
                             Discontinue specific colours, sizes, or specific colour-size combinations. 
                             <strong>No new production orders</strong> can be scheduled for discontinued variants. 
                             However, any <strong>existing stock on hand</strong> can still be sold via Sales Orders.
                         </p>
 
                         <!-- Form to add discontinued variant -->
-                        <div class="p-3 bg-white border rounded-3 mb-3">
+                        <div class="panel-inset">
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-3">
-                                    <label class="form-label small fw-bold mb-1">Colour</label>
-                                    <select id="discColourSelect" class="form-select form-select-sm">
+                                    <label class="form-label">Colour</label>
+                                    <select id="discColourSelect" class="form-select">
                                         <option value="">— All Colours —</option>
                                         @foreach (var c in ViewBag.Colours as List<AashanaFashion.Models.Colour> ?? new())
                                         {
@@ -306,8 +299,8 @@
                                     </select>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label small fw-bold mb-1">Size</label>
-                                    <select id="discSizeSelect" class="form-select form-select-sm">
+                                    <label class="form-label">Size</label>
+                                    <select id="discSizeSelect" class="form-select">
                                         <option value="">— All Sizes —</option>
                                         @foreach (var s in ViewBag.Sizes as List<AashanaFashion.Models.Size> ?? new())
                                         {
@@ -316,64 +309,60 @@
                                     </select>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label small fw-bold mb-1">Reason for Discontinuation</label>
-                                    <input type="text" id="discReasonInput" class="form-control form-control-sm" placeholder="e.g. Fabric unavailable, dying discontinued" />
+                                    <label class="form-label">Reason for Discontinuation</label>
+                                    <input type="text" id="discReasonInput" class="form-control" placeholder="e.g. Fabric unavailable, dying discontinued" />
                                 </div>
                                 <div class="col-md-2">
-                                    <button type="button" class="btn btn-sm btn-outline-danger w-100 fw-bold" id="btnAddDiscVariant">
-                                        ➕ Discontinue
+                                    <button type="button" class="btn btn-secondary w-100" id="btnAddDiscVariant">
+                                        <i class="bi bi-plus-lg"></i> Discontinue
                                     </button>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Table of discontinued variants -->
-                        <div class="table-responsive bg-white border rounded-3">
-                            <table class="table table-sm table-hover align-middle mb-0" id="discVariantsTable">
-                                <thead class="table-light">
-                                    <tr style="font-size: 0.8rem;">
+                        <div class="grid-card">
+                            <table class="af-table table-sm" id="discVariantsTable">
+                                <thead>
+                                    <tr>
                                         <th>Colour</th>
                                         <th>Size</th>
                                         <th>Reason</th>
                                         <th>Date</th>
-                                        <th style="width: 60px;" class="text-center">Action</th>
+                                        <th style="width: 60px;"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="discVariantsBody"></tbody>
                             </table>
-                            <div id="noDiscVariantsMsg" class="p-3 text-center text-muted small">
+                            <div id="noDiscVariantsMsg" class="p-3 text-center text-muted text-sm">
                                 No variants currently discontinued for this design.
                             </div>
                         </div>
                     </div>
 
                     <!-- Process Master Creation Flow Section -->
-                    <div class="card p-3 mb-3 border rounded-3 bg-light shadow-sm" id="creationFlowSection">
-                        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <div class="panel" id="creationFlowSection">
+                        <div class="panel-head">
                             <div>
-                                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                                    <span>🔄</span> Creation Flow & Workflow Stages
-                                </h6>
-                                <small class="text-muted">Select production processes from Process Master. Pipeline sequence is strictly maintained order-wise.</small>
+                                <h6 class="panel-title"><i class="bi bi-diagram-3"></i> Creation Flow &amp; Workflow Stages</h6>
+                                <small class="panel-sub">Select production processes from Process Master. Pipeline sequence is strictly maintained order-wise.</small>
                             </div>
                             <div class="d-flex align-items-center gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" id="btnSelectAllProcesses" style="font-size:0.75rem;">
-                                    ✓ Select All
+                                <button type="button" class="btn btn-sm btn-secondary" id="btnSelectAllProcesses">
+                                    <i class="bi bi-check-lg"></i> Select All
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="btnClearProcesses" style="font-size:0.75rem;">
-                                    ✕ Clear
+                                <button type="button" class="btn btn-sm btn-ghost" id="btnClearProcesses">
+                                    <i class="bi bi-x-lg"></i> Clear
                                 </button>
-                                <a asp-controller="ProcessMaster" asp-action="Index" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 text-decoration-none" style="font-size:0.75rem;" title="Manage process definitions and sequence order">
-                                    ⚙️ Manage Master
+                                <a asp-controller="ProcessMaster" asp-action="Index" target="_blank" class="btn btn-sm btn-ghost" title="Manage process definitions and sequence order">
+                                    <i class="bi bi-gear"></i> Manage Master
                                 </a>
                             </div>
                         </div>
 
                         <!-- Checkbox pills sorted by ProcessMaster DisplayOrder -->
-                        <div class="p-3 bg-white border rounded-3 mb-3">
-                            <label class="form-label small fw-bold text-muted mb-2 text-uppercase" style="letter-spacing:0.5px;">
-                                Available Master Processes (In Sequence):
-                            </label>
+                        <div class="panel-inset">
+                            <span class="micro-label">Available master processes (in sequence)</span>
                             <div class="d-flex flex-wrap gap-2" id="processCheckboxesContainer">
                                 @{
                                     var availableProcesses = ViewBag.Processes as List<AashanaFashion.Models.ProcessMaster> ?? new();
@@ -390,12 +379,12 @@
                                                    data-code="@proc.ProcessCode" 
                                                    data-order="@proc.DisplayOrder" 
                                                    checked />
-                                            <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2 px-3 py-1 rounded-pill" for="proc_@proc.Id">
-                                                <span class="badge bg-white text-primary rounded-circle border font-monospace" style="font-size:0.7rem;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;">@proc.DisplayOrder</span>
-                                                <span class="fw-semibold">@proc.ProcessName</span>
+                                            <label class="btn btn-outline-primary btn-sm process-pill" for="proc_@proc.Id">
+                                                <span class="flow-num">@proc.DisplayOrder</span>
+                                                @proc.ProcessName
                                                 @if (!string.IsNullOrEmpty(proc.ProcessCode))
                                                 {
-                                                    <span class="badge bg-light text-dark font-monospace" style="font-size:0.65rem;">@proc.ProcessCode</span>
+                                                    <span class="flow-code">@proc.ProcessCode</span>
                                                 }
                                             </label>
                                         </div>
@@ -403,7 +392,7 @@
                                 }
                                 else
                                 {
-                                    <div class="text-muted small fst-italic py-1">
+                                    <div class="text-muted text-sm py-1">
                                         No active processes found in Process Master. Configure processes in <a asp-controller="ProcessMaster" asp-action="Index" target="_blank">Process Master</a>.
                                     </div>
                                 }
@@ -411,12 +400,12 @@
                         </div>
 
                         <!-- Live Pipeline Flow Preview -->
-                        <div class="p-3 bg-white border rounded-3">
+                        <div class="panel-inset">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="small fw-bold text-muted text-uppercase" style="letter-spacing:0.5px;">Live Workflow Flowchart:</span>
-                                <span class="badge bg-success" id="processStepCountBadge">0 Steps</span>
+                                <span class="micro-label mb-0">Live workflow</span>
+                                <span class="af-badge b-green" id="processStepCountBadge">0 Steps</span>
                             </div>
-                            <div id="creationFlowPipeline" class="d-flex flex-wrap align-items-center gap-2 p-2 bg-light rounded border" style="min-height:48px;">
+                            <div id="creationFlowPipeline" class="flow" style="min-height:32px;">
                                 <!-- Dynamically populated by JS -->
                             </div>
                         </div>
@@ -426,51 +415,47 @@
                     </div>
 
                     <!-- Component & Process Vendor Assignment Matrix -->
-                    <div class="card p-3 mb-3 border rounded-3 bg-light shadow-sm" id="componentMatrixCard">
-                        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <div class="panel" id="componentMatrixCard">
+                        <div class="panel-head">
                             <div>
-                                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                                    <span>🧩</span> Garment Components & Vendor Process Planning Matrix
-                                </h6>
-                                <small class="text-muted">Define all parts/components of this product and assign specific vendors/karigars for each creation process.</small>
+                                <h6 class="panel-title"><i class="bi bi-grid-3x3-gap"></i> Garment Components &amp; Vendor Process Planning</h6>
+                                <small class="panel-sub">Define all parts/components of this product and assign specific vendors/karigars for each creation process.</small>
                             </div>
-                            <span class="badge bg-primary px-2 py-1" id="componentCountBadge">3 Components</span>
+                            <span class="af-badge b-indigo" id="componentCountBadge">3 Components</span>
                         </div>
 
                         <!-- Components management bar -->
-                        <div class="p-3 bg-white border rounded-3 mb-3">
-                            <label class="form-label small fw-bold text-muted mb-2 text-uppercase" style="letter-spacing:0.5px;">
-                                Product Components (Can have 3 or more parts):
-                            </label>
+                        <div class="panel-inset">
+                            <span class="micro-label">Product components (3 or more parts)</span>
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-2" id="componentBadgesContainer">
                                 <!-- Badges dynamically rendered -->
                             </div>
 
                             <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
-                                <span class="small text-muted fw-semibold me-1">Quick Add:</span>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Belt" style="font-size:0.75rem;">+ Belt</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Jacket" style="font-size:0.75rem;">+ Jacket / Shrug</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Inner" style="font-size:0.75rem;">+ Inner / Lining</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Cape" style="font-size:0.75rem;">+ Cape</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Koti" style="font-size:0.75rem;">+ Koti</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-comp-btn" data-name="Stole" style="font-size:0.75rem;">+ Stole</button>
+                                <span class="text-xs text-muted me-1">Quick add</span>
+                                <button type="button" class="btn btn-sm btn-secondary quick-add-comp-btn" data-name="Belt"><i class="bi bi-plus"></i> Belt</button>
+                                <button type="button" class="btn btn-sm btn-secondary quick-add-comp-btn" data-name="Jacket"><i class="bi bi-plus"></i> Jacket / Shrug</button>
+                                <button type="button" class="btn btn-sm btn-secondary quick-add-comp-btn" data-name="Inner"><i class="bi bi-plus"></i> Inner / Lining</button>
+                                <button type="button" class="btn btn-sm btn-secondary quick-add-comp-btn" data-name="Cape"><i class="bi bi-plus"></i> Cape</button>
+                                <button type="button" class="btn btn-sm btn-secondary quick-add-comp-btn" data-name="Koti"><i class="bi bi-plus"></i> Koti</button>
+                                <button type="button" class="btn btn-sm btn-secondary quick-add-comp-btn" data-name="Stole"><i class="bi bi-plus"></i> Stole</button>
                                 
-                                <div class="input-group input-group-sm ms-auto" style="max-width:260px;">
+                                <div class="input-group input-group-sm ms-auto" style="max-width:280px;">
                                     <input type="text" id="customComponentInput" class="form-control form-control-sm" placeholder="Custom component name..." />
-                                    <button type="button" class="btn btn-primary btn-sm" id="btnAddCustomComponent">+ Add Part</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" id="btnAddCustomComponent"><i class="bi bi-plus"></i> Add part</button>
                                 </div>
                             </div>
                             <input type="hidden" asp-for="Components" id="componentsHiddenInput" value="Chaniya, Choli, Dupatta" />
                         </div>
 
                         <!-- Matrix Table -->
-                        <div class="table-responsive bg-white border rounded-3">
-                            <table class="table table-bordered table-hover align-middle mb-0" id="componentMatrixTable">
-                                <thead class="table-light">
-                                    <tr id="matrixHeaderRow" style="font-size:0.82rem;">
-                                        <th style="min-width:140px; background:#f1f5f9;">Component Part</th>
+                        <div class="grid-card">
+                            <table class="af-table table-edit" id="componentMatrixTable">
+                                <thead>
+                                    <tr id="matrixHeaderRow">
+                                        <th style="min-width:140px;">Component</th>
                                         <!-- Dynamic Process Columns injected here -->
-                                        <th style="width:50px; text-align:center; background:#f1f5f9;">Action</th>
+                                        <th style="width:50px;"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="matrixTableBody">
@@ -495,8 +480,8 @@
 
                 <!-- ===== TAB 2: ATTRIBUTES & VARIANTS ===== -->
                 <div class="tab-pane fade" id="attributes" role="tabpanel">
-                    <div style="overflow-x:auto;">
-                        <table class="af-table" id="attrTable">
+                    <div class="grid-card">
+                        <table class="af-table table-edit" id="attrTable">
                             <thead>
                                 <tr>
                                     <th style="width:200px;">Attribute</th>
@@ -510,12 +495,12 @@
                                     <td><input name="AttributeLines[0].Attribute" class="af-input" placeholder="e.g. Size, Color" /></td>
                                     <td><input name="AttributeLines[0].Values" class="af-input" placeholder="e.g. S,M,L / Red,Blue" /></td>
                                     <td class="text-center"><input name="AttributeLines[0].ColourCheck" type="checkbox" value="true" /><input type="hidden" name="AttributeLines[0].ColourCheck" value="false" /></td>
-                                    <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-attr-row" style="display:none;">×</button></td>
+                                    <td><button type="button" class="row-action danger remove-attr-row" title="Remove" aria-label="Remove" style="display:none;"><i class="bi bi-trash"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <button type="button" id="addAttrRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Attribute</button>
+                    <button type="button" id="addAttrRow" class="btn btn-sm btn-secondary mt-3"><i class="bi bi-plus-lg"></i> Add attribute</button>
                 </div>
 
                 <!-- ===== TAB 3: SALES ===== -->
@@ -554,10 +539,12 @@
                                 <input asp-for="OutOfStockMessage" class="af-input" placeholder="Message" />
                             </div>
                         </div>
-                        <div class="col-md-4 d-flex align-items-center" style="gap:1.5rem;padding-top:1.8rem;">
-                            <label><input asp-for="IsPublished" /> Is Published</label>
-                            <label><input asp-for="SellWhenOutOfStock" /> Sell when Out-of-Stock</label>
-                            <label><input asp-for="ShowAvailableQty" /> Show Available Qty</label>
+                        <div class="col-12">
+                            <div class="choice-group mb-3">
+                                <label><input asp-for="IsPublished" /> Is published</label>
+                                <label><input asp-for="SellWhenOutOfStock" /> Sell when out of stock</label>
+                                <label><input asp-for="ShowAvailableQty" /> Show available qty</label>
+                            </div>
                         </div>
                     </div>
 
@@ -565,7 +552,7 @@
                         <div class="col-md-6">
                             <div class="af-form-group">
                                 <label class="af-label">Re-Invoice Costs</label>
-                                <div style="display:flex;gap:1rem;padding:.5rem 0;">
+                                <div class="choice-group">
                                     <label><input type="radio" name="ReInvoiceCosts" value="" checked="@(string.IsNullOrEmpty(Model.ReInvoiceCosts))" /> No</label>
                                     <label><input type="radio" name="ReInvoiceCosts" value="At cost" checked="@(Model.ReInvoiceCosts == "At cost")" /> At cost</label>
                                     <label><input type="radio" name="ReInvoiceCosts" value="Sales price" checked="@(Model.ReInvoiceCosts == "Sales price")" /> Sales price</label>
@@ -590,10 +577,9 @@
                     </div>
 
                     <!-- Packaging (child table on Sales tab) -->
-                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;">Packagings</label>
-                    <div style="overflow-x:auto;margin-top:.5rem;">
-                        <table class="af-table" id="pkgTable">
+                    <div class="form-section-title">Packagings</div>
+                    <div class="grid-card">
+                        <table class="af-table table-edit" id="pkgTable">
                             <thead>
                                 <tr>
                                     <th style="width:200px;">Packaging Name</th>
@@ -605,18 +591,18 @@
                                 <tr class="pkg-row">
                                     <td><input name="Packagings[0].PackagingName" class="af-input" placeholder="Packaging" /></td>
                                     <td><input name="Packagings[0].Quantity" class="af-input" type="number" step="1" min="0" value="1" /></td>
-                                    <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-pkg-row" style="display:none;">×</button></td>
+                                    <td><button type="button" class="row-action danger remove-pkg-row" title="Remove" aria-label="Remove" style="display:none;"><i class="bi bi-trash"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <button type="button" id="addPkgRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Packaging</button>
+                    <button type="button" id="addPkgRow" class="btn btn-sm btn-secondary mt-3"><i class="bi bi-plus-lg"></i> Add packaging</button>
                 </div>
 
                 <!-- ===== TAB 4: PRICES ===== -->
                 <div class="tab-pane fade" id="prices" role="tabpanel">
-                    <div style="overflow-x:auto;">
-                        <table class="af-table" id="priceTable">
+                    <div class="grid-card">
+                        <table class="af-table table-edit" id="priceTable">
                             <thead>
                                 <tr>
                                     <th style="width:180px;">Pricelist</th>
@@ -632,18 +618,18 @@
                                     <td><input name="Pricelists[0].AppliedOn" class="af-input" placeholder="e.g. Product, Category" /></td>
                                     <td><input name="Pricelists[0].Price" class="af-input" type="number" step="0.01" min="0" value="0" /></td>
                                     <td><input name="Pricelists[0].MinQuantity" class="af-input" type="number" step="1" min="0" value="1" /></td>
-                                    <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-price-row" style="display:none;">×</button></td>
+                                    <td><button type="button" class="row-action danger remove-price-row" title="Remove" aria-label="Remove" style="display:none;"><i class="bi bi-trash"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <button type="button" id="addPriceRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Pricelist</button>
+                    <button type="button" id="addPriceRow" class="btn btn-sm btn-secondary mt-3"><i class="bi bi-plus-lg"></i> Add pricelist</button>
                 </div>
 
                 <!-- ===== TAB 5: PURCHASE ===== -->
                 <div class="tab-pane fade" id="purchase" role="tabpanel">
-                    <div style="overflow-x:auto;">
-                        <table class="af-table" id="vendorTable">
+                    <div class="grid-card">
+                        <table class="af-table table-edit" id="vendorTable">
                             <thead>
                                 <tr>
                                     <th style="width:180px;">Vendor</th>
@@ -674,20 +660,20 @@
                                     </td>
                                     <td><input name="ProductVendors[0].UnitPrice" class="af-input" type="number" step="0.01" min="0" value="0" /></td>
                                     <td><input name="ProductVendors[0].LeadTime" class="af-input" type="number" min="0" value="0" /></td>
-                                    <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-vendor-row" style="display:none;">×</button></td>
+                                    <td><button type="button" class="row-action danger remove-vendor-row" title="Remove" aria-label="Remove" style="display:none;"><i class="bi bi-trash"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <button type="button" id="addVendorRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Vendor</button>
+                    <button type="button" id="addVendorRow" class="btn btn-sm btn-secondary mt-3"><i class="bi bi-plus-lg"></i> Add vendor</button>
 
-                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
+                    <hr class="my-4" />
 
                     <div class="row">
                         <div class="col-md-6">
                             <div class="af-form-group">
                                 <label class="af-label">Control Policy</label>
-                                <div style="display:flex;gap:1rem;padding:.5rem 0;">
+                                <div class="choice-group">
                                     <label><input type="radio" name="ControlPolicy" value="On ordered quantities" checked="@(Model.ControlPolicy == "On ordered quantities")" /> On ordered quantities</label>
                                     <label><input type="radio" name="ControlPolicy" value="On received quantities" checked="@(Model.ControlPolicy == "On received quantities")" /> On received quantities</label>
                                 </div>
@@ -710,7 +696,7 @@
                 <div class="tab-pane fade" id="inventory" role="tabpanel">
                     <div class="af-form-group">
                         <label class="af-label">Routes</label>
-                        <div style="display:flex;flex-wrap:wrap;gap:1rem;padding:.5rem 0;">
+                        <div class="choice-group">
                             <label><input asp-for="RouteBuy" /> Buy</label>
                             <label><input asp-for="RouteManufacture" /> Manufacture</label>
                             <label><input asp-for="RouteResupplySubcontractor" /> Aashana: Resupply Subcontractor</label>
@@ -768,52 +754,52 @@
         </div>
     </div>
 
-    <div style="display:flex;gap:.75rem;margin-top:1rem;">
-        <button type="submit" class="btn-af btn-af-primary">Create Product</button>
-        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+    <div class="form-footer">
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Create Product</button>
     </div>
 </form>
 
 <!-- Quick Create Category Modal -->
 <div class="modal fade" id="quickCategoryModal" tabindex="-1" aria-labelledby="quickCategoryModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-light py-2">
-                <h6 class="modal-title fw-bold" id="quickCategoryModalLabel">🗂️ Quick Create Category</h6>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="quickCategoryModalLabel">Quick Create Category</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-3">
-                <div id="quickCatError" class="alert alert-danger py-1 px-2 small d-none"></div>
+            <div class="modal-body">
+                <div id="quickCatError" class="alert alert-danger d-none"></div>
                 <div class="mb-2">
-                    <label class="form-label small fw-semibold mb-1">Category Name <span class="text-danger">*</span></label>
-                    <input type="text" id="quickCategoryName" class="form-control form-control-sm" placeholder="e.g. Kurtis, Sarees" required />
+                    <label class="form-label">Category Name <span class="req">*</span></label>
+                    <input type="text" id="quickCategoryName" class="form-control" placeholder="e.g. Kurtis, Sarees" required />
                 </div>
                 <div class="row g-2 mb-2">
                     <div class="col-6">
-                        <label class="form-label small fw-semibold mb-1">Short Code</label>
-                        <input type="text" id="quickCategoryCode" class="form-control form-control-sm text-uppercase" placeholder="e.g. KRT" maxlength="10" />
+                        <label class="form-label">Short Code</label>
+                        <input type="text" id="quickCategoryCode" class="form-control text-uppercase" placeholder="e.g. KRT" maxlength="10" />
                     </div>
                     <div class="col-6">
-                        <label class="form-label small fw-semibold mb-1">Default HSN/SAC</label>
-                        <input type="text" id="quickDefaultHsn" class="form-control form-control-sm font-monospace" placeholder="e.g. 6204" />
+                        <label class="form-label">Default HSN/SAC</label>
+                        <input type="text" id="quickDefaultHsn" class="form-control font-monospace" placeholder="e.g. 6204" />
                     </div>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label small fw-semibold mb-1">Default GST Rate</label>
-                    <select id="quickDefaultGst" class="form-select form-select-sm">
+                    <label class="form-label">Default GST Rate</label>
+                    <select id="quickDefaultGst" class="form-select">
                         <option value="5.00">5% (Standard Apparel)</option>
                         <option value="12.00">12% (Luxury Apparel)</option>
                         <option value="18.00">18% (Specialized / Synthetics)</option>
                     </select>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label small fw-semibold mb-1">Description (Optional)</label>
-                    <textarea id="quickCategoryDesc" class="form-control form-control-sm" rows="2" placeholder="Notes..."></textarea>
+                    <label class="form-label">Description (Optional)</label>
+                    <textarea id="quickCategoryDesc" class="form-control" rows="2" placeholder="Notes..."></textarea>
                 </div>
             </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" id="saveQuickCategoryBtn" class="btn btn-sm btn-primary px-3">Create Category</button>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="saveQuickCategoryBtn" class="btn btn-primary">Create Category</button>
             </div>
         </div>
     </div>
@@ -822,34 +808,31 @@
 <!-- Configure Extra Charges (Colour & Size) Modal -->
 <div class="modal fade" id="extraChargesModal" tabindex="-1" aria-labelledby="extraChargesModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-light py-2">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="fs-5">⚙️</span>
-                    <h6 class="modal-title fw-bold" id="extraChargesModalLabel">Configure Variant Extra Charges (Colour & Size)</h6>
-                </div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="extraChargesModalLabel">Variant extra charges (colour &amp; size)</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-3">
-                <div class="alert alert-info py-2 px-3 small mb-3">
-                    💡 Specify extra charges (surcharges in ₹) for specific colours or sizes (e.g. plus sizes or intricate dye colours). These surcharges will automatically reflect when creating Sales Orders, calculating pricelists, and generating invoices.
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    Specify extra charges (surcharges in ₹) for specific colours or sizes (e.g. plus sizes or intricate dye colours). These surcharges will automatically reflect when creating Sales Orders, calculating pricelists, and generating invoices.
                 </div>
 
-                <ul class="nav nav-pills mb-3" id="extraChargesTabs" role="tablist">
+                <ul class="nav nav-pills segmented mb-3" id="extraChargesTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active py-1 px-3 small fw-semibold" id="colour-charges-tab" data-bs-toggle="pill" data-bs-target="#colour-charges-pane" type="button" role="tab">🎨 Colour Extra Charges</button>
+                        <button class="nav-link active" id="colour-charges-tab" data-bs-toggle="pill" data-bs-target="#colour-charges-pane" type="button" role="tab">Colour Extra Charges</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link py-1 px-3 small fw-semibold" id="size-charges-tab" data-bs-toggle="pill" data-bs-target="#size-charges-pane" type="button" role="tab">📏 Size Extra Charges</button>
+                        <button class="nav-link" id="size-charges-tab" data-bs-toggle="pill" data-bs-target="#size-charges-pane" type="button" role="tab">Size Extra Charges</button>
                     </li>
                 </ul>
 
                 <div class="tab-content" id="extraChargesTabContent">
                     <!-- Colour Tab -->
                     <div class="tab-pane fade show active" id="colour-charges-pane" role="tabpanel">
-                        <div id="noColoursWarning" class="text-muted small py-2 d-none">No colours are selected yet. Please check colours in the product form first.</div>
-                        <div class="table-responsive" style="max-height: 280px;">
-                            <table class="table table-sm table-bordered align-middle mb-0" id="colourChargesTable">
+                        <div id="noColoursWarning" class="text-muted text-sm py-2 d-none">No colours are selected yet. Please check colours in the product form first.</div>
+                        <div class="grid-card" style="max-height: 280px;">
+                            <table class="table table-sm table-edit align-middle mb-0" id="colourChargesTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th style="width: 35%;">Colour Name</th>
@@ -865,9 +848,9 @@
 
                     <!-- Size Tab -->
                     <div class="tab-pane fade" id="size-charges-pane" role="tabpanel">
-                        <div id="noSizesWarning" class="text-muted small py-2 d-none">No sizes are selected yet. Please check sizes in the product form first.</div>
-                        <div class="table-responsive" style="max-height: 280px;">
-                            <table class="table table-sm table-bordered align-middle mb-0" id="sizeChargesTable">
+                        <div id="noSizesWarning" class="text-muted text-sm py-2 d-none">No sizes are selected yet. Please check sizes in the product form first.</div>
+                        <div class="grid-card" style="max-height: 280px;">
+                            <table class="table table-sm table-edit align-middle mb-0" id="sizeChargesTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th style="width: 35%;">Size</th>
@@ -883,16 +866,14 @@
                 </div>
 
                 <!-- Live Preview Matrix -->
-                <div class="card border-0 bg-light p-2 mt-3 rounded-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="small fw-semibold text-dark">Price Calculation Preview:</span>
-                        <span id="previewCalculationText" class="small text-primary fw-bold">Base Price: ₹0.00</span>
-                    </div>
+                <div class="panel-inset mt-3 mb-0 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                    <span class="micro-label mb-0">Price preview</span>
+                    <span id="previewCalculationText" class="text-sm text-foreground fw-medium tabular">Base Price: ₹0.00</span>
                 </div>
             </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" id="applyExtraChargesBtn" class="btn btn-sm btn-primary px-3">Apply Extra Charges</button>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="applyExtraChargesBtn" class="btn btn-primary">Apply extra charges</button>
             </div>
         </div>
     </div>
@@ -1059,8 +1040,8 @@
                     tr.innerHTML = `
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                ${code ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background-color:${code};border:1px solid #ccc;"></span>` : ''}
-                                <span class="fw-semibold text-dark">${name}</span>
+                                ${code ? `<span class="swatch-dot" style="background-color:${code};"></span>` : ''}
+                                <span class="text-foreground fw-medium">${name}</span>
                             </div>
                         </td>
                         <td>
@@ -1089,7 +1070,7 @@
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>
-                            <span class="badge bg-light text-dark border px-2 py-1">${name}</span>
+                            <span class="tag">${name}</span>
                         </td>
                         <td>
                             <div class="input-group input-group-sm">
@@ -1235,28 +1216,28 @@
             checkedColours.forEach(function(c) {
                 var key = sanitizeColourKey(c.name);
                 if ($('#card_colour_' + key).length === 0) {
-                    var swatchHtml = c.code ? `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background-color:${c.code}; border:1px solid #cbd5e1;"></span>` : '';
+                    var swatchHtml = c.code ? `<span class="swatch-dot" style="background-color:${c.code};"></span>` : '';
                     var cardHtml = `
                         <div class="col-md-6 col-lg-4 colour-photo-card" id="card_colour_${key}" data-colour="${c.name}">
-                            <div class="card h-100 border shadow-sm rounded-3 p-3 bg-white">
-                                <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                            <div class="panel h-100 d-flex flex-column mb-0">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
                                     <div class="d-flex align-items-center gap-2">
                                         ${swatchHtml}
-                                        <strong class="fs-6 text-dark">${c.name}</strong>
+                                        <span class="panel-title">${c.name}</span>
                                     </div>
-                                    <span class="badge bg-primary text-white" id="badge_count_${key}">0 Photos</span>
+                                    <span class="af-badge b-indigo" id="badge_count_${key}">0 Photos</span>
                                 </div>
-                                <div class="d-flex flex-wrap gap-2 mb-2 p-2 bg-light rounded border align-items-center" id="gallery_${key}" style="min-height: 80px;">
-                                    <div class="text-muted small w-100 text-center py-2" id="hint_${key}">
-                                        <em>No photos selected for ${c.name}</em>
+                                <div class="photo-strip mb-2" id="gallery_${key}">
+                                    <div class="text-muted text-xs w-100 text-center py-2" id="hint_${key}">
+                                        No photos selected for ${c.name}
                                     </div>
                                 </div>
-                                <div class="d-flex gap-2 align-items-center mt-auto pt-2">
-                                    <button type="button" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-1 py-1" onclick="addColourPhotos('${key}', '${c.name}')">
-                                        <span>📷</span> + Add Photos (Multiple)
+                                <div class="d-flex gap-2 align-items-center mt-auto">
+                                    <button type="button" class="btn btn-sm btn-secondary flex-grow-1" onclick="addColourPhotos('${key}', '${c.name}')">
+                                        <i class="bi bi-camera"></i> Add photos
                                     </button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" title="Clear all photos for this colour" onclick="clearAllColourPhotos('${key}', '${c.name}')">
-                                        ✕
+                                    <button type="button" class="btn btn-sm btn-ghost btn-icon" title="Clear all photos for this colour" aria-label="Clear all photos" onclick="clearAllColourPhotos('${key}', '${c.name}')">
+                                        <i class="bi bi-x-lg"></i>
                                     </button>
                                 </div>
                                 <div id="file_inputs_${key}" class="d-none"></div>
@@ -1298,12 +1279,10 @@
                 var reader = new FileReader();
                 reader.onload = function(evt) {
                     var tileHtml = `
-                        <div class="position-relative d-inline-block rounded border bg-white shadow-sm overflow-hidden colour-thumb-tile" id="${thumbId}" style="width: 68px; height: 68px;">
-                            <img src="${evt.target.result}" class="w-100 h-100 object-fit-cover" />
-                            <span class="position-absolute bottom-0 start-0 badge bg-dark bg-opacity-75" style="font-size: 0.6rem; border-top-right-radius: 4px; padding: 1px 3px;">New</span>
-                            <button type="button" class="btn btn-danger btn-sm p-0 position-absolute top-0 end-0 rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 18px; height: 18px; font-size: 10px; margin: 2px;" onclick="removeNewColourPhoto('${thumbId}', '${inputId}', '${key}')" title="Remove photo">
-                                ✕
-                            </button>
+                        <div class="photo-tile colour-thumb-tile" id="${thumbId}">
+                            <img src="${evt.target.result}" alt="" />
+                            <span class="tile-tag">New</span>
+                            <button type="button" class="tile-remove" onclick="removeNewColourPhoto('${thumbId}', '${inputId}', '${key}')" title="Remove photo" aria-label="Remove photo"><i class="bi bi-x-lg"></i></button>
                         </div>`;
                     $('#gallery_' + key).append(tileHtml);
                     updateColourThumbCount(key);
@@ -1381,9 +1360,9 @@
         }
 
         var nextIdx = $('#discVariantsBody tr').length;
-        var colDisplay = col ? '<strong>' + col + '</strong>' : '<span class="text-muted fst-italic">All Colours</span>';
-        var szDisplay = sz ? '<span class="badge bg-secondary">' + sz + '</span>' : '<span class="badge bg-light text-dark border">All Sizes</span>';
-        var reasonDisplay = reason ? reason : '<span class="text-muted fst-italic">No reason specified</span>';
+        var colDisplay = col ? '<span class="text-foreground fw-medium">' + col + '</span>' : '<span class="text-muted">All colours</span>';
+        var szDisplay = sz ? '<span class="tag">' + sz + '</span>' : '<span class="text-muted">All sizes</span>';
+        var reasonDisplay = reason ? reason : '<span class="text-placeholder">No reason specified</span>';
         var now = new Date();
         var dateFormatted = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
         var isoDate = now.toISOString();
@@ -1407,9 +1386,7 @@
                 <input type="hidden" name="DiscontinuedVariants[${nextIdx}].DiscontinuedDate" value="${isoDate}" />
             </td>
             <td class="text-center">
-                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 remove-disc-variant" title="Restore this variant">
-                    🗑️
-                </button>
+                <button type="button" class="row-action danger remove-disc-variant" title="Restore this variant" aria-label="Restore this variant"><i class="bi bi-arrow-counterclockwise"></i></button>
             </td>
         </tr>`;
 
@@ -1444,21 +1421,10 @@
     function renderComponentBadges() {
         var html = '';
         componentsList.forEach(function(comp) {
-            var icon = '🧵';
-            var clow = comp.toLowerCase();
-            if (clow.includes('chaniya') || clow.includes('lehenga') || clow.includes('skirt')) icon = '👗';
-            else if (clow.includes('choli') || clow.includes('blouse') || clow.includes('top')) icon = '👚';
-            else if (clow.includes('dupatta') || clow.includes('chunri') || clow.includes('scarf')) icon = '🧣';
-            else if (clow.includes('jacket') || clow.includes('shrug') || clow.includes('koti')) icon = '🧥';
-            else if (clow.includes('belt')) icon = '🎗️';
-            else if (clow.includes('inner') || clow.includes('lining')) icon = '🩱';
-            else if (clow.includes('cape')) icon = '✨';
-
             html += `
-                <span class="badge bg-white text-dark border shadow-sm p-2 d-inline-flex align-items-center gap-2">
-                    <span>${icon}</span>
-                    <span class="fw-semibold">${comp}</span>
-                    <button type="button" class="btn-close btn-close-sm remove-component-btn" data-name="${comp}" title="Remove component" style="font-size:0.65rem;"></button>
+                <span class="tag">
+                    ${comp}
+                    <button type="button" class="tag-remove remove-component-btn" data-name="${comp}" title="Remove component" aria-label="Remove ${comp}"><i class="bi bi-x"></i></button>
                 </span>
             `;
         });
@@ -1469,30 +1435,19 @@
 
     function renderMatrixTable() {
         var procs = getActiveProcesses();
-        var thead = '<th style="min-width:140px; background:#f1f5f9;">Component Part</th>';
+        var thead = '<th style="min-width:140px;">Component</th>';
         procs.forEach(function(p) {
-            thead += `<th style="min-width:170px; background:#f1f5f9; text-align:center;">${p.name}</th>`;
+            thead += `<th style="min-width:180px;">${p.name}</th>`;
         });
-        thead += '<th style="width:50px; text-align:center; background:#f1f5f9;">Action</th>';
+        thead += '<th style="width:50px;"></th>';
         $('#matrixHeaderRow').html(thead);
 
         var tbody = '';
         var assignmentIdx = 0;
 
         componentsList.forEach(function(comp) {
-            var icon = '🧵';
-            var clow = comp.toLowerCase();
-            if (clow.includes('chaniya') || clow.includes('lehenga')) icon = '👗';
-            else if (clow.includes('choli') || clow.includes('blouse')) icon = '👚';
-            else if (clow.includes('dupatta') || clow.includes('chunri')) icon = '🧣';
-            else if (clow.includes('jacket') || clow.includes('shrug')) icon = '🧥';
-            else if (clow.includes('belt')) icon = '🎗️';
-            else if (clow.includes('inner') || clow.includes('lining')) icon = '🩱';
-
             tbody += `<tr>
-                <td class="fw-bold text-dark" style="white-space:nowrap; vertical-align:middle;">
-                    <span class="me-1">${icon}</span> ${comp}
-                </td>`;
+                <td class="cell-title text-nowrap">${comp}</td>`;
 
             procs.forEach(function(p) {
                 var key = comp + '___' + p.name;
@@ -1505,13 +1460,13 @@
                 });
 
                 tbody += `
-                    <td class="p-2">
+                    <td>
                         <select name="ComponentAssignments[${assignmentIdx}].VendorId" class="form-select form-select-sm matrix-vendor-select" data-comp="${comp}" data-proc="${p.name}">
                             ${options}
                         </select>
                         <div class="input-group input-group-sm mt-1">
-                            <span class="input-group-text py-0 px-1 text-muted" style="font-size:0.7rem;">₹</span>
-                            <input type="number" step="0.01" min="0" name="ComponentAssignments[${assignmentIdx}].EstimatedRate" value="${val.rate || ''}" placeholder="Est. Rate" class="form-control form-control-sm py-0 matrix-rate-input" data-comp="${comp}" data-proc="${p.name}" style="font-size:0.75rem;" />
+                            <span class="input-group-text">₹</span>
+                            <input type="number" step="0.01" min="0" name="ComponentAssignments[${assignmentIdx}].EstimatedRate" value="${val.rate || ''}" placeholder="Est. rate" class="form-control form-control-sm matrix-rate-input" data-comp="${comp}" data-proc="${p.name}" />
                         </div>
                         <input type="hidden" name="ComponentAssignments[${assignmentIdx}].ComponentName" value="${comp}" />
                         <input type="hidden" name="ComponentAssignments[${assignmentIdx}].ProcessName" value="${p.name}" />
@@ -1521,10 +1476,8 @@
             });
 
             tbody += `
-                <td class="text-center" style="vertical-align:middle;">
-                    <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 remove-component-btn" data-name="${comp}" title="Remove ${comp}">
-                        🗑️
-                    </button>
+                <td class="text-center">
+                    <button type="button" class="row-action danger remove-component-btn" data-name="${comp}" title="Remove ${comp}" aria-label="Remove ${comp}"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -1657,17 +1610,11 @@
         if (checkedSteps.length > 0) {
             checkedSteps.forEach(function(step, idx) {
                 pipelineHtml += `
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary px-3 py-2 fs-6 shadow-sm d-flex align-items-center gap-2">
-                            <span class="badge bg-white text-primary rounded-circle" style="width:18px;height:18px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem;">${step.order}</span>
-                            ${step.name}
-                            ${step.code ? `<small class="text-white-50">(${step.code})</small>` : ''}
-                        </span>
-                        ${idx < checkedSteps.length - 1 ? '<span class="text-muted fw-bold fs-5">➔</span>' : ''}
-                    </div>`;
+                    <span class="flow-step current"><span class="flow-num">${step.order}</span>${step.name}${step.code ? `<span class="flow-code">${step.code}</span>` : ''}</span>
+                    ${idx < checkedSteps.length - 1 ? '<i class="bi bi-chevron-right flow-sep"></i>' : ''}`;
             });
         } else {
-            pipelineHtml = '<span class="text-muted small fst-italic py-1">No process steps selected. Check one or more steps above to define the creation flow.</span>';
+            pipelineHtml = '<span class="text-muted text-sm">No process steps selected. Check one or more steps above to define the creation flow.</span>';
         }
         $('#creationFlowPipeline').html(pipelineHtml);
         renderMatrixTable();

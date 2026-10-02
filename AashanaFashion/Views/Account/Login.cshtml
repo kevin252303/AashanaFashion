@@ -4,76 +4,78 @@
     ViewData["Title"] = "Sign In";
 }
 
-<div class="login-left">
-    <div class="login-left-content">
-        <div class="ll-logo">AF</div>
-        <div class="ll-title">Aashana Fashion<br />Production System</div>
-        <div class="ll-sub">Manage your production orders, track fabric stages, and monitor your team — all in one place.</div>
-        <div class="ll-features">
-            <div class="ll-feat"><div class="ll-feat-dot"></div> Real-time production order tracking</div>
-            <div class="ll-feat"><div class="ll-feat-dot"></div> Role-based access control</div>
-            <div class="ll-feat"><div class="ll-feat-dot"></div> Stage-wise verification workflow</div>
-            <div class="ll-feat"><div class="ll-feat-dot"></div> User management dashboard</div>
-        </div>
-    </div>
-</div>
+<section class="auth-brand">
+    <img src="~/images/aashana_logo.jpg" alt="Aashana — since 2003" class="auth-logo" />
 
-<div class="login-right">
-    <div class="login-box">
-        <div class="lb-header">
-            <div class="lb-title">Welcome back 👋</div>
-            <div class="lb-sub">Sign in to your account to continue</div>
-        </div>
+    <div class="auth-pitch">
+        <div class="auth-eyebrow">Production System</div>
+        <h1 class="auth-headline">Every lot, every stage, in one place.</h1>
+        <p class="auth-lede">Manage production orders, track fabric through each process, and keep your team, stock and billing in sync.</p>
+        <ul class="auth-features">
+            <li><i class="bi bi-diagram-3"></i> Real-time production order tracking</li>
+            <li><i class="bi bi-shield-check"></i> Role-based access control</li>
+            <li><i class="bi bi-check2-square"></i> Stage-wise verification workflow</li>
+            <li><i class="bi bi-people"></i> Team, attendance &amp; payroll</li>
+        </ul>
+    </div>
+
+    <div class="auth-legal">© @DateTime.Now.Year Aashana Fashion · Production Management System</div>
+</section>
+
+<main class="auth-main">
+    <div class="auth-card">
+        <div class="auth-card-mark brand-mark">AF</div>
+        <h2 class="auth-title">Sign in</h2>
+        <p class="auth-sub">Welcome back. Enter your details to continue.</p>
 
         <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post">
             @Html.AntiForgeryToken()
 
             @if (!ViewData.ModelState.IsValid)
             {
-                <div class="lb-error">
-                    @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-                    {
-                        <div>@err.ErrorMessage</div>
-                    }
+                <div class="af-alert af-alert-danger" role="alert">
+                    <div class="alert-body">
+                        @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                        {
+                            <div>@err.ErrorMessage</div>
+                        }
+                    </div>
                 </div>
             }
 
-            <div style="margin-bottom:1rem;">
-                <label asp-for="Username" class="lb-label">Username</label>
-                <input asp-for="Username" class="lb-input" placeholder="Enter your username" autofocus />
-            </div>
-
-            <div style="margin-bottom:1rem;">
-                <label asp-for="Password" class="lb-label">Password</label>
-                <div style="position:relative;">
-                    <input asp-for="Password" class="lb-input" id="pwInput" placeholder="Enter your password" style="padding-right:2.5rem;" />
-                    <button type="button" id="togglePw"
-                            style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;font-size:.9rem;">👁</button>
+            <div class="auth-field">
+                <label asp-for="Username" class="af-label">Username</label>
+                <div class="search-field">
+                    <i class="bi bi-person"></i>
+                    <input asp-for="Username" class="af-input" placeholder="Enter your username" autocomplete="username" autofocus />
                 </div>
             </div>
 
-            <div class="lb-remember">
-                <input asp-for="RememberMe" type="checkbox" id="rememberMe" />
-                <label for="rememberMe">Keep me signed in</label>
+            <div class="auth-field">
+                <label asp-for="Password" class="af-label">Password</label>
+                <div class="auth-pw search-field">
+                    <i class="bi bi-lock"></i>
+                    <input asp-for="Password" class="af-input" id="pwInput" placeholder="Enter your password" autocomplete="current-password" />
+                    <button type="button" id="togglePw" class="pw-toggle" aria-label="Show password"><i class="bi bi-eye"></i></button>
+                </div>
             </div>
 
-            <button type="submit" class="lb-btn">Sign In →</button>
+            <div class="form-check mb-4">
+                <input asp-for="RememberMe" type="checkbox" class="form-check-input" id="rememberMe" />
+                <label class="form-check-label" for="rememberMe">Keep me signed in</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100">Sign in</button>
         </form>
 
-        <div style="margin-top:1.25rem; text-align:center;">
-            <span style="font-size:0.85rem; color:#64748b;">New garment business? </span>
-            <a asp-controller="Subscription" asp-action="RegisterTenant" style="font-size:0.85rem; color:#4f46e5; text-decoration:none; font-weight:600;">
-                Start 14-day free trial &rarr;
-            </a>
+        <div class="auth-trial">
+            New garment business?
+            <a asp-controller="Subscription" asp-action="RegisterTenant" class="fw-semibold">Start 14-day free trial <i class="bi bi-arrow-right"></i></a>
         </div>
 
-        <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid #f1f5f9;">
-            <div style="font-size:.72rem;color:#cbd5e1;text-align:center;">
-                © @DateTime.Now.Year Aashana Fashion · Production Management System
-            </div>
-        </div>
+        <div class="auth-foot">Need access? Ask your administrator to create an account.</div>
     </div>
-</div>
+</main>
 
 @section Scripts {
     <script src="~/js/login.js"></script>

@@ -5,10 +5,10 @@
 
 <div class="page-header">
     <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Roles</a>
         <h1 class="page-title">Assign Permissions</h1>
-        <p class="page-sub">Role: <strong>@Model.RoleName</strong></p>
+        <p class="page-sub">Role <strong class="text-foreground">@Model.RoleName</strong> · tick what this role can view, create, edit and delete</p>
     </div>
-    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
 </div>
 
 <form asp-action="Permissions" method="post">
@@ -19,28 +19,28 @@
     <div class="data-card">
         <div class="data-card-header">
             <span class="data-card-title">Module Permissions</span>
-            <button type="button" id="selectAll" class="btn-af btn-af-ghost btn-af-sm">Select All</button>
+            <button type="button" id="selectAll" class="btn btn-sm btn-secondary">Select All</button>
         </div>
-        <div style="padding:1rem;">
+        <div class="table-scroll">
             <table class="af-table">
                 <thead>
                     <tr>
                         <th style="min-width:200px;">Module</th>
                         <th class="text-center" style="min-width:100px;">
                             <div>View</div>
-                            <input type="checkbox" class="col-toggle" data-col="view" style="accent-color:#6366f1;margin-top:.3rem;" title="Toggle all View" />
+                            <input type="checkbox" class="form-check-input col-toggle mt-1" data-col="view" title="Toggle all View" />
                         </th>
                         <th class="text-center" style="min-width:100px;">
                             <div>Create</div>
-                            <input type="checkbox" class="col-toggle" data-col="create" style="accent-color:#6366f1;margin-top:.3rem;" title="Toggle all Create" />
+                            <input type="checkbox" class="form-check-input col-toggle mt-1" data-col="create" title="Toggle all Create" />
                         </th>
                         <th class="text-center" style="min-width:100px;">
                             <div>Edit</div>
-                            <input type="checkbox" class="col-toggle" data-col="edit" style="accent-color:#6366f1;margin-top:.3rem;" title="Toggle all Edit" />
+                            <input type="checkbox" class="form-check-input col-toggle mt-1" data-col="edit" title="Toggle all Edit" />
                         </th>
                         <th class="text-center" style="min-width:100px;">
                             <div>Delete</div>
-                            <input type="checkbox" class="col-toggle" data-col="delete" style="accent-color:#6366f1;margin-top:.3rem;" title="Toggle all Delete" />
+                            <input type="checkbox" class="form-check-input col-toggle mt-1" data-col="delete" title="Toggle all Delete" />
                         </th>
                     </tr>
                 </thead>
@@ -51,35 +51,35 @@
                             <td>
                                 <input type="hidden" name="Modules[@i].Module" value="@Model.Modules[i].Module" />
                                 <input type="hidden" name="Modules[@i].DisplayName" value="@Model.Modules[i].DisplayName" />
-                                <strong>@Model.Modules[i].DisplayName</strong>
-                                <div style="font-size:.75rem;color:#94a3b8;">@Model.Modules[i].Module</div>
+                                <span class="cell-title">@Model.Modules[i].DisplayName</span>
+                                <span class="cell-sub font-monospace">@Model.Modules[i].Module</span>
                             </td>
                             <td class="text-center">
                                 <input type="checkbox" name="Modules[@i].CanView" value="true"
-                                       class="perm-check" data-col="view"
+                                       class="form-check-input perm-check" data-col="view"
                                        @(Model.Modules[i].CanView ? "checked" : "")
-                                       style="accent-color:#6366f1;width:18px;height:18px;" />
+                                       />
                                 <input type="hidden" name="Modules[@i].CanView" value="false" />
                             </td>
                             <td class="text-center">
                                 <input type="checkbox" name="Modules[@i].CanCreate" value="true"
-                                       class="perm-check" data-col="create"
+                                       class="form-check-input perm-check" data-col="create"
                                        @(Model.Modules[i].CanCreate ? "checked" : "")
-                                       style="accent-color:#6366f1;width:18px;height:18px;" />
+                                       />
                                 <input type="hidden" name="Modules[@i].CanCreate" value="false" />
                             </td>
                             <td class="text-center">
                                 <input type="checkbox" name="Modules[@i].CanEdit" value="true"
-                                       class="perm-check" data-col="edit"
+                                       class="form-check-input perm-check" data-col="edit"
                                        @(Model.Modules[i].CanEdit ? "checked" : "")
-                                       style="accent-color:#6366f1;width:18px;height:18px;" />
+                                       />
                                 <input type="hidden" name="Modules[@i].CanEdit" value="false" />
                             </td>
                             <td class="text-center">
                                 <input type="checkbox" name="Modules[@i].CanDelete" value="true"
-                                       class="perm-check" data-col="delete"
+                                       class="form-check-input perm-check" data-col="delete"
                                        @(Model.Modules[i].CanDelete ? "checked" : "")
-                                       style="accent-color:#6366f1;width:18px;height:18px;" />
+                                       />
                                 <input type="hidden" name="Modules[@i].CanDelete" value="false" />
                             </td>
                         </tr>
@@ -87,10 +87,11 @@
                 </tbody>
             </table>
         </div>
-        <div style="padding:1rem 1.5rem;border-top:1px solid #f1f5f9;display:flex;gap:.75rem;">
-            <button type="submit" class="btn-af btn-af-primary">💾 Save Permissions</button>
-            <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
-        </div>
+    </div>
+
+    <div class="form-footer">
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Permissions</button>
     </div>
 </form>
 

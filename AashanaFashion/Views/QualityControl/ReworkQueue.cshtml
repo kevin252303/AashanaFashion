@@ -4,222 +4,191 @@
     var currentStatus = (AashanaFashion.Models.ReworkStatus?)ViewBag.SelectedStatus;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
     <div>
-        <a asp-action="Index" class="text-decoration-none text-muted small">← Back to Quality Dashboard</a>
-        <h2 class="fw-bold mt-1 mb-0">Rework & Alteration Queue</h2>
-        <p class="text-muted mb-0">Track garments currently being altered, repaired, or awaiting re-inspection.</p>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Quality dashboard</a>
+        <h1 class="page-title">Rework &amp; Alteration Queue</h1>
+        <p class="page-sub">Track garments currently being altered, repaired, or awaiting re-inspection.</p>
     </div>
-    <a asp-action="Create" class="btn btn-outline-primary">
-        <span class="me-1">➕</span> Log QC Inspection
-    </a>
-</div>
-
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <strong>Success!</strong> @TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-<!-- Status Counts -->
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <span class="text-muted small text-uppercase fw-semibold">Pending Rework</span>
-                    <h3 class="fw-bold my-1 text-warning">@Model.TotalPendingRework</h3>
-                    <small class="text-muted">Awaiting assignment / dispatch</small>
-                </div>
-                <div class="fs-1 text-warning opacity-50">⏳</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <span class="text-muted small text-uppercase fw-semibold">Sent to Rework</span>
-                    <h3 class="fw-bold my-1 text-primary">@Model.TotalSentToRework</h3>
-                    <small class="text-muted">Currently with tailor / vendor</small>
-                </div>
-                <div class="fs-1 text-primary opacity-50">🪡</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <span class="text-muted small text-uppercase fw-semibold">Rework Completed</span>
-                    <h3 class="fw-bold my-1 text-success">@Model.TotalCompletedRework</h3>
-                    <small class="text-muted">Repaired and re-passed</small>
-                </div>
-                <div class="fs-1 text-success opacity-50">✅</div>
-            </div>
-        </div>
+    <div class="page-actions">
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Log QC Inspection</a>
     </div>
 </div>
 
-<!-- Filter Tabs -->
-<div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-header bg-white py-2 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <ul class="nav nav-pills card-header-pills">
-            <li class="nav-item">
-                <a class="nav-link @(!currentStatus.HasValue ? "active" : "")" asp-action="ReworkQueue" asp-route-search="@ViewBag.Search">
-                    Active Queue (@(Model.TotalPendingRework + Model.TotalSentToRework))
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.PendingRework ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.PendingRework" asp-route-search="@ViewBag.Search">
-                    Pending Rework (@Model.TotalPendingRework)
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.SentToRework ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.SentToRework" asp-route-search="@ViewBag.Search">
-                    With Tailor / Vendor (@Model.TotalSentToRework)
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.ReworkCompleted ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.ReworkCompleted" asp-route-search="@ViewBag.Search">
-                    Completed Repaired (@Model.TotalCompletedRework)
-                </a>
-            </li>
-        </ul>
-        <form method="get" class="d-flex align-items-center gap-2">
-            @if (currentStatus.HasValue)
-            {
-                <input type="hidden" name="status" value="@currentStatus.Value" />
-            }
-            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search defect, order, worker..." value="@ViewBag.Search" style="max-width: 220px;" />
-            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Pending rework</div>
+        <div class="metric-value">@Model.TotalPendingRework</div>
+        <div class="metric-meta warning">awaiting assignment / dispatch</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Sent to rework</div>
+        <div class="metric-value">@Model.TotalSentToRework</div>
+        <div class="metric-meta info">with tailor / vendor</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Rework completed</div>
+        <div class="metric-value">@Model.TotalCompletedRework</div>
+        <div class="metric-meta success">repaired and re-passed</div>
+    </div>
+</div>
+
+<ul class="nav nav-tabs">
+    <li class="nav-item">
+        <a class="nav-link @(!currentStatus.HasValue ? "active" : "")" asp-action="ReworkQueue" asp-route-search="@ViewBag.Search">
+            Active queue <span class="count-pill">@(Model.TotalPendingRework + Model.TotalSentToRework)</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.PendingRework ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.PendingRework" asp-route-search="@ViewBag.Search">
+            Pending <span class="count-pill">@Model.TotalPendingRework</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.SentToRework ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.SentToRework" asp-route-search="@ViewBag.Search">
+            With tailor / vendor <span class="count-pill">@Model.TotalSentToRework</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentStatus == AashanaFashion.Models.ReworkStatus.ReworkCompleted ? "active" : "")" asp-action="ReworkQueue" asp-route-status="@AashanaFashion.Models.ReworkStatus.ReworkCompleted" asp-route-search="@ViewBag.Search">
+            Completed <span class="count-pill">@Model.TotalCompletedRework</span>
+        </a>
+    </li>
+</ul>
+
+<div class="table-card">
+    <form method="get" class="table-toolbar">
+        @if (currentStatus.HasValue)
+        {
+            <input type="hidden" name="status" value="@currentStatus.Value" />
+        }
+        <div class="toolbar-filters">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="Search defect, order, worker…" value="@ViewBag.Search" />
+            </div>
+        </div>
+        <div class="toolbar-actions">
             @if (!string.IsNullOrEmpty(ViewBag.Search as string) || currentStatus.HasValue)
             {
-                <a asp-action="ReworkQueue" class="btn btn-outline-secondary btn-sm">Reset</a>
+                <a asp-action="ReworkQueue" class="btn btn-ghost">Reset</a>
             }
-        </form>
-    </div>
-    <div class="card-body p-0">
-        @if (Model.DefectItems.Any())
-        {
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
+
+    @if (Model.DefectItems.Any())
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>QC / Date</th>
+                        <th>Lot / Design</th>
+                        <th>Defect</th>
+                        <th>Category</th>
+                        <th class="text-end">Qty (pcs)</th>
+                        <th>Assigned To</th>
+                        <th>Status</th>
+                        <th>Resolution Notes</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.DefectItems)
+                    {
                         <tr>
-                            <th>QC / Date</th>
-                            <th>Lot / Design</th>
-                            <th>Defect Reason</th>
-                            <th>Category</th>
-                            <th class="text-end">Qty (pcs)</th>
-                            <th>Assigned To</th>
-                            <th>Status</th>
-                            <th>Resolution Notes</th>
-                            <th class="text-center" style="width: 200px;">Actions</th>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@d.QualityInspectionId" class="font-monospace fw-medium">@d.QualityInspection?.InspectionNumber</a>
+                                <span class="cell-sub">@d.CreatedDate.ToString("dd/MM/yyyy")</span>
+                            </td>
+                            <td>
+                                <span class="cell-title">@d.QualityInspection?.ProductionOrder?.LotNo</span>
+                                <span class="cell-sub">@(d.QualityInspection?.ProductionOrder?.Design?.DesignNumber ?? "—")</span>
+                            </td>
+                            <td>
+                                <span class="cell-title">@d.DefectReason</span>
+                                <span class="cell-sub">Severity: @d.Severity.Humanize()</span>
+                            </td>
+                            <td><span class="tag">@d.DefectCategory.Humanize()</span></td>
+                            <td class="cell-num text-foreground fw-medium">@d.Quantity</td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(d.ReworkAssignedTo))
+                                {
+                                    <span>@d.ReworkAssignedTo</span>
+                                }
+                                else if (d.QualityInspection?.Vendor != null)
+                                {
+                                    <span>@d.QualityInspection.Vendor.VendorName</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">In-House</span>
+                                }
+                            </td>
+                            <td>
+                                @if (d.ReworkStatus == AashanaFashion.Models.ReworkStatus.ReworkCompleted)
+                                {
+                                    <span class="af-badge b-green">Completed</span>
+                                }
+                                else if (d.ReworkStatus == AashanaFashion.Models.ReworkStatus.SentToRework)
+                                {
+                                    <span class="af-badge b-blue">Sent to tailor</span>
+                                }
+                                else
+                                {
+                                    <span class="af-badge b-yellow">Pending</span>
+                                }
+                            </td>
+                            <td class="text-muted">@(d.ResolutionNotes ?? "—")</td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    @if (d.ReworkStatus == AashanaFashion.Models.ReworkStatus.PendingRework)
+                                    {
+                                        <form asp-action="UpdateReworkStatus" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="defectId" value="@d.Id" />
+                                            <input type="hidden" name="status" value="@AashanaFashion.Models.ReworkStatus.SentToRework" />
+                                            <input type="hidden" name="resolutionNotes" value="Handed over to tailor for alteration." />
+                                            <button type="submit" class="btn btn-sm btn-secondary me-1" title="Dispatch to tailor/vendor"><i class="bi bi-send"></i> Send</button>
+                                        </form>
+                                    }
+
+                                    @if (d.ReworkStatus == AashanaFashion.Models.ReworkStatus.SentToRework || d.ReworkStatus == AashanaFashion.Models.ReworkStatus.PendingRework)
+                                    {
+                                        <form asp-action="UpdateReworkStatus" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="defectId" value="@d.Id" />
+                                            <input type="hidden" name="status" value="@AashanaFashion.Models.ReworkStatus.ReworkCompleted" />
+                                            <input type="hidden" name="resolutionNotes" value="Repaired, inspected, and passed." />
+                                            <button type="submit" class="btn btn-sm btn-secondary me-1" title="Mark alteration complete and passed"><i class="bi bi-check-lg"></i> Pass</button>
+                                        </form>
+
+                                        <form asp-action="UpdateReworkStatus" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="defectId" value="@d.Id" />
+                                            <input type="hidden" name="status" value="@AashanaFashion.Models.ReworkStatus.Scrapped" />
+                                            <input type="hidden" name="resolutionNotes" value="Irrecoverable defect after repair attempt. Written off as scrap." />
+                                            <button type="submit" class="row-action danger" title="Cannot be repaired — scrap piece" aria-label="Scrap" onclick="return confirm('Write off this piece as scrap?')"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var d in Model.DefectItems)
-                        {
-                            <tr>
-                                <td>
-                                    <a asp-action="Details" asp-route-id="@d.QualityInspectionId" class="fw-bold text-decoration-none">
-                                        @d.QualityInspection?.InspectionNumber
-                                    </a>
-                                    <div class="small text-muted">@d.CreatedDate.ToString("dd/MM/yyyy")</div>
-                                </td>
-                                <td>
-                                    <strong>@d.QualityInspection?.ProductionOrder?.LotNo</strong>
-                                    <div class="small text-muted">@(d.QualityInspection?.ProductionOrder?.Design?.DesignNumber ?? "—")</div>
-                                </td>
-                                <td>
-                                    <div class="fw-semibold">@d.DefectReason</div>
-                                    <small class="text-muted">Severity: @d.Severity</small>
-                                </td>
-                                <td><span class="badge bg-light text-dark border">@d.DefectCategory</span></td>
-                                <td class="text-end fw-bold text-warning">@d.Quantity</td>
-                                <td>
-                                    @if (!string.IsNullOrWhiteSpace(d.ReworkAssignedTo))
-                                    {
-                                        <span>@d.ReworkAssignedTo</span>
-                                    }
-                                    else if (d.QualityInspection?.Vendor != null)
-                                    {
-                                        <span>@d.QualityInspection.Vendor.VendorName</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">In-House</span>
-                                    }
-                                </td>
-                                <td>
-                                    @if (d.ReworkStatus == AashanaFashion.Models.ReworkStatus.ReworkCompleted)
-                                    {
-                                        <span class="badge bg-success">Completed</span>
-                                    }
-                                    else if (d.ReworkStatus == AashanaFashion.Models.ReworkStatus.SentToRework)
-                                    {
-                                        <span class="badge bg-primary">Sent to Tailor</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-warning text-dark">Pending</span>
-                                    }
-                                </td>
-                                <td class="small text-muted">@(d.ResolutionNotes ?? "—")</td>
-                                <td class="text-center">
-                                    <div class="btn-group btn-group-sm">
-                                        @if (d.ReworkStatus == AashanaFashion.Models.ReworkStatus.PendingRework)
-                                        {
-                                            <form asp-action="UpdateReworkStatus" method="post" class="d-inline">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="defectId" value="@d.Id" />
-                                                <input type="hidden" name="status" value="@AashanaFashion.Models.ReworkStatus.SentToRework" />
-                                                <input type="hidden" name="resolutionNotes" value="Handed over to tailor for alteration." />
-                                                <button type="submit" class="btn btn-outline-primary btn-sm" title="Dispatch to tailor/vendor">
-                                                    📤 Send
-                                                </button>
-                                            </form>
-                                        }
-
-                                        @if (d.ReworkStatus == AashanaFashion.Models.ReworkStatus.SentToRework || d.ReworkStatus == AashanaFashion.Models.ReworkStatus.PendingRework)
-                                        {
-                                            <form asp-action="UpdateReworkStatus" method="post" class="d-inline ms-1">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="defectId" value="@d.Id" />
-                                                <input type="hidden" name="status" value="@AashanaFashion.Models.ReworkStatus.ReworkCompleted" />
-                                                <input type="hidden" name="resolutionNotes" value="Repaired, inspected, and passed." />
-                                                <button type="submit" class="btn btn-success btn-sm" title="Mark alteration complete and passed">
-                                                    ✓ Pass
-                                                </button>
-                                            </form>
-
-                                            <form asp-action="UpdateReworkStatus" method="post" class="d-inline ms-1">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="defectId" value="@d.Id" />
-                                                <input type="hidden" name="status" value="@AashanaFashion.Models.ReworkStatus.Scrapped" />
-                                                <input type="hidden" name="resolutionNotes" value="Irrecoverable defect after repair attempt. Written off as scrap." />
-                                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Cannot be repaired - scrap piece" onclick="return confirm('Write off this piece as scrap?')">
-                                                    🗑️ Scrap
-                                                </button>
-                                            </form>
-                                        }
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
-        else
-        {
-            <div class="text-center py-5 text-muted">
-                <span class="fs-1 d-block mb-2">🎉</span>
-                <h5>No garments in this rework queue!</h5>
-                <p class="mb-0">All altered items have been processed and passed.</p>
-            </div>
-        }
-    </div>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.DefectItems.Count()</strong> items</span>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="es-icon bg-success-subtle text-success"><i class="bi bi-check2-circle"></i></div>
+            <div class="es-title">Rework queue is clear</div>
+            <p>All altered items have been processed and passed.</p>
+        </div>
+    }
 </div>

@@ -6,16 +6,22 @@
     bool canCreate = isAdmin || User.HasClaim("Permission.UserManagement.CanCreate", "true");
     bool canEdit   = isAdmin || User.HasClaim("Permission.UserManagement.CanEdit",   "true");
     bool canDelete = isAdmin || User.HasClaim("Permission.UserManagement.CanDelete", "true");
+    bool filtered  = !string.IsNullOrEmpty(ViewBag.Search as string) || !string.IsNullOrEmpty(ViewBag.SelectedRole as string) || ViewBag.ActiveOnly == true;
+    var roleDict   = ViewBag.UserRoles as Dictionary<string, int> ?? new();
 }
 
-@if (TempData["Success"] != null)
-{
-    <div class="af-alert af-alert-success"><span class="alert-body">✅ @TempData["Success"]</span><button class="alert-close">&times;</button></div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="af-alert af-alert-danger"><span class="alert-body">⚠️ @TempData["Error"]</span><button class="alert-close">&times;</button></div>
-}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">User List</h1>
+        <p class="page-sub">Manage who can sign in and what role they have</p>
+    </div>
+    @if (canCreate && ViewBag.IsQuotaFull != true)
+    {
+        <div class="page-actions">
+            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add User</a>
+        </div>
+    }
+</div>
 
 @if (ViewBag.AllowedErpSeats != null)
 {
@@ -23,63 +29,46 @@
     var allowedSeats = (int)ViewBag.AllowedErpSeats;
     var isFull = (bool)ViewBag.IsQuotaFull;
 
-    <div class="alert @(isFull ? "alert-warning" : "alert-info") d-flex flex-wrap justify-content-between align-items-center mb-3 py-2 px-3 shadow-sm border rounded-3">
-        <div class="d-flex align-items-center">
-            <span class="fs-4 me-2">@(isFull ? "⚠️" : "💻")</span>
+    <div class="af-alert @(isFull ? "af-alert-warning" : "af-alert-info")">
+        <div class="alert-body d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div>
-                <strong>ERP Desk User License:</strong> @activeSeats of @allowedSeats seats active.
-                <span class="text-muted ms-1">@(isFull ? "(Quota full — upgrade subscription to add desk users)" : $"({ViewBag.SeatsRemaining} seats remaining)")</span>
+                <span class="alert-title">ERP desk user licence: @activeSeats of @allowedSeats seats active</span>
+                @(isFull ? "Quota full — upgrade your subscription to add desk users." : $"{ViewBag.SeatsRemaining} seats remaining.")
             </div>
-        </div>
-        <div class="mt-2 mt-md-0">
-            @if (canCreate && !isFull)
-            {
-                <a asp-action="Create" class="btn btn-sm btn-primary">
-                    + Add ERP User
-                </a>
-            }
-            <a asp-controller="Subscription" asp-action="Index" class="btn btn-sm btn-outline-primary ms-1">
-                ☁️ Subscription &amp; Quotas
-            </a>
+            <a asp-controller="Subscription" asp-action="Index" class="btn btn-sm btn-secondary"><i class="bi bi-cloud"></i> Subscription &amp; quotas</a>
         </div>
     </div>
 }
 
-<!-- Stats -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-purple">👤</div>
-            <div><div class="stat-val">@Model.Count()</div><div class="stat-lbl">Total Users</div></div>
-        </div>
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total users</div>
+        <div class="metric-value">@Model.Count()</div>
     </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-red">🔑</div>
-            <div><div class="stat-val">@Model.Count(u => u.Role == "Admin")</div><div class="stat-lbl">Admins</div></div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Admins</div>
+        <div class="metric-value">@Model.Count(u => u.Role == "Admin")</div>
     </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-yellow">🛠️</div>
-            <div><div class="stat-val">@Model.Count(u => u.Role == "Manager")</div><div class="stat-lbl">Managers</div></div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Managers</div>
+        <div class="metric-value">@Model.Count(u => u.Role == "Manager")</div>
     </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-green">✅</div>
-            <div><div class="stat-val">@Model.Count(u => u.IsActive)</div><div class="stat-lbl">Active</div></div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Active</div>
+        <div class="metric-value">@Model.Count(u => u.IsActive)</div>
+        <div class="metric-meta success">can sign in</div>
     </div>
-<!-- Search & Filter -->
-<div class="data-card mb-4 p-3">
-    <form method="get" asp-action="Index" class="row g-2 align-items-center">
-        <div class="col-md-5">
-            <input type="text" name="search" class="af-input" placeholder="Search username, name, email, phone..." value="@ViewBag.Search" />
-        </div>
-        <div class="col-md-3">
-            <select name="role" class="af-select">
-                <option value="">All Roles</option>
+</div>
+
+<div class="table-card">
+    <form method="get" asp-action="Index" class="table-toolbar">
+        <div class="toolbar-filters">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="Search username, name, email, phone…" value="@ViewBag.Search" />
+            </div>
+            <select name="role" class="af-input af-select" onchange="this.form.submit()">
+                <option value="">All roles</option>
                 @if (ViewBag.Roles != null)
                 {
                     @foreach (var r in (List<string>)ViewBag.Roles)
@@ -88,106 +77,109 @@
                     }
                 }
             </select>
-        </div>
-        <div class="col-md-2">
-            <div class="form-check ms-1">
-                <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnly" @(ViewBag.ActiveOnly == true ? "checked" : "") />
-                <label class="form-check-label small" for="activeOnly">Active Only</label>
+            <div class="form-check m-0">
+                <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnly" @(ViewBag.ActiveOnly == true ? "checked" : "") onchange="this.form.submit()" />
+                <label class="form-check-label" for="activeOnly">Active only</label>
             </div>
         </div>
-        <div class="col-md-2 d-flex gap-2">
-            <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
-            <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
+        <div class="toolbar-actions">
+            @if (filtered)
+            {
+                <a asp-action="Index" class="btn btn-ghost">Clear</a>
+            }
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
         </div>
     </form>
-</div>
 
-<!-- Table -->
-<div class="data-card">
-    <div class="data-card-header">
-        <span class="data-card-title">All Users</span>
-        @if (canCreate)
-        {
-            <a asp-action="Create" class="btn-af btn-af-primary btn-af-sm">+ Add User</a>
-        }
-    </div>
-    <div class="table-responsive">
-        <table class="af-table">
-            <thead>
-                <tr>
-                    <th class="ps-4">#</th>
-                    <th>Name</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Contact</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var user in Model)
-                {
+    @if (Model.Any())
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
                     <tr>
-                        <td class="ps-4" style="color:#94a3b8;">@user.Id</td>
-                        <td>
-                            <div style="display:flex;align-items:center;gap:.6rem;">
-                                <div class="av-sm">@string.Concat(user.FullName.Split(' ').Take(2).Select(w => w.Length > 0 ? w[0].ToString() : "")).ToUpper()</div>
-                                <div>
-                                    <div style="font-weight:600;color:#0f172a;">@(!string.IsNullOrWhiteSpace(user.DisplayName) ? user.DisplayName : user.FullName)</div>
-                                    <div style="font-size:.75rem;color:#94a3b8;">@user.FirstName @user.MiddleName @user.LastName</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td><code style="background:#f1f5f9;color:#4f46e5;padding:.2rem .55rem;border-radius:6px;font-size:.78rem;">@user.Username</code></td>
-                        <td style="font-size:.85rem;color:#64748b;">@(user.Email ?? "—")</td>
-                        <td style="font-size:.85rem;color:#64748b;">@(user.ContactNumber ?? "—")</td>
-                        <td>
-                            @{
-                                var roleDict = ViewBag.UserRoles as Dictionary<string, int> ?? new();
-                                var roleId = roleDict.TryGetValue(user.Role, out var rid) ? rid : 0;
-                                var rc = user.Role switch { "Admin" => "b-red", "Manager" => "b-yellow", _ => "b-purple" };
-                            }
-                            <span class="af-badge @rc">#@roleId @user.Role</span>
-                        </td>
-                        <td>
-                            @if (user.IsActive)
-                            { <span class="af-badge b-green">Active</span> }
-                            else
-                            { <span class="af-badge b-gray">Inactive</span> }
-                        </td>
-                        <td>
-                            @if (canEdit || canDelete)
-                            {
-                                <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-                                    @if (canEdit)
-                                    {
-                                        <a asp-action="Edit" asp-route-id="@user.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
-                                        <form asp-action="ToggleActive" asp-route-id="@user.Id" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn-af btn-af-sm @(user.IsActive ? "btn-af-warn" : "btn-af-success")">
-                                                @(user.IsActive ? "Deactivate" : "Activate")
-                                            </button>
-                                        </form>
-                                    }
-                                    @if (canDelete)
-                                    {
-                                        <form asp-action="Delete" asp-route-id="@user.Id" method="post" class="d-inline"
-                                              onsubmit="return confirm('Delete @user.Username?')">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn-af btn-af-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;">Delete</button>
-                                        </form>
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                <span style="font-size:.75rem;color:#cbd5e1;">View only</span>
-                            }
-                        </td>
+                        <th style="width: 56px;">#</th>
+                        <th>Name</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Contact</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
                     </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model)
+                    {
+                        var roleId = roleDict.TryGetValue(user.Role, out var rid) ? rid : 0;
+                        var rc = user.Role switch { "Admin" => "b-red", "SuperAdmin" => "b-red", "Manager" => "b-yellow", _ => "b-purple" };
+                        <tr>
+                            <td class="text-muted tabular">@user.Id</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="av-sm">@string.Concat(user.FullName.Split(' ').Take(2).Select(w => w.Length > 0 ? w[0].ToString() : "")).ToUpper()</span>
+                                    <div class="min-w-0">
+                                        <span class="cell-title">@(!string.IsNullOrWhiteSpace(user.DisplayName) ? user.DisplayName : user.FullName)</span>
+                                        <span class="cell-sub">@user.FirstName @user.MiddleName @user.LastName</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="mono-id">@user.Username</span></td>
+                            <td class="text-muted">@(user.Email ?? "—")</td>
+                            <td class="text-muted">@(user.ContactNumber ?? "—")</td>
+                            <td><span class="af-badge @rc" title="Role #@roleId">@user.Role</span></td>
+                            <td>
+                                @if (user.IsActive)
+                                { <span class="af-badge b-green">Active</span> }
+                                else
+                                { <span class="af-badge b-gray">Inactive</span> }
+                            </td>
+                            <td class="cell-actions">
+                                @if (canEdit || canDelete)
+                                {
+                                    <div class="row-actions">
+                                        @if (canEdit)
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@user.Id" class="row-action" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                            <form asp-action="ToggleActive" asp-route-id="@user.Id" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="row-action @(user.IsActive ? "warning" : "success")" title="@(user.IsActive ? "Deactivate" : "Activate")" aria-label="@(user.IsActive ? "Deactivate" : "Activate")">
+                                                    <i class="bi @(user.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                        @if (canDelete)
+                                        {
+                                            <form asp-action="Delete" asp-route-id="@user.Id" method="post" onsubmit="return confirm('Delete @user.Username?')">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="row-action danger" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-xs text-placeholder">View only</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> @(Model.Count() == 1 ? "user" : "users")</span>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi @(filtered ? "bi-search" : "bi-people")"></i></div>
+            <div class="es-title">@(filtered ? "No results found" : "No users yet")</div>
+            <p>@(filtered ? "No users match your filters." : "Add users so your team can sign in.")</p>
+            @if (filtered)
+            {
+                <a asp-action="Index" class="btn btn-secondary">Clear search</a>
+            }
+        </div>
+    }
 </div>

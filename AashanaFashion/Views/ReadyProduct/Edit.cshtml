@@ -3,29 +3,22 @@
     ViewData["Title"] = $"Edit Ready Product - {Model.DesignNumber}";
 }
 
-<div class="container-fluid px-4 py-3">
-    <!-- Header Breadcrumb -->
-    <div class="d-flex align-items-center justify-content-between mb-4">
+<div>
+    <div class="page-header">
         <div>
             <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-1">
-                    <li class="breadcrumb-item"><a asp-action="Index" class="text-decoration-none text-muted">Ready Products</a></li>
-                    <li class="breadcrumb-item"><a asp-action="Details" asp-route-id="@Model.Id" class="text-decoration-none text-muted">@Model.DesignNumber (@Model.Colour, @Model.Size)</a></li>
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Index">Ready Products</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Details" asp-route-id="@Model.Id">@Model.DesignNumber (@Model.Colour, @Model.Size)</a></li>
                     <li class="breadcrumb-item active" aria-current="page">Edit</li>
                 </ol>
             </nav>
-            <h3 class="fw-bold mb-0 text-dark">
-                <i class="bi bi-pencil-square text-primary me-2"></i>Edit Ready Product
-            </h3>
-            <p class="text-muted small mb-0">Update pricing, thresholds, storage location, or product photo.</p>
+            <h1 class="page-title">Edit Ready Product</h1>
+            <p class="page-sub">Update pricing, thresholds, storage location, or product photo.</p>
         </div>
-        <div class="d-flex gap-2">
-            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
-                <i class="bi bi-eye me-1"></i> View Details
-            </a>
-            <a asp-action="AdjustStock" asp-route-id="@Model.Id" class="btn btn-warning text-dark">
-                <i class="bi bi-arrow-left-right me-1"></i> Adjust Stock
-            </a>
+        <div class="page-actions">
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary"><i class="bi bi-eye"></i> View details</a>
+            <a asp-action="AdjustStock" asp-route-id="@Model.Id" class="btn btn-secondary"><i class="bi bi-sliders"></i> Adjust stock</a>
         </div>
     </div>
 
@@ -38,99 +31,101 @@
         <input type="hidden" asp-for="Size" />
         <input type="hidden" asp-for="ExistingPhotoPath" />
 
-        <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm mb-4"></div>
+        <div asp-validation-summary="ModelOnly" class="af-alert af-alert-danger"></div>
 
         <div class="row g-4">
             <!-- Left Column: Product Properties -->
             <div class="col-lg-8">
                 <!-- Immutable Specification Card -->
-                <div class="card border-0 shadow-sm rounded-3 mb-4 bg-light">
-                    <div class="card-body p-3">
-                        <div class="row g-3 align-items-center">
-                            <div class="col-md-4">
-                                <span class="text-muted small d-block">Design Number:</span>
-                                <strong class="fs-5 text-dark">@Model.DesignNumber</strong>
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Specification</h5>
+                        <span class="text-xs text-muted"><i class="bi bi-lock"></i> Locked</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-grid cols-3">
+                            <div class="info-item">
+                                <div class="info-label">Design number</div>
+                                <div class="info-value fw-semibold">@Model.DesignNumber</div>
                             </div>
-                            <div class="col-md-4">
-                                <span class="text-muted small d-block">Colour:</span>
-                                <span class="badge bg-secondary fs-6">@Model.Colour</span>
+                            <div class="info-item">
+                                <div class="info-label">Colour</div>
+                                <span class="tag">@Model.Colour</span>
                             </div>
-                            <div class="col-md-4">
-                                <span class="text-muted small d-block">Size:</span>
-                                <span class="badge bg-dark fs-6">@Model.Size</span>
+                            <div class="info-item">
+                                <div class="info-label">Size</div>
+                                <span class="tag">@Model.Size</span>
                             </div>
                         </div>
-                        <div class="text-muted small mt-2">
-                            <i class="bi bi-lock-fill me-1"></i> Specification (Design, Colour, Size) defines the 3-piece set identity and cannot be altered directly.
-                        </div>
+                        <div class="af-hint mt-3">Design, colour and size define the 3-piece set identity and cannot be altered directly.</div>
                     </div>
                 </div>
 
                 <!-- Pricing & Inventory Settings -->
-                <div class="card border-0 shadow-sm rounded-3 mb-4">
-                    <div class="card-header bg-white py-3 border-bottom">
-                        <h5 class="card-title fw-bold mb-0 text-dark">
-                            <i class="bi bi-currency-rupee text-success me-2"></i>Pricing & Stock Alerts
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-currency-rupee"></i> Pricing & Stock Alerts
                         </h5>
                     </div>
-                    <div class="card-body p-4">
+                    <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label asp-for="UnitPrice" class="form-label fw-semibold">Sales Price (MRP / Set) <span class="text-danger">*</span></label>
+                                <label asp-for="UnitPrice" class="form-label">Sales Price (MRP / Set) <span class="req">*</span></label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">₹</span>
+                                    <span class="input-group-text">₹</span>
                                     <input asp-for="UnitPrice" type="number" step="0.01" min="0" class="form-control" required />
                                 </div>
-                                <span asp-validation-for="UnitPrice" class="text-danger small"></span>
+                                <span asp-validation-for="UnitPrice" class="af-error"></span>
                                 <div class="form-text">Selling price for 1 complete 3-piece set.</div>
                             </div>
 
                             <div class="col-md-6">
-                                <label asp-for="CostPrice" class="form-label fw-semibold">Cost Price (Estimated / Set)</label>
+                                <label asp-for="CostPrice" class="form-label">Cost Price (Estimated / Set)</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">₹</span>
+                                    <span class="input-group-text">₹</span>
                                     <input asp-for="CostPrice" type="number" step="0.01" min="0" class="form-control" />
                                 </div>
-                                <span asp-validation-for="CostPrice" class="text-danger small"></span>
+                                <span asp-validation-for="CostPrice" class="af-error"></span>
                                 <div class="form-text">Production / landed cost per set.</div>
                             </div>
 
                             <div class="col-md-6">
-                                <label asp-for="MinimumStockAlert" class="form-label fw-semibold">Low Stock Threshold</label>
+                                <label asp-for="MinimumStockAlert" class="form-label">Low Stock Threshold</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="bi bi-bell"></i></span>
+                                    <span class="input-group-text"><i class="bi bi-bell"></i></span>
                                     <input asp-for="MinimumStockAlert" type="number" min="0" class="form-control" />
                                 </div>
-                                <span asp-validation-for="MinimumStockAlert" class="text-danger small"></span>
+                                <span asp-validation-for="MinimumStockAlert" class="af-error"></span>
                                 <div class="form-text">Triggers low stock badge when stock &le; this number.</div>
                             </div>
 
                             <div class="col-md-6">
-                                <label asp-for="WarehouseLocation" class="form-label fw-semibold">Rack / Location</label>
+                                <label asp-for="WarehouseLocation" class="form-label">Rack / Location</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="bi bi-geo-alt"></i></span>
+                                    <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
                                     <input asp-for="WarehouseLocation" class="form-control" placeholder="e.g. Rack B-02" />
                                 </div>
-                                <span asp-validation-for="WarehouseLocation" class="text-danger small"></span>
+                                <span asp-validation-for="WarehouseLocation" class="af-error"></span>
                                 <div class="form-text">Warehouse storage shelf or bin.</div>
                             </div>
 
                             <div class="col-md-12">
-                                <label asp-for="Sku" class="form-label fw-semibold">SKU / Barcode Text</label>
+                                <label asp-for="Sku" class="form-label">SKU / Barcode Text</label>
                                 <input asp-for="Sku" class="form-control font-monospace" />
-                                <span asp-validation-for="Sku" class="text-danger small"></span>
+                                <span asp-validation-for="Sku" class="af-error"></span>
                             </div>
 
                             <div class="col-12">
-                                <label asp-for="Remarks" class="form-label fw-semibold">Remarks / Storage Notes</label>
+                                <label asp-for="Remarks" class="form-label">Remarks / Storage Notes</label>
                                 <textarea asp-for="Remarks" class="form-control" rows="3"></textarea>
-                                <span asp-validation-for="Remarks" class="text-danger small"></span>
+                                <span asp-validation-for="Remarks" class="af-error"></span>
                             </div>
 
                             <div class="col-12">
                                 <div class="form-check form-switch mt-2">
                                     <input class="form-check-input" type="checkbox" asp-for="IsActive" id="isActiveSwitch">
-                                    <label class="form-check-label fw-semibold" for="isActiveSwitch">Product Set is Active</label>
+                                    <label class="form-check-label" for="isActiveSwitch">Product Set is Active</label>
                                 </div>
                             </div>
                         </div>
@@ -140,15 +135,15 @@
 
             <!-- Right Column: Photo Update -->
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm rounded-3 mb-4">
-                    <div class="card-header bg-white py-3 border-bottom">
-                        <h5 class="card-title fw-bold mb-0 text-dark">
-                            <i class="bi bi-image text-primary me-2"></i>Product Photo
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-image"></i> Product Photo
                         </h5>
                     </div>
-                    <div class="card-body p-4 text-center">
+                    <div class="card-body text-center">
                         <div class="mb-3 position-relative d-inline-block w-100">
-                            <div class="rounded-3 border overflow-hidden bg-light d-flex align-items-center justify-content-center" style="height: 260px;">
+                            <div class="photo-frame w-100" style="height: 260px;">
                                 <img id="photoPreview" 
                                      src="@(string.IsNullOrEmpty(Model.ExistingPhotoPath) ? "/images/placeholder-product.svg" : Model.ExistingPhotoPath)" 
                                      alt="@Model.DesignNumber" 
@@ -158,24 +153,20 @@
                         </div>
 
                         <div class="text-start">
-                            <label asp-for="PhotoFile" class="form-label fw-semibold small text-muted">Change / Upload New Photo</label>
-                            <input asp-for="PhotoFile" id="photoFileInput" type="file" class="form-control form-control-sm" accept="image/*" />
-                            <span asp-validation-for="PhotoFile" class="text-danger small"></span>
-                            <div class="form-text small">Leave blank to retain current photo.</div>
+                            <label asp-for="PhotoFile" class="form-label">Change / upload new photo</label>
+                            <input asp-for="PhotoFile" id="photoFileInput" type="file" class="form-control" accept="image/*" />
+                            <span asp-validation-for="PhotoFile" class="af-error"></span>
+                            <div class="form-text">Leave blank to retain current photo.</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Submit & Cancel -->
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary btn-lg fw-semibold shadow-sm">
-                        <i class="bi bi-check2-circle me-1"></i> Save Changes
-                    </button>
-                    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
-                        Cancel
-                    </a>
-                </div>
             </div>
+        </div>
+
+        <div class="form-footer">
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
         </div>
     </form>
 </div>

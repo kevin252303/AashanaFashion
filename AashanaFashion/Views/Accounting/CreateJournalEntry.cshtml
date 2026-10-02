@@ -4,38 +4,31 @@
     var journals = ViewBag.Journals as List<AashanaFashion.Models.Journal> ?? new();
     var accounts = ViewBag.Accounts as List<AashanaFashion.Models.Account> ?? new();
     var customers = ViewBag.Customers as List<AashanaFashion.Models.Customer> ?? new();
-    var vendors = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="page-header">
     <div>
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <a asp-action="JournalEntries" class="btn btn-sm btn-outline-secondary">
-                ← Back to Entries
-            </a>
-            <h1 class="page-title mb-0">+ Create Manual Journal Entry</h1>
-        </div>
-        <p class="page-sub mb-0 text-muted">Post a balanced double-entry voucher with custom debit and credit lines</p>
+        <a asp-action="JournalEntries" class="page-back"><i class="bi bi-arrow-left"></i> Journal entries</a>
+        <h1 class="page-title">New journal entry</h1>
+        <p class="page-sub">Post a balanced double-entry voucher with custom debit and credit lines.</p>
     </div>
 </div>
-
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <strong>Error:</strong> @TempData["Error"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
 
 <form method="post" asp-action="CreateJournalEntry" id="jeForm">
     @Html.AntiForgeryToken()
 
-    <div class="card border-0 shadow-sm rounded-3 mb-4">
-        <div class="card-body p-4">
+    <div class="data-card mb-4">
+        <div class="data-card-header">
+            <div>
+                <div class="data-card-title">Voucher details</div>
+                <div class="data-card-sub">Fields marked <span class="req">*</span> are required.</div>
+            </div>
+        </div>
+        <div class="data-card-body">
             <div class="row g-3">
                 <div class="col-md-3">
-                    <label class="form-label small fw-bold text-secondary">Journal</label>
-                    <select name="JournalId" class="form-select" required>
+                    <label class="form-label" for="jeJournal">Journal <span class="req">*</span></label>
+                    <select id="jeJournal" name="JournalId" class="af-input af-select" required>
                         @foreach (var j in journals)
                         {
                             <option value="@j.Id">@j.Name (@j.Code)</option>
@@ -43,46 +36,46 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small fw-bold text-secondary">Accounting Date</label>
-                    <input type="date" name="Date" class="form-control" value="@Model.Date.ToString("yyyy-MM-dd")" required />
+                    <label class="form-label" for="jeDate">Accounting date <span class="req">*</span></label>
+                    <input type="date" id="jeDate" name="Date" class="af-input" value="@Model.Date.ToString("yyyy-MM-dd")" required />
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label small fw-bold text-secondary">Reference / Document #</label>
-                    <input type="text" name="Reference" class="form-control" placeholder="e.g. Bank Ref, Cheque No, Tax voucher..." />
+                    <label class="form-label" for="jeRef">Reference / document no.</label>
+                    <input type="text" id="jeRef" name="Reference" class="af-input font-monospace" placeholder="e.g. bank ref, cheque no., tax voucher" />
                 </div>
                 <div class="col-12">
-                    <label class="form-label small fw-bold text-secondary">Narration / Description</label>
-                    <input type="text" name="Narration" class="form-control" placeholder="Explanation of the transaction..." required />
+                    <label class="form-label" for="jeNarr">Narration <span class="req">*</span></label>
+                    <input type="text" id="jeNarr" name="Narration" class="af-input" placeholder="Explain the transaction…" required />
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Lines Card -->
-    <div class="card border-0 shadow-sm rounded-3 mb-4">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-bold">Journal Lines</h6>
-            <button type="button" class="btn btn-sm btn-outline-primary" id="addRowBtn">
-                + Add Line
-            </button>
+    <div class="table-card mb-4">
+        <div class="data-card-header">
+            <div>
+                <div class="data-card-title">Journal lines</div>
+                <div class="data-card-sub">Total debits must equal total credits. At least two lines.</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-secondary" id="addRowBtn"><i class="bi bi-plus-lg"></i> Add line</button>
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="linesTable">
-                <thead class="table-light small text-uppercase">
+        <div class="table-scroll">
+            <table class="af-table table-edit" id="linesTable" style="min-width: 900px;">
+                <thead>
                     <tr>
-                        <th style="width: 32%;">Account</th>
-                        <th style="width: 20%;">Partner (Customer/Vendor)</th>
+                        <th style="width: 32%;">Account <span class="req">*</span></th>
+                        <th style="width: 20%;">Partner</th>
                         <th style="width: 20%;">Description</th>
-                        <th style="width: 14%;" class="text-end">Debit (₹)</th>
-                        <th style="width: 14%;" class="text-end">Credit (₹)</th>
-                        <th style="width: 50px;"></th>
+                        <th style="width: 13%;" class="text-end">Debit (₹)</th>
+                        <th style="width: 13%;" class="text-end">Credit (₹)</th>
+                        <th style="width: 44px;"></th>
                     </tr>
                 </thead>
                 <tbody id="linesBody">
                     <tr class="line-row">
                         <td>
-                            <select name="Lines[0].AccountId" class="form-select form-select-sm account-select" required>
-                                <option value="">Select Account...</option>
+                            <select name="Lines[0].AccountId" class="af-input af-input-sm af-select account-select" required aria-label="Account">
+                                <option value="">Select account…</option>
                                 @foreach (var a in accounts)
                                 {
                                     <option value="@a.Id">@a.Code — @a.Name (@a.Type)</option>
@@ -90,7 +83,7 @@
                             </select>
                         </td>
                         <td>
-                            <select name="Lines[0].CustomerId" class="form-select form-select-sm">
+                            <select name="Lines[0].CustomerId" class="af-input af-input-sm af-select" aria-label="Partner">
                                 <option value="">None</option>
                                 <optgroup label="Customers">
                                     @foreach (var c in customers)
@@ -100,23 +93,15 @@
                                 </optgroup>
                             </select>
                         </td>
-                        <td>
-                            <input type="text" name="Lines[0].Description" class="form-control form-control-sm" placeholder="Line note..." />
-                        </td>
-                        <td>
-                            <input type="number" step="0.01" min="0" name="Lines[0].Debit" class="form-control form-control-sm text-end debit-input" value="0.00" oninput="calcTotals()" />
-                        </td>
-                        <td>
-                            <input type="number" step="0.01" min="0" name="Lines[0].Credit" class="form-control form-control-sm text-end credit-input" value="0.00" oninput="calcTotals()" />
-                        </td>
-                        <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 remove-row" onclick="removeRow(this)">✕</button>
-                        </td>
+                        <td><input type="text" name="Lines[0].Description" class="af-input af-input-sm" placeholder="Line note…" aria-label="Description" /></td>
+                        <td><input type="number" step="0.01" min="0" name="Lines[0].Debit" class="af-input af-input-sm text-end debit-input" value="0.00" aria-label="Debit" /></td>
+                        <td><input type="number" step="0.01" min="0" name="Lines[0].Credit" class="af-input af-input-sm text-end credit-input" value="0.00" aria-label="Credit" /></td>
+                        <td class="text-center"><button type="button" class="row-action danger remove-row" title="Remove line" aria-label="Remove line"><i class="bi bi-trash"></i></button></td>
                     </tr>
                     <tr class="line-row">
                         <td>
-                            <select name="Lines[1].AccountId" class="form-select form-select-sm account-select" required>
-                                <option value="">Select Account...</option>
+                            <select name="Lines[1].AccountId" class="af-input af-input-sm af-select account-select" required aria-label="Account">
+                                <option value="">Select account…</option>
                                 @foreach (var a in accounts)
                                 {
                                     <option value="@a.Id">@a.Code — @a.Name (@a.Type)</option>
@@ -124,7 +109,7 @@
                             </select>
                         </td>
                         <td>
-                            <select name="Lines[1].CustomerId" class="form-select form-select-sm">
+                            <select name="Lines[1].CustomerId" class="af-input af-input-sm af-select" aria-label="Partner">
                                 <option value="">None</option>
                                 <optgroup label="Customers">
                                     @foreach (var c in customers)
@@ -134,32 +119,22 @@
                                 </optgroup>
                             </select>
                         </td>
-                        <td>
-                            <input type="text" name="Lines[1].Description" class="form-control form-control-sm" placeholder="Line note..." />
-                        </td>
-                        <td>
-                            <input type="number" step="0.01" min="0" name="Lines[1].Debit" class="form-control form-control-sm text-end debit-input" value="0.00" oninput="calcTotals()" />
-                        </td>
-                        <td>
-                            <input type="number" step="0.01" min="0" name="Lines[1].Credit" class="form-control form-control-sm text-end credit-input" value="0.00" oninput="calcTotals()" />
-                        </td>
-                        <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 remove-row" onclick="removeRow(this)">✕</button>
-                        </td>
+                        <td><input type="text" name="Lines[1].Description" class="af-input af-input-sm" placeholder="Line note…" aria-label="Description" /></td>
+                        <td><input type="number" step="0.01" min="0" name="Lines[1].Debit" class="af-input af-input-sm text-end debit-input" value="0.00" aria-label="Debit" /></td>
+                        <td><input type="number" step="0.01" min="0" name="Lines[1].Credit" class="af-input af-input-sm text-end credit-input" value="0.00" aria-label="Credit" /></td>
+                        <td class="text-center"><button type="button" class="row-action danger remove-row" title="Remove line" aria-label="Remove line"><i class="bi bi-trash"></i></button></td>
                     </tr>
                 </tbody>
-                <tfoot class="table-light fw-bold">
+                <tfoot class="totals-foot">
                     <tr>
-                        <td colspan="3" class="text-end text-uppercase small">Total:</td>
-                        <td class="text-end" id="totalDebitCell">₹0.00</td>
-                        <td class="text-end" id="totalCreditCell">₹0.00</td>
+                        <td colspan="3" class="text-end">Total</td>
+                        <td class="v" id="totalDebitCell">₹0.00</td>
+                        <td class="v" id="totalCreditCell">₹0.00</td>
                         <td></td>
                     </tr>
-                    <tr>
-                        <td colspan="3" class="text-end text-uppercase small">Difference:</td>
-                        <td colspan="2" class="text-end" id="diffCell">
-                            <span class="badge bg-secondary">₹0.00</span>
-                        </td>
+                    <tr class="grand">
+                        <td colspan="3" class="text-end">Difference</td>
+                        <td colspan="2" class="text-end" id="diffCell"><span class="af-badge b-gray">₹0.00</span></td>
                         <td></td>
                     </tr>
                 </tfoot>
@@ -167,80 +142,76 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="form-footer">
         <a asp-action="JournalEntries" class="btn btn-secondary">Cancel</a>
-        <button type="submit" id="submitBtn" class="btn btn-primary fw-bold px-4" disabled>
-            Post Journal Entry
-        </button>
+        <button type="submit" id="submitBtn" class="btn btn-primary" disabled><i class="bi bi-check2"></i> Post journal entry</button>
     </div>
 </form>
 
-<script>
-    let rowIndex = 2;
+@section Scripts {
+    <script>
+        (function () {
+            var rowIndex = 2;
+            var tbody = document.getElementById('linesBody');
+            var submitBtn = document.getElementById('submitBtn');
+            var diffCell = document.getElementById('diffCell');
 
-    function calcTotals() {
-        let totalDr = 0;
-        let totalCr = 0;
+            function fmt(n) { return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
-        document.querySelectorAll('.debit-input').forEach(i => {
-            let val = parseFloat(i.value) || 0;
-            totalDr += val;
-        });
-
-        document.querySelectorAll('.credit-input').forEach(i => {
-            let val = parseFloat(i.value) || 0;
-            totalCr += val;
-        });
-
-        document.getElementById('totalDebitCell').innerText = '₹' + totalDr.toFixed(2);
-        document.getElementById('totalCreditCell').innerText = '₹' + totalCr.toFixed(2);
-
-        let diff = Math.abs(totalDr - totalCr);
-        let diffCell = document.getElementById('diffCell');
-        let submitBtn = document.getElementById('submitBtn');
-
-        if (diff < 0.01 && totalDr > 0) {
-            diffCell.innerHTML = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">✅ Balanced</span>';
-            submitBtn.disabled = false;
-        } else {
-            diffCell.innerHTML = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">⚠️ Out of Balance (Diff: ₹' + diff.toFixed(2) + ')</span>';
-            submitBtn.disabled = true;
-        }
-    }
-
-    function removeRow(btn) {
-        let rows = document.querySelectorAll('.line-row');
-        if (rows.length <= 2) {
-            alert('A double-entry voucher requires at least two lines.');
-            return;
-        }
-        btn.closest('tr').remove();
-        calcTotals();
-    }
-
-    document.getElementById('addRowBtn').addEventListener('click', function() {
-        let tbody = document.getElementById('linesBody');
-        let firstRow = tbody.querySelector('.line-row');
-        let newRow = firstRow.cloneNode(true);
-
-        newRow.querySelectorAll('input, select').forEach(el => {
-            let name = el.getAttribute('name');
-            if (name) {
-                el.setAttribute('name', name.replace(/\[\d+\]/, '[' + rowIndex + ']'));
+            function badge(cls, text) {
+                var span = document.createElement('span');
+                span.className = 'af-badge ' + cls;
+                span.textContent = text;
+                diffCell.replaceChildren(span);
             }
-            if (el.classList.contains('debit-input') || el.classList.contains('credit-input')) {
-                el.value = '0.00';
-            } else if (el.tagName === 'INPUT') {
-                el.value = '';
-            } else if (el.tagName === 'SELECT') {
-                el.selectedIndex = 0;
+
+            function calcTotals() {
+                var totalDr = 0, totalCr = 0;
+                document.querySelectorAll('.debit-input').forEach(function (i) { totalDr += parseFloat(i.value) || 0; });
+                document.querySelectorAll('.credit-input').forEach(function (i) { totalCr += parseFloat(i.value) || 0; });
+                document.getElementById('totalDebitCell').textContent = fmt(totalDr);
+                document.getElementById('totalCreditCell').textContent = fmt(totalCr);
+
+                var diff = Math.abs(totalDr - totalCr);
+                if (diff < 0.01 && totalDr > 0) {
+                    badge('b-green', 'Balanced');
+                    submitBtn.disabled = false;
+                } else {
+                    badge('b-red', 'Out of balance · ' + fmt(diff));
+                    submitBtn.disabled = true;
+                }
             }
-        });
 
-        tbody.appendChild(newRow);
-        rowIndex++;
-        calcTotals();
-    });
+            tbody.addEventListener('input', function (e) {
+                if (e.target.classList.contains('debit-input') || e.target.classList.contains('credit-input')) calcTotals();
+            });
 
-    document.addEventListener('DOMContentLoaded', calcTotals);
-</script>
+            tbody.addEventListener('click', function (e) {
+                var btn = e.target.closest('.remove-row');
+                if (!btn) return;
+                if (tbody.querySelectorAll('.line-row').length <= 2) {
+                    window.afToast && afToast('A double-entry voucher needs at least two lines.', 'warning');
+                    return;
+                }
+                btn.closest('tr').remove();
+                calcTotals();
+            });
+
+            document.getElementById('addRowBtn').addEventListener('click', function () {
+                var newRow = tbody.querySelector('.line-row').cloneNode(true);
+                newRow.querySelectorAll('input, select').forEach(function (el) {
+                    var name = el.getAttribute('name');
+                    if (name) el.setAttribute('name', name.replace(/\[\d+\]/, '[' + rowIndex + ']'));
+                    if (el.classList.contains('debit-input') || el.classList.contains('credit-input')) el.value = '0.00';
+                    else if (el.tagName === 'INPUT') el.value = '';
+                    else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+                });
+                tbody.appendChild(newRow);
+                rowIndex++;
+                calcTotals();
+            });
+
+            calcTotals();
+        })();
+    </script>
+}

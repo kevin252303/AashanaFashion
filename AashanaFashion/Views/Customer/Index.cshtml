@@ -6,6 +6,7 @@
     bool canCreate = isAdmin || User.HasClaim("Permission.CustomerMaster.CanCreate", "true");
     bool canEdit   = isAdmin || User.HasClaim("Permission.CustomerMaster.CanEdit",   "true");
     bool canDelete = isAdmin || User.HasClaim("Permission.CustomerMaster.CanDelete", "true");
+    bool filtered  = !string.IsNullOrEmpty(ViewBag.Search as string) || !string.IsNullOrEmpty(ViewBag.SelectedCity as string) || ViewBag.ActiveOnly == true;
 }
 
 <div class="page-header">
@@ -15,119 +16,137 @@
     </div>
     @if (canCreate)
     {
-        <a asp-action="Create" class="btn-af btn-af-primary">+ New Customer</a>
+        <div class="page-actions">
+            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Customer</a>
+        </div>
     }
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
-}
-
-<!-- Search & Filter Bar -->
-<div class="data-card mb-4 p-3">
-    <form method="get" asp-action="Index">
-        <div class="row g-2 align-items-center">
-            <div class="col-md-5">
-                <input type="text" name="search" class="af-input" placeholder="Search Customer, Contact, Phone, GSTIN..." value="@ViewBag.Search" style="font-size: 0.85rem;" />
+<div class="table-card">
+    <form method="get" asp-action="Index" class="table-toolbar">
+        <div class="toolbar-filters">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="Search name, contact, phone, GSTIN…" value="@ViewBag.Search" />
             </div>
-            <div class="col-md-3">
-                <select name="city" class="af-input af-select" style="font-size: 0.85rem;">
-                    <option value="">— All Cities —</option>
-                    @if (ViewBag.Cities != null)
+            <select name="city" class="af-input af-select" onchange="this.form.submit()">
+                <option value="">All cities</option>
+                @if (ViewBag.Cities != null)
+                {
+                    foreach (var c in (List<string>)ViewBag.Cities)
                     {
-                        foreach (var c in (List<string>)ViewBag.Cities)
-                        {
-                            <option value="@c" selected="@(ViewBag.SelectedCity == c ? "selected" : null)">@c</option>
-                        }
+                        <option value="@c" selected="@(ViewBag.SelectedCity == c ? "selected" : null)">@c</option>
                     }
-                </select>
-            </div>
-            <div class="col-md-4 d-flex gap-2 align-items-center">
-                <div class="form-check me-2 mb-0" style="font-size: 0.82rem; white-space: nowrap;">
-                    <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnlyCheck" @(ViewBag.ActiveOnly == true ? "checked" : "") />
-                    <label class="form-check-label text-muted" for="activeOnlyCheck">Active</label>
-                </div>
-                <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
-                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
+                }
+            </select>
+            <div class="form-check m-0">
+                <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnlyCheck" @(ViewBag.ActiveOnly == true ? "checked" : "") onchange="this.form.submit()" />
+                <label class="form-check-label" for="activeOnlyCheck">Active only</label>
             </div>
         </div>
-    </form>
-</div>
-
-<div class="data-card">
-    <table class="af-table">
-        <thead>
-            <tr>
-                <th>Customer Name</th>
-                <th>GST No</th>
-                <th>Contact Person</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>City</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
+        <div class="toolbar-actions">
+            @if (filtered)
             {
-                <tr>
-                    <td>
-                        <strong>@item.CustomerName</strong>
-                        @if (!string.IsNullOrEmpty(item.Pricelist))
-                        {
-                            <div class="mt-1">
-                                <span class="badge bg-light text-primary border" style="font-size: 0.72rem; font-weight: 600;">
-                                    🏷️ @item.Pricelist
-                                </span>
-                            </div>
-                        }
-                    </td>
-                    <td>@item.GstNumber</td>
-                    <td>@item.ContactPerson</td>
-                    <td>@item.Phone</td>
-                    <td>@item.Email</td>
-                    <td>@item.City</td>
-                    <td>
-                        <span class="af-badge @(item.IsActive ? "b-green" : "b-gray")">
-                            @(item.IsActive ? "Active" : "Inactive")
-                        </span>
-                    </td>
-                    <td>
-                        @if (canEdit || canDelete)
-                        {
-                            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-                                @if (canEdit)
-                                {
-                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
-                                    <form asp-action="ToggleActive" asp-route-id="@item.Id" method="post" style="display:inline;">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn-af @(item.IsActive ? "btn-af-warn" : "btn-af-success") btn-af-sm">
-                                            @(item.IsActive ? "Deactivate" : "Activate")
-                                        </button>
-                                    </form>
-                                }
-                                @if (canDelete)
-                                {
-                                    <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete this customer?')">Delete</button>
-                                    </form>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <span style="font-size:.75rem;color:#cbd5e1;">View only</span>
-                        }
-                    </td>
-                </tr>
+                <a asp-action="Index" class="btn btn-ghost">Clear</a>
             }
-        </tbody>
-    </table>
-    @if (!Model.Any())
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
+
+    @if (Model.Any())
     {
-        <div class="text-center p-4 text-muted">No customers found. <a asp-action="Create">Add the first one</a>.</div>
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>GST No</th>
+                        <th>Contact Person</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>City</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                <span class="cell-title">@item.CustomerName</span>
+                                @if (!string.IsNullOrEmpty(item.Pricelist))
+                                {
+                                    <span class="cell-sub"><i class="bi bi-tag"></i> @item.Pricelist</span>
+                                }
+                            </td>
+                            <td><span class="font-monospace text-xs">@item.GstNumber</span></td>
+                            <td>@item.ContactPerson</td>
+                            <td>@item.Phone</td>
+                            <td>@item.Email</td>
+                            <td>@item.City</td>
+                            <td>
+                                <span class="af-badge @(item.IsActive ? "b-green" : "b-gray")">
+                                    @(item.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </td>
+                            <td class="cell-actions">
+                                @if (canEdit || canDelete)
+                                {
+                                    <div class="row-actions">
+                                        @if (canEdit)
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@item.Id" class="row-action" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                            <form asp-action="ToggleActive" asp-route-id="@item.Id" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="row-action @(item.IsActive ? "warning" : "success")"
+                                                        title="@(item.IsActive ? "Deactivate" : "Activate")" aria-label="@(item.IsActive ? "Deactivate" : "Activate")">
+                                                    <i class="bi @(item.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                        @if (canDelete)
+                                        {
+                                            <form asp-action="Delete" asp-route-id="@item.Id" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="row-action danger" title="Delete" aria-label="Delete" onclick="return confirm('Delete this customer?')"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-xs text-placeholder">View only</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> @(Model.Count() == 1 ? "customer" : "customers")</span>
+        </div>
+    }
+    else if (filtered)
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-search"></i></div>
+            <div class="es-title">No results found</div>
+            <p>No customers match your filters. Try adjusting your search.</p>
+            <a asp-action="Index" class="btn btn-secondary">Clear search</a>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-people"></i></div>
+            <div class="es-title">No customers yet</div>
+            <p>Add your first customer to start taking sales orders.</p>
+            @if (canCreate)
+            {
+                <a asp-action="Create" class="btn btn-secondary">New Customer</a>
+            }
+        </div>
     }
 </div>

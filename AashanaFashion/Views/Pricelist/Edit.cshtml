@@ -3,45 +3,47 @@
     ViewData["Title"] = "Edit Pricelist";
 }
 
-<div class="mb-4">
-    <a asp-action="Details" asp-route-id="@Model.Id" class="text-decoration-none text-muted small">← Back to Details</a>
-    <h2 class="fw-bold mt-1">✏️ Edit Pricelist: @Model.Name</h2>
-    <p class="text-muted small">Update pricing rules, minimum order quantities, and customer discount conditions.</p>
+<div class="page-header">
+    <div>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="page-back"><i class="bi bi-arrow-left"></i> Back to details</a>
+        <h1 class="page-title">Edit Pricelist: @Model.Name</h1>
+        <p class="page-sub">Update pricing rules, minimum order quantities, and customer discount conditions.</p>
+    </div>
 </div>
 
 <form asp-action="Edit" method="post" id="pricelistForm">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="Id" />
 
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+    <div asp-validation-summary="ModelOnly" class="af-alert af-alert-danger"></div>
 
-    <div class="card border-0 shadow-sm rounded-3 mb-4">
-        <div class="card-header bg-white py-3 border-bottom">
-            <h5 class="card-title mb-0 fw-bold">📋 Pricelist Header</h5>
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Pricelist Header</h5>
         </div>
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label asp-for="Name" class="form-label fw-semibold">Pricelist Name <span class="text-danger">*</span></label>
+                    <label asp-for="Name" class="form-label">Pricelist Name <span class="req">*</span></label>
                     <input asp-for="Name" class="form-control" required />
-                    <span asp-validation-for="Name" class="text-danger small"></span>
+                    <span asp-validation-for="Name" class="af-error"></span>
                 </div>
                 <div class="col-md-3">
-                    <label asp-for="Currency" class="form-label fw-semibold">Currency</label>
+                    <label asp-for="Currency" class="form-label">Currency</label>
                     <input asp-for="Currency" class="form-control" readonly />
                 </div>
                 <div class="col-md-3">
-                    <label asp-for="DiscountPolicy" class="form-label fw-semibold">Discount Policy</label>
+                    <label asp-for="DiscountPolicy" class="form-label">Discount Policy</label>
                     <select asp-for="DiscountPolicy" class="form-select" asp-items="Html.GetEnumSelectList<AashanaFashion.Models.PricelistDiscountPolicy>()"></select>
                 </div>
                 <div class="col-12">
-                    <label asp-for="Description" class="form-label fw-semibold">Description / Remarks</label>
+                    <label asp-for="Description" class="form-label">Description / Remarks</label>
                     <textarea asp-for="Description" class="form-control" rows="2"></textarea>
                 </div>
                 <div class="col-12">
                     <div class="form-check form-switch">
                         <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveCheck">
-                        <label class="form-check-label fw-semibold" for="isActiveCheck">Active Pricelist</label>
+                        <label class="form-check-label" for="isActiveCheck">Active Pricelist</label>
                     </div>
                 </div>
             </div>
@@ -49,19 +51,19 @@
     </div>
 
     <!-- Pricing Rules / Items -->
-    <div class="card border-0 shadow-sm rounded-3 mb-4">
-        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
             <div>
-                <h5 class="card-title mb-0 fw-bold">⚡ Price Rules</h5>
-                <small class="text-muted">Rules are evaluated by specificity: Specific Product &gt; Category &gt; All Products.</small>
+                <h5 class="card-title mb-0">Price Rules</h5>
+                <small class="card-subtitle d-block mt-1">Rules are evaluated by specificity: Specific Product &gt; Category &gt; All Products.</small>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" id="addRuleBtn">
-                ➕ Add Price Rule
+            <button type="button" class="btn btn-sm btn-secondary" id="addRuleBtn">
+                <i class="bi bi-plus-lg"></i> Add Price Rule
             </button>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0" id="rulesTable">
+                <table class="table table-edit align-middle mb-0" id="rulesTable">
                     <thead class="table-light">
                         <tr>
                             <th style="width: 18%;">Applied On</th>
@@ -78,15 +80,15 @@
                     </tbody>
                 </table>
             </div>
-            <div id="noRulesAlert" class="p-4 text-center text-muted" style="display: none;">
-                No price rules added yet. Click <strong>"➕ Add Price Rule"</strong> above.
+            <div id="noRulesAlert" class="empty-state py-4" style="display: none;">
+                <p>No price rules added yet. Use <strong>Add Price Rule</strong> to create one.</p>
             </div>
         </div>
     </div>
 
-    <div class="d-flex justify-content-end gap-2 mb-5">
-        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Cancel</a>
-        <button type="submit" class="btn btn-primary fw-bold px-4">💾 Update Pricelist</button>
+    <div class="form-footer">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Update Pricelist</button>
     </div>
 </form>
 
@@ -215,7 +217,7 @@
                     </div>
                 </td>
                 <td class="text-center">
-                    <button type="button" class="btn btn-sm text-danger remove-rule-btn">✕</button>
+                    <button type="button" class="row-action danger remove-rule-btn" title="Remove rule" aria-label="Remove rule"><i class="bi bi-trash"></i></button>
                 </td>
             `;
 

@@ -2,12 +2,14 @@
 
 This document provides guidance for AI agents working on the Aashana Fashion codebase.
 
+> **UI / design work:** before creating or changing any view, partial, modal, CSS or UI-generating JavaScript, read and follow **[DESIGN.md](DESIGN.md)**. It is the single source of truth for the design system: tokens, components, page templates and rules. It overrides any styling guidance elsewhere in this file.
+
 ## Project Overview
 
 - **Framework**: ASP.NET Core 8.0 MVC
 - **Database**: Entity Framework Core with SQL Server
 - **Authentication**: Cookie-based with role authorization (Admin, Manager, Viewer)
-- **Frontend**: Razor Views with Bootstrap 5
+- **Frontend**: Razor Views with Bootstrap 5.3 + the IGNEK Pulse design system (`wwwroot/css/site.css`, documented in `DESIGN.md`)
 
 ## Build & Development Commands
 

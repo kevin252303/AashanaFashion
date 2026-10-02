@@ -5,109 +5,77 @@
     bool canCreate = role == "Admin" || role == "Manager";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
     <div>
-        <h2 class="mb-1 fw-bold">Quality Control & Rejection Tracking</h2>
-        <p class="text-muted mb-0">Monitor garment defect rates, stage checkpoints, rework queues, and vendor quality.</p>
+        <h1 class="page-title">Quality Control &amp; Rejection Tracking</h1>
+        <p class="page-sub">Monitor garment defect rates, stage checkpoints, rework queues, and vendor quality.</p>
     </div>
-    <div class="d-flex gap-2">
-        <a asp-action="ReworkQueue" class="btn btn-outline-warning position-relative">
-            <span class="me-1">🔄</span> Rework Queue
+    <div class="page-actions">
+        <a asp-action="ReworkQueue" class="btn btn-secondary">
+            <i class="bi bi-arrow-repeat"></i> Rework queue
             @if (Model.ActiveReworkCount > 0)
             {
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                    @Model.ActiveReworkCount
-                </span>
+                <span class="af-badge b-red pill">@Model.ActiveReworkCount</span>
             }
         </a>
         @if (canCreate)
         {
-            <a asp-action="Create" class="btn btn-primary">
-                <span class="me-1">➕</span> Log QC Inspection
-            </a>
+            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Log QC Inspection</a>
         }
     </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <strong>Success!</strong> @TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total inspected</div>
+        <div class="metric-value">@Model.TotalUnitsInspected.ToString("N0") <span class="metric-suffix">pcs</span></div>
+        <div class="metric-meta">across @Model.TotalInspections inspection logs</div>
     </div>
-}
-
-<!-- Key Metric Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-sm-6 col-lg-3">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Total Inspected</span>
-                <h3 class="fw-bold my-1 text-primary">@Model.TotalUnitsInspected.ToString("N0") <span class="fs-6 fw-normal text-muted">pcs</span></h3>
-                <small class="text-muted">Across @Model.TotalInspections inspection logs</small>
-            </div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Overall pass rate</div>
+        <div class="metric-value">@Model.OverallPassRate%</div>
+        <div class="metric-meta @(Model.OverallPassRate >= 95 ? "success" : (Model.OverallPassRate >= 85 ? "warning" : "danger"))">@Model.TotalUnitsPassed.ToString("N0") accepted units</div>
     </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Overall Pass Rate</span>
-                <h3 class="fw-bold my-1 @(Model.OverallPassRate >= 95 ? "text-success" : (Model.OverallPassRate >= 85 ? "text-warning" : "text-danger"))">
-                    @Model.OverallPassRate%
-                </h3>
-                <small class="text-muted">@Model.TotalUnitsPassed.ToString("N0") accepted units</small>
-            </div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Units in rework</div>
+        <div class="metric-value">@Model.TotalUnitsRework.ToString("N0") <span class="metric-suffix">pcs</span></div>
+        <div class="metric-meta warning">@Model.ActiveReworkCount active defects pending</div>
     </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Units In Rework</span>
-                <h3 class="fw-bold my-1 text-warning">@Model.TotalUnitsRework.ToString("N0") <span class="fs-6 fw-normal text-muted">pcs</span></h3>
-                <small class="text-muted">@Model.ActiveReworkCount active defects pending</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Scrapped / Irrecoverable</span>
-                <h3 class="fw-bold my-1 text-danger">@Model.TotalUnitsScrapped.ToString("N0") <span class="fs-6 fw-normal text-muted">pcs</span></h3>
-                <small class="text-muted">Damage & irrecoverable write-offs</small>
-            </div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Scrapped / irrecoverable</div>
+        <div class="metric-value">@Model.TotalUnitsScrapped.ToString("N0") <span class="metric-suffix">pcs</span></div>
+        <div class="metric-meta danger">damage &amp; write-offs</div>
     </div>
 </div>
 
-<!-- Defect Breakdown & Vendor Quality Scorecard -->
 <div class="row g-4 mb-4">
     <div class="col-lg-6">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-header bg-white py-3 border-bottom">
-                <h5 class="card-title mb-0 fw-bold">📊 Defect Category Breakdown</h5>
+        <div class="data-card h-100">
+            <div class="data-card-header">
+                <span class="data-card-title">Defect category breakdown</span>
             </div>
-            <div class="card-body">
+            <div class="data-card-body">
                 @if (Model.CategoryBreakdowns.Any())
                 {
-                    <div class="d-flex flex-column gap-3">
+                    <div class="progress-list">
                         @foreach (var item in Model.CategoryBreakdowns)
                         {
-                            <div>
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span class="fw-semibold small">@item.CategoryName</span>
-                                    <span class="text-muted small">@item.DefectCount pcs (@item.Percentage%)</span>
+                            <div class="progress-row">
+                                <span class="pr-label" title="@item.CategoryName">@item.CategoryName</span>
+                                <div class="af-progress" role="progressbar" aria-valuenow="@item.Percentage" aria-valuemin="0" aria-valuemax="100" aria-label="@item.CategoryName">
+                                    <div class="af-progress-bar bg-danger" style="width: @item.Percentage%;"></div>
                                 </div>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-danger" role="progressbar" style="width: @item.Percentage%;" aria-valuenow="@item.Percentage" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
+                                <span class="pr-value">@item.DefectCount pcs · @item.Percentage%</span>
                             </div>
                         }
                     </div>
                 }
                 else
                 {
-                    <div class="text-center py-4 text-muted">
-                        <span>✨ No defects logged yet! Perfect quality record so far.</span>
+                    <div class="empty-state py-4">
+                        <div class="es-icon bg-success-subtle text-success"><i class="bi bi-check2-circle"></i></div>
+                        <div class="es-title">No defects logged</div>
+                        <p>Perfect quality record so far.</p>
                     </div>
                 }
             </div>
@@ -115,179 +83,167 @@
     </div>
 
     <div class="col-lg-6">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-header bg-white py-3 border-bottom">
-                <h5 class="card-title mb-0 fw-bold">🏆 Vendor Quality Scorecard</h5>
+        <div class="table-card h-100">
+            <div class="data-card-header">
+                <span class="data-card-title">Vendor quality scorecard</span>
             </div>
-            <div class="card-body p-0">
-                @if (Model.VendorScorecards.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
+            @if (Model.VendorScorecards.Any())
+            {
+                <div class="table-scroll">
+                    <table class="af-table">
+                        <thead>
+                            <tr>
+                                <th>Vendor</th>
+                                <th>Process</th>
+                                <th class="text-end">Inspected</th>
+                                <th class="text-end">Defects</th>
+                                <th class="text-end">Defect Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var v in Model.VendorScorecards)
+                            {
                                 <tr>
-                                    <th>Vendor</th>
-                                    <th>Process</th>
-                                    <th class="text-end">Inspected</th>
-                                    <th class="text-end">Defects</th>
-                                    <th class="text-end">Defect Rate</th>
+                                    <td class="cell-title">@v.VendorName</td>
+                                    <td><span class="tag">@v.ServiceType</span></td>
+                                    <td class="cell-num">@v.InspectedPieces</td>
+                                    <td class="cell-num text-danger fw-medium">@v.DefectivePieces</td>
+                                    <td class="cell-num">
+                                        <span class="af-badge @(v.DefectRate > 10 ? "b-red" : (v.DefectRate > 5 ? "b-yellow" : "b-green"))">@v.DefectRate%</span>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var v in Model.VendorScorecards)
-                                {
-                                    <tr>
-                                        <td class="fw-semibold">@v.VendorName</td>
-                                        <td><span class="badge bg-secondary-subtle text-secondary">@v.ServiceType</span></td>
-                                        <td class="text-end">@v.InspectedPieces</td>
-                                        <td class="text-end text-danger fw-bold">@v.DefectivePieces</td>
-                                        <td class="text-end">
-                                            <span class="badge @(v.DefectRate > 10 ? "bg-danger" : (v.DefectRate > 5 ? "bg-warning text-dark" : "bg-success"))">
-                                                @v.DefectRate%
-                                            </span>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="text-center py-4 text-muted">
-                        <span>No vendor inspection data available yet.</span>
-                    </div>
-                }
-            </div>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="empty-state py-4">
+                    <div class="es-icon"><i class="bi bi-people"></i></div>
+                    <p>No vendor inspection data available yet.</p>
+                </div>
+            }
         </div>
     </div>
 </div>
 
-<!-- Recent Inspections Log -->
-<div class="card border-0 shadow-sm rounded-3">
-    <div class="card-header bg-white py-3 border-bottom">
-        <div class="row align-items-center g-2">
-            <div class="col-md-4">
-                <h5 class="card-title mb-0 fw-bold">🔍 Recent Quality Inspections</h5>
+<div class="table-card">
+    <form method="get" class="table-toolbar">
+        <div class="toolbar-filters">
+            <span class="data-card-title me-2">Recent inspections</span>
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="QC, lot, design, vendor…" value="@ViewBag.Search" />
             </div>
-            <div class="col-md-8">
-                <form method="get" class="row g-2 justify-content-md-end align-items-center">
-                    <div class="col-auto">
-                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Search QC, Lot, Design, Vendor..." value="@ViewBag.Search" style="max-width: 190px;" />
-                    </div>
-                    <div class="col-auto">
-                        <select name="orderId" class="form-select form-select-sm">
-                            <option value="">All Lots</option>
-                            @foreach (var o in (List<AashanaFashion.Models.ProductionOrder>)ViewBag.Orders)
-                            {
-                                <option value="@o.Id" selected="@(Model.SelectedOrderId == o.Id)">Lot: @o.LotNo (@(o.Design?.DesignNumber ?? ""))</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-auto">
-                        <select name="stage" class="form-select form-select-sm">
-                            <option value="">All Stages</option>
-                            @foreach (AashanaFashion.Models.QcStage s in Enum.GetValues(typeof(AashanaFashion.Models.QcStage)))
-                            {
-                                <option value="@s" selected="@(Model.StageFilter == s)">@s</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-auto">
-                        <select name="vendorId" class="form-select form-select-sm">
-                            <option value="">All Vendors</option>
-                            @foreach (var v in (List<AashanaFashion.Models.Vendor>)ViewBag.Vendors)
-                            {
-                                <option value="@v.Id" selected="@(Model.SelectedVendorId == v.Id)">@v.VendorName</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-auto">
-                        <select name="result" class="form-select form-select-sm">
-                            <option value="">All Results</option>
-                            @foreach (AashanaFashion.Models.QcResult r in Enum.GetValues(typeof(AashanaFashion.Models.QcResult)))
-                            {
-                                <option value="@r" selected="@(ViewBag.Result != null && (AashanaFashion.Models.QcResult)ViewBag.Result == r)">@r</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-auto d-flex gap-1">
-                        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-                        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Reset</a>
-                    </div>
-                </form>
-            </div>
+            <select name="orderId" class="af-input af-select">
+                <option value="">All lots</option>
+                @foreach (var o in (List<AashanaFashion.Models.ProductionOrder>)ViewBag.Orders)
+                {
+                    <option value="@o.Id" selected="@(Model.SelectedOrderId == o.Id)">Lot: @o.LotNo (@(o.Design?.DesignNumber ?? ""))</option>
+                }
+            </select>
+            <select name="stage" class="af-input af-select">
+                <option value="">All stages</option>
+                @foreach (AashanaFashion.Models.QcStage s in Enum.GetValues(typeof(AashanaFashion.Models.QcStage)))
+                {
+                    <option value="@s" selected="@(Model.StageFilter == s)">@s.Humanize()</option>
+                }
+            </select>
+            <select name="vendorId" class="af-input af-select">
+                <option value="">All vendors</option>
+                @foreach (var v in (List<AashanaFashion.Models.Vendor>)ViewBag.Vendors)
+                {
+                    <option value="@v.Id" selected="@(Model.SelectedVendorId == v.Id)">@v.VendorName</option>
+                }
+            </select>
+            <select name="result" class="af-input af-select">
+                <option value="">All results</option>
+                @foreach (AashanaFashion.Models.QcResult r in Enum.GetValues(typeof(AashanaFashion.Models.QcResult)))
+                {
+                    <option value="@r" selected="@(ViewBag.Result != null && (AashanaFashion.Models.QcResult)ViewBag.Result == r)">@r.Humanize()</option>
+                }
+            </select>
         </div>
-    </div>
-    <div class="card-body p-0">
-        @if (Model.RecentInspections.Any())
-        {
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+        <div class="toolbar-actions">
+            <a asp-action="Index" class="btn btn-ghost">Reset</a>
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
+
+    @if (Model.RecentInspections.Any())
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>QC #</th>
+                        <th>Date</th>
+                        <th>Lot / Design</th>
+                        <th>Stage</th>
+                        <th>Vendor / Worker</th>
+                        <th class="text-end">Inspected</th>
+                        <th class="text-end">Passed</th>
+                        <th class="text-end">Rework</th>
+                        <th class="text-end">Scrap</th>
+                        <th>Status</th>
+                        <th>Inspector</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.RecentInspections)
+                    {
                         <tr>
-                            <th>QC #</th>
-                            <th>Date</th>
-                            <th>Lot / Design</th>
-                            <th>Stage</th>
-                            <th>Vendor / Worker</th>
-                            <th class="text-end">Inspected</th>
-                            <th class="text-end">Passed</th>
-                            <th class="text-end">Rework</th>
-                            <th class="text-end">Scrap</th>
-                            <th>Status</th>
-                            <th>Inspector</th>
-                            <th class="text-center">Action</th>
+                            <td><a asp-action="Details" asp-route-id="@item.Id" class="font-monospace fw-medium">@item.InspectionNumber</a></td>
+                            <td class="text-muted text-nowrap">@item.InspectionDate.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <span class="cell-title">@item.ProductionOrder?.LotNo</span>
+                                <span class="cell-sub">@(item.ProductionOrder?.Design?.DesignNumber ?? "—")</span>
+                            </td>
+                            <td><span class="tag">@item.Stage.Humanize()</span></td>
+                            <td>@(item.Vendor?.VendorName ?? "In-House")</td>
+                            <td class="cell-num text-foreground fw-medium">@item.TotalInspected</td>
+                            <td class="cell-num text-success">@item.TotalPassed</td>
+                            <td class="cell-num text-warning">@item.TotalRework</td>
+                            <td class="cell-num text-danger">@item.TotalScrap</td>
+                            <td>
+                                @if (item.OverallResult == AashanaFashion.Models.QcResult.Passed)
+                                {
+                                    <span class="af-badge b-green">Passed</span>
+                                }
+                                else if (item.OverallResult == AashanaFashion.Models.QcResult.PassedWithRework)
+                                {
+                                    <span class="af-badge b-yellow">Rework req.</span>
+                                }
+                                else
+                                {
+                                    <span class="af-badge b-red">Failed</span>
+                                }
+                            </td>
+                            <td class="text-muted">@item.InspectorName</td>
+                            <td class="cell-actions">
+                                <a asp-action="Details" asp-route-id="@item.Id" class="row-action primary" title="View" aria-label="View"><i class="bi bi-box-arrow-up-right"></i></a>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var item in Model.RecentInspections)
-                        {
-                            <tr>
-                                <td class="fw-bold"><a asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none">@item.InspectionNumber</a></td>
-                                <td>@item.InspectionDate.ToString("dd/MM/yyyy")</td>
-                                <td>
-                                    <strong>@item.ProductionOrder?.LotNo</strong>
-                                    <div class="small text-muted">@(item.ProductionOrder?.Design?.DesignNumber ?? "—")</div>
-                                </td>
-                                <td><span class="badge bg-light text-dark border">@item.Stage</span></td>
-                                <td>@(item.Vendor?.VendorName ?? "In-House")</td>
-                                <td class="text-end fw-bold">@item.TotalInspected</td>
-                                <td class="text-end text-success fw-bold">@item.TotalPassed</td>
-                                <td class="text-end text-warning fw-bold">@item.TotalRework</td>
-                                <td class="text-end text-danger fw-bold">@item.TotalScrap</td>
-                                <td>
-                                    @if (item.OverallResult == AashanaFashion.Models.QcResult.Passed)
-                                    {
-                                        <span class="badge bg-success">Passed</span>
-                                    }
-                                    else if (item.OverallResult == AashanaFashion.Models.QcResult.PassedWithRework)
-                                    {
-                                        <span class="badge bg-warning text-dark">Rework Req.</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-danger">Failed</span>
-                                    }
-                                </td>
-                                <td class="small text-muted">@item.InspectorName</td>
-                                <td class="text-center">
-                                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">
-                                        View
-                                    </a>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
-        else
-        {
-            <div class="text-center py-5 text-muted">
-                <p class="mb-2 fs-5">No inspections found matching the filter.</p>
-                <a asp-action="Create" class="btn btn-sm btn-primary">Log First Inspection</a>
-            </div>
-        }
-    </div>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.RecentInspections.Count()</strong> inspections</span>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-clipboard-check"></i></div>
+            <div class="es-title">No inspections found</div>
+            <p>No inspections match the filter.</p>
+            @if (canCreate)
+            {
+                <a asp-action="Create" class="btn btn-secondary">Log first inspection</a>
+            }
+        </div>
+    }
 </div>

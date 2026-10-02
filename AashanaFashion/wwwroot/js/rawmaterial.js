@@ -26,7 +26,7 @@
             '</td>' +
             '<td><input name="Lines[' + index + '].Quantity" class="af-input entry-qty" type="number" step="0.01" min="0" value="" required /></td>' +
             '<td><input name="Lines[' + index + '].Remarks" class="af-input" placeholder="Optional" /></td>' +
-            '<td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-row">\u00D7</button></td>';
+            '<td><button type="button" class="row-action danger remove-row" title="Remove" aria-label="Remove"><i class="bi bi-trash"></i></button></td>';
         return tr;
     }
 

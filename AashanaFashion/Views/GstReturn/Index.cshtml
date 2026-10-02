@@ -1,141 +1,100 @@
 @model AashanaFashion.Models.Gstr1PeriodViewModel
 @{
-    ViewData["Title"] = "GST Returns & Filing Hub";
+    ViewData["Title"] = "GST Returns";
     var gstr3b = ViewBag.Gstr3b as AashanaFashion.Models.Gstr3bViewModel;
     int selectedYear = ViewBag.SelectedYear;
     int selectedMonth = ViewBag.SelectedMonth;
+    var errors = Model.ValidationIssues.Where(i => i.Severity == AashanaFashion.Models.GstValidationSeverity.Error).ToList();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="page-header">
     <div>
-        <h1 class="page-title mb-1">🏛️ GST Returns & Compliance Hub</h1>
-        <p class="page-sub mb-0 text-muted">
-            Official GSTR-1, GSTR-3B Auto-Tax Computation, and GSTR-2B Input Tax Credit Reconciliation
+        <h1 class="page-title">GST Returns</h1>
+        <p class="page-sub">
+            GSTR-1, GSTR-3B tax computation and GSTR-2B ITC reconciliation ·
+            @Model.Company.CompanyName · GSTIN <span class="font-monospace">@(Model.Company.Gstin ?? "not set")</span> · @Model.Company.State (@Model.Company.StateCode)
         </p>
     </div>
-    <div class="d-flex gap-2 flex-wrap">
-        <a asp-action="Reconciliation" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-outline-info">
-            🔍 GSTR-2B ITC Matching
-        </a>
-        <a asp-action="Gstr3b" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-outline-primary">
-            📋 GSTR-3B Return Sheet
-        </a>
-        <div class="btn-group">
-            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                📊 Export CSV
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                <li><a class="dropdown-item" asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="b2b">📁 B2B Invoices CSV</a></li>
-                <li><a class="dropdown-item" asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="hsn">🏷️ HSN Summary CSV</a></li>
-                <li><a class="dropdown-item" asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="b2cs">🛒 B2C Small Summary CSV</a></li>
+    <div class="page-actions">
+        <a asp-action="Reconciliation" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-secondary"><i class="bi bi-arrow-left-right"></i> GSTR-2B matching</a>
+        <a asp-action="Gstr3b" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-secondary"><i class="bi bi-file-earmark-ruled"></i> GSTR-3B sheet</a>
+        <div class="dropdown">
+            <button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-filetype-csv"></i> Export CSV</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="b2b"><i class="bi bi-building"></i> B2B invoices</a></li>
+                <li><a class="dropdown-item" asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="hsn"><i class="bi bi-upc"></i> HSN summary</a></li>
+                <li><a class="dropdown-item" asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="b2cs"><i class="bi bi-cart3"></i> B2C small summary</a></li>
             </ul>
         </div>
-        <a asp-action="DownloadGstr1Json" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-success fw-bold">
-            📥 Download GSTR-1 JSON (GST Portal Format)
-        </a>
+        <a asp-action="DownloadGstr1Json" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-primary"><i class="bi bi-download"></i> GSTR-1 JSON</a>
     </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <strong>Success!</strong> @TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <strong>Error:</strong> @TempData["Error"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-<!-- Return Period & Company Filter Bar -->
-<div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-body p-3">
-        <form method="get" asp-action="Index" class="row g-2 align-items-center">
-            <div class="col-md-auto d-flex align-items-center gap-2">
-                <span class="fw-bold text-secondary">Return Period:</span>
-            </div>
-            <div class="col-auto">
-                <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+<div class="table-card mb-4">
+    <form method="get" asp-action="Index" class="table-toolbar align-end">
+        <div class="toolbar-filters align-items-end">
+            <div class="toolbar-field">
+                <label for="gstMonth">Return period</label>
+                <select id="gstMonth" name="month" class="af-input af-select" onchange="this.form.submit()">
                     @for (int m = 1; m <= 12; m++)
                     {
-                        var mName = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m);
-                        <option value="@m" selected="@(m == selectedMonth)">@mName</option>
+                        <option value="@m" selected="@(m == selectedMonth)">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)</option>
                     }
                 </select>
             </div>
-            <div class="col-auto">
-                <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+            <div class="toolbar-field">
+                <label for="gstYear">Year</label>
+                <select id="gstYear" name="year" class="af-input af-select" onchange="this.form.submit()">
                     @for (int y = DateTime.Today.Year; y >= DateTime.Today.Year - 3; y--)
                     {
                         <option value="@y" selected="@(y == selectedYear)">@y</option>
                     }
                 </select>
             </div>
-            <div class="col-md-auto ms-auto d-flex align-items-center gap-2 flex-wrap">
-                <span class="badge bg-light text-dark border px-2 py-1.5">
-                    🏢 Company: <strong>@Model.Company.CompanyName</strong>
-                </span>
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1.5 font-monospace">
-                    GSTIN: <strong>@(Model.Company.Gstin ?? "Not Set")</strong>
-                </span>
-                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1.5">
-                    State: <strong>@Model.Company.State (@Model.Company.StateCode)</strong>
-                </span>
-                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1.5 font-monospace">
-                    Code: <strong>@Model.ReturnPeriodCode</strong>
-                </span>
-            </div>
-        </form>
-    </div>
+        </div>
+        <div class="toolbar-actions">
+            <span class="text-xs text-muted">Period code</span>
+            <span class="mono-id">@Model.ReturnPeriodCode</span>
+        </div>
+    </form>
 </div>
 
-<!-- Pre-Filing Audit Alert Box -->
 @if (Model.ValidationIssues.Any())
 {
-    var errors = Model.ValidationIssues.Where(i => i.Severity == AashanaFashion.Models.GstValidationSeverity.Error).ToList();
-    var warnings = Model.ValidationIssues.Where(i => i.Severity == AashanaFashion.Models.GstValidationSeverity.Warning).ToList();
-
-    <div class="alert @(errors.Any() ? "alert-warning" : "alert-info") border-0 shadow-sm rounded-3 mb-4">
-        <div class="d-flex align-items-center justify-content-between mb-2">
-            <h6 class="mb-0 fw-bold">
-                ⚠️ Pre-Filing Data Audit (@Model.ValidationIssues.Count item(s) need attention)
-            </h6>
-            <button class="btn btn-sm btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#auditDetails">
-                Toggle Details ▾
+    <div class="af-alert @(errors.Any() ? "af-alert-warning" : "af-alert-info")">
+        <div class="alert-body d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+                <span class="alert-title">Pre-filing audit: @Model.ValidationIssues.Count @(Model.ValidationIssues.Count == 1 ? "item needs" : "items need") attention</span>
+                The GST portal validates GSTIN format, place of supply and HSN codes on upload. Fix these to avoid rejection.
+            </div>
+            <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#auditDetails" aria-expanded="true" aria-controls="auditDetails">
+                <i class="bi bi-list-check"></i> Show / hide
             </button>
         </div>
-        <p class="small mb-2 text-muted">
-            The GST Portal strictly validates GSTIN formats, Place of Supply, and HSN codes during upload. Resolve these items to avoid portal rejection:
-        </p>
-        <div class="collapse show" id="auditDetails">
-            <div class="table-responsive">
-                <table class="table table-sm table-bordered bg-white rounded-2 mb-0 small">
-                    <thead class="table-light">
+    </div>
+    <div class="collapse show" id="auditDetails">
+        <div class="table-card mb-4">
+            <div class="table-scroll">
+                <table class="af-table">
+                    <thead>
                         <tr>
                             <th>Severity</th>
-                            <th>Invoice / Doc #</th>
+                            <th>Document</th>
                             <th>Party</th>
-                            <th>Issue Detected</th>
-                            <th>Recommended Fix</th>
+                            <th>Issue</th>
+                            <th>Recommended fix</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var issue in Model.ValidationIssues)
                         {
-                            <tr>
-                                <td>
-                                    <span class="badge @(issue.Severity == AashanaFashion.Models.GstValidationSeverity.Error ? "bg-danger" : "bg-warning text-dark")">
-                                        @issue.Severity
-                                    </span>
-                                </td>
-                                <td class="fw-bold font-monospace">@issue.DocumentNumber</td>
+                            bool isError = issue.Severity == AashanaFashion.Models.GstValidationSeverity.Error;
+                            <tr class="@(isError ? "row-danger" : "")">
+                                <td><span class="af-badge @(isError ? "b-red" : "b-yellow")">@issue.Severity.Humanize()</span></td>
+                                <td><span class="mono-id">@issue.DocumentNumber</span></td>
                                 <td>@issue.PartyName</td>
-                                <td class="text-danger">@issue.Issue</td>
-                                <td class="text-success fw-semibold">@issue.Recommendation</td>
+                                <td class="text-foreground">@issue.Issue</td>
+                                <td class="text-muted">@issue.Recommendation</td>
                             </tr>
                         }
                     </tbody>
@@ -146,581 +105,512 @@
 }
 else
 {
-    <div class="alert alert-success border-0 shadow-sm rounded-3 mb-4 d-flex align-items-center gap-2 py-2">
-        <span>✅</span>
-        <span class="small fw-semibold">Pre-Filing Data Audit Passed: All active invoices, GSTINs, and tax slabs are validated and compliant with GSTN rules.</span>
+    <div class="af-alert af-alert-success">
+        <div class="alert-body"><span class="alert-title">Pre-filing audit passed</span>All active invoices, GSTINs and tax slabs comply with GSTN rules.</div>
     </div>
 }
 
-<!-- Summary Statistics Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-lg-2">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-body p-3">
-                <span class="text-muted small text-uppercase fw-semibold d-block">Gross Turnover</span>
-                <h4 class="fw-bold my-1 text-dark">₹@Model.TotalTurnover.ToString("N2")</h4>
-                <small class="text-muted">@Model.TotalInvoiceCount Total Invoices</small>
-            </div>
-        </div>
+<div class="metric-grid cols-6">
+    <div class="metric-card">
+        <div class="metric-label">Gross turnover</div>
+        <div class="metric-value">₹@Model.TotalTurnover.ToString("N2")</div>
+        <div class="metric-meta">@Model.TotalInvoiceCount invoices</div>
     </div>
-    <div class="col-6 col-lg-2">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-body p-3">
-                <span class="text-muted small text-uppercase fw-semibold d-block">Taxable Value</span>
-                <h4 class="fw-bold my-1 text-primary">₹@Model.TotalTaxableValue.ToString("N2")</h4>
-                <small class="text-muted">Net of discounts</small>
-            </div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Taxable value</div>
+        <div class="metric-value">₹@Model.TotalTaxableValue.ToString("N2")</div>
+        <div class="metric-meta">net of discounts</div>
     </div>
-    <div class="col-6 col-lg-2">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-body p-3">
-                <span class="text-muted small text-uppercase fw-semibold d-block">IGST (Inter-State)</span>
-                <h4 class="fw-bold my-1 text-info">₹@Model.TotalIgst.ToString("N2")</h4>
-                <small class="text-muted">Outside @Model.Company.State</small>
-            </div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">IGST</div>
+        <div class="metric-value">₹@Model.TotalIgst.ToString("N2")</div>
+        <div class="metric-meta">inter-state</div>
     </div>
-    <div class="col-6 col-lg-2">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-body p-3">
-                <span class="text-muted small text-uppercase fw-semibold d-block">CGST (Central)</span>
-                <h4 class="fw-bold my-1 text-success">₹@Model.TotalCgst.ToString("N2")</h4>
-                <small class="text-muted">Intra-State</small>
-            </div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">CGST</div>
+        <div class="metric-value">₹@Model.TotalCgst.ToString("N2")</div>
+        <div class="metric-meta">intra-state</div>
     </div>
-    <div class="col-6 col-lg-2">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-body p-3">
-                <span class="text-muted small text-uppercase fw-semibold d-block">SGST (State)</span>
-                <h4 class="fw-bold my-1 text-success">₹@Model.TotalSgst.ToString("N2")</h4>
-                <small class="text-muted">Intra-State</small>
-            </div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">SGST</div>
+        <div class="metric-value">₹@Model.TotalSgst.ToString("N2")</div>
+        <div class="metric-meta">intra-state</div>
     </div>
-    <div class="col-6 col-lg-2">
-        <div class="card border-0 shadow-sm rounded-3 h-100 bg-primary-subtle text-primary border-primary">
-            <div class="card-body p-3">
-                <span class="text-uppercase small fw-bold d-block text-primary">Output Tax Due</span>
-                <h4 class="fw-bold my-1 text-primary">₹@Model.TotalTaxLiability.ToString("N2")</h4>
-                <small class="text-primary fw-semibold">GSTR-1 Total Liability</small>
-            </div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Output tax due</div>
+        <div class="metric-value">₹@Model.TotalTaxLiability.ToString("N2")</div>
+        <div class="metric-meta info">GSTR-1 total liability</div>
     </div>
 </div>
 
-<!-- Tabs Navigation -->
-<ul class="nav nav-pills mb-3 border-bottom pb-2 gap-2" id="gstTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active fw-semibold" id="b2b-tab" data-bs-toggle="pill" data-bs-target="#b2b" type="button" role="tab">
-            🏢 Table 4A/4B: B2B Invoices <span class="badge bg-secondary ms-1">@Model.B2bInvoices.Count</span>
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link fw-semibold" id="b2cs-tab" data-bs-toggle="pill" data-bs-target="#b2cs" type="button" role="tab">
-            🛒 Table 7: B2C Small <span class="badge bg-secondary ms-1">@Model.B2csSummaries.Count</span>
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link fw-semibold" id="b2cl-tab" data-bs-toggle="pill" data-bs-target="#b2cl" type="button" role="tab">
-            📦 Table 5A: B2C Large <span class="badge bg-secondary ms-1">@Model.B2clInvoices.Count</span>
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link fw-semibold" id="cdnr-tab" data-bs-toggle="pill" data-bs-target="#cdnr" type="button" role="tab">
-            ↩️ Table 9B: Credit Notes <span class="badge bg-secondary ms-1">@Model.CreditNotes.Count</span>
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link fw-semibold" id="hsn-tab" data-bs-toggle="pill" data-bs-target="#hsn" type="button" role="tab">
-            🏷️ Table 12: HSN Summary <span class="badge bg-secondary ms-1">@Model.HsnSummaries.Count</span>
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link fw-semibold" id="doc-tab" data-bs-toggle="pill" data-bs-target="#doc" type="button" role="tab">
-            📑 Table 13: Doc Issued <span class="badge bg-secondary ms-1">@Model.DocumentSummaries.Count</span>
-        </button>
-    </li>
-    <li class="nav-item ms-auto" role="presentation">
-        <button class="nav-link fw-semibold text-primary" id="gstr3b-tab" data-bs-toggle="pill" data-bs-target="#gstr3b_preview" type="button" role="tab">
-            📊 GSTR-3B Net Liability Preview
-        </button>
-    </li>
-</ul>
+<div class="table-card mb-4">
+    <ul class="nav nav-tabs card-tabs" id="gstTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="b2b-tab" data-bs-toggle="tab" data-bs-target="#b2b" type="button" role="tab" aria-controls="b2b" aria-selected="true">B2B <span class="count-pill">@Model.B2bInvoices.Count</span></button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="b2cs-tab" data-bs-toggle="tab" data-bs-target="#b2cs" type="button" role="tab" aria-controls="b2cs" aria-selected="false">B2C small <span class="count-pill">@Model.B2csSummaries.Count</span></button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="b2cl-tab" data-bs-toggle="tab" data-bs-target="#b2cl" type="button" role="tab" aria-controls="b2cl" aria-selected="false">B2C large <span class="count-pill">@Model.B2clInvoices.Count</span></button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="cdnr-tab" data-bs-toggle="tab" data-bs-target="#cdnr" type="button" role="tab" aria-controls="cdnr" aria-selected="false">Credit notes <span class="count-pill">@Model.CreditNotes.Count</span></button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="hsn-tab" data-bs-toggle="tab" data-bs-target="#hsn" type="button" role="tab" aria-controls="hsn" aria-selected="false">HSN summary <span class="count-pill">@Model.HsnSummaries.Count</span></button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="doc-tab" data-bs-toggle="tab" data-bs-target="#doc" type="button" role="tab" aria-controls="doc" aria-selected="false">Documents <span class="count-pill">@Model.DocumentSummaries.Count</span></button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="gstr3b-tab" data-bs-toggle="tab" data-bs-target="#gstr3b_preview" type="button" role="tab" aria-controls="gstr3b_preview" aria-selected="false">GSTR-3B preview</button>
+        </li>
+    </ul>
 
-<!-- Tab Content -->
-<div class="tab-content" id="gstTabsContent">
-
-    <!-- Table 4A/4B: B2B Invoices -->
-    <div class="tab-pane fade show active" id="b2b" role="tabpanel">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-bold">Table 4A, 4B, 4C, 6B, 6C — Taxable Outward Supplies to Registered Persons (B2B)</h6>
-                <a asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="b2b" class="btn btn-sm btn-outline-secondary">
-                    Export B2B CSV
-                </a>
+    <div class="tab-content">
+        @* Table 4A/4B — B2B *@
+        <div class="tab-pane fade show active" id="b2b" role="tabpanel" aria-labelledby="b2b-tab">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Table 4A, 4B, 4C, 6B, 6C — B2B supplies</div>
+                    <div class="data-card-sub">Taxable outward supplies to registered persons.</div>
+                </div>
+                <a asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="b2b" class="btn btn-sm btn-secondary"><i class="bi bi-filetype-csv"></i> Export</a>
             </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light small text-uppercase">
-                        <tr>
-                            <th>Recipient GSTIN</th>
-                            <th>Customer Name</th>
-                            <th>Invoice #</th>
-                            <th>Date</th>
-                            <th>POS</th>
-                            <th class="text-end">Invoice Val</th>
-                            <th class="text-end">Taxable Val</th>
-                            <th class="text-center">Rate</th>
-                            <th class="text-end">IGST</th>
-                            <th class="text-end">CGST</th>
-                            <th class="text-end">SGST</th>
-                            <th>e-Invoice</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.B2bInvoices.Any())
-                        {
+            @if (!Model.B2bInvoices.Any())
+            {
+                <div class="empty-state py-4">
+                    <div class="es-icon"><i class="bi bi-building"></i></div>
+                    <div class="es-title">No B2B invoices</div>
+                    <p>No B2B invoices found for @Model.MonthName @Model.Year.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="af-table">
+                        <thead>
                             <tr>
-                                <td colspan="12" class="text-center py-4 text-muted">
-                                    No B2B invoices found for @Model.MonthName @Model.Year.
-                                </td>
+                                <th>Recipient GSTIN</th>
+                                <th>Customer</th>
+                                <th>Invoice</th>
+                                <th>Date</th>
+                                <th>POS</th>
+                                <th class="text-end">Invoice value</th>
+                                <th class="text-end">Taxable</th>
+                                <th class="text-end">Rate</th>
+                                <th class="text-end">IGST</th>
+                                <th class="text-end">CGST</th>
+                                <th class="text-end">SGST</th>
+                                <th>e-Invoice</th>
                             </tr>
-                        }
-                        else
-                        {
+                        </thead>
+                        <tbody>
                             @foreach (var inv in Model.B2bInvoices)
                             {
                                 <tr>
-                                    <td><span class="font-monospace fw-bold text-primary">@inv.CustomerGstin</span></td>
-                                    <td class="fw-semibold">@inv.CustomerName</td>
-                                    <td>
-                                        <a asp-controller="Invoice" asp-action="Details" asp-route-id="@inv.InvoiceId" class="text-decoration-none fw-bold">
-                                            @inv.InvoiceNumber
-                                        </a>
-                                    </td>
-                                    <td class="small text-muted">@inv.InvoiceDate.ToString("dd-MMM-yyyy")</td>
-                                    <td><span class="badge bg-light text-dark border">@inv.PosStateCode</span></td>
-                                    <td class="text-end fw-semibold">₹@inv.InvoiceValue.ToString("N2")</td>
-                                    <td class="text-end">₹@inv.TaxableValue.ToString("N2")</td>
-                                    <td class="text-center"><span class="badge bg-secondary-subtle text-secondary">@inv.GstRate%</span></td>
-                                    <td class="text-end">₹@inv.IgstAmount.ToString("N2")</td>
-                                    <td class="text-end">₹@inv.CgstAmount.ToString("N2")</td>
-                                    <td class="text-end">₹@inv.SgstAmount.ToString("N2")</td>
+                                    <td class="font-monospace text-xs text-foreground">@inv.CustomerGstin</td>
+                                    <td><span class="text-foreground fw-medium">@inv.CustomerName</span></td>
+                                    <td><a asp-controller="Invoice" asp-action="Details" asp-route-id="@inv.InvoiceId" class="cell-title">@inv.InvoiceNumber</a></td>
+                                    <td class="text-nowrap text-muted tabular">@inv.InvoiceDate.ToString("dd MMM yyyy")</td>
+                                    <td><span class="mono-id">@inv.PosStateCode</span></td>
+                                    <td class="cell-num text-foreground">₹@inv.InvoiceValue.ToString("N2")</td>
+                                    <td class="cell-num">₹@inv.TaxableValue.ToString("N2")</td>
+                                    <td class="cell-num">@inv.GstRate%</td>
+                                    <td class="cell-num">₹@inv.IgstAmount.ToString("N2")</td>
+                                    <td class="cell-num">₹@inv.CgstAmount.ToString("N2")</td>
+                                    <td class="cell-num">₹@inv.SgstAmount.ToString("N2")</td>
                                     <td>
                                         @if (inv.EInvoiceStatus == "Generated")
                                         {
-                                            <span class="badge bg-success-subtle text-success">IRN Active</span>
+                                            <span class="af-badge b-green">IRN active</span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-light text-muted border">@inv.EInvoiceStatus</span>
+                                            <span class="af-badge b-gray">@(string.IsNullOrEmpty(inv.EInvoiceStatus) ? "Pending" : inv.EInvoiceStatus)</span>
                                         }
                                     </td>
                                 </tr>
                             }
-                        }
-                    </tbody>
-                    @if (Model.B2bInvoices.Any())
-                    {
-                        <tfoot class="table-light fw-bold">
+                        </tbody>
+                        <tfoot>
                             <tr>
-                                <td colspan="5">Total B2B (@Model.B2bInvoices.Count Invoices)</td>
-                                <td class="text-end">₹@Model.B2bInvoices.Sum(x => x.InvoiceValue).ToString("N2")</td>
-                                <td class="text-end">₹@Model.B2bInvoices.Sum(x => x.TaxableValue).ToString("N2")</td>
+                                <td colspan="5" class="text-end">Total B2B · @Model.B2bInvoices.Count invoices</td>
+                                <td class="text-end tabular">₹@Model.B2bInvoices.Sum(x => x.InvoiceValue).ToString("N2")</td>
+                                <td class="text-end tabular">₹@Model.B2bInvoices.Sum(x => x.TaxableValue).ToString("N2")</td>
                                 <td></td>
-                                <td class="text-end">₹@Model.B2bInvoices.Sum(x => x.IgstAmount).ToString("N2")</td>
-                                <td class="text-end">₹@Model.B2bInvoices.Sum(x => x.CgstAmount).ToString("N2")</td>
-                                <td class="text-end">₹@Model.B2bInvoices.Sum(x => x.SgstAmount).ToString("N2")</td>
+                                <td class="text-end tabular">₹@Model.B2bInvoices.Sum(x => x.IgstAmount).ToString("N2")</td>
+                                <td class="text-end tabular">₹@Model.B2bInvoices.Sum(x => x.CgstAmount).ToString("N2")</td>
+                                <td class="text-end tabular">₹@Model.B2bInvoices.Sum(x => x.SgstAmount).ToString("N2")</td>
                                 <td></td>
                             </tr>
                         </tfoot>
-                    }
-                </table>
-            </div>
+                    </table>
+                </div>
+            }
         </div>
-    </div>
 
-    <!-- Table 7: B2C Small -->
-    <div class="tab-pane fade" id="b2cs" role="tabpanel">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-bold">Table 7 — Taxable Supplies to Unregistered Persons (B2C Small — Grouped by POS & Rate)</h6>
-                <a asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="b2cs" class="btn btn-sm btn-outline-secondary">
-                    Export B2CS CSV
-                </a>
+        @* Table 7 — B2C small *@
+        <div class="tab-pane fade" id="b2cs" role="tabpanel" aria-labelledby="b2cs-tab">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Table 7 — B2C small</div>
+                    <div class="data-card-sub">Supplies to unregistered persons, grouped by place of supply and rate.</div>
+                </div>
+                <a asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="b2cs" class="btn btn-sm btn-secondary"><i class="bi bi-filetype-csv"></i> Export</a>
             </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light small text-uppercase">
-                        <tr>
-                            <th>Type</th>
-                            <th>Place Of Supply</th>
-                            <th>State Name</th>
-                            <th class="text-center">Tax Rate</th>
-                            <th class="text-end">Taxable Value</th>
-                            <th class="text-end">IGST</th>
-                            <th class="text-end">CGST</th>
-                            <th class="text-end">SGST</th>
-                            <th class="text-center">Count</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.B2csSummaries.Any())
-                        {
+            @if (!Model.B2csSummaries.Any())
+            {
+                <div class="empty-state py-4">
+                    <div class="es-icon"><i class="bi bi-cart3"></i></div>
+                    <div class="es-title">No B2C small supplies</div>
+                    <p>No B2C small transactions found for @Model.MonthName @Model.Year.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="af-table">
+                        <thead>
                             <tr>
-                                <td colspan="9" class="text-center py-4 text-muted">
-                                    No B2C Small transactions found for @Model.MonthName @Model.Year.
-                                </td>
+                                <th>Type</th>
+                                <th>Place of supply</th>
+                                <th>State</th>
+                                <th class="text-end">Rate</th>
+                                <th class="text-end">Taxable value</th>
+                                <th class="text-end">IGST</th>
+                                <th class="text-end">CGST</th>
+                                <th class="text-end">SGST</th>
+                                <th class="text-end">Invoices</th>
                             </tr>
-                        }
-                        else
-                        {
+                        </thead>
+                        <tbody>
                             @foreach (var b in Model.B2csSummaries)
                             {
                                 <tr>
-                                    <td><span class="badge @(b.SupplyType == "INTRA" ? "bg-primary-subtle text-primary" : "bg-info-subtle text-info")">@b.SupplyType</span></td>
-                                    <td class="font-monospace fw-bold">@b.PlaceOfSupply</td>
-                                    <td class="fw-semibold">@b.StateName</td>
-                                    <td class="text-center"><span class="badge bg-secondary-subtle text-secondary">@b.GstRate%</span></td>
-                                    <td class="text-end fw-semibold">₹@b.TaxableValue.ToString("N2")</td>
-                                    <td class="text-end">₹@b.IgstAmount.ToString("N2")</td>
-                                    <td class="text-end">₹@b.CgstAmount.ToString("N2")</td>
-                                    <td class="text-end">₹@b.SgstAmount.ToString("N2")</td>
-                                    <td class="text-center">@b.InvoiceCount</td>
+                                    <td><span class="af-badge @(b.SupplyType == "INTRA" ? "b-blue" : "b-cyan")">@(b.SupplyType == "INTRA" ? "Intra-state" : "Inter-state")</span></td>
+                                    <td><span class="mono-id">@b.PlaceOfSupply</span></td>
+                                    <td class="text-foreground">@b.StateName</td>
+                                    <td class="cell-num">@b.GstRate%</td>
+                                    <td class="cell-num text-foreground">₹@b.TaxableValue.ToString("N2")</td>
+                                    <td class="cell-num">₹@b.IgstAmount.ToString("N2")</td>
+                                    <td class="cell-num">₹@b.CgstAmount.ToString("N2")</td>
+                                    <td class="cell-num">₹@b.SgstAmount.ToString("N2")</td>
+                                    <td class="cell-num">@b.InvoiceCount</td>
                                 </tr>
                             }
-                        }
-                    </tbody>
-                </table>
-            </div>
+                        </tbody>
+                    </table>
+                </div>
+            }
         </div>
-    </div>
 
-    <!-- Table 5A: B2C Large -->
-    <div class="tab-pane fade" id="b2cl" role="tabpanel">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-header bg-white py-3">
-                <h6 class="mb-0 fw-bold">Table 5A, 5B — Inter-State Supplies to Unregistered Persons &gt; ₹2,50,000 (B2C Large)</h6>
+        @* Table 5A — B2C large *@
+        <div class="tab-pane fade" id="b2cl" role="tabpanel" aria-labelledby="b2cl-tab">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Table 5A, 5B — B2C large</div>
+                    <div class="data-card-sub">Inter-state supplies to unregistered persons above ₹2,50,000.</div>
+                </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light small text-uppercase">
-                        <tr>
-                            <th>Invoice #</th>
-                            <th>Date</th>
-                            <th>Customer Name</th>
-                            <th>POS</th>
-                            <th class="text-end">Invoice Value</th>
-                            <th class="text-end">Taxable Value</th>
-                            <th class="text-center">Rate</th>
-                            <th class="text-end">IGST Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.B2clInvoices.Any())
-                        {
+            @if (!Model.B2clInvoices.Any())
+            {
+                <div class="empty-state py-4">
+                    <div class="es-icon"><i class="bi bi-box-seam"></i></div>
+                    <div class="es-title">No B2C large supplies</div>
+                    <p>No inter-state B2C invoices above ₹2.5 lakh in @Model.MonthName @Model.Year.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="af-table">
+                        <thead>
                             <tr>
-                                <td colspan="8" class="text-center py-4 text-muted">
-                                    No B2C Large transactions (> ₹2.5L inter-state) in @Model.MonthName @Model.Year.
-                                </td>
+                                <th>Invoice</th>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>POS</th>
+                                <th class="text-end">Invoice value</th>
+                                <th class="text-end">Taxable value</th>
+                                <th class="text-end">Rate</th>
+                                <th class="text-end">IGST</th>
                             </tr>
-                        }
-                        else
-                        {
+                        </thead>
+                        <tbody>
                             @foreach (var inv in Model.B2clInvoices)
                             {
                                 <tr>
-                                    <td class="fw-bold font-monospace">@inv.InvoiceNumber</td>
-                                    <td>@inv.InvoiceDate.ToString("dd-MMM-yyyy")</td>
-                                    <td>@inv.CustomerName</td>
-                                    <td>@inv.PosStateCode</td>
-                                    <td class="text-end">₹@inv.InvoiceValue.ToString("N2")</td>
-                                    <td class="text-end">₹@inv.TaxableValue.ToString("N2")</td>
-                                    <td class="text-center">@inv.GstRate%</td>
-                                    <td class="text-end fw-semibold text-info">₹@inv.IgstAmount.ToString("N2")</td>
+                                    <td><span class="mono-id">@inv.InvoiceNumber</span></td>
+                                    <td class="text-nowrap text-muted tabular">@inv.InvoiceDate.ToString("dd MMM yyyy")</td>
+                                    <td class="text-foreground">@inv.CustomerName</td>
+                                    <td><span class="mono-id">@inv.PosStateCode</span></td>
+                                    <td class="cell-num">₹@inv.InvoiceValue.ToString("N2")</td>
+                                    <td class="cell-num">₹@inv.TaxableValue.ToString("N2")</td>
+                                    <td class="cell-num">@inv.GstRate%</td>
+                                    <td class="cell-num text-foreground fw-semibold">₹@inv.IgstAmount.ToString("N2")</td>
                                 </tr>
                             }
-                        }
-                    </tbody>
-                </table>
-            </div>
+                        </tbody>
+                    </table>
+                </div>
+            }
         </div>
-    </div>
 
-    <!-- Table 9B: Credit Notes -->
-    <div class="tab-pane fade" id="cdnr" role="tabpanel">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-header bg-white py-3">
-                <h6 class="mb-0 fw-bold">Table 9B — Credit / Debit Notes Issued (Registered & Unregistered)</h6>
+        @* Table 9B — credit notes *@
+        <div class="tab-pane fade" id="cdnr" role="tabpanel" aria-labelledby="cdnr-tab">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Table 9B — Credit / debit notes</div>
+                    <div class="data-card-sub">Issued to registered and unregistered persons.</div>
+                </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light small text-uppercase">
-                        <tr>
-                            <th>Note #</th>
-                            <th>Date</th>
-                            <th>Original Invoice #</th>
-                            <th>Customer Name</th>
-                            <th>GSTIN</th>
-                            <th class="text-end">Refund Value</th>
-                            <th class="text-end">Taxable</th>
-                            <th class="text-center">Rate</th>
-                            <th class="text-end">IGST</th>
-                            <th class="text-end">CGST</th>
-                            <th class="text-end">SGST</th>
-                            <th>Reason</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.CreditNotes.Any())
-                        {
+            @if (!Model.CreditNotes.Any())
+            {
+                <div class="empty-state py-4">
+                    <div class="es-icon"><i class="bi bi-arrow-return-left"></i></div>
+                    <div class="es-title">No credit notes</div>
+                    <p>No credit notes or sales returns recorded for @Model.MonthName @Model.Year.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="af-table">
+                        <thead>
                             <tr>
-                                <td colspan="12" class="text-center py-4 text-muted">
-                                    No credit notes or sales returns recorded for @Model.MonthName @Model.Year.
-                                </td>
+                                <th>Note</th>
+                                <th>Date</th>
+                                <th>Original invoice</th>
+                                <th>Customer</th>
+                                <th>GSTIN</th>
+                                <th class="text-end">Refund value</th>
+                                <th class="text-end">Taxable</th>
+                                <th class="text-end">Rate</th>
+                                <th class="text-end">IGST</th>
+                                <th class="text-end">CGST</th>
+                                <th class="text-end">SGST</th>
+                                <th>Reason</th>
                             </tr>
-                        }
-                        else
-                        {
+                        </thead>
+                        <tbody>
                             @foreach (var n in Model.CreditNotes)
                             {
                                 <tr>
-                                    <td class="fw-bold font-monospace text-danger">@n.NoteNumber</td>
-                                    <td>@n.NoteDate.ToString("dd-MMM-yyyy")</td>
-                                    <td class="font-monospace">@n.OriginalInvoiceNumber</td>
-                                    <td>@n.CustomerName</td>
-                                    <td><span class="font-monospace">@(string.IsNullOrEmpty(n.CustomerGstin) ? "URP" : n.CustomerGstin)</span></td>
-                                    <td class="text-end fw-semibold text-danger">-₹@n.NoteValue.ToString("N2")</td>
-                                    <td class="text-end">-₹@n.TaxableValue.ToString("N2")</td>
-                                    <td class="text-center">@n.GstRate%</td>
-                                    <td class="text-end">₹@n.IgstAmount.ToString("N2")</td>
-                                    <td class="text-end">₹@n.CgstAmount.ToString("N2")</td>
-                                    <td class="text-end">₹@n.SgstAmount.ToString("N2")</td>
-                                    <td><span class="badge bg-light text-dark border">@n.Reason</span></td>
+                                    <td><span class="mono-id">@n.NoteNumber</span></td>
+                                    <td class="text-nowrap text-muted tabular">@n.NoteDate.ToString("dd MMM yyyy")</td>
+                                    <td class="font-monospace text-xs">@n.OriginalInvoiceNumber</td>
+                                    <td class="text-foreground">@n.CustomerName</td>
+                                    <td class="font-monospace text-xs">@(string.IsNullOrEmpty(n.CustomerGstin) ? "URP" : n.CustomerGstin)</td>
+                                    <td class="cell-num text-danger fw-semibold">−₹@n.NoteValue.ToString("N2")</td>
+                                    <td class="cell-num">−₹@n.TaxableValue.ToString("N2")</td>
+                                    <td class="cell-num">@n.GstRate%</td>
+                                    <td class="cell-num">₹@n.IgstAmount.ToString("N2")</td>
+                                    <td class="cell-num">₹@n.CgstAmount.ToString("N2")</td>
+                                    <td class="cell-num">₹@n.SgstAmount.ToString("N2")</td>
+                                    <td><span class="af-badge b-gray">@n.Reason</span></td>
                                 </tr>
                             }
-                        }
-                    </tbody>
-                </table>
-            </div>
+                        </tbody>
+                    </table>
+                </div>
+            }
         </div>
-    </div>
 
-    <!-- Table 12: HSN Summary -->
-    <div class="tab-pane fade" id="hsn" role="tabpanel">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-bold">Table 12 — HSN Summary of Outward Supplies (Mandatory for Textile & Garments)</h6>
-                <a asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="hsn" class="btn btn-sm btn-outline-secondary">
-                    Export HSN CSV
-                </a>
+        @* Table 12 — HSN summary *@
+        <div class="tab-pane fade" id="hsn" role="tabpanel" aria-labelledby="hsn-tab">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Table 12 — HSN summary</div>
+                    <div class="data-card-sub">Mandatory for textiles &amp; garments.</div>
+                </div>
+                <a asp-action="DownloadGstr1Csv" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" asp-route-section="hsn" class="btn btn-sm btn-secondary"><i class="bi bi-filetype-csv"></i> Export</a>
             </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light small text-uppercase">
-                        <tr>
-                            <th>HSN Code</th>
-                            <th>Description</th>
-                            <th>UQC</th>
-                            <th class="text-end">Total Qty</th>
-                            <th class="text-end">Total Value</th>
-                            <th class="text-end">Taxable Value</th>
-                            <th class="text-center">Rate</th>
-                            <th class="text-end">IGST</th>
-                            <th class="text-end">CGST</th>
-                            <th class="text-end">SGST</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.HsnSummaries.Any())
-                        {
+            @if (!Model.HsnSummaries.Any())
+            {
+                <div class="empty-state py-4">
+                    <div class="es-icon"><i class="bi bi-upc"></i></div>
+                    <div class="es-title">No HSN records</div>
+                    <p>No item-wise HSN records found for @Model.MonthName @Model.Year.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="af-table">
+                        <thead>
                             <tr>
-                                <td colspan="10" class="text-center py-4 text-muted">
-                                    No item-wise HSN records found for @Model.MonthName @Model.Year.
-                                </td>
+                                <th>HSN</th>
+                                <th>Description</th>
+                                <th>UQC</th>
+                                <th class="text-end">Quantity</th>
+                                <th class="text-end">Total value</th>
+                                <th class="text-end">Taxable</th>
+                                <th class="text-end">Rate</th>
+                                <th class="text-end">IGST</th>
+                                <th class="text-end">CGST</th>
+                                <th class="text-end">SGST</th>
                             </tr>
-                        }
-                        else
-                        {
+                        </thead>
+                        <tbody>
                             @foreach (var h in Model.HsnSummaries)
                             {
                                 <tr>
-                                    <td><span class="font-monospace fw-bold text-dark">@h.HsnCode</span></td>
-                                    <td class="small">@h.Description</td>
-                                    <td><span class="badge bg-light text-dark border">@h.Uqc</span></td>
-                                    <td class="text-end fw-semibold">@h.TotalQuantity.ToString("N0")</td>
-                                    <td class="text-end">₹@h.TotalValue.ToString("N2")</td>
-                                    <td class="text-end fw-semibold">₹@h.TaxableValue.ToString("N2")</td>
-                                    <td class="text-center"><span class="badge bg-secondary-subtle text-secondary">@h.GstRate%</span></td>
-                                    <td class="text-end">₹@h.IgstAmount.ToString("N2")</td>
-                                    <td class="text-end">₹@h.CgstAmount.ToString("N2")</td>
-                                    <td class="text-end">₹@h.SgstAmount.ToString("N2")</td>
+                                    <td><span class="mono-id">@h.HsnCode</span></td>
+                                    <td class="text-muted">@h.Description</td>
+                                    <td><span class="af-badge b-gray">@h.Uqc</span></td>
+                                    <td class="cell-num">@h.TotalQuantity.ToString("N0")</td>
+                                    <td class="cell-num">₹@h.TotalValue.ToString("N2")</td>
+                                    <td class="cell-num text-foreground">₹@h.TaxableValue.ToString("N2")</td>
+                                    <td class="cell-num">@h.GstRate%</td>
+                                    <td class="cell-num">₹@h.IgstAmount.ToString("N2")</td>
+                                    <td class="cell-num">₹@h.CgstAmount.ToString("N2")</td>
+                                    <td class="cell-num">₹@h.SgstAmount.ToString("N2")</td>
                                 </tr>
                             }
-                        }
-                    </tbody>
-                    @if (Model.HsnSummaries.Any())
-                    {
-                        <tfoot class="table-light fw-bold">
+                        </tbody>
+                        <tfoot>
                             <tr>
-                                <td colspan="3">HSN Total</td>
-                                <td class="text-end">@Model.HsnSummaries.Sum(x => x.TotalQuantity).ToString("N0")</td>
-                                <td class="text-end">₹@Model.HsnSummaries.Sum(x => x.TotalValue).ToString("N2")</td>
-                                <td class="text-end">₹@Model.HsnSummaries.Sum(x => x.TaxableValue).ToString("N2")</td>
+                                <td colspan="3" class="text-end">HSN total</td>
+                                <td class="text-end tabular">@Model.HsnSummaries.Sum(x => x.TotalQuantity).ToString("N0")</td>
+                                <td class="text-end tabular">₹@Model.HsnSummaries.Sum(x => x.TotalValue).ToString("N2")</td>
+                                <td class="text-end tabular">₹@Model.HsnSummaries.Sum(x => x.TaxableValue).ToString("N2")</td>
                                 <td></td>
-                                <td class="text-end">₹@Model.HsnSummaries.Sum(x => x.IgstAmount).ToString("N2")</td>
-                                <td class="text-end">₹@Model.HsnSummaries.Sum(x => x.CgstAmount).ToString("N2")</td>
-                                <td class="text-end">₹@Model.HsnSummaries.Sum(x => x.SgstAmount).ToString("N2")</td>
+                                <td class="text-end tabular">₹@Model.HsnSummaries.Sum(x => x.IgstAmount).ToString("N2")</td>
+                                <td class="text-end tabular">₹@Model.HsnSummaries.Sum(x => x.CgstAmount).ToString("N2")</td>
+                                <td class="text-end tabular">₹@Model.HsnSummaries.Sum(x => x.SgstAmount).ToString("N2")</td>
                             </tr>
                         </tfoot>
-                    }
-                </table>
-            </div>
+                    </table>
+                </div>
+            }
         </div>
-    </div>
 
-    <!-- Table 13: Documents Issued -->
-    <div class="tab-pane fade" id="doc" role="tabpanel">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-header bg-white py-3">
-                <h6 class="mb-0 fw-bold">Table 13 — Documents Issued During the Tax Period</h6>
+        @* Table 13 — documents issued *@
+        <div class="tab-pane fade" id="doc" role="tabpanel" aria-labelledby="doc-tab">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Table 13 — Documents issued</div>
+                    <div class="data-card-sub">Serial ranges issued during the tax period.</div>
+                </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light small text-uppercase">
-                        <tr>
-                            <th>Nature of Document</th>
-                            <th>From Serial No.</th>
-                            <th>To Serial No.</th>
-                            <th class="text-center">Total Number</th>
-                            <th class="text-center text-danger">Cancelled</th>
-                            <th class="text-center text-success">Net Issued</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.DocumentSummaries.Any())
-                        {
+            @if (!Model.DocumentSummaries.Any())
+            {
+                <div class="empty-state py-4">
+                    <div class="es-icon"><i class="bi bi-files"></i></div>
+                    <div class="es-title">No documents</div>
+                    <p>No documents generated in @Model.MonthName @Model.Year.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="af-table">
+                        <thead>
                             <tr>
-                                <td colspan="6" class="text-center py-4 text-muted">
-                                    No documents generated in @Model.MonthName @Model.Year.
-                                </td>
+                                <th>Nature of document</th>
+                                <th>From serial</th>
+                                <th>To serial</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-end">Cancelled</th>
+                                <th class="text-end">Net issued</th>
                             </tr>
-                        }
-                        else
-                        {
+                        </thead>
+                        <tbody>
                             @foreach (var doc in Model.DocumentSummaries)
                             {
                                 <tr>
-                                    <td class="fw-semibold">@doc.DocumentType</td>
-                                    <td class="font-monospace">@doc.FromSerial</td>
-                                    <td class="font-monospace">@doc.ToSerial</td>
-                                    <td class="text-center fw-bold">@doc.TotalCount</td>
-                                    <td class="text-center fw-bold text-danger">@doc.CancelledCount</td>
-                                    <td class="text-center fw-bold text-success">@doc.NetIssuedCount</td>
+                                    <td class="text-foreground fw-medium">@doc.DocumentType</td>
+                                    <td class="font-monospace text-xs">@doc.FromSerial</td>
+                                    <td class="font-monospace text-xs">@doc.ToSerial</td>
+                                    <td class="cell-num">@doc.TotalCount</td>
+                                    <td class="cell-num @(doc.CancelledCount > 0 ? "text-danger" : "text-muted")">@doc.CancelledCount</td>
+                                    <td class="cell-num text-foreground fw-semibold">@doc.NetIssuedCount</td>
                                 </tr>
                             }
-                        }
-                    </tbody>
-                </table>
-            </div>
+                        </tbody>
+                    </table>
+                </div>
+            }
         </div>
-    </div>
 
-    <!-- GSTR-3B Quick Preview Tab -->
-    <div class="tab-pane fade" id="gstr3b_preview" role="tabpanel">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-bold">GSTR-3B Monthly Tax Computation Summary</h6>
-                <a asp-action="Gstr3b" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-sm btn-primary">
-                    Open Full GSTR-3B Form ↗
-                </a>
+        @* GSTR-3B preview *@
+        <div class="tab-pane fade" id="gstr3b_preview" role="tabpanel" aria-labelledby="gstr3b-tab">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">GSTR-3B monthly tax computation</div>
+                    <div class="data-card-sub">Output tax less eligible input tax credit.</div>
+                </div>
+                <a asp-action="Gstr3b" asp-route-year="@selectedYear" asp-route-month="@selectedMonth" class="btn btn-sm btn-secondary">Open full GSTR-3B <i class="bi bi-arrow-right"></i></a>
             </div>
-            <div class="card-body">
-                @if (gstr3b != null)
-                {
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <div class="border rounded-3 p-3 bg-light">
-                                <span class="small text-muted text-uppercase fw-bold">1. Output Tax Liability (Sales)</span>
-                                <h4 class="fw-bold my-1 text-danger">₹@gstr3b.OutwardTaxableSupplies.TotalTax.ToString("N2")</h4>
-                                <small class="text-muted">Table 3.1(a) Outward Taxable</small>
-                            </div>
+            @if (gstr3b != null)
+            {
+                <div class="data-card-body">
+                    <div class="metric-grid mb-0">
+                        <div class="metric-card">
+                            <div class="metric-label">Output tax liability</div>
+                            <div class="metric-value">₹@gstr3b.OutwardTaxableSupplies.TotalTax.ToString("N2")</div>
+                            <div class="metric-meta">table 3.1(a) outward taxable</div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="border rounded-3 p-3 bg-light">
-                                <span class="small text-muted text-uppercase fw-bold">2. Eligible Input Credit (Purchases)</span>
-                                <h4 class="fw-bold my-1 text-success">₹@gstr3b.NetItcAvailable.TotalTax.ToString("N2")</h4>
-                                <small class="text-muted">Table 4(C) Net ITC Available</small>
-                            </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Eligible input credit</div>
+                            <div class="metric-value">₹@gstr3b.NetItcAvailable.TotalTax.ToString("N2")</div>
+                            <div class="metric-meta success">table 4(C) net ITC available</div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="border rounded-3 p-3 @(gstr3b.TotalCashPayable > 0 ? "bg-warning-subtle text-dark" : "bg-success-subtle text-success")">
-                                <span class="small text-uppercase fw-bold">3. Net Cash Payable</span>
-                                <h4 class="fw-bold my-1">₹@gstr3b.TotalCashPayable.ToString("N2")</h4>
-                                <small>Tax payable after adjusting ITC credit</small>
-                            </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Net cash payable</div>
+                            <div class="metric-value">₹@gstr3b.TotalCashPayable.ToString("N2")</div>
+                            <div class="metric-meta @(gstr3b.TotalCashPayable > 0 ? "warning" : "success")">after adjusting ITC</div>
                         </div>
                     </div>
-
-                    <h6 class="fw-bold mt-3 mb-2">Breakdown by Tax Component:</h6>
-                    <div class="table-responsive">
-                        <table class="table table-bordered align-middle">
-                            <thead class="table-light small text-uppercase">
-                                <tr>
-                                    <th>Tax Type</th>
-                                    <th class="text-end">Output Tax (GSTR-1)</th>
-                                    <th class="text-end">Input Tax Credit (Purchases)</th>
-                                    <th class="text-end">Net Cash Tax Payable</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="fw-bold text-info">IGST (Integrated Tax)</td>
-                                    <td class="text-end">₹@gstr3b.OutwardTaxableSupplies.IntegratedTax.ToString("N2")</td>
-                                    <td class="text-end text-success">₹@gstr3b.NetItcAvailable.IntegratedTax.ToString("N2")</td>
-                                    <td class="text-end fw-bold">₹@gstr3b.NetPayableIgst.ToString("N2")</td>
-                                </tr>
-                                <tr>
-                                    <td class="fw-bold text-primary">CGST (Central Tax)</td>
-                                    <td class="text-end">₹@gstr3b.OutwardTaxableSupplies.CentralTax.ToString("N2")</td>
-                                    <td class="text-end text-success">₹@gstr3b.NetItcAvailable.CentralTax.ToString("N2")</td>
-                                    <td class="text-end fw-bold">₹@gstr3b.NetPayableCgst.ToString("N2")</td>
-                                </tr>
-                                <tr>
-                                    <td class="fw-bold text-primary">SGST (State Tax)</td>
-                                    <td class="text-end">₹@gstr3b.OutwardTaxableSupplies.StateTax.ToString("N2")</td>
-                                    <td class="text-end text-success">₹@gstr3b.NetItcAvailable.StateTax.ToString("N2")</td>
-                                    <td class="text-end fw-bold">₹@gstr3b.NetPayableSgst.ToString("N2")</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </div>
+                </div>
+                <div class="table-scroll">
+                    <table class="af-table">
+                        <thead>
+                            <tr>
+                                <th>Tax</th>
+                                <th class="text-end">Output tax (GSTR-1)</th>
+                                <th class="text-end">Input tax credit</th>
+                                <th class="text-end">Net cash payable</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="text-foreground fw-medium">IGST <span class="text-muted fw-normal">· integrated</span></td>
+                                <td class="cell-num">₹@gstr3b.OutwardTaxableSupplies.IntegratedTax.ToString("N2")</td>
+                                <td class="cell-num text-success">₹@gstr3b.NetItcAvailable.IntegratedTax.ToString("N2")</td>
+                                <td class="cell-num text-foreground fw-semibold">₹@gstr3b.NetPayableIgst.ToString("N2")</td>
+                            </tr>
+                            <tr>
+                                <td class="text-foreground fw-medium">CGST <span class="text-muted fw-normal">· central</span></td>
+                                <td class="cell-num">₹@gstr3b.OutwardTaxableSupplies.CentralTax.ToString("N2")</td>
+                                <td class="cell-num text-success">₹@gstr3b.NetItcAvailable.CentralTax.ToString("N2")</td>
+                                <td class="cell-num text-foreground fw-semibold">₹@gstr3b.NetPayableCgst.ToString("N2")</td>
+                            </tr>
+                            <tr>
+                                <td class="text-foreground fw-medium">SGST <span class="text-muted fw-normal">· state</span></td>
+                                <td class="cell-num">₹@gstr3b.OutwardTaxableSupplies.StateTax.ToString("N2")</td>
+                                <td class="cell-num text-success">₹@gstr3b.NetItcAvailable.StateTax.ToString("N2")</td>
+                                <td class="cell-num text-foreground fw-semibold">₹@gstr3b.NetPayableSgst.ToString("N2")</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            }
         </div>
     </div>
-
 </div>
 
-<!-- How to file instructions accordion -->
-<div class="card border-0 shadow-sm rounded-3 mt-4">
-    <div class="card-body p-3">
-        <h6 class="fw-bold mb-2">💡 Quick Guide: How to File on the GST Portal</h6>
-        <div class="row g-2 small text-muted">
-            <div class="col-md-4">
-                <strong>Step 1: Download GSTR-1 JSON</strong><br />
-                Click the green button above to download <code>@($"GSTR1_{Model.Company.Gstin}_{Model.ReturnPeriodCode}.json")</code>.
-            </div>
-            <div class="col-md-4">
-                <strong>Step 2: Upload to GST Portal</strong><br />
-                Log in to <a href="https://services.gst.gov.in" target="_blank" class="text-decoration-none">gst.gov.in</a> &rarr; <em>Returns Dashboard</em> &rarr; Select <em>@Model.MonthName @Model.Year</em> &rarr; GSTR-1 &rarr; <em>Prepare Offline</em> &rarr; Click <em>Upload</em>.
-            </div>
-            <div class="col-md-4">
-                <strong>Step 3: Verification & Filing</strong><br />
-                All B2B invoices, B2CS summaries, HSN tables, and document series will populate automatically without any manual re-typing. Verify and generate summary to file with EVC / DSC.
-            </div>
-        </div>
+<div class="data-card">
+    <div class="data-card-header">
+        <div class="data-card-title">Filing GSTR-1 on the GST portal</div>
+    </div>
+    <div class="data-card-body">
+        <ol class="step-list">
+            <li><strong>Download the GSTR-1 JSON</strong> above — <code>@($"GSTR1_{Model.Company.Gstin}_{Model.ReturnPeriodCode}.json")</code>.</li>
+            <li>Sign in at <a href="https://services.gst.gov.in" target="_blank" rel="noopener">gst.gov.in</a> → Returns dashboard → @Model.MonthName @Model.Year → GSTR-1 → Prepare offline → Upload.</li>
+            <li>B2B invoices, B2CS summaries, HSN tables and document series populate automatically. Verify, generate the summary and file with EVC / DSC.</li>
+        </ol>
     </div>
 </div>

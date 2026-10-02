@@ -13,124 +13,92 @@
         if (delayDays < 0) delayDays = 0;
     }
     bool isPartiallyReceived = Model.Status == PurchaseOrderStatus.PartiallyReceived;
+    var statusBadge = Model.Status switch
+    {
+        PurchaseOrderStatus.Pending => "b-yellow",
+        PurchaseOrderStatus.Approved => "b-blue",
+        PurchaseOrderStatus.PartiallyReceived => "b-purple",
+        PurchaseOrderStatus.Received => "b-green",
+        _ => "b-gray"
+    };
 }
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">@Model.PoNumber</h1>
-        <p class="page-sub">Purchase order details</p>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Purchase orders</a>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h1 class="page-title">@Model.PoNumber</h1>
+            <span class="af-badge @statusBadge">@Model.Status.Humanize()</span>
+        </div>
+        <p class="page-sub">@Model.Vendor?.VendorName · Ordered @Model.OrderDate.ToString("dd MMM yyyy")</p>
     </div>
-    <div style="display:flex;gap:.5rem;">
-        <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
-        <a asp-action="Print" asp-route-id="@Model.Id" class="btn-af btn-af-ghost btn-af-sm" target="_blank">🖨 Print</a>
+    <div class="page-actions">
+        <a asp-action="Print" asp-route-id="@Model.Id" class="btn btn-secondary" target="_blank"><i class="bi bi-printer"></i> Print</a>
         @if (canEdit && Model.Status != PurchaseOrderStatus.Received)
         {
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn-af btn-af-primary btn-af-sm">Edit</a>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary"><i class="bi bi-pencil"></i> Edit</a>
         }
     </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="af-alert af-alert-danger mb-3"><span class="alert-body">⚠️ @TempData["Error"]</span><button class="alert-close">&times;</button></div>
-}
-
 @if (delayDays > 0)
 {
-    <div class="af-alert af-alert-danger mb-3">
-        <span class="alert-body">⚠ Overdue by <strong>@delayDays day@(delayDays > 1 ? "s" : "")</strong> (expected: @Model.ExpectedReceivingDate?.ToString("dd-MMM-yyyy"))</span>
-        <button class="alert-close">&times;</button>
+    <div class="af-alert af-alert-danger">
+        <div class="alert-body"><span class="alert-title">Overdue by @delayDays day@(delayDays > 1 ? "s" : "")</span>Expected on @Model.ExpectedReceivingDate?.ToString("dd MMM yyyy").</div>
+    </div>
+}
+else if (Model.Status == PurchaseOrderStatus.Received)
+{
+    <div class="af-alert af-alert-success">
+        <div class="alert-body">This purchase order has been received and is closed. No further changes can be made.</div>
     </div>
 }
 
-<div class="row">
+<div class="row g-4">
     <div class="col-lg-5">
-        <div class="data-card mb-3">
+        <div class="data-card mb-4">
             <div class="data-card-header">
-                <div class="data-card-title">Order Info</div>
+                <div class="data-card-title">Order info</div>
             </div>
-            <div style="padding:1.5rem;">
-                <div class="info-row">
-                    <span class="info-label">PO Number</span>
-                    <span class="info-value">@Model.PoNumber</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Vendor</span>
-                    <span class="info-value">@Model.Vendor?.VendorName</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">GST No</span>
-                    <span class="info-value">@Model.Vendor?.GstNumber</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Agent Name</span>
-                    <span class="info-value">@Model.AgentName</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Transport</span>
-                    <span class="info-value">@Model.CourierServiceName</span>
-                </div>
+            <div class="data-card-body">
+                <div class="kv-row"><span class="k">Vendor</span><span class="v">@Model.Vendor?.VendorName</span></div>
+                <div class="kv-row"><span class="k">GSTIN</span><span class="v font-monospace">@(Model.Vendor?.GstNumber ?? "—")</span></div>
+                <div class="kv-row"><span class="k">Agent</span><span class="v">@(string.IsNullOrEmpty(Model.AgentName) ? "—" : Model.AgentName)</span></div>
+                <div class="kv-row"><span class="k">Transporter</span><span class="v">@(string.IsNullOrEmpty(Model.CourierServiceName) ? "—" : Model.CourierServiceName)</span></div>
                 @if (!string.IsNullOrEmpty(Model.InvoiceNumber))
                 {
-                    <div class="info-row">
-                        <span class="info-label">Invoice No.</span>
-                        <span class="info-value">@Model.InvoiceNumber</span>
-                    </div>
+                    <div class="kv-row"><span class="k">Vendor invoice</span><span class="v font-monospace">@Model.InvoiceNumber</span></div>
                 }
                 @if (Model.Bills?.Any() == true)
                 {
-                    <div class="info-row">
-                        <span class="info-label">Bill No(s).</span>
-                        <span class="info-value">
+                    <div class="kv-row">
+                        <span class="k">Bill no(s).</span>
+                        <span class="v d-flex flex-wrap gap-1 justify-content-end">
                             @foreach (var bill in Model.Bills.OrderBy(b => b.CreatedDate))
                             {
-                                <span class="af-badge b-purple" style="margin-left: 0.2rem; display: inline-block;">@bill.BillNumber</span>
+                                <span class="af-badge b-purple">@bill.BillNumber</span>
                             }
                         </span>
                     </div>
                 }
-                <div class="info-row">
-                    <span class="info-label">Order Date</span>
-                    <span class="info-value">@Model.OrderDate.ToString("dd-MMM-yyyy")</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Expected Receiving</span>
-                    <span class="info-value" style="@(delayDays > 0 ? "color:#dc2626;font-weight:700;" : "")">
-                        @(Model.ExpectedReceivingDate?.ToString("dd-MMM-yyyy") ?? "—")
+                <div class="kv-row"><span class="k">Order date</span><span class="v">@Model.OrderDate.ToString("dd MMM yyyy")</span></div>
+                <div class="kv-row">
+                    <span class="k">Expected receiving</span>
+                    <span class="v @(delayDays > 0 ? "text-danger" : "")">
+                        @(Model.ExpectedReceivingDate?.ToString("dd MMM yyyy") ?? "—")
                         @if (delayDays > 0)
                         {
-                            <span style="display:block;font-size:.75rem;">(@delayDays day@(delayDays > 1 ? "s" : "") overdue)</span>
+                            <span class="d-block text-xs">@delayDays day@(delayDays > 1 ? "s" : "") overdue</span>
                         }
                     </span>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">Status</span>
-                    <span class="af-badge @(Model.Status switch {
-                        PurchaseOrderStatus.Pending => "b-warn",
-                        PurchaseOrderStatus.Approved => "b-blue",
-                        PurchaseOrderStatus.PartiallyReceived => "b-purple",
-                        PurchaseOrderStatus.Received => "b-green",
-                        PurchaseOrderStatus.Cancelled => "b-gray",
-                        _ => "b-gray"
-                    })">@Model.Status</span>
-                </div>
                 @if (Model.ReceivedOnDate.HasValue)
                 {
-                    <div class="info-row">
-                        <span class="info-label">Received On</span>
-                        <span class="info-value" style="color:#16a34a;font-weight:700;">@Model.ReceivedOnDate.Value.ToString("dd-MMM-yyyy")</span>
-                    </div>
+                    <div class="kv-row"><span class="k">Received on</span><span class="v text-success">@Model.ReceivedOnDate.Value.ToString("dd MMM yyyy")</span></div>
                 }
                 @if (!string.IsNullOrEmpty(Model.Notes))
                 {
-                    <div class="info-row">
-                        <span class="info-label">Notes</span>
-                        <span class="info-value">@Model.Notes</span>
-                    </div>
+                    <div class="kv-row"><span class="k">Notes</span><span class="v text-end">@Model.Notes</span></div>
                 }
             </div>
         </div>
@@ -139,162 +107,142 @@
         {
             <div class="data-card">
                 <div class="data-card-header">
-                    <div class="data-card-title">Update Status</div>
+                    <div>
+                        <div class="data-card-title">Update status</div>
+                        <div class="data-card-sub">Record receipts against this order.</div>
+                    </div>
                 </div>
-                <div style="padding:1.5rem;">
+                <div class="data-card-body">
                     <form asp-action="UpdateStatus" asp-route-id="@Model.Id" method="post">
                         @Html.AntiForgeryToken()
-                        <div style="display:flex;gap:.5rem;margin-bottom:.75rem;">
-                            <select name="status" class="af-input af-select" id="statusSelect" style="flex:1;">
+                        <label class="form-label" for="statusSelect">Status</label>
+                        <div class="d-flex gap-2 mb-3">
+                            <select name="status" class="af-input af-select flex-grow-1" id="statusSelect">
                                 @foreach (var s in Enum.GetValues<PurchaseOrderStatus>())
                                 {
-                                    <option value="@s" selected="@(s == Model.Status)">@s</option>
+                                    <option value="@s" selected="@(s == Model.Status)">@s.Humanize()</option>
                                 }
                             </select>
-                            <button type="submit" class="btn-af btn-af-primary btn-af-sm">Update</button>
+                            <button type="submit" class="btn btn-primary">Update</button>
                         </div>
 
-                        <div id="dateSection" style="display:none;margin-bottom:.75rem;">
-                            <div class="af-form-group mb-0">
-                                <label class="af-label">Received Date</label>
-                                <input name="receivedOnDate" type="date" class="af-input" value="@(Model.ReceivedOnDate?.ToString("yyyy-MM-dd") ?? DateTime.Today.ToString("yyyy-MM-dd"))" />
+                        <div class="row g-3 mb-3">
+                            <div class="col-6" id="dateSection" style="display:none;">
+                                <label class="form-label" for="receivedOnDate">Received date</label>
+                                <input id="receivedOnDate" name="receivedOnDate" type="date" class="af-input" value="@(Model.ReceivedOnDate?.ToString("yyyy-MM-dd") ?? DateTime.Today.ToString("yyyy-MM-dd"))" />
                             </div>
-                        </div>
-
-                        <div id="billSection" style="display:none;margin-bottom:.75rem;">
-                            <div class="af-form-group mb-0">
-                                <label class="af-label">Bill No.</label>
-                                <input name="billNumber" id="billNumberInput" type="text" class="af-input" placeholder="Enter Bill Number" />
+                            <div class="col-6" id="billSection" style="display:none;">
+                                <label class="form-label" for="billNumberInput">Bill no. <span class="req">*</span></label>
+                                <input name="billNumber" id="billNumberInput" type="text" class="af-input" placeholder="Bill number" />
                             </div>
                         </div>
 
                         <div id="receiveSection" style="display:@(isPartiallyReceived ? "block" : "none");">
-                            <hr style="margin:.5rem 0;border-color:#e2e8f0;" />
-                            <label class="af-label">Received Quantities</label>
-                            <table class="af-table" style="font-size:.875rem;">
-                                <thead>
-                                    <tr>
-                                        <th style="width:30px;">Sr</th>
-                                        <th>Product</th>
-                                        <th style="width:70px;">Ordered</th>
-                                        <th style="width:90px;">Received</th>
-                                        <th style="width:70px;">Pending</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @{
-                                        var di = 0;
-                                        foreach (var d in Model.Details.OrderBy(x => x.SrNo))
-                                        {
-                                            var pending = d.Quantity - d.ReceivedQuantity;
-                                            <tr>
-                                                <td class="text-center">@d.SrNo</td>
-                                                <td>@d.ProductName</td>
-                                                <td class="text-center">@d.Quantity</td>
-                                                <td>
-                                                    <input name="details[@di].Id" type="hidden" value="@d.Id" />
-                                                    <input name="details[@di].ReceivedQuantity" class="af-input" type="number" min="0" max="@d.Quantity" value="@d.ReceivedQuantity" style="width:80px;" />
-                                                </td>
-                                                <td class="text-center" style="color:@(pending > 0 ? "#d97706" : "#16a34a");font-weight:600;">@pending</td>
-                                            </tr>
-                                            di++;
+                            <div class="section-label mb-2">Received quantities</div>
+                            <div class="grid-card">
+                                <table class="af-table table-edit">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 36px;">#</th>
+                                            <th>Product</th>
+                                            <th class="text-end">Ordered</th>
+                                            <th style="width: 96px;">Received</th>
+                                            <th class="text-end">Pending</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{
+                                            var di = 0;
+                                            foreach (var d in Model.Details.OrderBy(x => x.SrNo))
+                                            {
+                                                var pending = d.Quantity - d.ReceivedQuantity;
+                                                <tr>
+                                                    <td class="text-muted tabular">@d.SrNo</td>
+                                                    <td>@d.ProductName</td>
+                                                    <td class="cell-num">@d.Quantity</td>
+                                                    <td>
+                                                        <input name="details[@di].Id" type="hidden" value="@d.Id" />
+                                                        <input name="details[@di].ReceivedQuantity" class="af-input af-input-sm text-end" type="number" min="0" max="@d.Quantity" value="@d.ReceivedQuantity" aria-label="Received quantity for @d.ProductName" />
+                                                    </td>
+                                                    <td class="cell-num fw-semibold @(pending > 0 ? "text-warning" : "text-success")">@pending</td>
+                                                </tr>
+                                                di++;
+                                            }
                                         }
-                                    }
-                                </tbody>
-                            </table>
-                            <p style="font-size:.8rem;color:#94a3b8;margin-top:.5rem;">Set received quantities for each item and choose status PartiallyReceived or Received above.</p>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="form-text">Set the received quantity for each item, then choose Partially received or Received above.</div>
                         </div>
                     </form>
                 </div>
             </div>
         }
-        else if (Model.Status == PurchaseOrderStatus.Received)
-        {
-            <div class="af-alert af-alert-success mb-3">
-                <span class="alert-body">✔ This Purchase Order has been received and is closed. No further changes can be made.</span>
-            </div>
-        }
     </div>
 
     <div class="col-lg-7">
-        <div class="data-card mb-3">
+        <div class="table-card mb-4">
             <div class="data-card-header">
-                <div class="data-card-title">Line Items</div>
+                <div class="data-card-title">Line items</div>
+                <span class="text-xs text-muted">@Model.Details.Count @(Model.Details.Count == 1 ? "line" : "lines")</span>
             </div>
-            <div style="padding:1rem;">
-                <div style="overflow-x:auto;">
-                    <table class="af-table" style="min-width:900px;">
-                        <thead>
+            <div class="table-scroll">
+                <table class="af-table" style="min-width: 900px;">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Product</th>
+                            <th>Design no.</th>
+                            <th>HSN</th>
+                            <th>Unit</th>
+                            <th class="text-end">Ordered</th>
+                            <th class="text-end">Received</th>
+                            <th class="text-end">Pending</th>
+                            <th class="text-end">Rate</th>
+                            <th class="text-end">Total</th>
+                            <th class="text-end">Disc</th>
+                            <th class="text-end">GST</th>
+                            <th class="text-end">Gross</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in Model.Details.OrderBy(d => d.SrNo))
+                        {
+                            var pending = d.Quantity - d.ReceivedQuantity;
                             <tr>
-                                <th>Sr</th>
-                                <th>Product</th>
-                                <th>Design No</th>
-                                <th>HSN</th>
-                                <th>Unit</th>
-                                <th class="text-center">Ordered</th>
-                                <th class="text-center">Received</th>
-                                <th class="text-center">Pending</th>
-                                <th class="text-end">Rate</th>
-                                <th class="text-end">Total</th>
-                                <th class="text-end">Disc %</th>
-                                <th class="text-end">GST %</th>
-                                <th class="text-end">Gross</th>
+                                <td class="text-muted tabular">@d.SrNo</td>
+                                <td><span class="cell-title">@d.ProductName</span></td>
+                                <td>@(string.IsNullOrEmpty(d.ProductDesignNo) ? "—" : d.ProductDesignNo)</td>
+                                <td class="font-monospace text-xs">@(string.IsNullOrEmpty(d.HsnCode) ? "—" : d.HsnCode)</td>
+                                <td>@d.Unit</td>
+                                <td class="cell-num">@d.Quantity</td>
+                                <td class="cell-num text-success">@d.ReceivedQuantity</td>
+                                <td class="cell-num fw-semibold @(pending > 0 ? "text-warning" : "text-success")">@pending</td>
+                                <td class="cell-num">@d.UnitPrice.ToString("N2")</td>
+                                <td class="cell-num">@d.TotalPrice.ToString("N2")</td>
+                                <td class="cell-num">@(d.DiscountPercentage > 0 ? d.DiscountPercentage.ToString("N2") + "%" : "—")</td>
+                                <td class="cell-num">@(d.GstPercentage > 0 ? d.GstPercentage.ToString("N2") + "%" : "—")</td>
+                                <td class="cell-num text-foreground fw-semibold">@d.NetAmount.ToString("N2")</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var d in Model.Details.OrderBy(d => d.SrNo))
-                            {
-                                var pending = d.Quantity - d.ReceivedQuantity;
-                                <tr>
-                                    <td>@d.SrNo</td>
-                                    <td><strong>@d.ProductName</strong></td>
-                                    <td>@d.ProductDesignNo</td>
-                                    <td>@d.HsnCode</td>
-                                    <td>@d.Unit</td>
-                                    <td class="text-center">@d.Quantity</td>
-                                    <td class="text-center" style="color:#16a34a;font-weight:600;">@d.ReceivedQuantity</td>
-                                    <td class="text-center" style="color:@(pending > 0 ? "#d97706" : "#16a34a");font-weight:600;">@pending</td>
-                                    <td class="text-end">@d.UnitPrice.ToString("N2")</td>
-                                    <td class="text-end">@d.TotalPrice.ToString("N2")</td>
-                                    <td class="text-end">@(d.DiscountPercentage > 0 ? d.DiscountPercentage.ToString("N2") + "%" : "-")</td>
-                                    <td class="text-end">@(d.GstPercentage > 0 ? d.GstPercentage.ToString("N2") + "%" : "-")</td>
-                                    <td class="text-end"><strong>@d.NetAmount.ToString("N2")</strong></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
 
         <div class="data-card">
             <div class="data-card-header">
-                <div class="data-card-title">Amount Summary</div>
+                <div class="data-card-title">Amount summary</div>
             </div>
-            <div style="padding:1.5rem;">
-                <div class="info-row">
-                    <span class="info-label">Subtotal (gross of all items)</span>
-                    <span class="info-value">₹@Model.Details.Sum(d => d.NetAmount).ToString("N2")</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Transport Charge</span>
-                    <span class="info-value">₹@Model.TransportCharge.ToString("N2")</span>
-                </div>
+            <div class="data-card-body">
+                <div class="kv-row"><span class="k">Subtotal (gross of all items)</span><span class="v">₹@Model.Details.Sum(d => d.NetAmount).ToString("N2")</span></div>
+                <div class="kv-row"><span class="k">Transport charge</span><span class="v">₹@Model.TransportCharge.ToString("N2")</span></div>
                 @if (Model.TransportChargeGST > 0)
                 {
-                    <div class="info-row">
-                        <span class="info-label">Transport GST (@Model.TransportChargeGST.ToString("N2")%)</span>
-                        <span class="info-value">₹@((Model.TransportCharge * Model.TransportChargeGST / 100m).ToString("N2"))</span>
-                    </div>
+                    <div class="kv-row"><span class="k">Transport GST (@Model.TransportChargeGST.ToString("N2")%)</span><span class="v">₹@((Model.TransportCharge * Model.TransportChargeGST / 100m).ToString("N2"))</span></div>
                 }
-                <div class="info-row">
-                    <span class="info-label">Round Off</span>
-                    <span class="info-value">₹@Model.RoundOff.ToString("N2")</span>
-                </div>
-                <div class="info-row" style="font-weight:700;font-size:1.1rem;border-top:2px solid #e2e8f0;padding-top:.75rem;margin-top:.5rem;">
-                    <span class="info-label">Net Amount</span>
-                    <span class="info-value">₹@Model.TotalAmount.ToString("N2")</span>
-                </div>
+                <div class="kv-row"><span class="k">Round off</span><span class="v">₹@Model.RoundOff.ToString("N2")</span></div>
+                <div class="bill-total"><span class="k">Net amount</span><span class="v">₹@Model.TotalAmount.ToString("N2")</span></div>
             </div>
         </div>
     </div>
@@ -324,10 +272,3 @@
         })();
     </script>
 }
-
-<style>
-    .info-row { display:flex; justify-content:space-between; padding:.5rem 0; border-bottom:1px solid #f1f5f9; }
-    .info-row:last-child { border-bottom:none; }
-    .info-label { color:#64748b; font-size:.875rem; }
-    .info-value { font-weight:500; text-align:right; }
-</style>

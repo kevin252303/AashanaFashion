@@ -3,382 +3,277 @@
     ViewData["Title"] = $"{Model.DesignNumber} ({Model.Colour}, {Model.Size}) - Details";
     var photoSrc = !string.IsNullOrEmpty(Model.PhotoPath) ? Model.PhotoPath : (!string.IsNullOrEmpty(Model.Design?.PhotoPath) ? Model.Design.PhotoPath : "/images/placeholder-product.svg");
     var margin = Model.UnitPrice > 0 && Model.CostPrice > 0 ? ((Model.UnitPrice - Model.CostPrice) / Model.UnitPrice) * 100 : 0;
+    var statusBadge = Model.CurrentStatus switch
+    {
+        ReadyProductStatus.InStock => "b-green",
+        ReadyProductStatus.LowStock => "b-yellow",
+        ReadyProductStatus.Discontinued => "b-gray",
+        _ => "b-red"
+    };
 }
 
-<div class="container-fluid px-4 py-3">
-    <!-- Top Action Breadcrumb -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-        <div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-1">
-                    <li class="breadcrumb-item"><a asp-action="Index" class="text-decoration-none text-muted">Ready Products</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">@Model.DesignNumber (@Model.Colour, @Model.Size)</li>
-                </ol>
-            </nav>
-            <h3 class="fw-bold mb-0 text-dark">
-                <i class="bi bi-box-seam text-primary me-2"></i>@Model.DesignNumber
-                <span class="badge bg-secondary ms-2 fs-6">@Model.Colour</span>
-                <span class="badge bg-dark ms-1 fs-6">Size: @Model.Size</span>
-            </h3>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-            <a asp-action="Outward" asp-route-id="@Model.Id" class="btn btn-danger fw-semibold shadow-sm">
-                <i class="bi bi-box-arrow-up me-1"></i> Outward Dispatch
-            </a>
-            <a asp-action="AdjustStock" asp-route-id="@Model.Id" class="btn btn-warning text-dark fw-semibold shadow-sm">
-                <i class="bi bi-arrow-left-right me-1"></i> Adjust Stock
-            </a>
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary shadow-sm">
-                <i class="bi bi-pencil me-1"></i> Edit Product
-            </a>
-            <a asp-action="PrintTag" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-dark shadow-sm">
-                <i class="bi bi-printer me-1"></i> Print Barcode Tag
-            </a>
-            <a asp-action="Index" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Back
-            </a>
+<div class="page-header">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index">Ready Products</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Model.DesignNumber (@Model.Colour, @Model.Size)</li>
+            </ol>
+        </nav>
+        <h1 class="page-title d-flex align-items-center gap-2 flex-wrap">
+            @Model.DesignNumber
+            <span class="tag">@Model.Colour</span>
+            <span class="tag">Size @Model.Size</span>
+            <span class="af-badge @statusBadge">@Model.CurrentStatus.Humanize()</span>
+        </h1>
+    </div>
+    <div class="page-actions">
+        <a asp-action="PrintTag" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary"><i class="bi bi-printer"></i> Print tag</a>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-secondary"><i class="bi bi-pencil"></i> Edit</a>
+        <a asp-action="AdjustStock" asp-route-id="@Model.Id" class="btn btn-secondary"><i class="bi bi-sliders"></i> Adjust stock</a>
+        <a asp-action="Outward" asp-route-id="@Model.Id" class="btn btn-primary"><i class="bi bi-box-arrow-up"></i> Outward dispatch</a>
+    </div>
+</div>
+
+@if (Model.CurrentStatus == ReadyProductStatus.OutOfStock)
+{
+    <div class="af-alert af-alert-danger">
+        <div class="alert-body"><span class="alert-title">Out of stock</span>There are 0 finished ready sets in stock for this specification.</div>
+    </div>
+}
+else if (Model.CurrentStatus == ReadyProductStatus.LowStock)
+{
+    <div class="af-alert af-alert-warning">
+        <div class="alert-body"><span class="alert-title">Low stock</span>Current inventory (@Model.QuantityOnHand sets) is at or below the minimum alert threshold (@Model.MinimumStockAlert sets).</div>
+    </div>
+}
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="data-card h-100">
+            <div class="position-relative bg-raised p-3 text-center border-bottom">
+                <img src="@photoSrc"
+                     alt="@Model.DesignNumber"
+                     class="img-fluid rounded cursor-pointer"
+                     style="max-height: 320px; width: 100%; object-fit: contain;"
+                     data-bs-toggle="modal"
+                     data-bs-target="#imageModal"
+                     onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
+                <button type="button" class="btn btn-sm btn-secondary btn-icon position-absolute top-0 end-0 m-3" data-bs-toggle="modal" data-bs-target="#imageModal" aria-label="Zoom image">
+                    <i class="bi bi-zoom-in"></i>
+                </button>
+            </div>
+            <div class="data-card-body">
+                <div class="micro-label">3-piece set specification</div>
+                <div class="panel-inset">
+                    <div class="kv-row"><span class="k">Chaniya (skirt)</span><span class="tag">1 pc</span></div>
+                    <div class="kv-row"><span class="k">Choli (blouse)</span><span class="tag">1 pc</span></div>
+                    <div class="kv-row"><span class="k">Duppata (scarf)</span><span class="tag">1 pc</span></div>
+                </div>
+
+                <div class="info-grid" style="grid-template-columns: minmax(0, 1fr);">
+                    <div class="info-item">
+                        <div class="info-label">SKU</div>
+                        <div class="info-value font-monospace text-sm">@Model.Sku</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Barcode</div>
+                        <div class="info-value font-monospace text-sm">@(Model.Barcode ?? Model.Sku)</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Storage rack</div>
+                        <div class="info-value @(string.IsNullOrEmpty(Model.WarehouseLocation) ? "muted" : "")">@(string.IsNullOrEmpty(Model.WarehouseLocation) ? "Not specified" : Model.WarehouseLocation)</div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.Remarks))
+                    {
+                        <div class="info-item">
+                            <div class="info-label">Remarks</div>
+                            <div class="info-value">@Model.Remarks</div>
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Alert for low/out of stock -->
-    @if (Model.CurrentStatus == ReadyProductStatus.OutOfStock)
-    {
-        <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center mb-4">
-            <i class="bi bi-exclamation-octagon-fill fs-3 text-danger me-3"></i>
-            <div>
-                <strong>Out of Stock:</strong> There are 0 finished ready sets in stock for this specification.
+    <div class="col-lg-8">
+        <div class="metric-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <div class="metric-card">
+                <div class="metric-label">Quantity on hand</div>
+                <div class="metric-value">@Model.QuantityOnHand <span class="metric-suffix">sets</span></div>
+                <div class="metric-meta">@(Model.QuantityOnHand * 3) individual garments</div>
             </div>
-        </div>
-    }
-    else if (Model.CurrentStatus == ReadyProductStatus.LowStock)
-    {
-        <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center mb-4">
-            <i class="bi bi-exclamation-triangle-fill fs-3 text-warning me-3"></i>
-            <div>
-                <strong>Low Stock Alert:</strong> Current inventory (@Model.QuantityOnHand sets) is at or below the minimum alert threshold (@Model.MinimumStockAlert sets).
+            <div class="metric-card">
+                <div class="metric-label">Available for sale</div>
+                <div class="metric-value">@Model.AvailableQuantity <span class="metric-suffix">sets</span></div>
+                <div class="metric-meta">allocated @Model.AllocatedQuantity sets</div>
             </div>
-        </div>
-    }
-
-    <!-- Main Detail Grid -->
-    <div class="row g-4 mb-4">
-        <!-- Photo & Set Specs Card -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm rounded-3 h-100 overflow-hidden">
-                <div class="position-relative bg-light p-3 text-center border-bottom">
-                    <img src="@photoSrc" 
-                         alt="@Model.DesignNumber" 
-                         class="img-fluid rounded-3 shadow-sm" 
-                         style="max-height: 320px; width: 100%; object-fit: contain; cursor: pointer;"
-                         data-bs-toggle="modal" 
-                         data-bs-target="#imageModal"
-                         onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
-                    <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#imageModal">
-                        <i class="bi bi-zoom-in"></i>
-                    </button>
-                    @if (Model.CurrentStatus == ReadyProductStatus.InStock)
-                    {
-                        <span class="badge bg-success position-absolute top-0 start-0 m-3 px-3 py-2 fs-6 shadow-sm">
-                            <i class="bi bi-check-circle me-1"></i> In Stock
-                        </span>
-                    }
-                    else if (Model.CurrentStatus == ReadyProductStatus.LowStock)
-                    {
-                        <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-3 px-3 py-2 fs-6 shadow-sm">
-                            <i class="bi bi-exclamation-triangle me-1"></i> Low Stock
-                        </span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-danger position-absolute top-0 start-0 m-3 px-3 py-2 fs-6 shadow-sm">
-                            <i class="bi bi-x-circle me-1"></i> Out of Stock
-                        </span>
-                    }
-                </div>
-                <div class="card-body p-4">
-                    <h6 class="fw-bold text-dark text-uppercase small letter-spacing mb-3">3-Piece Set Specification</h6>
-                    <div class="p-3 bg-light rounded-3 mb-3 border">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span><i class="bi bi-check2 text-success me-2"></i>Chaniya (Skirt)</span>
-                            <span class="badge bg-primary">1 pc</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span><i class="bi bi-check2 text-success me-2"></i>Choli (Blouse)</span>
-                            <span class="badge bg-primary">1 pc</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span><i class="bi bi-check2 text-success me-2"></i>Duppata (Scarf)</span>
-                            <span class="badge bg-primary">1 pc</span>
-                        </div>
-                    </div>
-
-                    <div class="small text-muted">
-                        <div class="mb-2"><strong>SKU:</strong> <span class="font-monospace text-dark">@Model.Sku</span></div>
-                        <div class="mb-2"><strong>Barcode:</strong> <span class="font-monospace text-dark">@(Model.Barcode ?? Model.Sku)</span></div>
-                        <div class="mb-2"><strong>Storage Rack:</strong> <span class="text-dark">@(string.IsNullOrEmpty(Model.WarehouseLocation) ? "Not Specified" : Model.WarehouseLocation)</span></div>
-                        @if (!string.IsNullOrEmpty(Model.Remarks))
-                        {
-                            <div class="mb-0"><strong>Remarks:</strong> @Model.Remarks</div>
-                        }
-                    </div>
-                </div>
+            <div class="metric-card">
+                <div class="metric-label">Min stock alert</div>
+                <div class="metric-value">@Model.MinimumStockAlert <span class="metric-suffix">sets</span></div>
+                <div class="metric-meta">threshold limit</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Unit sales price (MRP)</div>
+                <div class="metric-value">₹@Model.UnitPrice.ToString("N2")</div>
+                <div class="metric-meta">per complete 3-piece set</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Unit cost price</div>
+                <div class="metric-value">₹@Model.CostPrice.ToString("N2")</div>
+                @if (margin > 0)
+                {
+                    <div class="metric-meta success"><i class="bi bi-arrow-up-right"></i> @margin.ToString("N1")% margin</div>
+                }
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Stock valuation</div>
+                <div class="metric-value">₹@((Model.QuantityOnHand * Model.UnitPrice).ToString("N2"))</div>
+                <div class="metric-meta">cost ₹@((Model.QuantityOnHand * Model.CostPrice).ToString("N2"))</div>
             </div>
         </div>
 
-        <!-- Inventory Metrics & Financials -->
-        <div class="col-lg-8">
-            <div class="row g-3 mb-4">
-                <!-- Quantity on Hand -->
-                <div class="col-sm-6 col-md-4">
-                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white h-100">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted small fw-semibold">Quantity on Hand</span>
-                            <div class="p-2 rounded-2 bg-primary bg-opacity-10 text-primary">
-                                <i class="bi bi-boxes fs-5"></i>
-                            </div>
-                        </div>
-                        <div class="fs-2 fw-bold text-dark mb-1">@Model.QuantityOnHand <span class="fs-6 fw-normal text-muted">sets</span></div>
-                        <span class="small text-muted">(@(Model.QuantityOnHand * 3) individual garments)</span>
-                    </div>
+        @if (Model.Design != null)
+        {
+            <div class="data-card">
+                <div class="data-card-header">
+                    <span class="data-card-title">Design overview · @Model.Design.DesignNumber</span>
+                    <a asp-controller="Design" asp-action="Details" asp-route-id="@Model.Design.Id" class="btn btn-sm btn-ghost">View design <i class="bi bi-box-arrow-up-right"></i></a>
                 </div>
-
-                <!-- Available Stock -->
-                <div class="col-sm-6 col-md-4">
-                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white h-100">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted small fw-semibold">Available for Sale</span>
-                            <div class="p-2 rounded-2 bg-success bg-opacity-10 text-success">
-                                <i class="bi bi-cart-check fs-5"></i>
-                            </div>
+                <div class="data-card-body">
+                    <div class="info-grid cols-3">
+                        <div class="info-item">
+                            <div class="info-label">Common design no</div>
+                            <div class="info-value">@(string.IsNullOrEmpty(Model.Design.CommonDNo) ? "None" : Model.Design.CommonDNo)</div>
                         </div>
-                        <div class="fs-2 fw-bold text-success mb-1">@Model.AvailableQuantity <span class="fs-6 fw-normal text-muted">sets</span></div>
-                        <span class="small text-muted">Allocated: @Model.AllocatedQuantity sets</span>
-                    </div>
-                </div>
-
-                <!-- Minimum Alert -->
-                <div class="col-sm-6 col-md-4">
-                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white h-100">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted small fw-semibold">Min Stock Alert</span>
-                            <div class="p-2 rounded-2 bg-warning bg-opacity-10 text-warning">
-                                <i class="bi bi-bell fs-5"></i>
-                            </div>
+                        <div class="info-item">
+                            <div class="info-label">Category</div>
+                            <div class="info-value">@Model.Design.Category</div>
                         </div>
-                        <div class="fs-2 fw-bold text-dark mb-1">@Model.MinimumStockAlert <span class="fs-6 fw-normal text-muted">sets</span></div>
-                        <span class="small text-muted">Threshold limit</span>
-                    </div>
-                </div>
-
-                <!-- Unit Sales Price -->
-                <div class="col-sm-6 col-md-4">
-                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white h-100">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted small fw-semibold">Unit Sales Price (MRP)</span>
-                            <div class="p-2 rounded-2 bg-info bg-opacity-10 text-info">
-                                <i class="bi bi-tag fs-5"></i>
-                            </div>
+                        <div class="info-item">
+                            <div class="info-label">Product type</div>
+                            <div class="info-value">@(string.IsNullOrEmpty(Model.Design.ProductType) ? "Goods" : Model.Design.ProductType)</div>
                         </div>
-                        <div class="fs-2 fw-bold text-primary mb-1">₹@Model.UnitPrice.ToString("N2")</div>
-                        <span class="small text-muted">Per complete 3-piece set</span>
-                    </div>
-                </div>
-
-                <!-- Unit Cost Price -->
-                <div class="col-sm-6 col-md-4">
-                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white h-100">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted small fw-semibold">Unit Cost Price</span>
-                            <div class="p-2 rounded-2 bg-secondary bg-opacity-10 text-secondary">
-                                <i class="bi bi-calculator fs-5"></i>
-                            </div>
+                        <div class="info-item">
+                            <div class="info-label">Available colours</div>
+                            <div class="info-value">@(string.IsNullOrEmpty(Model.Design.Colours) ? "N/A" : Model.Design.Colours)</div>
                         </div>
-                        <div class="fs-2 fw-bold text-dark mb-1">₹@Model.CostPrice.ToString("N2")</div>
-                        @if (margin > 0)
-                        {
-                            <span class="small text-success fw-semibold"><i class="bi bi-arrow-up-right"></i> @margin.ToString("N1")% Margin</span>
-                        }
-                    </div>
-                </div>
-
-                <!-- Total Valuation -->
-                <div class="col-sm-6 col-md-4">
-                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white h-100">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted small fw-semibold">Stock Valuation</span>
-                            <div class="p-2 rounded-2 bg-dark bg-opacity-10 text-dark">
-                                <i class="bi bi-cash-stack fs-5"></i>
-                            </div>
+                        <div class="info-item">
+                            <div class="info-label">Available sizes</div>
+                            <div class="info-value">@(string.IsNullOrEmpty(Model.Design.Sizes) ? "N/A" : Model.Design.Sizes)</div>
                         </div>
-                        <div class="fs-2 fw-bold text-dark mb-1">₹@((Model.QuantityOnHand * Model.UnitPrice).ToString("N2"))</div>
-                        <span class="small text-muted">Cost: ₹@((Model.QuantityOnHand * Model.CostPrice).ToString("N2"))</span>
+                        <div class="info-item">
+                            <div class="info-label">Created on</div>
+                            <div class="info-value">@Model.CreatedDate.ToString("dd-MMM-yyyy")</div>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Design Master Details Accordion -->
-            @if (Model.Design != null)
-            {
-                <div class="card border-0 shadow-sm rounded-3 mb-4">
-                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                        <h6 class="fw-bold mb-0 text-dark">
-                            <i class="bi bi-palette text-primary me-2"></i>Design Master Overview: @Model.Design.DesignNumber
-                        </h6>
-                        <a asp-controller="Design" asp-action="Details" asp-route-id="@Model.Design.Id" class="btn btn-sm btn-outline-secondary">
-                            View Design Master <i class="bi bi-box-arrow-up-right ms-1"></i>
-                        </a>
-                    </div>
-                    <div class="card-body p-4">
-                        <div class="row g-3 small">
-                            <div class="col-sm-4">
-                                <span class="text-muted d-block">Common Design No:</span>
-                                <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(Model.Design.CommonDNo) ? "None" : Model.Design.CommonDNo)</span>
-                            </div>
-                            <div class="col-sm-4">
-                                <span class="text-muted d-block">Category:</span>
-                                <span class="fw-semibold text-dark">@Model.Design.Category</span>
-                            </div>
-                            <div class="col-sm-4">
-                                <span class="text-muted d-block">Product Type:</span>
-                                <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(Model.Design.ProductType) ? "Goods" : Model.Design.ProductType)</span>
-                            </div>
-                            <div class="col-sm-4">
-                                <span class="text-muted d-block">Available Colours:</span>
-                                <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(Model.Design.Colours) ? "N/A" : Model.Design.Colours)</span>
-                            </div>
-                            <div class="col-sm-4">
-                                <span class="text-muted d-block">Available Sizes:</span>
-                                <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(Model.Design.Sizes) ? "N/A" : Model.Design.Sizes)</span>
-                            </div>
-                            <div class="col-sm-4">
-                                <span class="text-muted d-block">Created On:</span>
-                                <span class="fw-semibold text-dark">@Model.CreatedDate.ToString("dd-MMM-yyyy")</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
+        }
     </div>
+</div>
 
-    <!-- Movement History / Ledger Card -->
-    <div class="card border-0 shadow-sm rounded-3">
-        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-            <h5 class="fw-bold mb-0 text-dark">
-                <i class="bi bi-clock-history text-primary me-2"></i>Stock Movement Ledger
-            </h5>
-            <a asp-action="Ledger" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary">
-                Full Ledger View <i class="bi bi-arrow-right ms-1"></i>
-            </a>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+<div class="table-card">
+    <div class="data-card-header">
+        <span class="data-card-title">Stock movement ledger</span>
+        <a asp-action="Ledger" asp-route-id="@Model.Id" class="btn btn-sm btn-ghost">Full ledger <i class="bi bi-arrow-right"></i></a>
+    </div>
+    @if (Model.Transactions != null && Model.Transactions.Any())
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
                     <tr>
-                        <th class="ps-4">Date & Time</th>
-                        <th>Transaction Type</th>
-                        <th class="text-center">Change (Sets)</th>
-                        <th class="text-center">Balance After</th>
+                        <th>Date &amp; Time</th>
+                        <th>Transaction</th>
+                        <th class="text-end">Change (Sets)</th>
+                        <th class="text-end">Balance After</th>
                         <th>Reference</th>
                         <th>Notes / Reason</th>
                         <th>Handled By</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @if (Model.Transactions != null && Model.Transactions.Any())
-                    {
-                        @foreach (var tx in Model.Transactions)
-                        {
-                            <tr>
-                                <td class="ps-4 text-nowrap">
-                                    <div class="fw-semibold text-dark">@tx.CreatedDate.ToString("dd-MMM-yyyy")</div>
-                                    <div class="small text-muted">@tx.CreatedDate.ToString("hh:mm tt")</div>
-                                </td>
-                                <td>
-                                    @switch (tx.TransactionType)
-                                    {
-                                        case ReadyProductTransactionType.ManualInward:
-                                            <span class="badge bg-primary">Manual Inward</span>
-                                            break;
-                                        case ReadyProductTransactionType.AssemblyFromProduction:
-                                            <span class="badge bg-success">3-Piece Assembly</span>
-                                            break;
-                                        case ReadyProductTransactionType.StockAdjustment:
-                                            <span class="badge bg-warning text-dark">Adjustment</span>
-                                            break;
-                                        case ReadyProductTransactionType.OutwardSales:
-                                            <span class="badge bg-info text-dark">Dispatched / Sold</span>
-                                            break;
-                                        case ReadyProductTransactionType.DamagedScrapped:
-                                            <span class="badge bg-danger">Damaged / Scrap</span>
-                                            break;
-                                        default:
-                                            <span class="badge bg-secondary">@tx.TransactionType</span>
-                                            break;
-                                    }
-                                </td>
-                                <td class="text-center">
-                                    @if (tx.Quantity > 0)
-                                    {
-                                        <span class="badge bg-success-subtle text-success fs-6 fw-bold px-2 py-1">
-                                            +@tx.Quantity
-                                        </span>
-                                    }
-                                    else if (tx.Quantity < 0)
-                                    {
-                                        <span class="badge bg-danger-subtle text-danger fs-6 fw-bold px-2 py-1">
-                                            @tx.Quantity
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-light text-muted fs-6 fw-bold px-2 py-1">0</span>
-                                    }
-                                </td>
-                                <td class="text-center fw-bold text-dark fs-6">
-                                    @tx.BalanceAfter
-                                </td>
-                                <td>
-                                    <div class="text-dark fw-semibold">@(tx.ReferenceType ?? "N/A")</div>
-                                    <div class="small text-muted font-monospace">@(tx.ReferenceNumber ?? "")</div>
-                                </td>
-                                <td class="small text-muted" style="max-width: 250px;">
-                                    @(string.IsNullOrEmpty(tx.Notes) ? "—" : tx.Notes)
-                                </td>
-                                <td class="small text-dark">
-                                    <i class="bi bi-person-circle text-secondary me-1"></i>@(tx.CreatedBy ?? "System")
-                                </td>
-                            </tr>
-                        }
-                    }
-                    else
+                    @foreach (var tx in Model.Transactions)
                     {
                         <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
-                                <i class="bi bi-journal-x fs-1 d-block mb-2 text-secondary opacity-50"></i>
-                                No stock movements recorded yet for this product.
+                            <td class="text-nowrap">
+                                <span class="text-foreground">@tx.CreatedDate.ToString("dd-MMM-yyyy")</span>
+                                <span class="cell-sub">@tx.CreatedDate.ToString("hh:mm tt")</span>
                             </td>
+                            <td>
+                                @switch (tx.TransactionType)
+                                {
+                                    case ReadyProductTransactionType.ManualInward:
+                                        <span class="af-badge b-indigo">Manual inward</span>
+                                        break;
+                                    case ReadyProductTransactionType.AssemblyFromProduction:
+                                        <span class="af-badge b-green">3-piece assembly</span>
+                                        break;
+                                    case ReadyProductTransactionType.StockAdjustment:
+                                        <span class="af-badge b-yellow">Adjustment</span>
+                                        break;
+                                    case ReadyProductTransactionType.OutwardSales:
+                                        <span class="af-badge b-blue">Dispatched / sold</span>
+                                        break;
+                                    case ReadyProductTransactionType.DamagedScrapped:
+                                        <span class="af-badge b-red">Damaged / scrap</span>
+                                        break;
+                                    default:
+                                        <span class="af-badge b-gray">@tx.TransactionType.Humanize()</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="cell-num fw-semibold">
+                                @if (tx.Quantity > 0)
+                                {
+                                    <span class="text-success">+@tx.Quantity</span>
+                                }
+                                else if (tx.Quantity < 0)
+                                {
+                                    <span class="text-danger">@tx.Quantity</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">0</span>
+                                }
+                            </td>
+                            <td class="cell-num text-foreground fw-semibold">@tx.BalanceAfter</td>
+                            <td>
+                                <span class="text-foreground">@(tx.ReferenceType ?? "N/A")</span>
+                                <span class="cell-sub font-monospace">@(tx.ReferenceNumber ?? "")</span>
+                            </td>
+                            <td class="text-muted" style="max-width: 250px;">@(string.IsNullOrEmpty(tx.Notes) ? "—" : tx.Notes)</td>
+                            <td class="text-nowrap"><i class="bi bi-person-circle text-placeholder"></i> @(tx.CreatedBy ?? "System")</td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-journal-x"></i></div>
+            <div class="es-title">No stock movements yet</div>
+            <p>Inward, assembly, adjustment and dispatch entries will appear here.</p>
+        </div>
+    }
 </div>
 
 <!-- Image Modal -->
 <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow">
+        <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fw-bold" id="imageModalLabel">@Model.DesignNumber - @Model.Colour (Size @Model.Size)</h5>
+                <h5 class="modal-title" id="imageModalLabel">@Model.DesignNumber - @Model.Colour (Size @Model.Size)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0 text-center bg-black">
+            <div class="modal-body p-0 text-center bg-raised">
                 <img src="@photoSrc" class="img-fluid" style="max-height: 80vh;" alt="@Model.DesignNumber" />
             </div>
             <div class="modal-footer justify-content-between">
-                <span class="text-muted small">1 Ready Product = 1 Chaniya + 1 Choli + 1 Duppata</span>
+                <span class="text-muted text-sm">1 Ready Product = 1 Chaniya + 1 Choli + 1 Duppata</span>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>

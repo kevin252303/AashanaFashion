@@ -3,112 +3,81 @@
     ViewData["Title"] = "Ready Product Inventory";
     var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
     bool canManage = role == "Admin" || role == "SuperAdmin" || role == "System Admin" || role == "Manager";
+
+    string StatusBadge(AashanaFashion.Models.ReadyProductStatus s) => s switch
+    {
+        AashanaFashion.Models.ReadyProductStatus.InStock => "b-green",
+        AashanaFashion.Models.ReadyProductStatus.LowStock => "b-yellow",
+        AashanaFashion.Models.ReadyProductStatus.Discontinued => "b-gray",
+        _ => "b-red"
+    };
 }
 
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+<div class="page-header">
     <div>
-        <h2 class="mb-1 fw-bold">👗 Ready Product Inventory (Finished Goods)</h2>
-        <p class="text-muted mb-0">
-            Finished 3-piece sets (<strong>1 Chaniya + 1 Choli + 1 Duppata</strong>) automatically inwarded into inventory when production lots reach <strong>Ready to Dispatch</strong>.
-        </p>
+        <h1 class="page-title">Ready Product Inventory</h1>
+        <p class="page-sub">Finished 3-piece sets (1 Chaniya + 1 Choli + 1 Duppata) are inwarded automatically when production lots reach <strong>Ready to Dispatch</strong>.</p>
     </div>
-    <div class="d-flex flex-wrap gap-2 align-items-center">
+    <div class="page-actions">
         @if (canManage)
         {
-            <form asp-action="SyncCompletedLots" method="post" class="d-inline">
+            <form asp-action="SyncCompletedLots" method="post">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-success" title="Inward stock for any completed lots that have not been inwarded yet">
-                    🔄 Sync Completed Lots
+                <button type="submit" class="btn btn-secondary" title="Inward stock for any completed lots that have not been inwarded yet">
+                    <i class="bi bi-arrow-repeat"></i> Sync completed lots
                 </button>
             </form>
         }
-        <a asp-action="Ledger" class="btn btn-outline-secondary">
-            📜 Stock Ledger
-        </a>
+        <a asp-action="Ledger" class="btn btn-secondary"><i class="bi bi-journal-text"></i> Stock Ledger</a>
         @if (canManage)
         {
-            <a asp-action="Outward" class="btn btn-outline-danger">
-                📤 Outward Dispatch
-            </a>
-            <a asp-action="Create" class="btn btn-primary">
-                ➕ Add Ready Stock
-            </a>
+            <a asp-action="Outward" class="btn btn-secondary"><i class="bi bi-box-arrow-up"></i> Outward Dispatch</a>
+            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Ready Stock</a>
         }
     </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show af-alert mb-4" role="alert">
-        <span>✅ @TempData["Success"]</span>
-        <button type="button" class="btn-close alert-close"></button>
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Ready sets in stock</div>
+        <div class="metric-value">@Model.TotalReadySets.ToString("N0") <span class="metric-suffix">sets</span></div>
+        <div class="metric-meta">across @Model.TotalDesignsCount distinct designs</div>
     </div>
-}
-@if (TempData["Info"] != null)
-{
-    <div class="alert alert-info alert-dismissible fade show af-alert mb-4" role="alert">
-        <span>ℹ️ @TempData["Info"]</span>
-        <button type="button" class="btn-close alert-close"></button>
+    <div class="metric-card">
+        <div class="metric-label">Total retail value</div>
+        <div class="metric-value">₹@Model.TotalInventoryValue.ToString("N2")</div>
+        <div class="metric-meta">production cost ₹@Model.TotalCostValue.ToString("N2")</div>
     </div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show af-alert mb-4" role="alert">
-        <span>⚠️ @TempData["Error"]</span>
-        <button type="button" class="btn-close alert-close"></button>
-    </div>
-}
-
-<!-- Summary Metrics Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-sm-6 col-lg-3">
-        <div class="card border-0 shadow-sm rounded-3 h-100 p-3 border-start border-primary border-4">
-            <span class="text-muted small text-uppercase fw-semibold">Ready Sets in Stock</span>
-            <h3 class="fw-bold my-1 text-primary">@Model.TotalReadySets.ToString("N0") <span class="fs-6 fw-normal text-muted">sets</span></h3>
-            <small class="text-muted">Across @Model.TotalDesignsCount distinct designs</small>
+    <div class="metric-card">
+        <div class="metric-label">Stock health</div>
+        <div class="d-flex gap-2 align-items-center my-1">
+            <span class="af-badge b-green">@Model.InStockCount healthy</span>
+            <span class="af-badge b-yellow">@Model.LowStockCount low</span>
         </div>
+        <div class="metric-meta @(Model.OutOfStockCount > 0 ? "danger" : "")">@(Model.OutOfStockCount) variant(s) out of stock</div>
     </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card border-0 shadow-sm rounded-3 h-100 p-3 border-start border-success border-4">
-            <span class="text-muted small text-uppercase fw-semibold">Total Retail Value</span>
-            <h3 class="fw-bold my-1 text-success">₹@Model.TotalInventoryValue.ToString("N2")</h3>
-            <small class="text-muted">Production Cost: ₹@Model.TotalCostValue.ToString("N2")</small>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card border-0 shadow-sm rounded-3 h-100 p-3 border-start border-warning border-4">
-            <span class="text-muted small text-uppercase fw-semibold">Stock Health</span>
-            <div class="d-flex gap-2 align-items-center my-1">
-                <span class="badge bg-success">@Model.InStockCount Healthy</span>
-                <span class="badge bg-warning text-dark">@Model.LowStockCount Low</span>
-            </div>
-            <small class="text-muted">@(Model.OutOfStockCount) variant(s) out of stock</small>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card border-0 shadow-sm rounded-3 h-100 p-3 bg-light">
-            <span class="text-muted small text-uppercase fw-semibold">Outfit Set Rule</span>
-            <div class="small fw-semibold text-dark mt-1">
-                1 Set = 1 Chaniya + 1 Choli + 1 Duppata
-            </div>
-            <small class="text-muted">All pieces match in Design, Colour & Size</small>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Outfit set rule</div>
+        <div class="text-sm text-foreground fw-medium my-1">1 Set = 1 Chaniya + 1 Choli + 1 Duppata</div>
+        <div class="metric-meta">pieces match in design, colour &amp; size</div>
     </div>
 </div>
 
-<!-- Search & Filter Bar -->
-<div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-body p-3">
-        <form method="get" asp-action="Index" class="row g-2 align-items-end">
-            <input type="hidden" name="viewMode" value="@Model.ViewMode" />
-            <div class="col-md-3">
-                <label class="small text-muted fw-semibold">Search:</label>
-                <input type="text" name="search" value="@Model.Search" placeholder="Search Design, SKU, Barcode, Rack..." class="form-control form-control-sm" />
+<div class="table-card">
+    <form method="get" asp-action="Index" class="table-toolbar align-end">
+        <input type="hidden" name="viewMode" value="@Model.ViewMode" />
+        <div class="toolbar-filters align-items-end">
+            <div class="toolbar-field">
+                <label for="rpSearch">Search</label>
+                <div class="search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="rpSearch" name="search" value="@Model.Search" placeholder="Design, SKU, barcode, rack…" class="af-input" />
+                </div>
             </div>
-            <div class="col-md-2">
-                <label class="small text-muted fw-semibold">Design:</label>
-                <select name="designId" class="form-select form-select-sm">
-                    <option value="">All Designs</option>
+            <div class="toolbar-field">
+                <label for="rpDesign">Design</label>
+                <select id="rpDesign" name="designId" class="af-input af-select">
+                    <option value="">All designs</option>
                     @if (ViewBag.Designs != null)
                     {
                         @foreach (var d in (List<AashanaFashion.Models.Design>)ViewBag.Designs)
@@ -118,10 +87,10 @@
                     }
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="small text-muted fw-semibold">Colour:</label>
-                <select name="colour" class="form-select form-select-sm">
-                    <option value="">All Colours</option>
+            <div class="toolbar-field">
+                <label for="rpColour">Colour</label>
+                <select id="rpColour" name="colour" class="af-input af-select">
+                    <option value="">All colours</option>
                     @if (ViewBag.Colours != null)
                     {
                         @foreach (var c in (List<string>)ViewBag.Colours)
@@ -131,9 +100,9 @@
                     }
                 </select>
             </div>
-            <div class="col-md-1">
-                <label class="small text-muted fw-semibold">Size:</label>
-                <select name="size" class="form-select form-select-sm">
+            <div class="toolbar-field">
+                <label for="rpSize">Size</label>
+                <select id="rpSize" name="size" class="af-input af-select" style="min-width: 100px;">
                     <option value="">All</option>
                     @if (ViewBag.Sizes != null)
                     {
@@ -144,171 +113,133 @@
                     }
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="small text-muted fw-semibold">Stock Status:</label>
-                <select name="status" class="form-select form-select-sm">
-                    <option value="">All Statuses</option>
+            <div class="toolbar-field">
+                <label for="rpStatus">Stock status</label>
+                <select id="rpStatus" name="status" class="af-input af-select">
+                    <option value="">All statuses</option>
                     @foreach (AashanaFashion.Models.ReadyProductStatus st in Enum.GetValues(typeof(AashanaFashion.Models.ReadyProductStatus)))
                     {
-                        <option value="@st" selected="@(Model.Status == st)">@st</option>
+                        <option value="@st" selected="@(Model.Status == st)">@st.Humanize()</option>
                     }
                 </select>
             </div>
-            <div class="col-md-2 d-flex gap-1">
-                <button type="submit" class="btn btn-primary btn-sm flex-fill">Filter</button>
-                <a asp-action="Index" class="btn btn-outline-secondary btn-sm" title="Reset">Reset</a>
-                <!-- View Mode Toggle -->
-                <div class="btn-group btn-group-sm" role="group">
-                    <a asp-action="Index" asp-route-viewMode="grid" asp-route-search="@Model.Search" asp-route-designId="@Model.DesignId" asp-route-colour="@Model.Colour" asp-route-size="@Model.Size" asp-route-status="@Model.Status"
-                       class="btn @(Model.ViewMode == "grid" ? "btn-dark" : "btn-outline-dark")" title="Grid / Picture Cards View">🖼️</a>
-                    <a asp-action="Index" asp-route-viewMode="table" asp-route-search="@Model.Search" asp-route-designId="@Model.DesignId" asp-route-colour="@Model.Colour" asp-route-size="@Model.Size" asp-route-status="@Model.Status"
-                       class="btn @(Model.ViewMode == "table" ? "btn-dark" : "btn-outline-dark")" title="Table View">📋</a>
-                </div>
+        </div>
+        <div class="toolbar-actions">
+            <a asp-action="Index" class="btn btn-ghost" title="Reset">Reset</a>
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+            <div class="segmented" role="group" aria-label="View mode">
+                <a asp-action="Index" asp-route-viewMode="grid" asp-route-search="@Model.Search" asp-route-designId="@Model.DesignId" asp-route-colour="@Model.Colour" asp-route-size="@Model.Size" asp-route-status="@Model.Status"
+                   class="segment @(Model.ViewMode == "grid" ? "active" : "")" title="Picture cards" aria-label="Picture cards"><i class="bi bi-grid-3x2-gap"></i></a>
+                <a asp-action="Index" asp-route-viewMode="table" asp-route-search="@Model.Search" asp-route-designId="@Model.DesignId" asp-route-colour="@Model.Colour" asp-route-size="@Model.Size" asp-route-status="@Model.Status"
+                   class="segment @(Model.ViewMode == "table" ? "active" : "")" title="Table" aria-label="Table"><i class="bi bi-list-ul"></i></a>
             </div>
-        </form>
-    </div>
-</div>
+        </div>
+    </form>
 
-@if (!Model.ReadyProducts.Any())
-{
-    <div class="card border-0 shadow-sm rounded-3 text-center py-5">
-        <div class="card-body">
-            <div class="display-1 text-muted opacity-50 mb-3">👗</div>
-            <h4 class="fw-bold">No Ready Products Found</h4>
-            <p class="text-muted">No finished garment sets match your filter criteria or have been added yet.</p>
+    @if (!Model.ReadyProducts.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-box-seam"></i></div>
+            <div class="es-title">No ready products found</div>
+            <p>No finished garment sets match your filters or have been added yet.</p>
             @if (canManage)
             {
-                <div class="d-flex justify-content-center gap-2 mt-3">
-                    <a asp-action="Create" class="btn btn-primary">➕ Add Ready Product Stock</a>
-                    <a asp-action="Assemble" class="btn btn-outline-success">✨ Assemble Sets from Production</a>
+                <div class="d-flex justify-content-center gap-2">
+                    <a asp-action="Create" class="btn btn-secondary"><i class="bi bi-plus-lg"></i> Add ready stock</a>
+                    <a asp-action="Assemble" class="btn btn-secondary"><i class="bi bi-stars"></i> Assemble sets from production</a>
                 </div>
             }
         </div>
-    </div>
-}
-else if (Model.ViewMode == "grid")
-{
-    <!-- Card / Picture Grid View -->
-    <div class="row g-3">
-        @foreach (var item in Model.ReadyProducts)
-        {
-            var photo = !string.IsNullOrEmpty(item.PhotoPath) ? item.PhotoPath : (item.Design?.PhotoPath ?? "");
-            <div class="col-sm-6 col-md-4 col-xl-3">
-                <div class="card h-100 border-0 shadow-sm rounded-3 overflow-hidden position-relative product-card">
-                    <!-- Image Area with Zoom click -->
-                    <div class="position-relative bg-light text-center" style="height: 220px; overflow: hidden;">
-                        @if (!string.IsNullOrEmpty(photo))
-                        {
-                            <img src="@photo" alt="@item.DesignNumber - @item.Colour" class="w-100 h-100 object-fit-cover"
-                                 onclick="previewImage('@photo', '@item.DesignNumber — @item.Colour (@item.Size)')" style="cursor: pointer;" />
-                        }
-                        else
-                        {
-                            <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted">
-                                <span class="display-4">👗</span>
-                                <small class="mt-1">No Pic Uploaded</small>
-                            </div>
-                        }
-
-                        <!-- Stock Status Badge -->
-                        <span class="position-absolute top-0 start-0 m-2 badge @(item.CurrentStatus == AashanaFashion.Models.ReadyProductStatus.InStock ? "bg-success" : (item.CurrentStatus == AashanaFashion.Models.ReadyProductStatus.LowStock ? "bg-warning text-dark" : "bg-danger"))">
-                            @(item.CurrentStatus == AashanaFashion.Models.ReadyProductStatus.InStock ? "In Stock" : (item.CurrentStatus == AashanaFashion.Models.ReadyProductStatus.LowStock ? "Low Stock" : "Out of Stock"))
-                        </span>
-
-                        <!-- 3-Piece Set Tag -->
-                        <span class="position-absolute top-0 end-0 m-2 badge bg-dark bg-opacity-75">
-                            3-Piece Set
-                        </span>
-                    </div>
-
-                    <!-- Card Body -->
-                    <div class="card-body p-3 d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-start mb-1">
-                            <div>
-                                <h5 class="fw-bold mb-0 text-dark">@item.DesignNumber</h5>
-                                <div class="text-muted small">@item.Sku</div>
-                            </div>
-                            <div class="text-end">
-                                <div class="fw-bold text-primary fs-5">₹@item.UnitPrice.ToString("N0")</div>
-                                @if (item.CostPrice > 0)
+    }
+    else if (Model.ViewMode == "grid")
+    {
+        <div class="data-card-body bg-raised">
+            <div class="row g-3">
+                @foreach (var item in Model.ReadyProducts)
+                {
+                    var photo = !string.IsNullOrEmpty(item.PhotoPath) ? item.PhotoPath : (item.Design?.PhotoPath ?? "");
+                    <div class="col-sm-6 col-md-4 col-xl-3">
+                        <div class="product-card">
+                            <div class="product-card-media">
+                                @if (!string.IsNullOrEmpty(photo))
                                 {
-                                    <div class="text-muted small" style="font-size: 0.75rem;">Cost: ₹@item.CostPrice.ToString("N0")</div>
+                                    <img src="@photo" alt="@item.DesignNumber - @item.Colour" class="cursor-pointer"
+                                         onclick="previewImage('@photo', '@item.DesignNumber — @item.Colour (@item.Size)')" />
                                 }
-                            </div>
-                        </div>
-
-                        <!-- Variant Attributes: Colour & Size -->
-                        <div class="d-flex flex-wrap gap-1 my-2">
-                            <span class="badge bg-secondary-subtle text-secondary border">🎨 @item.Colour</span>
-                            <span class="badge bg-secondary-subtle text-secondary border">📏 Size: @item.Size</span>
-                            @if (!string.IsNullOrEmpty(item.WarehouseLocation))
-                            {
-                                <span class="badge bg-light text-dark border">📍 @item.WarehouseLocation</span>
-                            }
-                        </div>
-
-                        <!-- Set Breakdown Indicators -->
-                        <div class="p-2 rounded-2 bg-light small mb-3 border">
-                            <div class="text-muted fw-semibold mb-1" style="font-size: 0.75rem;">COMPONENTS IN 1 SET:</div>
-                            <div class="d-flex justify-content-between text-muted" style="font-size: 0.8rem;">
-                                <span>👗 Chaniya: <strong>1</strong></span>
-                                <span>👚 Choli: <strong>1</strong></span>
-                                <span>🧣 Duppata: <strong>1</strong></span>
-                            </div>
-                        </div>
-
-                        <!-- Stock Level -->
-                        <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
-                            <div>
-                                <span class="small text-muted d-block" style="font-size: 0.75rem;">Stock on Hand</span>
-                                <span class="fw-bold fs-5 @(item.QuantityOnHand > 0 ? "text-dark" : "text-danger")">
-                                    @item.QuantityOnHand <span class="fs-6 fw-normal text-muted">sets</span>
-                                </span>
-                            </div>
-                            <div class="d-flex gap-1">
-                                @if (canManage)
+                                else
                                 {
-                                    <a asp-action="Outward" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm" title="Outward / Dispatch">
-                                        📤 Outward
-                                    </a>
-                                    <a asp-action="AdjustStock" asp-route-id="@item.Id" class="btn btn-outline-warning btn-sm" title="Adjust Stock">
-                                        ⚡ Stock
-                                    </a>
+                                    <div class="product-card-placeholder"><i class="bi bi-image"></i><span>No picture uploaded</span></div>
                                 }
-                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-primary btn-sm" title="View Details & Ledger">
-                                    Details →
-                                </a>
+                                <span class="af-badge @StatusBadge(item.CurrentStatus) product-card-status">@item.CurrentStatus.Humanize()</span>
+                            </div>
+
+                            <div class="product-card-body">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div class="min-w-0">
+                                        <div class="ql-title text-truncate">@item.DesignNumber</div>
+                                        <div class="text-xs text-muted text-truncate font-monospace">@item.Sku</div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="text-foreground fw-semibold tabular">₹@item.UnitPrice.ToString("N0")</div>
+                                        @if (item.CostPrice > 0)
+                                        {
+                                            <div class="text-xs text-muted tabular">Cost ₹@item.CostPrice.ToString("N0")</div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-1">
+                                    <span class="tag">@item.Colour</span>
+                                    <span class="tag">Size @item.Size</span>
+                                    @if (!string.IsNullOrEmpty(item.WarehouseLocation))
+                                    {
+                                        <span class="tag"><i class="bi bi-geo-alt text-placeholder"></i> @item.WarehouseLocation</span>
+                                    }
+                                </div>
+
+                                <div class="text-xs text-muted">3-piece set · 1 Chaniya · 1 Choli · 1 Duppata</div>
+
+                                <div class="d-flex justify-content-between align-items-center mt-auto pt-3 border-top">
+                                    <div>
+                                        <div class="text-xs text-muted">On hand</div>
+                                        <div class="fw-semibold tabular @(item.QuantityOnHand > 0 ? "text-foreground" : "text-danger")">@item.QuantityOnHand <span class="text-xs text-muted fw-normal">sets</span></div>
+                                    </div>
+                                    <div class="row-actions">
+                                        @if (canManage)
+                                        {
+                                            <a asp-action="Outward" asp-route-id="@item.Id" class="row-action" title="Outward / dispatch" aria-label="Outward"><i class="bi bi-box-arrow-up"></i></a>
+                                            <a asp-action="AdjustStock" asp-route-id="@item.Id" class="row-action" title="Adjust stock" aria-label="Adjust stock"><i class="bi bi-sliders"></i></a>
+                                        }
+                                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-secondary ms-1">Details</a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                }
             </div>
-        }
-    </div>
-}
-else
-{
-    <!-- Table View -->
-    <div class="card border-0 shadow-sm rounded-3">
-        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0 fw-bold">📦 Ready Stock Inventory Register</h5>
-            <span class="badge bg-light text-dark border">@Model.ReadyProducts.Count Outfits</span>
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+        <div class="table-footer">
+            <span>Showing <strong>@Model.ReadyProducts.Count</strong> outfits</span>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
                     <tr>
-                        <th style="width: 70px;">Picture</th>
+                        <th style="width: 64px;">Picture</th>
                         <th>SKU / Barcode</th>
-                        <th>Design Number</th>
+                        <th>Design</th>
                         <th>Colour</th>
                         <th>Size</th>
                         <th>Set Composition</th>
                         <th>Location</th>
                         <th class="text-end">Unit Price</th>
-                        <th class="text-center">Stock</th>
+                        <th class="text-end">Stock</th>
                         <th>Status</th>
-                        <th class="text-end pe-3">Actions</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -319,72 +250,38 @@ else
                             <td>
                                 @if (!string.IsNullOrEmpty(photo))
                                 {
-                                    <img src="@photo" alt="@item.DesignNumber" class="rounded shadow-sm object-fit-cover" style="width: 50px; height: 50px; cursor: pointer;"
+                                    <img src="@photo" alt="@item.DesignNumber" class="thumb cursor-pointer"
                                          onclick="previewImage('@photo', '@item.DesignNumber — @item.Colour (@item.Size)')" />
                                 }
                                 else
                                 {
-                                    <div class="bg-light rounded text-center d-flex align-items-center justify-content-center text-muted" style="width: 50px; height: 50px; font-size: 1.25rem;">
-                                        👗
-                                    </div>
+                                    <div class="thumb d-flex align-items-center justify-content-center text-placeholder"><i class="bi bi-image"></i></div>
                                 }
                             </td>
+                            <td><a asp-action="Details" asp-route-id="@item.Id" class="font-monospace text-xs fw-medium">@item.Sku</a></td>
                             <td>
-                                <a asp-action="Details" asp-route-id="@item.Id" class="fw-bold text-decoration-none">
-                                    @item.Sku
-                                </a>
-                            </td>
-                            <td>
-                                <strong>@item.DesignNumber</strong>
+                                <span class="cell-title">@item.DesignNumber</span>
                                 @if (!string.IsNullOrEmpty(item.Design?.CommonDNo))
                                 {
-                                    <div class="small text-muted">@item.Design.CommonDNo</div>
+                                    <span class="cell-sub">@item.Design.CommonDNo</span>
                                 }
                             </td>
-                            <td>
-                                <span class="badge bg-secondary-subtle text-secondary border">@item.Colour</span>
-                            </td>
-                            <td>
-                                <span class="badge bg-secondary-subtle text-secondary border">@item.Size</span>
-                            </td>
-                            <td class="small">
-                                <span title="1 Chaniya + 1 Choli + 1 Duppata" class="badge bg-info-subtle text-info-emphasis border">
-                                    1 Chaniya + 1 Choli + 1 Duppata
-                                </span>
-                            </td>
-                            <td class="small text-muted">
-                                @(item.WarehouseLocation ?? "—")
-                            </td>
-                            <td class="text-end fw-bold text-primary">
-                                ₹@item.UnitPrice.ToString("N0")
-                            </td>
-                            <td class="text-center">
-                                <span class="fw-bold fs-6 @(item.QuantityOnHand > 0 ? "text-dark" : "text-danger")">
-                                    @item.QuantityOnHand
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge @(item.CurrentStatus == AashanaFashion.Models.ReadyProductStatus.InStock ? "bg-success" : (item.CurrentStatus == AashanaFashion.Models.ReadyProductStatus.LowStock ? "bg-warning text-dark" : "bg-danger"))">
-                                    @item.CurrentStatus
-                                </span>
-                            </td>
-                            <td class="text-end pe-3">
-                                <div class="d-flex justify-content-end gap-1">
+                            <td><span class="tag">@item.Colour</span></td>
+                            <td><span class="tag">@item.Size</span></td>
+                            <td class="text-muted text-xs" title="1 Chaniya + 1 Choli + 1 Duppata">Chaniya + Choli + Duppata</td>
+                            <td class="text-muted">@(item.WarehouseLocation ?? "—")</td>
+                            <td class="cell-num text-foreground">₹@item.UnitPrice.ToString("N0")</td>
+                            <td class="cell-num"><span class="fw-semibold @(item.QuantityOnHand > 0 ? "text-foreground" : "text-danger")">@item.QuantityOnHand</span></td>
+                            <td><span class="af-badge @StatusBadge(item.CurrentStatus)">@item.CurrentStatus.Humanize()</span></td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
                                     @if (canManage)
                                     {
-                                        <a asp-action="Outward" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm" title="Outward / Dispatch">
-                                            📤
-                                        </a>
-                                        <a asp-action="AdjustStock" asp-route-id="@item.Id" class="btn btn-outline-warning btn-sm" title="Adjust Stock">
-                                            ⚡
-                                        </a>
-                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-secondary btn-sm" title="Edit">
-                                            ✏️
-                                        </a>
+                                        <a asp-action="Outward" asp-route-id="@item.Id" class="row-action" title="Outward / dispatch" aria-label="Outward"><i class="bi bi-box-arrow-up"></i></a>
+                                        <a asp-action="AdjustStock" asp-route-id="@item.Id" class="row-action" title="Adjust stock" aria-label="Adjust stock"><i class="bi bi-sliders"></i></a>
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="row-action" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
                                     }
-                                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-primary btn-sm" title="Details">
-                                        View →
-                                    </a>
+                                    <a asp-action="Details" asp-route-id="@item.Id" class="row-action primary" title="Details" aria-label="Details"><i class="bi bi-box-arrow-up-right"></i></a>
                                 </div>
                             </td>
                         </tr>
@@ -392,19 +289,22 @@ else
                 </tbody>
             </table>
         </div>
-    </div>
-}
+        <div class="table-footer">
+            <span>Showing <strong>@Model.ReadyProducts.Count</strong> outfits</span>
+        </div>
+    }
+</div>
 
 <!-- Image Preview Modal -->
 <div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow">
+        <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fw-bold" id="modalImageTitle">Ready Product Image</h5>
+                <h5 class="modal-title" id="modalImageTitle">Ready Product Image</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-center p-2 bg-dark">
-                <img id="modalPreviewImg" src="" alt="Preview" class="img-fluid rounded" style="max-height: 80vh;" />
+            <div class="modal-body text-center p-0 bg-raised">
+                <img id="modalPreviewImg" src="" alt="Preview" class="img-fluid" style="max-height: 80vh;" />
             </div>
         </div>
     </div>

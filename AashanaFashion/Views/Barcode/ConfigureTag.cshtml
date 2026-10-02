@@ -4,28 +4,19 @@
     var dynamicFields = Model.GetDynamicCustomFields();
 }
 
-<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+<div class="page-header">
     <div>
-        <h1 class="page-title mb-1">Configure Barcode Tag</h1>
-        <p class="page-sub mb-0">Customize label layout, toggle fields, alter labels, and add new custom details to garment barcode tags.</p>
+        <a asp-controller="Production" asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Production</a>
+        <h1 class="page-title">Configure Barcode Tag</h1>
+        <p class="page-sub">Customize label layout, toggle fields, alter labels, and add new custom details to garment barcode tags.</p>
     </div>
-    <div class="d-flex align-items-center gap-2">
+    <div class="page-actions">
         <form asp-action="ResetConfig" method="post" class="d-inline" onsubmit="return confirm('Reset all barcode tag settings to default values?');">
             @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-danger btn-sm">
-                🔄 Reset to Defaults
-            </button>
+            <button type="submit" class="btn btn-danger-ghost"><i class="bi bi-arrow-counterclockwise"></i> Reset to defaults</button>
         </form>
-        <a asp-controller="Production" asp-action="Index" class="btn btn-outline-secondary btn-sm">
-            ← Back to Production
-        </a>
     </div>
 </div>
-
-@if (TempData["Success"] != null)
-{
-    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
-}
 
 <form asp-action="ConfigureTag" method="post" id="tagConfigForm">
 @Html.AntiForgeryToken()
@@ -39,29 +30,27 @@
     <div class="col-lg-7">
         
         <!-- Dimensions & Font Size -->
-        <div class="card p-3 border rounded-3 bg-white shadow-sm mb-3">
-            <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                <span>📏</span> Tag Dimensions & Typography
-            </h6>
+        <div class="panel">
+            <h6 class="panel-title mb-3">Tag Dimensions & Typography</h6>
             <div class="row g-3">
                 <div class="col-sm-4">
-                    <label class="form-label small fw-semibold text-muted">Tag Width (mm)</label>
+                    <label class="form-label">Tag Width (mm)</label>
                     <div class="input-group input-group-sm">
                         <input type="number" asp-for="TagWidthMm" class="form-control live-cfg-input" id="cfgTagWidth" min="30" max="150" />
                         <span class="input-group-text">mm</span>
                     </div>
-                    <small class="text-muted" style="font-size:0.7rem;">Thermal default: 50mm</small>
+                    <small class="form-text">Thermal default: 50mm</small>
                 </div>
                 <div class="col-sm-4">
-                    <label class="form-label small fw-semibold text-muted">Tag Height (mm)</label>
+                    <label class="form-label">Tag Height (mm)</label>
                     <div class="input-group input-group-sm">
                         <input type="number" asp-for="TagHeightMm" class="form-control live-cfg-input" id="cfgTagHeight" min="20" max="150" />
                         <span class="input-group-text">mm</span>
                     </div>
-                    <small class="text-muted" style="font-size:0.7rem;">Thermal default: 30mm</small>
+                    <small class="form-text">Thermal default: 30mm</small>
                 </div>
                 <div class="col-sm-4">
-                    <label class="form-label small fw-semibold text-muted">Font Scale</label>
+                    <label class="form-label">Font Scale</label>
                     <select asp-for="FontSize" class="form-select form-select-sm live-cfg-input" id="cfgFontSize">
                         <option value="small">Small (Compact)</option>
                         <option value="normal">Normal (Standard)</option>
@@ -72,22 +61,20 @@
         </div>
 
         <!-- Branding & Header Details -->
-        <div class="card p-3 border rounded-3 bg-white shadow-sm mb-3">
-            <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                <span>🏷️</span> Header & Brand Details
-            </h6>
+        <div class="panel">
+            <h6 class="panel-title mb-3">Header & Brand Details</h6>
             <div class="row g-3">
                 <div class="col-sm-6">
                     <div class="form-check form-switch mb-2">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowBrandName" id="cfgShowBrand" />
-                        <label class="form-check-label small fw-bold" for="cfgShowBrand">Show Brand Name</label>
+                        <label class="form-check-label" for="cfgShowBrand">Show Brand Name</label>
                     </div>
                     <input type="text" asp-for="BrandName" class="form-control form-control-sm live-cfg-input" id="cfgBrandName" placeholder="Company / Brand" />
                 </div>
                 <div class="col-sm-6">
                     <div class="form-check form-switch mb-2">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowSubtitle" id="cfgShowSubtitle" />
-                        <label class="form-check-label small fw-bold" for="cfgShowSubtitle">Show Subtitle / Tagline</label>
+                        <label class="form-check-label" for="cfgShowSubtitle">Show Subtitle / Tagline</label>
                     </div>
                     <input type="text" asp-for="Subtitle" class="form-control form-control-sm live-cfg-input" id="cfgSubtitle" placeholder="e.g. Designer Ethnic Wear" />
                 </div>
@@ -95,17 +82,15 @@
         </div>
 
         <!-- Current Default Garment Details (Configurable & Alterable) -->
-        <div class="card p-3 border rounded-3 bg-white shadow-sm mb-3">
+        <div class="panel">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                    <span>👗</span> Garment Information (Default Details)
-                </h6>
-                <span class="badge bg-light text-secondary border small">Configurable Labels</span>
+                <h6 class="panel-title">Garment Information (Default Details)</h6>
+                <span class="af-badge b-gray">Configurable labels</span>
             </div>
-            <p class="text-muted small mb-3">Default details configured on garment tags. You can enable/disable each field or alter its display label.</p>
+            <p class="panel-sub mb-3">Default details configured on garment tags. You can enable/disable each field or alter its display label.</p>
 
-            <div class="table-responsive">
-                <table class="table table-sm table-bordered align-middle mb-0" style="font-size:0.85rem;">
+            <div class="grid-card">
+                <table class="table table-sm table-edit align-middle mb-0">
                     <thead class="table-light">
                         <tr>
                             <th style="width: 45px;" class="text-center">Show</th>
@@ -119,7 +104,7 @@
                             <td class="text-center">
                                 <input type="checkbox" asp-for="ShowDesignNumber" class="form-check-input live-cfg-check" id="cfgShowDesign" />
                             </td>
-                            <td class="fw-semibold">Design Number</td>
+                            <td class="cell-title">Design Number</td>
                             <td>
                                 <input type="text" asp-for="DesignNumberLabel" class="form-control form-control-sm live-cfg-input" id="cfgDesignLabel" />
                             </td>
@@ -129,7 +114,7 @@
                             <td class="text-center">
                                 <input type="checkbox" asp-for="ShowLotNo" class="form-check-input live-cfg-check" id="cfgShowLot" />
                             </td>
-                            <td class="fw-semibold">Lot Number</td>
+                            <td class="cell-title">Lot Number</td>
                             <td>
                                 <input type="text" asp-for="LotNoLabel" class="form-control form-control-sm live-cfg-input" id="cfgLotLabel" />
                             </td>
@@ -139,7 +124,7 @@
                             <td class="text-center">
                                 <input type="checkbox" asp-for="ShowSerialNumber" class="form-check-input live-cfg-check" id="cfgShowSerial" />
                             </td>
-                            <td class="fw-semibold">Serial Number</td>
+                            <td class="cell-title">Serial Number</td>
                             <td>
                                 <input type="text" asp-for="SerialNumberLabel" class="form-control form-control-sm live-cfg-input" id="cfgSerialLabel" />
                             </td>
@@ -149,7 +134,7 @@
                             <td class="text-center">
                                 <input type="checkbox" asp-for="ShowComponent" class="form-check-input live-cfg-check" id="cfgShowComponent" />
                             </td>
-                            <td class="fw-semibold">Component / Part</td>
+                            <td class="cell-title">Component / Part</td>
                             <td>
                                 <input type="text" asp-for="ComponentLabel" class="form-control form-control-sm live-cfg-input" id="cfgComponentLabel" />
                             </td>
@@ -159,7 +144,7 @@
                             <td class="text-center">
                                 <input type="checkbox" asp-for="ShowColour" class="form-check-input live-cfg-check" id="cfgShowColour" />
                             </td>
-                            <td class="fw-semibold">Colour</td>
+                            <td class="cell-title">Colour</td>
                             <td>
                                 <input type="text" asp-for="ColourLabel" class="form-control form-control-sm live-cfg-input" id="cfgColourLabel" />
                             </td>
@@ -169,7 +154,7 @@
                             <td class="text-center">
                                 <input type="checkbox" asp-for="ShowSize" class="form-check-input live-cfg-check" id="cfgShowSize" />
                             </td>
-                            <td class="fw-semibold">Size</td>
+                            <td class="cell-title">Size</td>
                             <td>
                                 <input type="text" asp-for="SizeLabel" class="form-control form-control-sm live-cfg-input" id="cfgSizeLabel" />
                             </td>
@@ -181,31 +166,29 @@
         </div>
 
         <!-- Barcode & QR Code Section -->
-        <div class="card p-3 border rounded-3 bg-white shadow-sm mb-3">
-            <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                <span>📱</span> Barcode & QR Code Configuration
-            </h6>
+        <div class="panel">
+            <h6 class="panel-title mb-3">Barcode & QR Code Configuration</h6>
             <div class="row g-3 align-items-center">
                 <div class="col-sm-4">
                     <div class="form-check form-switch">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowBarcode" id="cfgShowBarcode" />
-                        <label class="form-check-label small fw-bold" for="cfgShowBarcode">Show 1D Barcode</label>
+                        <label class="form-check-label" for="cfgShowBarcode">Show 1D Barcode</label>
                     </div>
                 </div>
                 <div class="col-sm-4">
                     <div class="form-check form-switch">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowBarcodeText" id="cfgShowBarcodeText" />
-                        <label class="form-check-label small fw-bold" for="cfgShowBarcodeText">Show Barcode Digits</label>
+                        <label class="form-check-label" for="cfgShowBarcodeText">Show Barcode Digits</label>
                     </div>
                 </div>
                 <div class="col-sm-4">
                     <div class="form-check form-switch">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowQrCode" id="cfgShowQr" />
-                        <label class="form-check-label small fw-bold" for="cfgShowQr">Show QR Code</label>
+                        <label class="form-check-label" for="cfgShowQr">Show QR Code</label>
                     </div>
                 </div>
                 <div class="col-sm-6">
-                    <label class="form-label small fw-semibold text-muted">Barcode Height (px)</label>
+                    <label class="form-label">Barcode Height (px)</label>
                     <input type="range" class="form-range live-cfg-input" asp-for="BarcodeHeight" min="20" max="60" id="cfgBarcodeHeight" oninput="$('#barcodeHeightVal').text(this.value + 'px')" />
                     <span id="barcodeHeightVal" class="small text-muted font-monospace">@Model.BarcodeHeight px</span>
                 </div>
@@ -213,15 +196,13 @@
         </div>
 
         <!-- Commercial, Pricing & Product Identifiers -->
-        <div class="card p-3 border rounded-3 bg-white shadow-sm mb-3">
-            <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                <span>💰</span> Commercial, Pricing & Product Details
-            </h6>
+        <div class="panel">
+            <h6 class="panel-title mb-3">Commercial, Pricing & Product Details</h6>
             <div class="row g-3">
                 <div class="col-sm-6">
                     <div class="form-check form-switch mb-1">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowPrice" id="cfgShowPrice" />
-                        <label class="form-check-label small fw-bold" for="cfgShowPrice">Show M.R.P. / Price</label>
+                        <label class="form-check-label" for="cfgShowPrice">Show M.R.P. / Price</label>
                     </div>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text">Label:</span>
@@ -231,7 +212,7 @@
                 <div class="col-sm-6">
                     <div class="form-check form-switch mb-1">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowMfgDate" id="cfgShowMfgDate" />
-                        <label class="form-check-label small fw-bold" for="cfgShowMfgDate">Show Mfg / Pkg Date</label>
+                        <label class="form-check-label" for="cfgShowMfgDate">Show Mfg / Pkg Date</label>
                     </div>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text">Label:</span>
@@ -241,7 +222,7 @@
                 <div class="col-sm-6">
                     <div class="form-check form-switch mb-1">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowCategory" id="cfgShowCategory" />
-                        <label class="form-check-label small fw-bold" for="cfgShowCategory">Show Product Category</label>
+                        <label class="form-check-label" for="cfgShowCategory">Show Product Category</label>
                     </div>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text">Label:</span>
@@ -251,7 +232,7 @@
                 <div class="col-sm-6">
                     <div class="form-check form-switch mb-1">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowHsnCode" id="cfgShowHsn" />
-                        <label class="form-check-label small fw-bold" for="cfgShowHsn">Show HSN / SAC Code</label>
+                        <label class="form-check-label" for="cfgShowHsn">Show HSN / SAC Code</label>
                     </div>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text">Label:</span>
@@ -262,22 +243,20 @@
         </div>
 
         <!-- Standard Additional Details (Fabric, Care, Origin, Footer) -->
-        <div class="card p-3 border rounded-3 bg-white shadow-sm mb-3">
-            <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                <span>🧵</span> Fabric, Care & Standard Attributes
-            </h6>
+        <div class="panel">
+            <h6 class="panel-title mb-3">Fabric, Care & Standard Attributes</h6>
             <div class="row g-3">
                 <div class="col-sm-6">
                     <div class="form-check form-switch mb-1">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowCustomField1" id="cfgShowCust1" />
-                        <label class="form-check-label small fw-bold" for="cfgShowCust1">Enable Field 1 (e.g. Fabric)</label>
+                        <label class="form-check-label" for="cfgShowCust1">Enable Field 1 (e.g. Fabric)</label>
                     </div>
                     <div class="input-group input-group-sm mb-1">
-                        <span class="input-group-text" style="width:70px;">Label:</span>
+                        <span class="input-group-text" style="width:64px;">Label:</span>
                         <input type="text" asp-for="CustomField1Label" class="form-control live-cfg-input" id="cfgCust1Label" placeholder="Fabric" />
                     </div>
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text" style="width:70px;">Value:</span>
+                        <span class="input-group-text" style="width:64px;">Value:</span>
                         <input type="text" asp-for="CustomField1Value" class="form-control live-cfg-input" id="cfgCust1Val" placeholder="Net / Georgette / Silk" />
                     </div>
                 </div>
@@ -285,14 +264,14 @@
                 <div class="col-sm-6">
                     <div class="form-check form-switch mb-1">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowCustomField2" id="cfgShowCust2" />
-                        <label class="form-check-label small fw-bold" for="cfgShowCust2">Enable Field 2 (e.g. Wash Care)</label>
+                        <label class="form-check-label" for="cfgShowCust2">Enable Field 2 (e.g. Wash Care)</label>
                     </div>
                     <div class="input-group input-group-sm mb-1">
-                        <span class="input-group-text" style="width:70px;">Label:</span>
+                        <span class="input-group-text" style="width:64px;">Label:</span>
                         <input type="text" asp-for="CustomField2Label" class="form-control live-cfg-input" id="cfgCust2Label" placeholder="Care" />
                     </div>
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text" style="width:70px;">Value:</span>
+                        <span class="input-group-text" style="width:64px;">Value:</span>
                         <input type="text" asp-for="CustomField2Value" class="form-control live-cfg-input" id="cfgCust2Val" placeholder="Dry Clean Only" />
                     </div>
                 </div>
@@ -300,14 +279,14 @@
                 <div class="col-sm-6">
                     <div class="form-check form-switch mb-1">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowCustomField3" id="cfgShowCust3" />
-                        <label class="form-check-label small fw-bold" for="cfgShowCust3">Enable Field 3 (e.g. Country of Origin)</label>
+                        <label class="form-check-label" for="cfgShowCust3">Enable Field 3 (e.g. Country of Origin)</label>
                     </div>
                     <div class="input-group input-group-sm mb-1">
-                        <span class="input-group-text" style="width:70px;">Label:</span>
+                        <span class="input-group-text" style="width:64px;">Label:</span>
                         <input type="text" asp-for="CustomField3Label" class="form-control live-cfg-input" id="cfgCust3Label" placeholder="Origin" />
                     </div>
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text" style="width:70px;">Value:</span>
+                        <span class="input-group-text" style="width:64px;">Value:</span>
                         <input type="text" asp-for="CustomField3Value" class="form-control live-cfg-input" id="cfgCust3Val" placeholder="Made in India" />
                     </div>
                 </div>
@@ -315,10 +294,10 @@
                 <div class="col-sm-6">
                     <div class="form-check form-switch mb-1">
                         <input class="form-check-input live-cfg-check" type="checkbox" asp-for="ShowFooterText" id="cfgShowFooter" />
-                        <label class="form-check-label small fw-bold" for="cfgShowFooter">Show Footer Note</label>
+                        <label class="form-check-label" for="cfgShowFooter">Show Footer Note</label>
                     </div>
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text" style="width:70px;">Text:</span>
+                        <span class="input-group-text" style="width:64px;">Text:</span>
                         <input type="text" asp-for="FooterText" class="form-control live-cfg-input" id="cfgFooterText" placeholder="(Inclusive of all taxes)" />
                     </div>
                 </div>
@@ -326,17 +305,13 @@
         </div>
 
         <!-- Dynamic New Details (Add Any Custom Field) -->
-        <div class="card p-3 border rounded-3 bg-white shadow-sm mb-4">
+        <div class="panel">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                        <span>➕</span> Add New Custom Details
-                    </h6>
-                    <small class="text-muted">Define extra custom fields to print on tags (e.g., Net Quantity, Batch, Packer).</small>
+                    <h6 class="panel-title">Add New Custom Details</h6>
+                    <small class="panel-sub">Define extra custom fields to print on tags (e.g., Net Quantity, Batch, Packer).</small>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary" id="btnAddNewField">
-                    + Add Detail
-                </button>
+                <button type="button" class="btn btn-sm btn-secondary" id="btnAddNewField"><i class="bi bi-plus-lg"></i> Add detail</button>
             </div>
 
             <div id="dynamicFieldsContainer" class="d-flex flex-column gap-2">
@@ -344,28 +319,26 @@
                 {
                     @foreach (var df in dynamicFields)
                     {
-                        <div class="dynamic-field-row d-flex align-items-center gap-2 p-2 bg-light border rounded" data-id="@df.Id">
+                        <div class="dynamic-field-row d-flex align-items-center gap-2 panel-inset mb-0 p-2" data-id="@df.Id">
                             <div class="form-check mb-0">
                                 <input type="checkbox" class="form-check-input dyn-field-enable live-cfg-check" @(df.Enabled ? "checked" : "") />
                             </div>
                             <input type="text" class="form-control form-control-sm dyn-field-label live-cfg-input" placeholder="Field Label (e.g. Net Qty)" value="@df.Label" style="max-width:140px;" />
                             <input type="text" class="form-control form-control-sm dyn-field-value live-cfg-input flex-grow-1" placeholder="Field Value (e.g. 1 N)" value="@df.Value" />
-                            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-dyn-field py-1 px-2" title="Remove field">🗑️</button>
+                            <button type="button" class="row-action danger btn-remove-dyn-field" title="Remove field" aria-label="Remove field"><i class="bi bi-trash"></i></button>
                         </div>
                     }
                 }
             </div>
-            <div id="noDynamicFieldsMsg" class="text-muted small text-center py-2 @(dynamicFields.Any() ? "d-none" : "")">
-                No extra custom details added. Click "+ Add Detail" to add more.
+            <div id="noDynamicFieldsMsg" class="text-muted text-sm text-center py-2 @(dynamicFields.Any() ? "d-none" : "")">
+                No extra custom details yet. Use <strong>Add detail</strong> to add one.
             </div>
         </div>
 
         <!-- Save Button Bar -->
-        <div class="p-3 bg-white border rounded-3 shadow-sm d-flex justify-content-between align-items-center mb-5">
-            <span class="text-muted small">All changes will apply to future printed tags automatically.</span>
-            <button type="submit" class="btn btn-success fw-bold px-4">
-                💾 Save Configuration
-            </button>
+        <div class="form-footer">
+            <span class="footer-note">Changes apply to future printed tags automatically.</span>
+            <button type="submit" class="btn btn-primary">Save configuration</button>
         </div>
 
     </div>
@@ -373,17 +346,15 @@
     <!-- Right Column: Live Interactive Tag Preview -->
     <div class="col-lg-5">
         <div class="sticky-top" style="top: 80px; z-index: 10;">
-            <div class="card p-3 border rounded-3 bg-white shadow-sm">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                        <span>👁️</span> Live Tag Preview
-                    </h6>
-                    <span class="badge bg-primary text-white" id="previewDimsBadge">50mm × 30mm</span>
+            <div class="panel">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <h6 class="panel-title">Live Tag Preview</h6>
+                    <span class="af-badge b-indigo" id="previewDimsBadge">50mm × 30mm</span>
                 </div>
-                <p class="text-muted small mb-3">Real-time simulation of the physical printed barcode tag.</p>
+                <p class="panel-sub mb-3">Real-time simulation of the physical printed barcode tag.</p>
 
                 <!-- Tag Simulation Stage -->
-                <div class="p-4 bg-light border rounded-3 d-flex justify-content-center align-items-center" style="min-height: 280px; overflow: auto;">
+                <div class="panel-inset p-4 d-flex justify-content-center align-items-center" style="min-height: 280px; overflow: auto;">
                     
                     <div id="liveTagPreview" class="preview-tag-box" style="
                         width: 50mm;
@@ -460,7 +431,7 @@
                 </div>
 
                 <div class="mt-3 p-2 bg-light rounded text-center small text-muted">
-                    💡 This preview reflects real thermal print paper sizing. You can adjust dimensions to match your thermal printer roll (e.g. 50x28mm, 50x30mm, 60x40mm).
+                    This preview reflects real thermal print paper sizing. You can adjust dimensions to match your thermal printer roll (e.g. 50x28mm, 50x30mm, 60x40mm).
                 </div>
             </div>
         </div>
@@ -599,13 +570,13 @@
             $('#btnAddNewField').on('click', function() {
                 var newId = 'df_' + Date.now();
                 var row = `
-                    <div class="dynamic-field-row d-flex align-items-center gap-2 p-2 bg-light border rounded" data-id="${newId}">
+                    <div class="dynamic-field-row d-flex align-items-center gap-2 panel-inset mb-0 p-2" data-id="${newId}">
                         <div class="form-check mb-0">
                             <input type="checkbox" class="form-check-input dyn-field-enable live-cfg-check" checked />
                         </div>
                         <input type="text" class="form-control form-control-sm dyn-field-label live-cfg-input" placeholder="Field Label (e.g. Net Qty)" value="" style="max-width:140px;" />
                         <input type="text" class="form-control form-control-sm dyn-field-value live-cfg-input flex-grow-1" placeholder="Field Value (e.g. 1 N)" value="" />
-                        <button type="button" class="btn btn-sm btn-outline-danger btn-remove-dyn-field py-1 px-2" title="Remove field">🗑️</button>
+                        <button type="button" class="row-action danger btn-remove-dyn-field" title="Remove field" aria-label="Remove field"><i class="bi bi-trash"></i></button>
                     </div>
                 `;
                 $('#dynamicFieldsContainer').append(row);
