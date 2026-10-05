@@ -81,7 +81,7 @@ public class SubscriptionController : Controller
     }
 
     // POST: /Subscription/AddSeats
-    [Authorize(Roles = "Admin,SuperAdmin")]
+    [Authorize(Roles = "Developer,Admin,SuperAdmin")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddSeats(int additionalErpSeats, int additionalWorkers)
@@ -105,7 +105,7 @@ public class SubscriptionController : Controller
     }
 
     // POST: /Subscription/ChangePlan
-    [Authorize(Roles = "Admin,SuperAdmin")]
+    [Authorize(Roles = "Developer,Admin,SuperAdmin")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangePlan(SubscriptionTier newPlan)
@@ -165,7 +165,12 @@ public class SubscriptionController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        var cleanSubdomain = model.Subdomain.Trim().ToLowerInvariant();
+        var cleanSubdomain = model.Subdomain.Trim().ToLowerInvariant()
+            .Replace("https://", "")
+            .Replace("http://", "")
+            .Replace(".kriyex.com", "")
+            .Replace(".aashanafashion.com", "")
+            .Trim('/', ' ');
 
         // 1. Validate Subdomain Uniqueness
         var subdomainTaken = await _context.Tenants.IgnoreQueryFilters()
@@ -173,7 +178,7 @@ public class SubscriptionController : Controller
 
         if (subdomainTaken)
         {
-            ModelState.AddModelError(nameof(model.Subdomain), $"The subdomain '{cleanSubdomain}' is already taken. Please choose another one.");
+            ModelState.AddModelError(nameof(model.Subdomain), $"The subdomain '{cleanSubdomain}.kriyex.com' is already taken. Please choose another one.");
             return View(model);
         }
 
@@ -289,7 +294,7 @@ public class SubscriptionController : Controller
             IsEssential = true
         });
 
-        TempData["Success"] = $"Congratulations! '{newTenant.BusinessName}' has been provisioned successfully with 14 days full trial access. Your workspace is ready!";
+        TempData["Success"] = $"Congratulations! '{newTenant.BusinessName}' has been provisioned successfully with 14 days full trial access! Your workspace is live at https://{newTenant.Subdomain}.kriyex.com.";
         return RedirectToAction("Index", "Production");
     }
 }

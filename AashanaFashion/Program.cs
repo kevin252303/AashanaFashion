@@ -8,7 +8,10 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<AashanaFashion.Authorization.DeveloperAccessFilter>();
+});
 
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo("/app/dataprotection-keys"))
@@ -30,6 +33,7 @@ builder.Services.AddScoped<IGstReturnService, GstReturnService>();
 builder.Services.AddScoped<IDoubleEntryService, DoubleEntryService>();
 builder.Services.AddScoped<IAgingAndMatchingService, AgingAndMatchingService>();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
+builder.Services.AddScoped<IPmsSyncService, PmsSyncService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -99,6 +103,7 @@ using (var scope = app.Services.CreateScope())
 
     var standardRoles = new[]
     {
+        new { Name = "Developer",    Desc = "SaaS Platform Owner with exclusive access to SaaS infrastructure, billing, and tenant management" },
         new { Name = "SuperAdmin",   Desc = "Super Administrator with full unrestricted access across all systems" },
         new { Name = "Admin",        Desc = "Company Administrator with full operational & management access" },
         new { Name = "System Admin", Desc = "System Administrator with specialized financial & accounting access" },
@@ -157,6 +162,13 @@ using (var scope = app.Services.CreateScope())
                     canView = false;
                 }
             }
+            else if (r.Name == "Developer")
+            {
+                canView = false;
+                canCreate = false;
+                canEdit = false;
+                canDelete = false;
+            }
             else if (r.Name == "Viewer")
             {
                 bool isAdminOnlyMod = (mod == "UserManagement" || mod == "Role" || mod == "Accounting" || mod == "Salary");
@@ -189,6 +201,7 @@ using (var scope = app.Services.CreateScope())
     // Seed users
     var usersToSeed = new[]
     {
+        new { Username = "developer",   Password = "developer123",   Role = "Developer",  First = "SaaS",       Last = "Developer" },
         new { Username = "superadmin", Password = "superadmin123", Role = "SuperAdmin", First = "Super",      Last = "Admin"   },
         new { Username = "sysadmin",    Password = "sysadmin123",    Role = "System Admin", First = "System",     Last = "Admin"   },
         new { Username = "admin",       Password = "admin123",       Role = "Admin",      First = "Admin",      Last = "User"    },

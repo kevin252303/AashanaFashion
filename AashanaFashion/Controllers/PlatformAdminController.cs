@@ -13,7 +13,7 @@ using AashanaFashion.Services;
 
 namespace AashanaFashion.Controllers;
 
-[Authorize(Roles = "SuperAdmin,Admin")]
+[Authorize(Roles = "Developer")]
 public class PlatformAdminController : Controller
 {
     private readonly AppDbContext _context;
@@ -270,7 +270,7 @@ public class PlatformAdminController : Controller
 
         _tenantContext.SetCurrentTenant(tenant);
 
-        TempData["Success"] = $"Switched view to client tenant: '{tenant.BusinessName}' (Subdomain: {tenant.Subdomain}). All queries now filter to this organization.";
+        TempData["Success"] = $"Switched view to client tenant: '{tenant.BusinessName}' (Workspace: {tenant.Subdomain}.kriyex.com). All queries now filter to this organization.";
         return RedirectToAction("Index", "Production");
     }
 
@@ -302,11 +302,16 @@ public class PlatformAdminController : Controller
         string adminPassword,
         string? phone)
     {
-        var cleanSubdomain = subdomain.Trim().ToLowerInvariant();
+        var cleanSubdomain = subdomain.Trim().ToLowerInvariant()
+            .Replace("https://", "")
+            .Replace("http://", "")
+            .Replace(".kriyex.com", "")
+            .Replace(".aashanafashion.com", "")
+            .Trim('/', ' ');
 
         if (await _context.Tenants.IgnoreQueryFilters().AnyAsync(t => t.Subdomain.ToLower() == cleanSubdomain))
         {
-            TempData["Error"] = $"Subdomain '{cleanSubdomain}' is already in use by another client.";
+            TempData["Error"] = $"Subdomain '{cleanSubdomain}.kriyex.com' is already in use by another client.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -374,7 +379,7 @@ public class PlatformAdminController : Controller
         _context.Users.Add(adminUser);
         await _context.SaveChangesAsync();
 
-        TempData["Success"] = $"Client organization '{newTenant.BusinessName}' created successfully with {newTenant.AllowedErpSeats} ERP seats and {newTenant.AllowedEmployeeRecords} floor workers!";
+        TempData["Success"] = $"Client organization '{newTenant.BusinessName}' created successfully! Workspace URL: https://{newTenant.Subdomain}.kriyex.com (Admin login: {adminUsername.Trim()})";
         return RedirectToAction(nameof(Index));
     }
 }

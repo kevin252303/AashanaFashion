@@ -246,10 +246,13 @@
                                 </small>
                             </td>
                             <td>
-                                <span class="badge bg-light text-primary border font-monospace">@t.Subdomain</span>
-                                <a href="http://@(t.Subdomain).localhost:5000" target="_blank" class="text-decoration-none ms-1 text-muted small" title="Open workspace">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </a>
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="badge bg-light text-primary border font-monospace">@t.Subdomain</span>
+                                    <a href="https://@(t.Subdomain).kriyex.com" target="_blank" class="text-decoration-none ms-1 text-muted small" title="Open https://@(t.Subdomain).kriyex.com">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                </div>
+                                <small class="text-muted font-monospace d-block" style="font-size: 0.72rem;">@(t.Subdomain).kriyex.com</small>
                             </td>
                             <td>
                                 <span class="badge @(t.PlanType == SubscriptionTier.Enterprise ? "bg-dark" : (t.PlanType == SubscriptionTier.Growth ? "bg-primary" : "bg-secondary")) mb-1">
@@ -399,7 +402,7 @@
                 @Html.AntiForgeryToken()
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold">
-                        <i class="bi bi-plus-circle text-primary me-2"></i>Onboard New Client Organization
+                        <i class="bi bi-plus-circle text-primary me-2"></i>Onboard New Client on Kriyex
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -407,14 +410,15 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Client Company / Brand Name</label>
-                            <input type="text" name="businessName" class="form-control" placeholder="e.g. Surat Tex Fab" required />
+                            <input type="text" name="businessName" class="form-control" placeholder="e.g. Surat Tex Fab" required id="onboardBizName" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Assigned Subdomain</label>
                             <div class="input-group">
-                                <input type="text" name="subdomain" class="form-control" placeholder="surattex" required />
-                                <span class="input-group-text bg-light small">.aashanafashion.com</span>
+                                <input type="text" name="subdomain" class="form-control" placeholder="surattex" required id="onboardSubdomain" />
+                                <span class="input-group-text bg-light fw-semibold small">.kriyex.com</span>
                             </div>
+                            <small class="text-muted" id="onboardUrlPreview">Workspace URL: https://[subdomain].kriyex.com</small>
                         </div>
                     </div>
 
@@ -474,3 +478,36 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const biz = document.getElementById('onboardBizName');
+            const sub = document.getElementById('onboardSubdomain');
+            const preview = document.getElementById('onboardUrlPreview');
+
+            if (biz && sub && preview) {
+                biz.addEventListener('input', function () {
+                    if (!sub.dataset.manual) {
+                        const slug = biz.value.toLowerCase()
+                            .replace(/[^a-z0-9]/g, '-')
+                            .replace(/-+/g, '-')
+                            .replace(/^-|-$/g, '');
+                        sub.value = slug;
+                        preview.textContent = 'Workspace URL: https://' + (slug || '[subdomain]') + '.kriyex.com';
+                    }
+                });
+
+                sub.addEventListener('input', function () {
+                    sub.dataset.manual = 'true';
+                    let val = sub.value.trim().toLowerCase()
+                        .replace('https://', '')
+                        .replace('http://', '')
+                        .replace('.kriyex.com', '')
+                        .replace('.aashanafashion.com', '');
+                    preview.textContent = 'Workspace URL: https://' + (val || '[subdomain]') + '.kriyex.com';
+                });
+            }
+        });
+    </script>
+}

@@ -16,13 +16,15 @@ namespace AashanaFashion.Controllers
         private readonly IReadyInventoryService _readyInventoryService;
         private readonly IJobSlipService _jobSlipService;
         private readonly ICompanyContext _companyContext;
+        private readonly IPmsSyncService _pmsSyncService;
 
-        public ProductionController(AppDbContext context, IReadyInventoryService readyInventoryService, IJobSlipService jobSlipService, ICompanyContext companyContext)
+        public ProductionController(AppDbContext context, IReadyInventoryService readyInventoryService, IJobSlipService jobSlipService, ICompanyContext companyContext, IPmsSyncService pmsSyncService)
         {
             _context = context;
             _readyInventoryService = readyInventoryService;
             _jobSlipService = jobSlipService;
             _companyContext = companyContext;
+            _pmsSyncService = pmsSyncService;
         }
 
         // All roles can view
@@ -337,6 +339,8 @@ namespace AashanaFashion.Controllers
             {
                 await _readyInventoryService.InwardLotToReadyStockAsync(order.Id);
             }
+
+            await _pmsSyncService.SyncOrderTrackingAsync(order.Id);
 
             TempData["Success"] = $"Order '{order.LotNo}' created with {order.TotalQuantity} tracking entities.";
             return RedirectToAction(nameof(Index));
@@ -682,6 +686,8 @@ namespace AashanaFashion.Controllers
                 await _readyInventoryService.RevertLotFromReadyStockAsync(order.Id);
             }
 
+            await _pmsSyncService.SyncOrderTrackingAsync(order.Id);
+
             TempData["Success"] = $"Order '{order.LotNo}' updated successfully.";
             return RedirectToAction(nameof(Index));
         }
@@ -758,6 +764,8 @@ namespace AashanaFashion.Controllers
                 }
             }
 
+            await _pmsSyncService.SyncOrderTrackingAsync(order.Id);
+
             TempData["Success"] = $"Stage advanced for Lot '{order.LotNo}'. Current Stage: {order.CurrentProcess}";
             return RedirectToAction(nameof(Edit), new { id = order.Id });
         }
@@ -822,6 +830,8 @@ namespace AashanaFashion.Controllers
             }
 
             await _context.SaveChangesAsync();
+            await _pmsSyncService.SyncOrderTrackingAsync(order.Id);
+
             TempData["Success"] = $"Stage reverted for Lot '{order.LotNo}'. Current Stage: {order.CurrentProcess}";
             return RedirectToAction(nameof(Edit), new { id = order.Id });
         }

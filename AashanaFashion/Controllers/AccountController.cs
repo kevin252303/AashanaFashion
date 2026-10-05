@@ -66,19 +66,22 @@ namespace AashanaFashion.Controllers
                 claims.Add(new Claim(ClaimTypes.Role, "Viewer"));
             }
 
-            // Load role permissions from UserRoleList and add as claims
-            var roleRecord = await _context.UserRoles
-                .Include(r => r.Permissions)
-                .FirstOrDefaultAsync(r => r.RoleName == user.Role && r.IsActive);
-
-            if (roleRecord != null)
+            if (user.Role != "Developer")
             {
-                foreach (var perm in roleRecord.Permissions)
+                // Load role permissions from UserRoleList and add as claims
+                var roleRecord = await _context.UserRoles
+                    .Include(r => r.Permissions)
+                    .FirstOrDefaultAsync(r => r.RoleName == user.Role && r.IsActive);
+
+                if (roleRecord != null)
                 {
-                    if (perm.CanView)   claims.Add(new Claim($"Permission.{perm.Module}.CanView",   "true"));
-                    if (perm.CanCreate) claims.Add(new Claim($"Permission.{perm.Module}.CanCreate", "true"));
-                    if (perm.CanEdit)   claims.Add(new Claim($"Permission.{perm.Module}.CanEdit",   "true"));
-                    if (perm.CanDelete) claims.Add(new Claim($"Permission.{perm.Module}.CanDelete", "true"));
+                    foreach (var perm in roleRecord.Permissions)
+                    {
+                        if (perm.CanView)   claims.Add(new Claim($"Permission.{perm.Module}.CanView",   "true"));
+                        if (perm.CanCreate) claims.Add(new Claim($"Permission.{perm.Module}.CanCreate", "true"));
+                        if (perm.CanEdit)   claims.Add(new Claim($"Permission.{perm.Module}.CanEdit",   "true"));
+                        if (perm.CanDelete) claims.Add(new Claim($"Permission.{perm.Module}.CanDelete", "true"));
+                    }
                 }
             }
 
@@ -100,6 +103,9 @@ namespace AashanaFashion.Controllers
 
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return Redirect(returnUrl);
+
+            if (user.Role == "Developer")
+                return RedirectToAction("Index", "PlatformAdmin");
 
             return RedirectToAction("Index", "Production");
         }

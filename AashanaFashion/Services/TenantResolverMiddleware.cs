@@ -66,10 +66,24 @@ public class TenantResolverMiddleware
         if (string.IsNullOrWhiteSpace(host) || host == "localhost" || host == "127.0.0.1")
             return null;
 
+        // Strip port if present (e.g. "acme.kriyex.com:5000" -> "acme.kriyex.com")
+        int colonIdx = host.IndexOf(':');
+        if (colonIdx > 0)
+        {
+            host = host.Substring(0, colonIdx);
+        }
+
+        if (host.EndsWith(".kriyex.com", StringComparison.OrdinalIgnoreCase))
+        {
+            var sub = host.Substring(0, host.Length - ".kriyex.com".Length).Trim();
+            if (!string.IsNullOrEmpty(sub) && !sub.Contains('.'))
+                return sub.ToLowerInvariant();
+        }
+
         var parts = host.Split('.');
         if (parts.Length > 2)
         {
-            // e.g., acme.garmenterp.com -> "acme"
+            // e.g., acme.kriyex.com or acme.domain.com -> "acme"
             return parts[0].ToLowerInvariant();
         }
         else if (parts.Length == 2 && parts[1] == "localhost")
@@ -82,5 +96,5 @@ public class TenantResolverMiddleware
     }
 
     private static bool IsSystemSubdomain(string sub) =>
-        sub is "www" or "app" or "api" or "admin" or "mail" or "staging" or "portal";
+        sub is "www" or "app" or "api" or "admin" or "mail" or "staging" or "portal" or "kriyex";
 }

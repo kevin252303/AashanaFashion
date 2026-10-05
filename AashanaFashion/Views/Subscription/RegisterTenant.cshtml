@@ -2,7 +2,7 @@
 
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Start Free Trial — Garment ERP SaaS";
+    ViewData["Title"] = "Start Free Trial — Kriyex Cloud ERP";
 }
 
 <div class="container py-5">
@@ -12,7 +12,7 @@
                 <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold mb-2">
                     <i class="bi bi-stars me-1"></i> 14-Day Full Access Free Trial &bull; No Credit Card Required
                 </span>
-                <h1 class="display-6 fw-bold text-dark">Get Your Garment Business on the Cloud</h1>
+                <h1 class="display-6 fw-bold text-dark">Get Your Garment Business on Kriyex Cloud</h1>
                 <p class="text-muted lead fs-6">
                     Join hundreds of textile brands, garment factories, and job workers streamlining production, payroll, and GST accounting.
                 </p>
@@ -49,10 +49,10 @@
                                 <label asp-for="Subdomain" class="form-label fw-semibold"></label>
                                 <div class="input-group input-group-lg">
                                     <input asp-for="Subdomain" class="form-control" placeholder="surattextile" required id="subdomainInput" />
-                                    <span class="input-group-text bg-light text-muted small">.aashanafashion.com</span>
+                                    <span class="input-group-text bg-light text-muted fw-semibold small">.kriyex.com</span>
                                 </div>
                                 <span asp-validation-for="Subdomain" class="text-danger small"></span>
-                                <small class="text-muted" id="subdomainPreview">Your workspace URL: https://[subdomain].aashanafashion.com</small>
+                                <small class="text-muted" id="subdomainPreview">Your workspace URL: https://[subdomain].kriyex.com</small>
                             </div>
                         </div>
 
@@ -174,8 +174,11 @@
             });
 
             function updatePreview() {
-                const val = subInput.value || '[subdomain]';
-                preview.textContent = 'Your workspace URL: https://' + val + '.aashanafashion.com';
+                let val = (subInput.value || '[subdomain]').trim().toLowerCase()
+                    .replace('https://', '')
+                    .replace('http://', '')
+                    .replace('.kriyex.com', '');
+                preview.textContent = 'Your workspace URL: https://' + val + '.kriyex.com';
             }
         });
     </script>

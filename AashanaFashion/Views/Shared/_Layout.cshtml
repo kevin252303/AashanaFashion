@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] — Aashana Fashion</title>
+    <title>@ViewData["Title"] — Kriyex</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -33,14 +33,100 @@
     bool canViewUserMgmt    = isAdmin || User.HasClaim("Permission.UserManagement.CanView",  "true");
     bool canViewPurchase    = isAdmin || User.HasClaim("Permission.Purchase.CanView",      "true");
 
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <div class="brand-icon">AF</div>
-            <div>
-                <div class="brand-name">Aashana Fashion</div>
-                <div class="brand-sub">Production System</div>
+    @if (role == "Developer")
+    {
+        <aside class="sidebar" id="sidebar" style="background: #0f172a;">
+            <div class="sidebar-brand" style="background: #020617; border-bottom: 1px solid #1e293b;">
+                <div class="brand-icon" style="background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); color:white;">⚡</div>
+                <div>
+                    <div class="brand-name" style="color: #f8fafc;">Kriyex Console</div>
+                    <div class="brand-sub" style="color: #818cf8;">kriyex.com Platform</div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-label" style="color: #64748b;">SaaS Operations</div>
+
+                <a class="s-link @(ctrl == "PlatformAdmin" ? "active" : "")"
+                   asp-controller="PlatformAdmin" asp-action="Index">
+                    <span class="ico">👑</span> SaaS Client Operations
+                </a>
+
+                <a class="s-link @(ctrl == "Subscription" ? "active" : "")"
+                   asp-controller="Subscription" asp-action="Index">
+                    <span class="ico">☁️</span> Subscription Quotas
+                </a>
+
+                <div class="nav-label" style="color: #64748b;">Tenant Management</div>
+
+                <a class="s-link" href="@Url.Action("Index", "PlatformAdmin")#onboardSection">
+                    <span class="ico">🚀</span> Onboard New Client
+                </a>
+
+                <a class="s-link" href="@Url.Action("Index", "PlatformAdmin")#tenantsTable">
+                    <span class="ico">🏢</span> Client Directory
+                </a>
+            </nav>
+
+            <div class="role-pill" style="background: #4f46e5; color: white; font-weight: 700; letter-spacing: 0.5px;">DEVELOPER</div>
+        </aside>
+
+        <div class="topbar">
+            <div class="topbar-left">
+                <span class="page-title">@(ViewData["Title"] ?? "Kriyex SaaS Control Center")</span>
+                <span class="badge ms-2" style="background: #e0e7ff; color: #4338ca; font-weight: 600; font-size: 0.75rem; border: 1px solid #c7d2fe;">
+                    ⚡ KRIYEX PLATFORM
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-2.5">
+                <a asp-controller="PlatformAdmin" asp-action="SwitchToDefault" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1.5 px-3 py-1 shadow-sm" style="border-radius: 20px; font-size: 0.78rem;" title="Reset Tenant Context">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    <span>Reset Context</span>
+                </a>
+
+                <div class="user-chip dropdown">
+                    <div class="d-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
+                        <div class="u-avatar" style="background: #4f46e5; color: white;">DEV</div>
+                        <div>
+                            <div class="u-name">@fullName</div>
+                            <div class="u-role text-primary fw-bold">Developer</div>
+                        </div>
+                        <span class="ms-1" style="font-size:0.75rem; color:#94a3b8;">▾</span>
+                    </div>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2" style="min-width: 220px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0.5rem;">
+                        <li class="px-3 py-2 border-bottom mb-1">
+                            <div class="fw-bold text-dark" style="font-size:0.9rem;">@fullName</div>
+                            <div class="small text-muted">Role: <span class="badge" style="background: #4f46e5; color:white; font-size:0.72rem;">Developer</span></div>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2 d-flex align-items-center gap-2" asp-controller="Account" asp-action="ChangePassword">
+                                <span>🔑</span> Change Password
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <form asp-controller="Account" asp-action="Logout" method="post" class="m-0 p-0">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger w-100 border-0 bg-transparent text-start">
+                                    <span>🚪</span> Sign Out
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
+    }
+    else
+    {
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">KX</div>
+                <div>
+                    <div class="brand-name">Kriyex</div>
+                    <div class="brand-sub">Production System</div>
+                </div>
+            </div>
 
         <nav class="sidebar-nav">
             <div class="nav-label">Main</div>
@@ -179,13 +265,9 @@
                    asp-controller="JobSlip" asp-action="Index">
                     <span class="ico">📑</span> Job Slips (Challans)
                 </a>
-                <a class="s-link s-sublink @(ctrl == "PMS" && action == "ProductionEntities" ? "active" : "")"
-                   asp-controller="PMS" asp-action="ProductionEntities">
-                    <span class="ico">🔢</span> Tracking Entities
-                </a>
-                <a class="s-link s-sublink @(ctrl == "PMS" && action == "ProcessTracking" ? "active" : "")"
+                <a class="s-link s-sublink @(ctrl == "PMS" && (action == "ProcessTracking" || action == "ProductionEntities") ? "active" : "")"
                    asp-controller="PMS" asp-action="ProcessTracking">
-                    <span class="ico">📋</span> Process Tracking
+                    <span class="ico">🔄</span> Process & Piece Tracking
                 </a>
                 <a class="s-link s-sublink @(ctrl == "QualityControl" ? "active" : "")"
                    asp-controller="QualityControl" asp-action="Index">
@@ -310,11 +392,7 @@
 
             @if (isAdmin)
             {
-                <div class="nav-label">SaaS &amp; Organization</div>
-                <a class="s-link @(ctrl == "PlatformAdmin" ? "active" : "")"
-                   asp-controller="PlatformAdmin" asp-action="Index">
-                    <span class="ico">👑</span> SaaS Client Operations
-                </a>
+                <div class="nav-label">Organization</div>
                 <a class="s-link @(ctrl == "Subscription" ? "active" : "")"
                    asp-controller="Subscription" asp-action="Index">
                     <span class="ico">☁️</span> Subscription &amp; Quotas
@@ -330,14 +408,6 @@
             <span class="page-title">@(ViewData["Title"] ?? "Dashboard")</span>
         </div>
         <div class="d-flex align-items-center gap-2.5">
-            @if (isAdmin)
-            {
-                <a asp-controller="PlatformAdmin" asp-action="Index" class="btn btn-sm btn-outline-warning d-flex align-items-center gap-1.5 shadow-sm px-2.5 py-1 text-dark" style="border-radius: 20px; font-weight: 600; font-size: 0.78rem; text-decoration: none;" title="Platform Owner Client & Revenue Operations">
-                    <i class="bi bi-shield-shaded text-warning"></i>
-                    <span>SaaS Hub</span>
-                </a>
-            }
-
             <!-- Odoo-Style Company Switcher -->
             <div class="dropdown">
                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-2 bg-white px-3 py-1.5 shadow-sm border" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 20px; font-weight: 500; font-size: 0.82rem;">
@@ -429,6 +499,7 @@
             </div>
         </div>
     </div>
+    }
 
     <div class="main-wrap">
         <div class="page-body">
