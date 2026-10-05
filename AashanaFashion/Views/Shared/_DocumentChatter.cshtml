@@ -1,0 +1,374 @@
+@model AashanaFashion.Models.DocumentChatterViewModel
+
+@{
+    var waCount = Model.Logs.Count(l => l.Channel == AashanaFashion.Models.CommunicationChannel.WhatsApp);
+    var emailCount = Model.Logs.Count(l => l.Channel == AashanaFashion.Models.CommunicationChannel.Email);
+    var noteCount = Model.Logs.Count(l => l.Channel == AashanaFashion.Models.CommunicationChannel.InternalNote);
+    var chatterDomId = $"chatter_{Model.DocumentType}_{Model.DocumentId}";
+}
+
+<div class="data-card mt-4" id="@chatterDomId">
+    <div class="data-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <div class="data-card-title mb-0">
+                <i class="bi bi-chat-left-text text-primary me-1"></i> Activity &amp; Communication Stream
+            </div>
+            <span class="af-badge b-gray">@Model.Logs.Count activities</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalWa_@chatterDomId">
+                <i class="bi bi-whatsapp"></i> Send WhatsApp
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEmail_@chatterDomId">
+                <i class="bi bi-envelope"></i> Send Email
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="$('#noteForm_@chatterDomId').slideToggle(150)">
+                <i class="bi bi-pencil-square"></i> Log Note
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Internal Note Form (Collapsed by default) -->
+    <div id="noteForm_@chatterDomId" class="p-3 bg-light border-bottom" style="display: none;">
+        <div class="mb-2">
+            <label class="form-label text-xs fw-semibold text-muted text-uppercase mb-1">Add Internal Team Note</label>
+            <textarea id="noteText_@chatterDomId" class="af-input" rows="2" placeholder="Record internal dispatch update, karigar progress, payment promise..."></textarea>
+        </div>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="$('#noteForm_@chatterDomId').slideUp(150)">Cancel</button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="submitInternalNote('@Model.DocumentType', @Model.DocumentId, '@Model.DocumentReference', '@chatterDomId')">
+                <i class="bi bi-check2"></i> Post Note
+            </button>
+        </div>
+    </div>
+
+    <div class="data-card-body p-0">
+        <!-- Filter Tabs -->
+        <div class="px-3 pt-3 pb-2 border-bottom d-flex gap-2 flex-wrap bg-white">
+            <button type="button" class="btn btn-xs btn-outline-secondary active chatter-filter" data-filter="all">All (@Model.Logs.Count)</button>
+            <button type="button" class="btn btn-xs btn-outline-secondary chatter-filter" data-filter="whatsapp">
+                <i class="bi bi-whatsapp text-success me-1"></i> WhatsApp (@waCount)
+            </button>
+            <button type="button" class="btn btn-xs btn-outline-secondary chatter-filter" data-filter="email">
+                <i class="bi bi-envelope text-primary me-1"></i> Email (@emailCount)
+            </button>
+            <button type="button" class="btn btn-xs btn-outline-secondary chatter-filter" data-filter="note">
+                <i class="bi bi-sticky text-warning me-1"></i> Notes (@noteCount)
+            </button>
+        </div>
+
+        <!-- Activity Timeline Stream -->
+        @if (!Model.Logs.Any())
+        {
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-chat-square-dots fs-3 d-block mb-2 text-secondary"></i>
+                <div class="fw-medium">No messages or activities logged yet.</div>
+                <div class="text-xs text-muted">Use the buttons above to dispatch a WhatsApp notification, email advice, or write an internal note.</div>
+            </div>
+        }
+        else
+        {
+            <div class="chatter-timeline p-3 d-flex flex-column gap-3">
+                @foreach (var log in Model.Logs)
+                {
+                    var channelClass = log.Channel switch
+                    {
+                        AashanaFashion.Models.CommunicationChannel.WhatsApp => "whatsapp",
+                        AashanaFashion.Models.CommunicationChannel.Email => "email",
+                        _ => "note"
+                    };
+
+                    var icon = log.Channel switch
+                    {
+                        AashanaFashion.Models.CommunicationChannel.WhatsApp => "bi-whatsapp text-success",
+                        AashanaFashion.Models.CommunicationChannel.Email => "bi-envelope text-primary",
+                        _ => "bi-sticky-fill text-warning"
+                    };
+
+                    var badgeColor = log.Status switch
+                    {
+                        AashanaFashion.Models.CommunicationStatus.Sent => "b-green",
+                        AashanaFashion.Models.CommunicationStatus.Delivered => "b-blue",
+                        AashanaFashion.Models.CommunicationStatus.Failed => "b-red",
+                        _ => "b-gray"
+                    };
+
+                    <div class="chatter-entry p-3 rounded-2 border bg-white shadow-xs" data-channel="@channelClass">
+                        <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-1">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle border" style="width:28px; height:28px; background:#f8fafc;">
+                                    <i class="bi @icon"></i>
+                                </span>
+                                <span class="fw-semibold text-sm text-foreground">@log.SentBy</span>
+                                <span class="text-muted text-xs">
+                                    @(log.Channel == AashanaFashion.Models.CommunicationChannel.InternalNote ? "posted a note" : $"sent via {log.Channel}")
+                                </span>
+                                @if (!string.IsNullOrWhiteSpace(log.Recipient))
+                                {
+                                    <span class="text-muted text-xs">to <strong class="text-foreground">@(log.RecipientName ?? log.Recipient)</strong> (@log.Recipient)</span>
+                                }
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="af-badge @badgeColor">@log.Status</span>
+                                <span class="text-muted text-xs" title="@log.SentAt.ToString("dd MMM yyyy, HH:mm:ss")">
+                                    @log.SentAt.ToString("dd MMM yyyy, HH:mm")
+                                </span>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(log.Subject) && log.Channel != AashanaFashion.Models.CommunicationChannel.InternalNote)
+                        {
+                            <div class="fw-semibold text-xs text-secondary mb-1">@log.Subject</div>
+                        }
+
+                        <div class="chatter-body text-sm bg-light p-2 rounded border" style="white-space: pre-wrap; font-family: inherit; font-size: 0.85rem; max-height: 180px; overflow-y: auto;">@log.Body</div>
+
+                        @if (!string.IsNullOrWhiteSpace(log.ErrorMessage))
+                        {
+                            <div class="text-danger text-xs mt-1"><i class="bi bi-exclamation-triangle me-1"></i> @log.ErrorMessage</div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Send WhatsApp Modal -->
+<div class="modal fade" id="modalWa_@chatterDomId" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="bi bi-whatsapp text-success"></i> Send WhatsApp Message
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-xs fw-semibold">Recipient Mobile No <span class="text-danger">*</span></label>
+                        <input type="text" id="waPhone_@chatterDomId" class="af-input font-monospace" value="@(Model.DefaultRecipientPhone ?? "")" placeholder="10-digit mobile or with +91" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-xs fw-semibold">Recipient Name</label>
+                        <input type="text" id="waName_@chatterDomId" class="af-input" value="@(Model.DefaultRecipientName ?? "")" placeholder="Buyer / Vendor Name" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label text-xs fw-semibold">Message Content</label>
+                        <textarea id="waMsg_@chatterDomId" class="af-input font-monospace text-xs" rows="8">@(Model.PreFilledWhatsAppText ?? "")</textarea>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="waDirectApi_@chatterDomId">
+                            <label class="form-check-label text-xs" for="waDirectApi_@chatterDomId">
+                                <strong>Direct Meta Cloud API Dispatch</strong> (Sends silently in background via Meta API instead of opening WhatsApp Web)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="dispatchWhatsApp('@Model.DocumentType', @Model.DocumentId, '@Model.DocumentReference', '@chatterDomId')">
+                    <i class="bi bi-send"></i> Send WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Send Email Modal -->
+<div class="modal fade" id="modalEmail_@chatterDomId" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="bi bi-envelope text-primary"></i> Send Email Transaction Advice
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-xs fw-semibold">Recipient Email <span class="text-danger">*</span></label>
+                        <input type="email" id="emailTo_@chatterDomId" class="af-input" value="@(Model.DefaultRecipientEmail ?? "")" placeholder="buyer@clientcompany.com" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-xs fw-semibold">Recipient Name</label>
+                        <input type="text" id="emailName_@chatterDomId" class="af-input" value="@(Model.DefaultRecipientName ?? "")" placeholder="Company / Contact Name" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label text-xs fw-semibold">Email Subject <span class="text-danger">*</span></label>
+                        <input type="text" id="emailSubject_@chatterDomId" class="af-input" value="@(Model.PreFilledEmailSubject ?? "")" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label text-xs fw-semibold">Email HTML Body</label>
+                        <textarea id="emailHtml_@chatterDomId" class="af-input font-monospace text-xs" rows="8">@(Model.PreFilledEmailHtml ?? "")</textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="dispatchEmail('@Model.DocumentType', @Model.DocumentId, '@Model.DocumentReference', '@chatterDomId')">
+                    <i class="bi bi-send-check"></i> Send Email
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Filtering tabs
+    $('#@chatterDomId .chatter-filter').on('click', function() {
+        $('#@chatterDomId .chatter-filter').removeClass('active');
+        $(this).addClass('active');
+        var filter = $(this).data('filter');
+        if (filter === 'all') {
+            $('#@chatterDomId .chatter-entry').show();
+        } else {
+            $('#@chatterDomId .chatter-entry').hide();
+            $('#@chatterDomId .chatter-entry[data-channel="' + filter + '"]').show();
+        }
+    });
+
+    function getAfToken() {
+        return $('input[name="__RequestVerificationToken"]').val() || '';
+    }
+
+    function dispatchWhatsApp(docType, docId, docRef, chatterId) {
+        var phone = $('#waPhone_' + chatterId).val().trim();
+        var name = $('#waName_' + chatterId).val().trim();
+        var msg = $('#waMsg_' + chatterId).val().trim();
+        var isDirect = $('#waDirectApi_' + chatterId).is(':checked');
+
+        if (!phone) {
+            alert('Please enter a recipient phone number.');
+            return;
+        }
+
+        $.ajax({
+            url: '/Communication/SendWhatsApp',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { 'RequestVerificationToken': getAfToken() },
+            data: JSON.stringify({
+                documentType: docType,
+                documentId: docId,
+                documentReference: docRef,
+                channel: 'WhatsApp',
+                recipient: phone,
+                recipientName: name,
+                message: msg,
+                sendViaDirectApi: isDirect
+            }),
+            success: function(res) {
+                var modal = bootstrap.Modal.getInstance(document.getElementById('modalWa_' + chatterId));
+                if (modal) modal.hide();
+
+                if (res.redirectUrl) {
+                    window.open(res.redirectUrl, '_blank');
+                }
+
+                if (window.afToast) {
+                    afToast(res.message, 'success');
+                } else {
+                    alert(res.message);
+                }
+
+                // Refresh chatter container
+                reloadChatter(docType, docId, chatterId);
+            },
+            error: function(xhr) {
+                alert(xhr.responseJSON?.message || 'Failed to dispatch WhatsApp.');
+            }
+        });
+    }
+
+    function dispatchEmail(docType, docId, docRef, chatterId) {
+        var email = $('#emailTo_' + chatterId).val().trim();
+        var name = $('#emailName_' + chatterId).val().trim();
+        var subject = $('#emailSubject_' + chatterId).val().trim();
+        var html = $('#emailHtml_' + chatterId).val().trim();
+
+        if (!email) {
+            alert('Please enter a recipient email.');
+            return;
+        }
+
+        $.ajax({
+            url: '/Communication/SendEmail',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { 'RequestVerificationToken': getAfToken() },
+            data: JSON.stringify({
+                documentType: docType,
+                documentId: docId,
+                documentReference: docRef,
+                channel: 'Email',
+                recipient: email,
+                recipientName: name,
+                subject: subject,
+                message: html
+            }),
+            success: function(res) {
+                var modal = bootstrap.Modal.getInstance(document.getElementById('modalEmail_' + chatterId));
+                if (modal) modal.hide();
+
+                if (window.afToast) {
+                    afToast(res.message, 'success');
+                } else {
+                    alert(res.message);
+                }
+
+                // Refresh chatter container
+                reloadChatter(docType, docId, chatterId);
+            },
+            error: function(xhr) {
+                alert(xhr.responseJSON?.message || 'Failed to dispatch email.');
+            }
+        });
+    }
+
+    function submitInternalNote(docType, docId, docRef, chatterId) {
+        var note = $('#noteText_' + chatterId).val().trim();
+        if (!note) {
+            alert('Note cannot be empty.');
+            return;
+        }
+
+        $.ajax({
+            url: '/Communication/AddInternalNote',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { 'RequestVerificationToken': getAfToken() },
+            data: JSON.stringify({
+                documentType: docType,
+                documentId: docId,
+                documentReference: docRef,
+                channel: 'InternalNote',
+                message: note
+            }),
+            success: function(res) {
+                $('#noteText_' + chatterId).val('');
+                $('#noteForm_' + chatterId).slideUp(150);
+
+                if (window.afToast) {
+                    afToast(res.message, 'success');
+                }
+
+                // Refresh chatter container
+                reloadChatter(docType, docId, chatterId);
+            },
+            error: function(xhr) {
+                alert(xhr.responseJSON?.message || 'Failed to save internal note.');
+            }
+        });
+    }
+
+    function reloadChatter(docType, docId, chatterId) {
+        $.get('/Communication/Chatter?docType=' + encodeURIComponent(docType) + '&docId=' + docId, function(html) {
+            $('#' + chatterId).replaceWith(html);
+        });
+    }
+</script>

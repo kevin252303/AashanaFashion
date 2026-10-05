@@ -1,4 +1,5 @@
 @model AashanaFashion.Models.SalesOrder
+@inject AashanaFashion.Services.ICommunicationService CommunicationService
 @{
     ViewData["Title"] = $"Sales Order — {Model.SoNumber}";
     var totalOrdered = Model.Details.Sum(d => d.Quantity);
@@ -14,6 +15,7 @@
         SalesOrderStatus.Dispatched => "b-green",
         _ => "b-gray"
     };
+    var chatterVm = await CommunicationService.GetChatterViewModelAsync("SalesOrder", Model.Id);
 }
 
 <div class="page-header">
@@ -25,14 +27,25 @@
         </div>
         <p class="page-sub">@(Model.Customer?.CustomerName ?? "—") · Ordered @Model.OrderDate.ToString("dd MMM yyyy")</p>
     </div>
-    @if (canDispatch)
-    {
-        <div class="page-actions">
+    <div class="page-actions">
+        <div class="btn-group">
+            <a asp-controller="WhatsApp" asp-action="SalesOrder" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary">
+                <i class="bi bi-whatsapp text-success"></i> WhatsApp
+            </a>
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#modalWa_chatter_SalesOrder_@Model.Id" title="Edit message before sending">
+                <i class="bi bi-sliders"></i>
+            </button>
+        </div>
+        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#modalEmail_chatter_SalesOrder_@Model.Id">
+            <i class="bi bi-envelope text-primary"></i> Email order
+        </button>
+        @if (canDispatch)
+        {
             <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-secondary"><i class="bi bi-pencil"></i> Edit</a>
             <a asp-controller="Invoice" asp-action="Create" asp-route-salesOrderId="@Model.Id" class="btn btn-secondary"><i class="bi bi-receipt"></i> Tax invoice</a>
             <a asp-action="CreateChallan" asp-route-id="@Model.Id" class="btn btn-primary"><i class="bi bi-truck"></i> Delivery challan</a>
-        </div>
-    }
+        }
+    </div>
 </div>
 
 <div class="data-card mb-4">
@@ -238,6 +251,8 @@
                             <td class="cell-num text-success fw-semibold">@ch.TotalQuantity</td>
                             <td class="cell-actions">
                                 <div class="row-actions">
+                                    <a asp-controller="WhatsApp" asp-action="DispatchChallan" asp-route-id="@ch.Id" target="_blank" class="row-action" title="Send WhatsApp dispatch advice to buyer" aria-label="Send WhatsApp"><i class="bi bi-whatsapp text-success"></i></a>
+                                    <a asp-controller="Invoice" asp-action="Create" asp-route-salesOrderId="@Model.Id" asp-route-deliveryChallanId="@ch.Id" class="row-action" title="Generate invoice from this delivery challan" aria-label="Generate invoice"><i class="bi bi-receipt"></i></a>
                                     <a asp-action="PrintChallan" asp-route-id="@ch.Id" target="_blank" class="row-action" title="Print challan" aria-label="Print challan"><i class="bi bi-printer"></i></a>
                                     <a asp-action="PrintChallanEwayBill" asp-route-id="@ch.Id" target="_blank" class="row-action" title="Print e-way bill" aria-label="Print e-way bill"><i class="bi bi-file-earmark-text"></i></a>
                                 </div>
@@ -249,3 +264,6 @@
         </div>
     }
 </div>
+
+<partial name="_DocumentChatter" model="chatterVm" />
+

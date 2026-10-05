@@ -85,6 +85,9 @@ namespace AashanaFashion.Data
         public DbSet<JournalEntryLine> JournalEntryLines { get; set; }
         public DbSet<Lead> Leads { get; set; }
         public DbSet<LeadActivity> LeadActivities { get; set; }
+        public DbSet<BankPaymentBatch> BankPaymentBatches { get; set; }
+        public DbSet<BankPaymentBatchItem> BankPaymentBatchItems { get; set; }
+        public DbSet<CommunicationLog> CommunicationLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

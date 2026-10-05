@@ -1,0 +1,770 @@
+@model AashanaFashion.Models.BankBulkPaymentHubViewModel
+@{
+    ViewData["Title"] = "Bank Bulk Payments (CMS)";
+}
+
+<div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a asp-controller="Accounting" asp-action="Index">Accounting</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Bank bulk payments</li>
+            </ol>
+        </nav>
+        <h1 class="page-title mb-0">Bank bulk payments (CMS)</h1>
+        <p class="text-muted text-sm mb-0">Export multi-bank formatted payout files (HDFC, ICICI, SBI, Axis, Kotak) for corporate net banking bulk upload.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-primary" id="btnOpenExportModal" data-bs-toggle="modal" data-bs-target="#exportBatchModal" disabled>
+            <i class="bi bi-file-earmark-arrow-down"></i> Export selected (<span id="btnSelectedCount">0</span>)
+        </button>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Total pending payable</div>
+            <div class="stat-value tabular">₹@Model.TotalPendingPayable.ToString("N2")</div>
+            <div class="text-xs text-muted mt-1">@Model.PendingCount total approved payables</div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Vendor bills to pay</div>
+            <div class="stat-value tabular">₹@Model.TotalPendingVendorBills.ToString("N2")</div>
+            <div class="text-xs text-muted mt-1">@Model.VendorBills.Count suppliers with open bills</div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Karigar job slips</div>
+            <div class="stat-value tabular">₹@Model.TotalPendingJobSlips.ToString("N2")</div>
+            <div class="text-xs text-muted mt-1">@Model.JobSlips.Count job worker slips ready</div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Staff salaries (Payroll)</div>
+            <div class="stat-value tabular">₹@Model.TotalPendingSalaries.ToString("N2")</div>
+            <div class="text-xs text-muted mt-1">@Model.Salaries.Count employees awaiting payout</div>
+        </div>
+    </div>
+</div>
+
+<!-- Company Debit Account Info Bar -->
+<div class="card border mb-4">
+    <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle p-2 bg-light text-primary">
+                <i class="bi bi-bank2 fs-5"></i>
+            </div>
+            <div>
+                <div class="text-xs text-muted fw-semibold">COMPANY DEBIT ACCOUNT</div>
+                <div class="fw-semibold text-sm">
+                    @(Model.Company.BankName ?? "Default Bank") &bull;
+                    <span class="font-monospace">@(Model.Company.BankAccountNumber ?? "Not configured")</span> &bull;
+                    IFSC: <span class="font-monospace">@(Model.Company.BankIfsc ?? "HDFC0000240")</span>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-light text-secondary border">Corporate Net Banking Ready</span>
+            <a asp-controller="Company" asp-action="Edit" asp-route-id="@Model.Company.Id" class="btn btn-ghost btn-sm text-xs">
+                <i class="bi bi-pencil"></i> Edit bank info
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation Tabs -->
+<ul class="nav nav-tabs mb-3" id="payoutTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="vendors-tab" data-bs-toggle="tab" data-bs-target="#vendorsTabPane" type="button" role="tab">
+            <i class="bi bi-truck me-1"></i> Vendor bills
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1">@Model.VendorBills.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="karigars-tab" data-bs-toggle="tab" data-bs-target="#karigarsTabPane" type="button" role="tab">
+            <i class="bi bi-scissors me-1"></i> Karigar job slips
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1">@Model.JobSlips.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="salaries-tab" data-bs-toggle="tab" data-bs-target="#salariesTabPane" type="button" role="tab">
+            <i class="bi bi-person-badge me-1"></i> Staff salaries
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1">@Model.Salaries.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="batches-tab" data-bs-toggle="tab" data-bs-target="#batchesTabPane" type="button" role="tab">
+            <i class="bi bi-clock-history me-1"></i> Exported batch history
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1">@Model.RecentBatches.Count</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="payoutTabsContent">
+    <!-- TAB 1: VENDOR BILLS -->
+    <div class="tab-pane fade show active" id="vendorsTabPane" role="tabpanel">
+        <div class="table-card">
+            <div class="table-toolbar d-flex justify-content-between align-items-center">
+                <div class="text-sm fw-semibold">
+                    <span class="text-muted">Payable to suppliers for fabrics, yarns &amp; raw materials</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm select-all-btn" data-target="vendor-check">
+                        <i class="bi bi-check-all"></i> Select all
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-sm deselect-all-btn" data-target="vendor-check">
+                        Deselect
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="af-table table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" class="form-check-input group-master-check" data-target="vendor-check" title="Select all vendors"></th>
+                            <th>Beneficiary / Vendor</th>
+                            <th>PO / Reference</th>
+                            <th>Bank Name</th>
+                            <th>Account No</th>
+                            <th>IFSC Code</th>
+                            <th class="text-end">Payable amount</th>
+                            <th class="text-center">Bank validation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.VendorBills.Any())
+                        {
+                            @foreach (var item in Model.VendorBills)
+                            {
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input payable-checkbox vendor-check"
+                                               value="@item.Key"
+                                               data-amount="@item.PayableAmount"
+                                               data-name="@item.BeneficiaryName"
+                                               data-valid="@(item.HasValidBankDetails ? "1" : "0")">
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">@item.BeneficiaryName</div>
+                                        <div class="text-xs text-muted">@item.Description</div>
+                                    </td>
+                                    <td>
+                                        <span class="mono-id">@item.ReferenceNumber</span>
+                                        <div class="text-xs text-muted">@item.ReferenceDate.ToString("dd/MM/yyyy")</div>
+                                    </td>
+                                    <td>@(item.BankName ?? "—")</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(item.AccountNumber))
+                                        {
+                                            <span class="font-monospace">@item.AccountNumber</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger text-xs"><i class="bi bi-exclamation-circle"></i> Missing</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(item.IfscCode))
+                                        {
+                                            <span class="font-monospace">@item.IfscCode</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger text-xs"><i class="bi bi-exclamation-circle"></i> Missing</span>
+                                        }
+                                    </td>
+                                    <td class="text-end tabular fw-semibold">₹@item.PayableAmount.ToString("N2")</td>
+                                    <td class="text-center">
+                                        @if (item.HasValidBankDetails)
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                                <i class="bi bi-check-circle"></i> Verified
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle" title="@item.BankValidationError">
+                                                <i class="bi bi-exclamation-triangle"></i> @(item.BankValidationError ?? "Invalid")
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">
+                                    <i class="bi bi-check2-circle fs-3 d-block mb-1 text-success"></i>
+                                    All vendor bills have been cleared and paid.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer d-flex justify-content-between text-xs text-muted">
+                <span>Showing <strong>@Model.VendorBills.Count</strong> vendor bills</span>
+                <span>Total: <strong>₹@Model.TotalPendingVendorBills.ToString("N2")</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: KARIGAR JOB SLIPS -->
+    <div class="tab-pane fade" id="karigarsTabPane" role="tabpanel">
+        <div class="table-card">
+            <div class="table-toolbar d-flex justify-content-between align-items-center">
+                <div class="text-sm fw-semibold">
+                    <span class="text-muted">Payable to job workers &amp; karigars for dyeing, embroidery &amp; stitching</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm select-all-btn" data-target="job-check">
+                        <i class="bi bi-check-all"></i> Select all
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-sm deselect-all-btn" data-target="job-check">
+                        Deselect
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="af-table table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" class="form-check-input group-master-check" data-target="job-check" title="Select all job slips"></th>
+                            <th>Karigar / Vendor</th>
+                            <th>Slip Number</th>
+                            <th>Bank Name</th>
+                            <th>Account No</th>
+                            <th>IFSC Code</th>
+                            <th class="text-end">Wage amount</th>
+                            <th class="text-center">Bank validation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.JobSlips.Any())
+                        {
+                            @foreach (var item in Model.JobSlips)
+                            {
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input payable-checkbox job-check"
+                                               value="@item.Key"
+                                               data-amount="@item.PayableAmount"
+                                               data-name="@item.BeneficiaryName"
+                                               data-valid="@(item.HasValidBankDetails ? "1" : "0")">
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">@item.BeneficiaryName</div>
+                                        <div class="text-xs text-muted">@item.Description</div>
+                                    </td>
+                                    <td>
+                                        <span class="mono-id">@item.ReferenceNumber</span>
+                                        <div class="text-xs text-muted">@item.ReferenceDate.ToString("dd/MM/yyyy")</div>
+                                    </td>
+                                    <td>@(item.BankName ?? "—")</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(item.AccountNumber))
+                                        {
+                                            <span class="font-monospace">@item.AccountNumber</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger text-xs"><i class="bi bi-exclamation-circle"></i> Missing</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(item.IfscCode))
+                                        {
+                                            <span class="font-monospace">@item.IfscCode</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger text-xs"><i class="bi bi-exclamation-circle"></i> Missing</span>
+                                        }
+                                    </td>
+                                    <td class="text-end tabular fw-semibold">₹@item.PayableAmount.ToString("N2")</td>
+                                    <td class="text-center">
+                                        @if (item.HasValidBankDetails)
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                                <i class="bi bi-check-circle"></i> Verified
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle" title="@item.BankValidationError">
+                                                <i class="bi bi-exclamation-triangle"></i> @(item.BankValidationError ?? "Invalid")
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">
+                                    <i class="bi bi-check2-circle fs-3 d-block mb-1 text-success"></i>
+                                    No pending Karigar job slips awaiting payment.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer d-flex justify-content-between text-xs text-muted">
+                <span>Showing <strong>@Model.JobSlips.Count</strong> job slips</span>
+                <span>Total: <strong>₹@Model.TotalPendingJobSlips.ToString("N2")</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: STAFF SALARIES -->
+    <div class="tab-pane fade" id="salariesTabPane" role="tabpanel">
+        <div class="table-card">
+            <div class="table-toolbar d-flex justify-content-between align-items-center">
+                <div class="text-sm fw-semibold">
+                    <span class="text-muted">Staff payroll &amp; net payable salaries</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm select-all-btn" data-target="sal-check">
+                        <i class="bi bi-check-all"></i> Select all
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-sm deselect-all-btn" data-target="sal-check">
+                        Deselect
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="af-table table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" class="form-check-input group-master-check" data-target="sal-check" title="Select all salaries"></th>
+                            <th>Employee Name</th>
+                            <th>Period</th>
+                            <th>Bank Name</th>
+                            <th>Account No</th>
+                            <th>IFSC Code</th>
+                            <th class="text-end">Net salary</th>
+                            <th class="text-center">Bank validation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Salaries.Any())
+                        {
+                            @foreach (var item in Model.Salaries)
+                            {
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input payable-checkbox sal-check"
+                                               value="@item.Key"
+                                               data-amount="@item.PayableAmount"
+                                               data-name="@item.BeneficiaryName"
+                                               data-valid="@(item.HasValidBankDetails ? "1" : "0")">
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">@item.BeneficiaryName</div>
+                                        <div class="text-xs text-muted">@item.Description</div>
+                                    </td>
+                                    <td>
+                                        <span class="mono-id">@item.ReferenceNumber</span>
+                                    </td>
+                                    <td>@(item.BankName ?? "—")</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(item.AccountNumber))
+                                        {
+                                            <span class="font-monospace">@item.AccountNumber</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger text-xs"><i class="bi bi-exclamation-circle"></i> Missing</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(item.IfscCode))
+                                        {
+                                            <span class="font-monospace">@item.IfscCode</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger text-xs"><i class="bi bi-exclamation-circle"></i> Missing</span>
+                                        }
+                                    </td>
+                                    <td class="text-end tabular fw-semibold">₹@item.PayableAmount.ToString("N2")</td>
+                                    <td class="text-center">
+                                        @if (item.HasValidBankDetails)
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                                <i class="bi bi-check-circle"></i> Verified
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle" title="@item.BankValidationError">
+                                                <i class="bi bi-exclamation-triangle"></i> @(item.BankValidationError ?? "Invalid")
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">
+                                    <i class="bi bi-check2-circle fs-3 d-block mb-1 text-success"></i>
+                                    No pending employee payroll salaries to payout.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer d-flex justify-content-between text-xs text-muted">
+                <span>Showing <strong>@Model.Salaries.Count</strong> staff salaries</span>
+                <span>Total: <strong>₹@Model.TotalPendingSalaries.ToString("N2")</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: BATCH HISTORY -->
+    <div class="tab-pane fade" id="batchesTabPane" role="tabpanel">
+        <div class="table-card">
+            <div class="table-toolbar d-flex justify-content-between align-items-center">
+                <div class="text-sm fw-semibold">
+                    <span class="text-muted">History of exported bank payout files and settlement status</span>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="af-table table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Batch Number</th>
+                            <th>Bank Format</th>
+                            <th>Debit Account</th>
+                            <th>Payment Date</th>
+                            <th class="text-center">Beneficiaries</th>
+                            <th class="text-end">Total Amount</th>
+                            <th>Status</th>
+                            <th>UTR / Ref</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.RecentBatches.Any())
+                        {
+                            @foreach (var batch in Model.RecentBatches)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-action="BatchDetails" asp-route-id="@batch.Id" class="fw-semibold font-monospace">
+                                            @batch.BatchNumber
+                                        </a>
+                                        <div class="text-xs text-muted">@batch.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-secondary border">@batch.BankFormat</span>
+                                    </td>
+                                    <td>
+                                        <span class="font-monospace text-xs">@batch.DebitAccountNumber</span>
+                                        <div class="text-xs text-muted">@(batch.DebitBankName ?? "Bank")</div>
+                                    </td>
+                                    <td>@batch.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-center">@batch.TotalBeneficiaries</td>
+                                    <td class="text-end tabular fw-semibold">₹@batch.TotalAmount.ToString("N2")</td>
+                                    <td>
+                                        @if (batch.Status == BankPaymentBatchStatus.Processed)
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                                <i class="bi bi-check-circle"></i> Processed
+                                            </span>
+                                        }
+                                        else if (batch.Status == BankPaymentBatchStatus.Exported)
+                                        {
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                                <i class="bi bi-file-earmark-check"></i> Exported
+                                            </span>
+                                        }
+                                        else if (batch.Status == BankPaymentBatchStatus.Cancelled)
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Cancelled</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary border">@batch.Status</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(batch.BankReferenceUtr))
+                                        {
+                                            <span class="mono-id">@batch.BankReferenceUtr</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted text-xs">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="DownloadFile" asp-route-id="@batch.Id" class="btn btn-secondary btn-sm" title="Download bank file">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                            <a asp-action="BatchDetails" asp-route-id="@batch.Id" class="btn btn-ghost btn-sm" title="View details & reconcile">
+                                                <i class="bi bi-arrow-right"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center py-4 text-muted">
+                                    No bulk payout batches generated yet. Select items above to create your first bank upload file.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer d-flex justify-content-between text-xs text-muted">
+                <span>Showing <strong>@Model.RecentBatches.Count</strong> batches</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Selection Action Bar -->
+<div id="floatingActionBar" class="card border-primary shadow-sm position-fixed bottom-0 start-50 translate-middle-x mb-4 d-none" style="z-index: 1040; width: 90%; max-width: 750px;">
+    <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between gap-3 bg-white rounded">
+        <div>
+            <span class="fw-semibold" id="barSelectedCount">0 items selected</span> &bull;
+            <span class="text-primary fw-bold tabular fs-6" id="barSelectedTotal">₹0.00</span>
+            <div class="text-xs text-muted" id="barValidationWarning"></div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-ghost btn-sm" id="btnClearSelection">Clear</button>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#exportBatchModal">
+                <i class="bi bi-download"></i> Configure bank export
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Export Bank Payment Batch -->
+<div class="modal fade" id="exportBatchModal" tabindex="-1" aria-labelledby="exportBatchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <form asp-action="CreateBatch" method="post" id="createBatchForm">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="exportBatchModalLabel">Export corporate bank payment file</h5>
+                        <div class="text-xs text-muted">Generate formatted file ready to upload to corporate internet banking</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Selected Summary Box -->
+                    <div class="p-3 bg-light rounded border mb-3">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="text-xs text-muted">TOTAL BENEFICIARIES</div>
+                                <div class="fw-bold fs-5" id="modalBeneficiaryCount">0</div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <div class="text-xs text-muted">TOTAL PAYOUT AMOUNT</div>
+                                <div class="fw-bold fs-5 text-primary tabular" id="modalPayoutTotal">₹0.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <!-- Target Bank Format -->
+                        <div class="col-12 col-md-6">
+                            <label for="BankFormat" class="form-label text-sm fw-semibold">Target corporate bank format <span class="text-danger">*</span></label>
+                            <select name="BankFormat" id="BankFormat" class="form-select form-select-sm" required>
+                                <option value="HdfcENet" selected>HDFC Bank (ENet Corporate Upload)</option>
+                                <option value="IciciCib">ICICI Bank (CIB Corporate Upload)</option>
+                                <option value="SbiCmp">State Bank of India (SBI CMP / Saral)</option>
+                                <option value="AxisCms">Axis Bank (CMS / Enlite)</option>
+                                <option value="KotakCms">Kotak Mahindra Bank (CMS Payout)</option>
+                                <option value="StandardNeftRtgs">Universal RBI NEFT / RTGS (All Banks)</option>
+                            </select>
+                            <div class="text-xs text-muted mt-1" id="bankFormatHelper">
+                                Generates CSV matching official HDFC ENet multi-record specification.
+                            </div>
+                        </div>
+
+                        <!-- Value Date -->
+                        <div class="col-12 col-md-6">
+                            <label for="PaymentDate" class="form-label text-sm fw-semibold">Processing / Value date <span class="text-danger">*</span></label>
+                            <input type="date" name="PaymentDate" id="PaymentDate" class="form-control form-control-sm" value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                            <div class="text-xs text-muted mt-1">Date when bank will execute the fund transfer.</div>
+                        </div>
+
+                        <!-- Debit Account Number -->
+                        <div class="col-12 col-md-6">
+                            <label for="CustomDebitAccount" class="form-label text-sm fw-semibold">Debit account number <span class="text-danger">*</span></label>
+                            <input type="text" name="CustomDebitAccount" id="CustomDebitAccount" class="form-control form-control-sm font-monospace"
+                                   value="@(Model.Company.BankAccountNumber ?? "50200012345678")" required />
+                            <div class="text-xs text-muted mt-1">Account to debit in your corporate net banking.</div>
+                        </div>
+
+                        <!-- Notes / Reference -->
+                        <div class="col-12 col-md-6">
+                            <label for="Notes" class="form-label text-sm fw-semibold">Batch memo / notes</label>
+                            <input type="text" name="Notes" id="Notes" class="form-control form-control-sm" placeholder="e.g. October Week 1 Vendor & Karigar Payout" />
+                            <div class="text-xs text-muted mt-1">Optional internal description.</div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden inputs container for selected keys -->
+                    <div id="hiddenKeysContainer"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm" id="btnSubmitBatch">
+                        <i class="bi bi-file-earmark-arrow-down"></i> Create batch &amp; download file
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    (function () {
+        var selectedKeys = new Set();
+        var selectedTotal = 0;
+        var invalidCount = 0;
+
+        var checkboxes = document.querySelectorAll('.payable-checkbox');
+        var btnOpenExport = document.getElementById('btnOpenExportModal');
+        var btnCount = document.getElementById('btnSelectedCount');
+        var floatingBar = document.getElementById('floatingActionBar');
+        var barCount = document.getElementById('barSelectedCount');
+        var barTotal = document.getElementById('barSelectedTotal');
+        var barWarning = document.getElementById('barValidationWarning');
+        var modalCount = document.getElementById('modalBeneficiaryCount');
+        var modalTotal = document.getElementById('modalPayoutTotal');
+        var hiddenContainer = document.getElementById('hiddenKeysContainer');
+        var formatSelect = document.getElementById('BankFormat');
+        var formatHelper = document.getElementById('bankFormatHelper');
+
+        var bankDescriptions = {
+            'HdfcENet': 'Generates CSV matching official HDFC ENet multi-record upload template.',
+            'IciciCib': 'Generates CSV matching ICICI Corporate Internet Banking (CIB) Maker-Checker file format.',
+            'SbiCmp': 'Generates CSV matching State Bank of India Corporate Cash Management Portal (CMP / Saral).',
+            'AxisCms': 'Generates CSV matching Axis Bank Corporate CMS / Enlite file specification.',
+            'KotakCms': 'Generates CSV matching Kotak Mahindra Bank Corporate CMS payout format.',
+            'StandardNeftRtgs': 'Generates Universal RBI NEFT/RTGS CSV compatible with all Indian commercial and cooperative banks.'
+        };
+
+        if (formatSelect && formatHelper) {
+            formatSelect.addEventListener('change', function () {
+                formatHelper.textContent = bankDescriptions[formatSelect.value] || '';
+            });
+        }
+
+        function updateSelectionState() {
+            selectedKeys.clear();
+            selectedTotal = 0;
+            invalidCount = 0;
+
+            checkboxes.forEach(function (cb) {
+                if (cb.checked) {
+                    selectedKeys.add(cb.value);
+                    selectedTotal += parseFloat(cb.dataset.amount || 0);
+                    if (cb.dataset.valid === "0") {
+                        invalidCount++;
+                    }
+                }
+            });
+
+            var count = selectedKeys.size;
+            if (btnCount) btnCount.textContent = count;
+            if (btnOpenExport) btnOpenExport.disabled = (count === 0);
+
+            if (count > 0) {
+                floatingBar.classList.remove('d-none');
+                barCount.textContent = count + ' item' + (count > 1 ? 's' : '') + ' selected';
+                barTotal.textContent = '₹' + selectedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                modalCount.textContent = count;
+                modalTotal.textContent = '₹' + selectedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                if (invalidCount > 0) {
+                    barWarning.innerHTML = '<span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle"></i> ' + invalidCount + ' selected beneficiary has missing or invalid bank details!</span>';
+                } else {
+                    barWarning.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> All selected bank details verified</span>';
+                }
+            } else {
+                floatingBar.classList.add('d-none');
+            }
+
+            // Sync hidden inputs for modal form
+            hiddenContainer.innerHTML = '';
+            selectedKeys.forEach(function (k) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'SelectedKeys';
+                input.value = k;
+                hiddenContainer.appendChild(input);
+            });
+        }
+
+        checkboxes.forEach(function (cb) {
+            cb.addEventListener('change', updateSelectionState);
+        });
+
+        // Group master select
+        document.querySelectorAll('.group-master-check').forEach(function (master) {
+            master.addEventListener('change', function () {
+                var targetClass = master.dataset.target;
+                document.querySelectorAll('.' + targetClass).forEach(function (cb) {
+                    cb.checked = master.checked;
+                });
+                updateSelectionState();
+            });
+        });
+
+        // Select All / Deselect buttons
+        document.querySelectorAll('.select-all-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var targetClass = btn.dataset.target;
+                document.querySelectorAll('.' + targetClass).forEach(function (cb) {
+                    cb.checked = true;
+                });
+                updateSelectionState();
+            });
+        });
+
+        document.querySelectorAll('.deselect-all-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var targetClass = btn.dataset.target;
+                document.querySelectorAll('.' + targetClass).forEach(function (cb) {
+                    cb.checked = false;
+                });
+                updateSelectionState();
+            });
+        });
+
+        var btnClear = document.getElementById('btnClearSelection');
+        if (btnClear) {
+            btnClear.addEventListener('click', function () {
+                checkboxes.forEach(function (cb) { cb.checked = false; });
+                document.querySelectorAll('.group-master-check').forEach(function (cb) { cb.checked = false; });
+                updateSelectionState();
+            });
+        }
+    })();
+</script>
+}

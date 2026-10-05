@@ -43,7 +43,7 @@
     bool inProduction = ctrl is "Production" or "PMS" or "QualityControl" or "JobSlip" or "Barcode" || (ctrl == "ReadyProduct" && action == "Assemble");
     bool inUsers      = ctrl is "UserManagement" or "Role";
     bool inHr         = ctrl is "Employee" or "Attendance" or "Salary" or "BiometricDevice";
-    bool inAccounts   = ctrl == "Accounting" && action != "Commissions";
+    bool inAccounts   = (ctrl == "Accounting" && action != "Commissions") || ctrl == "BankPayment";
 
     string crumbGroup = ctrl switch
     {
@@ -54,7 +54,7 @@
         "Dying" or "RollPress" => "Job Work",
         "UserManagement" or "Role" => "Users",
         "Employee" or "Attendance" or "Salary" or "BiometricDevice" => "HR & Payroll",
-        "Invoice" or "Accounting" or "GstReturn" => "Finance",
+        "Invoice" or "Accounting" or "GstReturn" or "BankPayment" => "Finance",
         "PlatformAdmin" or "Subscription" => "SaaS",
         "Account" => "Account",
         _ when inProduction => "Production",
@@ -405,6 +405,7 @@
                             <a class="sb-sublink @Active(ctrl == "Accounting" && action is "AgedReceivables" or "CustomerStatement")" asp-controller="Accounting" asp-action="AgedReceivables">Aged Receivables (AR)</a>
                             <a class="sb-sublink @Active(ctrl == "Accounting" && action is "AgedPayables" or "VendorStatement")" asp-controller="Accounting" asp-action="AgedPayables">Aged Payables (AP)</a>
                             <a class="sb-sublink @Active(ctrl == "Accounting" && action == "ThreeWayMatching")" asp-controller="Accounting" asp-action="ThreeWayMatching">3-Way Matching</a>
+                            <a class="sb-sublink @Active(ctrl == "BankPayment")" asp-controller="BankPayment" asp-action="Index">Bank Bulk Payments (CMS)</a>
                         </div>
                     </div>
                     <a class="sb-link @Active(ctrl == "GstReturn")" asp-controller="GstReturn" asp-action="Index">

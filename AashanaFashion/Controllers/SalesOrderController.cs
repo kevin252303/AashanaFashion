@@ -437,6 +437,41 @@ public class SalesOrderController : Controller
         _context.DeliveryChallans.Add(challan);
         await _context.SaveChangesAsync();
 
+        // Automated Chatter & Activity Tracking
+        var loggedUser = User.Identity?.Name ?? "User";
+        var custName = challan.Customer?.CustomerName ?? order.Customer?.CustomerName ?? "Customer";
+        _context.CommunicationLogs.Add(new CommunicationLog
+        {
+            DocumentType = "SalesOrder",
+            DocumentId = order.Id,
+            DocumentReference = order.SoNumber,
+            Channel = CommunicationChannel.InternalNote,
+            Recipient = "Dispatch Desk",
+            RecipientName = custName,
+            Subject = $"Delivery Challan #{challan.ChallanNumber} Generated",
+            Body = $"Generated delivery challan #{challan.ChallanNumber} for {challan.Items.Sum(i => i.QuantityDispatched)} pcs. Transporter: {challan.TransporterName ?? "Direct Vehicle"}, Vehicle: {challan.VehicleNumber ?? "N/A"}, LR: {challan.LrNumber ?? "N/A"}.",
+            Status = CommunicationStatus.Sent,
+            SentAt = DateTime.Now,
+            SentBy = loggedUser
+        });
+
+        _context.CommunicationLogs.Add(new CommunicationLog
+        {
+            DocumentType = "DeliveryChallan",
+            DocumentId = challan.Id,
+            DocumentReference = challan.ChallanNumber,
+            Channel = CommunicationChannel.InternalNote,
+            Recipient = "Dispatch Desk",
+            RecipientName = custName,
+            Subject = "Delivery Challan Issued",
+            Body = $"Challan #{challan.ChallanNumber} created against {order.SoNumber}. Boxes: {challan.NumberOfBoxes}, Dispatched: {challan.Items.Sum(i => i.QuantityDispatched)} pcs.",
+            Status = CommunicationStatus.Sent,
+            SentAt = DateTime.Now,
+            SentBy = loggedUser
+        });
+
+        await _context.SaveChangesAsync();
+
         TempData["Success"] = $"Delivery Challan '{challan.ChallanNumber}' generated successfully.";
         return RedirectToAction(nameof(PrintChallan), new { id = challan.Id });
     }

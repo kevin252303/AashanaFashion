@@ -1,9 +1,11 @@
 @model AashanaFashion.Models.TaxInvoice
+@inject AashanaFashion.Services.ICommunicationService CommunicationService
 @{
     ViewData["Title"] = $"Tax Invoice {Model.InvoiceNumber}";
     bool isOverdue = Model.DueDate < DateTime.Today && Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Paid;
     bool canPay = Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Paid && Model.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Cancelled;
     var commEntries = ViewBag.CommissionEntries as List<AashanaFashion.Models.SalesmanCommissionEntry>;
+    var chatterVm = await CommunicationService.GetChatterViewModelAsync("TaxInvoice", Model.Id);
 }
 
 <div class="page-header">
@@ -102,9 +104,17 @@
                 <li><a class="dropdown-item" href="https://einvoice1.gst.gov.in" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> einvoice1.gst.gov.in</a></li>
             </ul>
         </div>
-        <a asp-controller="WhatsApp" asp-action="Invoice" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary">
-            <i class="bi bi-whatsapp text-success"></i> WhatsApp invoice
-        </a>
+        <div class="btn-group">
+            <a asp-controller="WhatsApp" asp-action="Invoice" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary">
+                <i class="bi bi-whatsapp text-success"></i> WhatsApp
+            </a>
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#modalWa_chatter_TaxInvoice_@Model.Id" title="Edit message before sending">
+                <i class="bi bi-sliders"></i>
+            </button>
+        </div>
+        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#modalEmail_chatter_TaxInvoice_@Model.Id">
+            <i class="bi bi-envelope text-primary"></i> Email invoice
+        </button>
         <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary"><i class="bi bi-printer"></i> Print</a>
         @if (canPay)
         {
@@ -511,6 +521,8 @@ else
         }
     </div>
 </div>
+
+<partial name="_DocumentChatter" model="chatterVm" />
 
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">

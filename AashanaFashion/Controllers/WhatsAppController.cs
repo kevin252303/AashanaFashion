@@ -46,6 +46,11 @@ public class WhatsAppController : Controller
             TempData["Warning"] = $"Vendor '{slip.Vendor?.VendorName}' has no phone number set. Pre-filled WhatsApp message ready.";
         }
 
+        await _whatsAppService.LogWhatsAppSentAsync(
+            "JobSlip", slip.Id, slip.SlipNumber,
+            phone ?? "", slip.Vendor?.VendorName, message,
+            isDirectApi: false, success: true, sentBy: User.Identity?.Name);
+
         var url = _whatsAppService.GenerateWhatsAppUrl(phone, message);
         return Redirect(url);
     }
@@ -73,6 +78,11 @@ public class WhatsAppController : Controller
         {
             TempData["Warning"] = $"Customer '{challan.Customer?.CustomerName}' has no phone number set. Pre-filled WhatsApp message ready.";
         }
+
+        await _whatsAppService.LogWhatsAppSentAsync(
+            "DeliveryChallan", challan.Id, challan.ChallanNumber,
+            phone ?? "", challan.Customer?.CustomerName, message,
+            isDirectApi: false, success: true, sentBy: User.Identity?.Name);
 
         var url = _whatsAppService.GenerateWhatsAppUrl(phone, message);
         return Redirect(url);
@@ -104,6 +114,11 @@ public class WhatsAppController : Controller
             TempData["Warning"] = "Customer has no phone number set. Pre-filled WhatsApp message ready.";
         }
 
+        await _whatsAppService.LogWhatsAppSentAsync(
+            "PaymentReceipt", receipt.Id, receipt.ReceiptNumber,
+            phone ?? "", receipt.Customer?.CustomerName ?? invoice?.Customer?.CustomerName, message,
+            isDirectApi: false, success: true, sentBy: User.Identity?.Name);
+
         var url = _whatsAppService.GenerateWhatsAppUrl(phone, message);
         return Redirect(url);
     }
@@ -130,6 +145,44 @@ public class WhatsAppController : Controller
             TempData["Warning"] = "Customer has no phone number set. Pre-filled WhatsApp message ready.";
         }
 
+        await _whatsAppService.LogWhatsAppSentAsync(
+            "TaxInvoice", invoice.Id, invoice.InvoiceNumber,
+            phone ?? "", invoice.Customer?.CustomerName, message,
+            isDirectApi: false, success: true, sentBy: User.Identity?.Name);
+
+        var url = _whatsAppService.GenerateWhatsAppUrl(phone, message);
+        return Redirect(url);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> SalesOrder(int id)
+    {
+        var order = await _context.SalesOrders
+            .Include(s => s.Customer)
+            .Include(s => s.Details)
+                .ThenInclude(d => d.Design)
+            .FirstOrDefaultAsync(s => s.Id == id);
+
+        if (order == null)
+        {
+            TempData["Error"] = "Sales order not found.";
+            return RedirectToAction("Index", "SalesOrder");
+        }
+
+        var company = await _companyContext.GetActiveCompanyAsync();
+        var phone = order.Customer?.Phone;
+        var message = _whatsAppService.BuildSalesOrderMessage(order, company);
+
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            TempData["Warning"] = "Customer has no phone number set. Pre-filled WhatsApp message ready.";
+        }
+
+        await _whatsAppService.LogWhatsAppSentAsync(
+            "SalesOrder", order.Id, order.SoNumber,
+            phone ?? "", order.Customer?.CustomerName, message,
+            isDirectApi: false, success: true, sentBy: User.Identity?.Name);
+
         var url = _whatsAppService.GenerateWhatsAppUrl(phone, message);
         return Redirect(url);
     }
@@ -147,6 +200,11 @@ public class WhatsAppController : Controller
         var company = await _companyContext.GetActiveCompanyAsync();
         var message = _whatsAppService.BuildLeadFollowUpMessage(lead, company);
         var url = _whatsAppService.GenerateWhatsAppUrl(lead.Phone, message);
+
+        await _whatsAppService.LogWhatsAppSentAsync(
+            "Lead", lead.Id, lead.LeadNumber,
+            lead.Phone ?? "", lead.ContactPerson, message,
+            isDirectApi: false, success: true, sentBy: User.Identity?.Name);
 
         // Also record an activity on the lead
         var activity = new LeadActivity
