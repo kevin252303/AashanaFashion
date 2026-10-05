@@ -1,0 +1,185 @@
+@model AashanaFashion.Models.SalesOrder
+@using AashanaFashion.Models
+@using AashanaFashion.Helpers
+
+@{
+    ViewData["Title"] = "Order " + Model.SoNumber;
+    var badgeClass = Model.Status switch
+    {
+        SalesOrderStatus.Draft => "b-gray",
+        SalesOrderStatus.Confirmed => "b-blue",
+        SalesOrderStatus.InProduction => "b-yellow",
+        SalesOrderStatus.PartiallyDispatched => "b-purple",
+        SalesOrderStatus.Dispatched => "b-green",
+        SalesOrderStatus.Cancelled => "b-red",
+        _ => "b-gray"
+    };
+
+    var totalOrdered = Model.Details.Sum(d => d.Quantity);
+    var totalDispatched = Model.Challans.SelectMany(c => c.Items).Sum(i => i.QuantityDispatched);
+    var balancePending = Math.Max(0, totalOrdered - totalDispatched);
+    var dispatchPct = totalOrdered > 0 ? (int)Math.Min(100, Math.Round((double)totalDispatched / totalOrdered * 100)) : 0;
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Orders" class="page-back"><i class="bi bi-arrow-left"></i> Orders</a>
+        <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+            <h1 class="page-title">Order @Model.SoNumber</h1>
+            <span class="af-badge @badgeClass">@Model.Status.Humanize()</span>
+            @if (!string.IsNullOrEmpty(Model.CustomerPoReference))
+            {
+                <span class="mono-id">PO: @Model.CustomerPoReference</span>
+            }
+        </div>
+        <p class="page-sub">
+            Booked on @Model.OrderDate.ToString("dd MMM yyyy")
+            @if (Model.ExpectedDeliveryDate.HasValue)
+            {
+                <span> · Expected delivery: @Model.ExpectedDeliveryDate.Value.ToString("dd MMM yyyy")</span>
+            }
+        </p>
+    </div>
+    <div class="page-actions">
+        <a asp-controller="SalesOrder" asp-action="PrintChallan" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary">
+            <i class="bi bi-printer"></i> Print order confirmation
+        </a>
+    </div>
+</div>
+
+<!-- Production / Fulfillment Progress -->
+<div class="data-card p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-sm fw-semibold text-foreground">Fulfillment &amp; dispatch progress</span>
+        <span class="text-xs text-muted">@totalDispatched of @totalOrdered Pcs (@dispatchPct%)</span>
+    </div>
+    <div class="af-progress">
+        <div class="af-progress-bar @(dispatchPct >= 100 ? "bg-success" : "")" style="width: @dispatchPct%"></div>
+    </div>
+</div>
+
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total ordered</div>
+        <div class="metric-value">@totalOrdered Pcs</div>
+        <div class="metric-meta info">booked units</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Dispatched</div>
+        <div class="metric-value">@totalDispatched Pcs</div>
+        <div class="metric-meta success">shipped units</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Pending dispatch</div>
+        <div class="metric-value">@balancePending Pcs</div>
+        <div class="metric-meta @(balancePending > 0 ? "warning" : "success")">in factory floor</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Total order value</div>
+        <div class="metric-value">₹@Model.TotalAmount.ToString("N2")</div>
+        <div class="metric-meta">commercial invoice total</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Ordered Line Items -->
+    <div class="col-12">
+        <div class="table-card">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Garment design line items</div>
+                    <div class="data-card-sub">Specifications, color variants, and sizes</div>
+                </div>
+                <span class="text-xs text-muted">@Model.Details.Count items</span>
+            </div>
+            <div class="table-scroll">
+                <table class="af-table">
+                    <thead>
+                        <tr>
+                            <th>Design Number</th>
+                            <th>Colour</th>
+                            <th>Size</th>
+                            <th class="text-end">Ordered Qty</th>
+                            <th class="text-end">Dispatched Qty</th>
+                            <th class="text-end">Balance</th>
+                            <th class="text-end">Rate / Pc</th>
+                            <th class="text-end">Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in Model.Details)
+                        {
+                            var bal = Math.Max(0, d.Quantity - d.DispatchedQuantity);
+                            <tr>
+                                <td><span class="mono-id">@d.DesignNumber</span></td>
+                                <td>@d.Colour</td>
+                                <td><span class="af-badge b-gray">@d.Size</span></td>
+                                <td class="cell-num font-monospace fw-semibold">@d.Quantity</td>
+                                <td class="cell-num font-monospace text-success">@d.DispatchedQuantity</td>
+                                <td class="cell-num font-monospace @(bal > 0 ? "text-warning" : "text-muted")">@bal</td>
+                                <td class="cell-num">₹@d.UnitPrice.ToString("N2")</td>
+                                <td class="cell-num">₹@d.TotalPrice.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="totals-foot">
+                        <tr class="grand">
+                            <td colspan="3" class="text-end">Grand Total</td>
+                            <td class="cell-num font-monospace">@totalOrdered Pcs</td>
+                            <td class="cell-num font-monospace text-success">@totalDispatched Pcs</td>
+                            <td class="cell-num font-monospace">@balancePending Pcs</td>
+                            <td></td>
+                            <td class="cell-num">₹@Model.TotalAmount.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Linked Delivery Challans -->
+    @if (Model.Challans.Any())
+    {
+        <div class="col-12">
+            <div class="table-card">
+                <div class="data-card-header">
+                    <div>
+                        <div class="data-card-title">Dispatched delivery challans</div>
+                        <div class="data-card-sub">Transporter, vehicle, and LR details for your shipments</div>
+                    </div>
+                </div>
+                <div class="table-scroll">
+                    <table class="af-table">
+                        <thead>
+                            <tr>
+                                <th>Challan No.</th>
+                                <th>Date</th>
+                                <th>Transporter</th>
+                                <th>Vehicle No.</th>
+                                <th>LR / Bilty No.</th>
+                                <th>E-Way Bill</th>
+                                <th class="text-end">Boxes</th>
+                                <th class="text-end">Dispatched Pcs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in Model.Challans)
+                            {
+                                <tr>
+                                    <td><span class="mono-id">@c.ChallanNumber</span></td>
+                                    <td>@c.ChallanDate.ToString("dd MMM yyyy")</td>
+                                    <td>@(c.TransporterName ?? "Direct Handover")</td>
+                                    <td>@(c.VehicleNumber ?? "—")</td>
+                                    <td>@(c.LrNumber ?? "—")</td>
+                                    <td>@(c.EwayBillNumber ?? "—")</td>
+                                    <td class="cell-num">@c.NumberOfBoxes</td>
+                                    <td class="cell-num font-monospace fw-semibold text-success">@c.TotalQuantity</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>

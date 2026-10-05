@@ -34,6 +34,7 @@ builder.Services.AddScoped<IDoubleEntryService, DoubleEntryService>();
 builder.Services.AddScoped<IAgingAndMatchingService, AgingAndMatchingService>();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddScoped<IPmsSyncService, PmsSyncService>();
+builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -229,6 +230,97 @@ using (var scope = app.Services.CreateScope())
         }
     }
     db.SaveChanges();
+
+    // Seed buyer user linked to first customer
+    var firstCustomer = db.Customers.FirstOrDefault();
+    var buyerUser = db.Users.FirstOrDefault(x => x.Username == "buyer");
+    if (buyerUser == null)
+    {
+        db.Users.Add(new AppUser
+        {
+            Username = "buyer",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("buyer123"),
+            Role = "Customer",
+            FirstName = "B2B",
+            LastName = "Buyer",
+            CustomerId = firstCustomer?.Id,
+            IsActive = true
+        });
+    }
+    else if (firstCustomer != null && buyerUser.CustomerId == null)
+    {
+        buyerUser.CustomerId = firstCustomer.Id;
+    }
+
+    // Seed sample CRM Leads
+    if (!db.Leads.Any())
+    {
+        var adminUser = db.Users.FirstOrDefault(u => u.Role == "Admin");
+        db.Leads.AddRange(
+            new Lead
+            {
+                CompanyId = 1,
+                LeadNumber = "LD-2026-0001",
+                Title = "Festive Anarkali Kurtis - 500 pcs",
+                CompanyName = "Mehta Ethnic Hub",
+                ContactPerson = "Ketan Mehta",
+                Phone = "9825123456",
+                Email = "ketan@mehtahub.com",
+                City = "Surat",
+                State = "Gujarat",
+                EstimatedQuantity = 500,
+                EstimatedValue = 275000m,
+                Stage = LeadStage.New,
+                Source = "WhatsApp Inquiry",
+                AssignedToUserId = adminUser?.Id,
+                NextFollowUpDate = DateTime.Today.AddDays(2),
+                ExpectedCloseDate = DateTime.Today.AddDays(14),
+                Notes = "Looking for heavy rayon anarkali kurtis with foil print for Diwali wholesale.",
+                CreatedDate = DateTime.Now.AddDays(-3)
+            },
+            new Lead
+            {
+                CompanyId = 1,
+                LeadNumber = "LD-2026-0002",
+                Title = "Chanderi Embroidered Suit Sets - 300 pcs",
+                CompanyName = "Royal Garments Mumbai",
+                ContactPerson = "Sanjay Singhania",
+                Phone = "9819988776",
+                Email = "sanjay@royalgarments.in",
+                City = "Mumbai",
+                State = "Maharashtra",
+                EstimatedQuantity = 300,
+                EstimatedValue = 240000m,
+                Stage = LeadStage.SampleSent,
+                Source = "Exhibition / Trade Fair",
+                AssignedToUserId = adminUser?.Id,
+                NextFollowUpDate = DateTime.Today.AddDays(1),
+                ExpectedCloseDate = DateTime.Today.AddDays(10),
+                Notes = "Physical swatches and 2 sample pieces dispatched via DTDC courier.",
+                CreatedDate = DateTime.Now.AddDays(-5)
+            },
+            new Lead
+            {
+                CompanyId = 1,
+                LeadNumber = "LD-2026-0003",
+                Title = "Printed Dailywear Kurtis - 750 pcs",
+                CompanyName = "Shree Krishna Retailers",
+                ContactPerson = "Ramesh Patel",
+                Phone = "9824055443",
+                Email = "ramesh@shreekrishna.com",
+                City = "Ahmedabad",
+                State = "Gujarat",
+                EstimatedQuantity = 750,
+                EstimatedValue = 337500m,
+                Stage = LeadStage.Won,
+                Source = "Referral",
+                CustomerId = firstCustomer?.Id,
+                AssignedToUserId = adminUser?.Id,
+                CreatedDate = DateTime.Now.AddDays(-10)
+            }
+        );
+        db.SaveChanges();
+    }
 
     // Seed sample client tenants for SaaS Platform Owner overview
     if (!db.Tenants.IgnoreQueryFilters().Any(t => t.Subdomain == "surattex"))

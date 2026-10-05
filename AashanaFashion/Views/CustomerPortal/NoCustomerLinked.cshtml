@@ -1,0 +1,10 @@
+@{
+    ViewData["Title"] = "Customer Account Pending";
+}
+
+<div class="empty-state my-5">
+    <div class="es-icon"><i class="bi bi-person-exclamation"></i></div>
+    <div class="es-title">No customer account linked</div>
+    <p>Your portal login has not yet been linked to an active customer profile. Please contact the factory support desk to link your account.</p>
+    <a asp-controller="Account" asp-action="Logout" class="btn btn-secondary">Sign out</a>
+</div>

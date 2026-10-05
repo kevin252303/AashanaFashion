@@ -58,6 +58,11 @@ namespace AashanaFashion.Controllers
                 new Claim("TenantId", user.TenantId.ToString())
             };
 
+            if (user.CustomerId.HasValue)
+            {
+                claims.Add(new Claim("CustomerId", user.CustomerId.Value.ToString()));
+            }
+
             // SuperAdmin gets all roles as claims so every [Authorize(Roles=...)] passes
             if (user.Role == "SuperAdmin")
             {
@@ -106,6 +111,9 @@ namespace AashanaFashion.Controllers
 
             if (user.Role == "Developer")
                 return RedirectToAction("Index", "PlatformAdmin");
+
+            if (user.Role == "Customer")
+                return RedirectToAction("Index", "CustomerPortal");
 
             return RedirectToAction("Index", "Production");
         }

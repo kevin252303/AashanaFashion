@@ -1,0 +1,334 @@
+@model AashanaFashion.Models.Lead
+@using AashanaFashion.Models
+@using AashanaFashion.Helpers
+
+@{
+    ViewData["Title"] = "Lead " + Model.LeadNumber;
+    var badgeClass = Model.Stage switch
+    {
+        LeadStage.New => "b-blue",
+        LeadStage.Contacted => "b-indigo",
+        LeadStage.SampleSent => "b-purple",
+        LeadStage.QuotationSent => "b-yellow",
+        LeadStage.Won => "b-green",
+        LeadStage.Lost => "b-red",
+        _ => "b-gray"
+    };
+
+    var stageIndex = (int)Model.Stage;
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Leads</a>
+        <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+            <h1 class="page-title">@Model.Title</h1>
+            <span class="mono-id">@Model.LeadNumber</span>
+            <span class="af-badge @badgeClass">@Model.Stage.Humanize()</span>
+        </div>
+        <p class="page-sub">
+            Created on @Model.CreatedDate.ToString("dd MMM yyyy")
+            @if (Model.AssignedToUser != null)
+            {
+                <span> · Assigned to @Model.AssignedToUser.FullName</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Source))
+            {
+                <span> · Source: @Model.Source</span>
+            }
+        </p>
+    </div>
+    <div class="page-actions">
+        @if (!string.IsNullOrEmpty(Model.Phone))
+        {
+            <a asp-controller="WhatsApp" asp-action="Lead" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary">
+                <i class="bi bi-whatsapp text-success"></i> WhatsApp prospect
+            </a>
+        }
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-secondary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+
+        @if (!Model.CustomerId.HasValue)
+        {
+            <form asp-action="ConvertToCustomer" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Convert this inquiry into a registered customer?')">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-secondary">
+                    <i class="bi bi-person-check"></i> Convert to customer
+                </button>
+            </form>
+        }
+
+        @if (!Model.SalesOrderId.HasValue)
+        {
+            <form asp-action="ConvertToSalesOrder" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Create a draft Sales Order from this inquiry?')">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-bag-plus"></i> Convert to sales order
+                </button>
+            </form>
+        }
+        else
+        {
+            <a asp-controller="SalesOrder" asp-action="Details" asp-route-id="@Model.SalesOrderId.Value" class="btn btn-primary">
+                <i class="bi bi-eye"></i> View sales order
+            </a>
+        }
+    </div>
+</div>
+
+<!-- Process Flow -->
+<div class="data-card p-3 mb-4">
+    <div class="flow">
+        <span class="flow-step @(stageIndex > 0 ? "done" : (stageIndex == 0 ? "current" : "locked"))">
+            <span class="flow-num">@(stageIndex > 0 ? "✓" : "1")</span> New inquiry
+        </span>
+        <i class="bi bi-chevron-right flow-sep"></i>
+        <span class="flow-step @(stageIndex > 1 ? "done" : (stageIndex == 1 ? "current" : "locked"))">
+            <span class="flow-num">@(stageIndex > 1 ? "✓" : "2")</span> Contacted
+        </span>
+        <i class="bi bi-chevron-right flow-sep"></i>
+        <span class="flow-step @(stageIndex > 2 ? "done" : (stageIndex == 2 ? "current" : "locked"))">
+            <span class="flow-num">@(stageIndex > 2 ? "✓" : "3")</span> Sample sent
+        </span>
+        <i class="bi bi-chevron-right flow-sep"></i>
+        <span class="flow-step @(stageIndex > 3 ? "done" : (stageIndex == 3 ? "current" : "locked"))">
+            <span class="flow-num">@(stageIndex > 3 ? "✓" : "4")</span> Quotation sent
+        </span>
+        <i class="bi bi-chevron-right flow-sep"></i>
+        @if (Model.Stage == LeadStage.Lost)
+        {
+            <span class="flow-step current">
+                <span class="flow-num">✕</span> Closed lost
+            </span>
+        }
+        else
+        {
+            <span class="flow-step @(Model.Stage == LeadStage.Won ? "done" : "locked")">
+                <span class="flow-num">@(Model.Stage == LeadStage.Won ? "✓" : "5")</span> Won &amp; booked
+            </span>
+        }
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Details & Information -->
+    <div class="col-lg-7">
+        <div class="data-card mb-4">
+            <div class="data-card-header">
+                <div class="data-card-title">Prospect contact information</div>
+            </div>
+            <div class="data-card-body">
+                <div class="info-grid cols-2">
+                    <div>
+                        <div class="info-label">Contact person</div>
+                        <div class="info-value">@Model.ContactPerson</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Company / Brand</div>
+                        <div class="info-value">@(Model.CompanyName ?? "—")</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Phone / WhatsApp</div>
+                        <div class="info-value">
+                            @if (!string.IsNullOrEmpty(Model.Phone))
+                            {
+                                <a href="tel:@Model.Phone" class="text-decoration-none">@Model.Phone</a>
+                            }
+                            else
+                            {
+                                <span>—</span>
+                            }
+                        </div>
+                    </div>
+                    <div>
+                        <div class="info-label">Email</div>
+                        <div class="info-value">
+                            @if (!string.IsNullOrEmpty(Model.Email))
+                            {
+                                <a href="mailto:@Model.Email" class="text-decoration-none">@Model.Email</a>
+                            }
+                            else
+                            {
+                                <span>—</span>
+                            }
+                        </div>
+                    </div>
+                    <div>
+                        <div class="info-label">Location</div>
+                        <div class="info-value">@string.Join(", ", new[] { Model.City, Model.State }.Where(s => !string.IsNullOrEmpty(s)))</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Lead source</div>
+                        <div class="info-value">@(Model.Source ?? "Direct")</div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                {
+                    <div class="section-label mt-4 mb-2">Requirement notes</div>
+                    <div class="panel-inset p-3">
+                        <p class="mb-0 text-secondary" style="white-space: pre-wrap;">@Model.Notes</p>
+                    </div>
+                }
+
+                @if (Model.Stage == LeadStage.Lost && !string.IsNullOrWhiteSpace(Model.LostReason))
+                {
+                    <div class="af-alert af-alert-danger mt-3">
+                        <div class="alert-body">
+                            <span class="alert-title">Lost reason</span>
+                            @Model.LostReason
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Linked Records -->
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">Commercial conversions</div>
+            </div>
+            <div class="data-card-body">
+                <div class="info-grid cols-2">
+                    <div>
+                        <div class="info-label">Linked customer master</div>
+                        <div class="info-value">
+                            @if (Model.Customer != null)
+                            {
+                                <a asp-controller="Customer" asp-action="Details" asp-route-id="@Model.Customer.Id" class="cell-title">
+                                    <i class="bi bi-person-check text-success"></i> @Model.Customer.CustomerName
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Not converted to customer yet</span>
+                            }
+                        </div>
+                    </div>
+                    <div>
+                        <div class="info-label">Linked sales order</div>
+                        <div class="info-value">
+                            @if (Model.SalesOrder != null)
+                            {
+                                <a asp-controller="SalesOrder" asp-action="Details" asp-route-id="@Model.SalesOrder.Id" class="mono-id">
+                                    <i class="bi bi-bag text-primary"></i> @Model.SalesOrder.SoNumber
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No sales order created yet</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Opportunity Metrics & Timeline -->
+    <div class="col-lg-5">
+        <div class="data-card mb-4">
+            <div class="data-card-header">
+                <div class="data-card-title">Commercial value &amp; targets</div>
+            </div>
+            <div class="data-card-body">
+                <div class="kv-row">
+                    <span class="k">Estimated quantity</span>
+                    <span class="v">@(Model.EstimatedQuantity > 0 ? $"{Model.EstimatedQuantity:N0} Pcs" : "—")</span>
+                </div>
+                <div class="kv-row">
+                    <span class="k">Estimated deal value</span>
+                    <span class="v">₹@Model.EstimatedValue.ToString("N2")</span>
+                </div>
+                <div class="kv-row">
+                    <span class="k">Next follow-up date</span>
+                    <span class="v">@(Model.NextFollowUpDate.HasValue ? Model.NextFollowUpDate.Value.ToString("dd MMM yyyy") : "—")</span>
+                </div>
+                <div class="kv-row">
+                    <span class="k">Expected closing</span>
+                    <span class="v">@(Model.ExpectedCloseDate.HasValue ? Model.ExpectedCloseDate.Value.ToString("dd MMM yyyy") : "—")</span>
+                </div>
+
+                <div class="section-label mt-4 mb-3">Quick stage update</div>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (LeadStage s in Enum.GetValues<LeadStage>())
+                    {
+                        if (s != Model.Stage)
+                        {
+                            <form asp-action="UpdateStage" asp-route-id="@Model.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="stage" value="@s" />
+                                <button type="submit" class="btn btn-secondary btn-sm">
+                                    Mark as @s.Humanize()
+                                </button>
+                            </form>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity & Follow-Up Log -->
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">Activity &amp; interaction history</div>
+                <span class="text-xs text-muted">@Model.Activities.Count entries</span>
+            </div>
+            <div class="data-card-body">
+                <!-- Log new activity form -->
+                <form asp-action="AddActivity" method="post" class="mb-4 panel-inset p-3">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="leadId" value="@Model.Id" />
+                    <div class="data-card-sub mb-2 fw-semibold">Log follow-up / note</div>
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <select name="activityType" class="af-input af-input-sm af-select" aria-label="Activity type">
+                                <option value="Note">Note</option>
+                                <option value="Call">Call Log</option>
+                                <option value="WhatsApp">WhatsApp Message</option>
+                                <option value="Sample Dispatched">Sample Dispatched</option>
+                                <option value="Quotation Sent">Quotation Sent</option>
+                                <option value="Meeting">Meeting / Visit</option>
+                            </select>
+                        </div>
+                        <div class="col-md-7">
+                            <input type="text" name="description" class="af-input af-input-sm" placeholder="Details of conversation or update…" required />
+                        </div>
+                        <div class="col-12 text-end mt-2">
+                            <button type="submit" class="btn btn-secondary btn-sm">
+                                <i class="bi bi-plus-lg"></i> Add log
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                @if (!Model.Activities.Any())
+                {
+                    <div class="text-center text-muted py-3">
+                        <span class="text-sm">No activity recorded yet.</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var act in Model.Activities)
+                        {
+                            <div class="border-start border-2 ps-3 py-1" style="border-color: var(--primary) !important;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="af-badge b-gray">@act.ActivityType</span>
+                                    <span class="text-2xs text-muted">@act.ActivityDate.ToString("dd MMM yyyy, HH:mm")</span>
+                                </div>
+                                <div class="text-sm text-foreground mt-1">@act.Description</div>
+                                @if (!string.IsNullOrEmpty(act.CreatedBy))
+                                {
+                                    <div class="text-2xs text-muted mt-1">Logged by @act.CreatedBy</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

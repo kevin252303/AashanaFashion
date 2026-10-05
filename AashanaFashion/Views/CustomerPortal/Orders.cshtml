@@ -1,0 +1,112 @@
+@model IEnumerable<AashanaFashion.Models.SalesOrder>
+@using AashanaFashion.Models
+@using AashanaFashion.Helpers
+
+@{
+    ViewData["Title"] = "My Orders";
+    var customer = ViewBag.Customer as Customer;
+    var search = ViewBag.Search as string;
+    var currentStatus = ViewBag.Status as SalesOrderStatus?;
+    var isFiltered = !string.IsNullOrEmpty(search) || currentStatus.HasValue;
+    var statuses = Enum.GetValues<SalesOrderStatus>();
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Portal</a>
+        <h1 class="page-title">My sales orders</h1>
+        <p class="page-sub">Review order statuses, line items, and production progress.</p>
+    </div>
+</div>
+
+<div class="table-card">
+    <form method="get" class="table-toolbar">
+        <div class="toolbar-filters">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="Search order no, PO ref…" value="@search" />
+            </div>
+            <select name="status" class="af-input af-select" onchange="this.form.submit()" aria-label="Status">
+                <option value="">All statuses</option>
+                @foreach (SalesOrderStatus s in statuses)
+                {
+                    <option value="@s" selected="@(currentStatus == s)">@s.Humanize()</option>
+                }
+            </select>
+        </div>
+        <div class="toolbar-actions">
+            @if (isFiltered)
+            {
+                <a asp-action="Orders" class="btn btn-ghost">Clear</a>
+            }
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi @(isFiltered ? "bi-search" : "bi-bag")"></i></div>
+            <div class="es-title">@(isFiltered ? "No orders match your filter" : "No orders found")</div>
+            <p>@(isFiltered ? "Try resetting your search query or status filter." : "You have no active or completed orders on record.")</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>Order No.</th>
+                        <th>Order Date</th>
+                        <th>Expected Delivery</th>
+                        <th>Status</th>
+                        <th class="text-end">Total Items</th>
+                        <th class="text-end">Total Amount</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model)
+                    {
+                        var badgeClass = order.Status switch
+                        {
+                            SalesOrderStatus.Draft => "b-gray",
+                            SalesOrderStatus.Confirmed => "b-blue",
+                            SalesOrderStatus.InProduction => "b-yellow",
+                            SalesOrderStatus.PartiallyDispatched => "b-purple",
+                            SalesOrderStatus.Dispatched => "b-green",
+                            SalesOrderStatus.Cancelled => "b-red",
+                            _ => "b-gray"
+                        };
+
+                        var totalPcs = order.Details.Sum(d => d.Quantity);
+
+                        <tr>
+                            <td>
+                                <a asp-action="OrderDetails" asp-route-id="@order.Id" class="mono-id">@order.SoNumber</a>
+                                @if (!string.IsNullOrEmpty(order.CustomerPoReference))
+                                {
+                                    <span class="cell-sub">PO: @order.CustomerPoReference</span>
+                                }
+                            </td>
+                            <td>@order.OrderDate.ToString("dd MMM yyyy")</td>
+                            <td>@(order.ExpectedDeliveryDate.HasValue ? order.ExpectedDeliveryDate.Value.ToString("dd MMM yyyy") : "—")</td>
+                            <td><span class="af-badge @badgeClass">@order.Status.Humanize()</span></td>
+                            <td class="cell-num">@totalPcs Pcs</td>
+                            <td class="cell-num">₹@order.TotalAmount.ToString("N2")</td>
+                            <td class="cell-actions">
+                                <a asp-action="OrderDetails" asp-route-id="@order.Id" class="row-action" title="View order details" aria-label="View order details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> orders</span>
+        </div>
+    }
+</div>

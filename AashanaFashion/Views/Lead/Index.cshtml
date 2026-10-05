@@ -1,0 +1,230 @@
+@model IEnumerable<AashanaFashion.Models.Lead>
+@using AashanaFashion.Models
+@using AashanaFashion.Helpers
+
+@{
+    ViewData["Title"] = "CRM & Leads";
+    var search = ViewBag.Search as string;
+    var currentStage = ViewBag.Stage as LeadStage?;
+    var viewMode = (ViewBag.ViewMode as string) ?? "board";
+    var isFiltered = !string.IsNullOrEmpty(search) || currentStage.HasValue;
+    var stages = Enum.GetValues<LeadStage>();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">CRM &amp; Lead Pipeline</h1>
+        <p class="page-sub">Track inquiries, manage sample dispatch, quote pricing, and convert prospects to sales orders.</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New lead</a>
+    </div>
+</div>
+
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total inquiries</div>
+        <div class="metric-value">@ViewBag.TotalLeads</div>
+        <div class="metric-meta info">all active &amp; historical</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Pipeline value</div>
+        <div class="metric-value">₹@(((decimal)ViewBag.PipelineValue).ToString("N2"))</div>
+        <div class="metric-meta warning">open opportunities</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Won orders value</div>
+        <div class="metric-value">₹@(((decimal)ViewBag.WonValue).ToString("N2"))</div>
+        <div class="metric-meta success">converted revenue</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Win rate</div>
+        <div class="metric-value">@ViewBag.ConversionRate%</div>
+        <div class="metric-meta success">closed win ratio</div>
+    </div>
+</div>
+
+<div class="table-card">
+    <form method="get" class="table-toolbar">
+        <div class="toolbar-filters">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="Search inquiry, company, phone…" value="@search" />
+            </div>
+            <select name="stage" class="af-input af-select" onchange="this.form.submit()" aria-label="Stage">
+                <option value="">All stages</option>
+                @foreach (LeadStage s in stages)
+                {
+                    <option value="@s" selected="@(currentStage == s)">@s.Humanize()</option>
+                }
+            </select>
+            <input type="hidden" name="view" value="@viewMode" />
+        </div>
+        <div class="toolbar-actions">
+            @if (isFiltered)
+            {
+                <a asp-action="Index" asp-route-view="@viewMode" class="btn btn-ghost">Clear</a>
+            }
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+            <div class="btn-group ms-2">
+                <a asp-action="Index" asp-route-view="board" asp-route-search="@search" asp-route-stage="@currentStage" 
+                   class="btn btn-sm @(viewMode == "board" ? "btn-primary" : "btn-secondary")" title="Pipeline Board" aria-label="Pipeline board view">
+                    <i class="bi bi-kanban"></i> Board
+                </a>
+                <a asp-action="Index" asp-route-view="list" asp-route-search="@search" asp-route-stage="@currentStage" 
+                   class="btn btn-sm @(viewMode == "list" ? "btn-primary" : "btn-secondary")" title="Table List" aria-label="Table list view">
+                    <i class="bi bi-list-ul"></i> List
+                </a>
+            </div>
+        </div>
+    </form>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi @(isFiltered ? "bi-search" : "bi-funnel")"></i></div>
+            <div class="es-title">@(isFiltered ? "No matching inquiries found" : "No leads in pipeline yet")</div>
+            <p>@(isFiltered ? "Try adjusting your search keywords or stage filter." : "Create your first lead to start tracking potential customer orders.")</p>
+            <a asp-action="Create" class="btn btn-secondary">New lead</a>
+        </div>
+    }
+    else if (viewMode == "board")
+    {
+        <div class="p-3" style="overflow-x: auto;">
+            <div class="d-flex gap-3" style="min-width: 1200px;">
+                @foreach (LeadStage stageItem in stages)
+                {
+                    var stageLeads = Model.Where(l => l.Stage == stageItem).ToList();
+                    var stageSum = stageLeads.Sum(l => l.EstimatedValue);
+                    var badgeClass = stageItem switch
+                    {
+                        LeadStage.New => "b-blue",
+                        LeadStage.Contacted => "b-indigo",
+                        LeadStage.SampleSent => "b-purple",
+                        LeadStage.QuotationSent => "b-yellow",
+                        LeadStage.Won => "b-green",
+                        LeadStage.Lost => "b-red",
+                        _ => "b-gray"
+                    };
+
+                    <div class="flex-fill" style="min-width: 200px; max-width: 260px; background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px;">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="af-badge @badgeClass">@stageItem.Humanize()</span>
+                            <span class="count-pill">@stageLeads.Count</span>
+                        </div>
+                        <div class="text-xs text-muted mb-2">₹@stageSum.ToString("N2")</div>
+
+                        <div class="d-flex flex-column gap-2" style="min-height: 200px;">
+                            @foreach (var lead in stageLeads)
+                            {
+                                <div class="data-card p-2 shadow-sm" style="border: 1px solid var(--border);">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <a asp-action="Details" asp-route-id="@lead.Id" class="cell-title fw-semibold text-truncate" style="max-width: 130px;">
+                                            @lead.Title
+                                        </a>
+                                        <span class="mono-id text-2xs">@lead.LeadNumber</span>
+                                    </div>
+                                    <div class="cell-sub text-truncate mb-1">
+                                        @(string.IsNullOrWhiteSpace(lead.CompanyName) ? lead.ContactPerson : lead.CompanyName)
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-2 pt-1 border-top">
+                                        <span class="cell-num fw-semibold text-xs">₹@lead.EstimatedValue.ToString("N2")</span>
+                                        <div class="d-flex gap-1">
+                                            @if (!string.IsNullOrEmpty(lead.Phone))
+                                            {
+                                                <a asp-controller="WhatsApp" asp-action="Lead" asp-route-id="@lead.Id" target="_blank" class="row-action" title="WhatsApp Lead" aria-label="WhatsApp lead">
+                                                    <i class="bi bi-whatsapp text-success"></i>
+                                                </a>
+                                            }
+                                            <a asp-action="Details" asp-route-id="@lead.Id" class="row-action" title="View details" aria-label="View details">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>Lead No.</th>
+                        <th>Inquiry Title</th>
+                        <th>Contact / Company</th>
+                        <th>Source</th>
+                        <th>Stage</th>
+                        <th class="text-end">Est. Pcs</th>
+                        <th class="text-end">Est. Value</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        var badgeClass = item.Stage switch
+                        {
+                            LeadStage.New => "b-blue",
+                            LeadStage.Contacted => "b-indigo",
+                            LeadStage.SampleSent => "b-purple",
+                            LeadStage.QuotationSent => "b-yellow",
+                            LeadStage.Won => "b-green",
+                            LeadStage.Lost => "b-red",
+                            _ => "b-gray"
+                        };
+
+                        <tr>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@item.Id" class="mono-id">@item.LeadNumber</a>
+                            </td>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@item.Id" class="cell-title">@item.Title</a>
+                                @if (item.NextFollowUpDate.HasValue)
+                                {
+                                    <span class="cell-sub">Follow-up: @item.NextFollowUpDate.Value.ToString("dd MMM yyyy")</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="cell-title">@item.ContactPerson</div>
+                                <span class="cell-sub">@(item.CompanyName ?? item.City ?? "—")</span>
+                            </td>
+                            <td>
+                                <span class="af-badge b-gray">@(item.Source ?? "Direct")</span>
+                            </td>
+                            <td>
+                                <span class="af-badge @badgeClass">@item.Stage.Humanize()</span>
+                            </td>
+                            <td class="cell-num">@(item.EstimatedQuantity > 0 ? item.EstimatedQuantity.ToString("N0") : "—")</td>
+                            <td class="cell-num">₹@item.EstimatedValue.ToString("N2")</td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    @if (!string.IsNullOrEmpty(item.Phone))
+                                    {
+                                        <a asp-controller="WhatsApp" asp-action="Lead" asp-route-id="@item.Id" target="_blank" class="row-action" title="Send WhatsApp" aria-label="Send WhatsApp">
+                                            <i class="bi bi-whatsapp text-success"></i>
+                                        </a>
+                                    }
+                                    <a asp-action="Details" asp-route-id="@item.Id" class="row-action" title="Details" aria-label="Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="row-action" title="Edit" aria-label="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> leads</span>
+        </div>
+    }
+</div>

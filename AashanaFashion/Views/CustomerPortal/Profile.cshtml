@@ -1,0 +1,104 @@
+@model AashanaFashion.Models.Customer
+
+@{
+    ViewData["Title"] = "My Account Profile";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Portal</a>
+        <h1 class="page-title">Company &amp; billing profile</h1>
+        <p class="page-sub">Your registered commercial details, delivery address, and GST registration.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="data-card mb-4">
+            <div class="data-card-header">
+                <div class="data-card-title">Commercial information</div>
+            </div>
+            <div class="data-card-body">
+                <div class="info-grid cols-2">
+                    <div>
+                        <div class="info-label">Customer / Company name</div>
+                        <div class="info-value">@Model.CustomerName</div>
+                    </div>
+                    <div>
+                        <div class="info-label">GSTIN</div>
+                        <div class="info-value font-monospace">@(Model.GstNumber ?? "Unregistered")</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Contact person</div>
+                        <div class="info-value">@(Model.ContactPerson ?? "—")</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Phone number</div>
+                        <div class="info-value">@(Model.Phone ?? "—")</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Email address</div>
+                        <div class="info-value">@(Model.Email ?? "—")</div>
+                    </div>
+                    <div>
+                        <div class="info-label">PAN number</div>
+                        <div class="info-value font-monospace">@(Model.PanNumber ?? "—")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">Billing &amp; shipping address</div>
+            </div>
+            <div class="data-card-body">
+                <div class="panel-inset p-3 mb-3">
+                    <div class="fw-semibold text-foreground mb-1">Registered address</div>
+                    <div class="text-secondary">@(Model.Address ?? "Not provided")</div>
+                    <div class="text-secondary mt-1">
+                        @string.Join(", ", new[] { Model.City, Model.State, Model.PinCode }.Where(s => !string.IsNullOrEmpty(s)))
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="data-card mb-4">
+            <div class="data-card-header">
+                <div class="data-card-title">Commercial terms</div>
+            </div>
+            <div class="data-card-body">
+                <div class="kv-row">
+                    <span class="k">Payment terms</span>
+                    <span class="v">@(Model.SalesPaymentTerms ?? "Standard Credit")</span>
+                </div>
+                <div class="kv-row">
+                    <span class="k">Preferred delivery method</span>
+                    <span class="v">@(Model.DeliveryMethod ?? "Transporter")</span>
+                </div>
+                <div class="kv-row">
+                    <span class="k">Default transporter</span>
+                    <span class="v">@(Model.Transporter ?? "Self / Direct")</span>
+                </div>
+                <div class="kv-row">
+                    <span class="k">Credit limit</span>
+                    <span class="v">@(Model.PartnerLimit.HasValue ? $"₹{Model.PartnerLimit.Value:N2}" : "Standard")</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">Security &amp; login</div>
+            </div>
+            <div class="data-card-body">
+                <p class="text-sm text-secondary">To change your login password or update your registered billing details, please contact factory administration.</p>
+                <a asp-controller="Account" asp-action="ChangePassword" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-key"></i> Change password
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

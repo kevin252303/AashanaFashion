@@ -1,0 +1,263 @@
+@model AashanaFashion.Models.Customer
+@using AashanaFashion.Models
+@using AashanaFashion.Helpers
+
+@{
+    ViewData["Title"] = "Customer Portal";
+    var recentOrders = ViewBag.RecentOrders as List<SalesOrder> ?? new();
+    var recentInvoices = ViewBag.RecentInvoices as List<TaxInvoice> ?? new();
+    var recentChallans = ViewBag.RecentChallans as List<DeliveryChallan> ?? new();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Welcome, @Model.CustomerName</h1>
+        <p class="page-sub">Track your live garment production orders, dispatch challans, and download GST tax invoices.</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Orders" class="btn btn-primary"><i class="bi bi-bag"></i> View all orders</a>
+    </div>
+</div>
+
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Active orders</div>
+        <div class="metric-value">@ViewBag.ActiveOrders</div>
+        <div class="metric-meta info">currently in production</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Total booked orders</div>
+        <div class="metric-value">@ViewBag.TotalOrders</div>
+        <div class="metric-meta">lifetime bookings</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Dispatched pieces</div>
+        <div class="metric-value">@ViewBag.TotalDispatchedPcs</div>
+        <div class="metric-meta success">delivered pieces</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Outstanding balance</div>
+        <div class="metric-value">₹@(((decimal)ViewBag.OutstandingBalance).ToString("N2"))</div>
+        <div class="metric-meta @((decimal)ViewBag.OutstandingBalance > 0 ? "warning" : "success")">pending payment</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Active Orders -->
+    <div class="col-lg-7">
+        <div class="data-card mb-4">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Recent production orders</div>
+                    <div class="data-card-sub">Live shop-floor manufacturing status</div>
+                </div>
+                <a asp-action="Orders" class="btn btn-secondary btn-sm">View all</a>
+            </div>
+            <div class="data-card-body p-0">
+                @if (!recentOrders.Any())
+                {
+                    <div class="empty-state py-4">
+                        <div class="es-icon"><i class="bi bi-bag"></i></div>
+                        <div class="es-title">No orders booked yet</div>
+                        <p>Your confirmed sales orders will appear here with live tracking.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-scroll">
+                        <table class="af-table">
+                            <thead>
+                                <tr>
+                                    <th>Order No.</th>
+                                    <th>Order Date</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var order in recentOrders)
+                                {
+                                    var badgeClass = order.Status switch
+                                    {
+                                        SalesOrderStatus.Draft => "b-gray",
+                                        SalesOrderStatus.Confirmed => "b-blue",
+                                        SalesOrderStatus.InProduction => "b-yellow",
+                                        SalesOrderStatus.PartiallyDispatched => "b-purple",
+                                        SalesOrderStatus.Dispatched => "b-green",
+                                        SalesOrderStatus.Cancelled => "b-red",
+                                        _ => "b-gray"
+                                    };
+
+                                    <tr>
+                                        <td>
+                                            <a asp-action="OrderDetails" asp-route-id="@order.Id" class="mono-id">@order.SoNumber</a>
+                                            @if (!string.IsNullOrEmpty(order.CustomerPoReference))
+                                            {
+                                                <span class="cell-sub">PO: @order.CustomerPoReference</span>
+                                            }
+                                        </td>
+                                        <td>@order.OrderDate.ToString("dd MMM yyyy")</td>
+                                        <td><span class="af-badge @badgeClass">@order.Status.Humanize()</span></td>
+                                        <td class="cell-num">₹@order.TotalAmount.ToString("N2")</td>
+                                        <td class="cell-actions">
+                                            <a asp-action="OrderDetails" asp-route-id="@order.Id" class="row-action" title="View details" aria-label="View details">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Recent Challans -->
+        <div class="data-card">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Recent dispatch challans</div>
+                    <div class="data-card-sub">Shipment and transport details</div>
+                </div>
+                <a asp-action="Challans" class="btn btn-secondary btn-sm">View all</a>
+            </div>
+            <div class="data-card-body p-0">
+                @if (!recentChallans.Any())
+                {
+                    <div class="empty-state py-4">
+                        <div class="es-icon"><i class="bi bi-truck"></i></div>
+                        <div class="es-title">No dispatches yet</div>
+                        <p>Dispatch challans with transporter details will show here once shipped.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-scroll">
+                        <table class="af-table">
+                            <thead>
+                                <tr>
+                                    <th>Challan No.</th>
+                                    <th>Date</th>
+                                    <th>Transporter / Vehicle</th>
+                                    <th class="text-end">Boxes</th>
+                                    <th class="text-end">Pcs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var c in recentChallans)
+                                {
+                                    <tr>
+                                        <td><span class="mono-id">@c.ChallanNumber</span></td>
+                                        <td>@c.ChallanDate.ToString("dd MMM yyyy")</td>
+                                        <td>
+                                            <div class="cell-title">@(c.TransporterName ?? "Direct Handover")</div>
+                                            <span class="cell-sub">@(c.VehicleNumber ?? (c.LrNumber != null ? $"LR: {c.LrNumber}" : "—"))</span>
+                                        </td>
+                                        <td class="cell-num">@c.NumberOfBoxes</td>
+                                        <td class="cell-num font-monospace fw-semibold">@c.TotalQuantity</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Invoices & Account -->
+    <div class="col-lg-5">
+        <div class="data-card mb-4">
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Tax invoices</div>
+                    <div class="data-card-sub">Invoices and payment receipts</div>
+                </div>
+                <a asp-action="Invoices" class="btn btn-secondary btn-sm">View all</a>
+            </div>
+            <div class="data-card-body p-0">
+                @if (!recentInvoices.Any())
+                {
+                    <div class="empty-state py-4">
+                        <div class="es-icon"><i class="bi bi-receipt"></i></div>
+                        <div class="es-title">No invoices issued yet</div>
+                        <p>Tax invoices generated for your orders will appear here for download.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-scroll">
+                        <table class="af-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice</th>
+                                    <th>Date</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var inv in recentInvoices)
+                                {
+                                    var isPaid = inv.BalanceDue <= 0;
+                                    var badgeClass = isPaid ? "b-green" : (inv.PaidAmount > 0 ? "b-yellow" : "b-red");
+                                    var statusText = isPaid ? "Paid" : (inv.PaidAmount > 0 ? "Partially paid" : "Unpaid");
+
+                                    <tr>
+                                        <td>
+                                            <a asp-controller="Invoice" asp-action="Print" asp-route-id="@inv.Id" target="_blank" class="mono-id">@inv.InvoiceNumber</a>
+                                            <span class="af-badge @badgeClass d-block mt-1" style="width: fit-content;">@statusText</span>
+                                        </td>
+                                        <td>@inv.InvoiceDate.ToString("dd MMM yyyy")</td>
+                                        <td class="cell-num">
+                                            <div>₹@inv.GrandTotal.ToString("N2")</div>
+                                            @if (!isPaid)
+                                            {
+                                                <span class="cell-sub text-danger">Due: ₹@inv.BalanceDue.ToString("N2")</span>
+                                            }
+                                        </td>
+                                        <td class="cell-actions">
+                                            <a asp-controller="Invoice" asp-action="Print" asp-route-id="@inv.Id" target="_blank" class="row-action" title="Download / Print" aria-label="Download invoice">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Account / Buyer Info Card -->
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">Buyer profile</div>
+                <a asp-action="Profile" class="btn btn-secondary btn-sm">Full details</a>
+            </div>
+            <div class="data-card-body">
+                <div class="info-grid cols-1">
+                    <div>
+                        <div class="info-label">GSTIN</div>
+                        <div class="info-value font-monospace">@(Model.GstNumber ?? "Not registered")</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Contact person</div>
+                        <div class="info-value">@(Model.ContactPerson ?? Model.CustomerName)</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Phone</div>
+                        <div class="info-value">@(Model.Phone ?? "—")</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Billing address</div>
+                        <div class="info-value">@(Model.Address ?? $"{Model.City}, {Model.State}")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

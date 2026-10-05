@@ -24,6 +24,9 @@ namespace AashanaFashion.Models
         public int? DefaultCompanyId { get; set; }
         public Company? DefaultCompany { get; set; }
 
+        public int? CustomerId { get; set; }
+        public Customer? Customer { get; set; }
+
         [NotMapped]
         public string FullName => string.Join(" ", new[] { FirstName, MiddleName, LastName }.Where(s => !string.IsNullOrWhiteSpace(s)));
     }

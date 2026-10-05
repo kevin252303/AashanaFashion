@@ -102,6 +102,9 @@
                 <li><a class="dropdown-item" href="https://einvoice1.gst.gov.in" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> einvoice1.gst.gov.in</a></li>
             </ul>
         </div>
+        <a asp-controller="WhatsApp" asp-action="Invoice" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary">
+            <i class="bi bi-whatsapp text-success"></i> WhatsApp invoice
+        </a>
         <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary"><i class="bi bi-printer"></i> Print</a>
         @if (canPay)
         {

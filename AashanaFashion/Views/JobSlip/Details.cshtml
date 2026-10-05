@@ -27,6 +27,9 @@
             <a asp-controller="Production" asp-action="Edit" asp-route-id="@order.Id" class="btn btn-secondary"><i class="bi bi-clipboard-data"></i> Edit lot</a>
             <a asp-action="PrintAll" asp-route-lotId="@order.Id" target="_blank" class="btn btn-secondary"><i class="bi bi-files"></i> Print all for lot</a>
         }
+        <a asp-controller="WhatsApp" asp-action="JobSlip" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary">
+            <i class="bi bi-whatsapp text-success"></i> WhatsApp slip
+        </a>
         <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-primary"><i class="bi bi-printer"></i> Print challan</a>
     </div>
 </div>

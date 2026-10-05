@@ -1,0 +1,121 @@
+@model IEnumerable<AashanaFashion.Models.DeliveryChallan>
+@using AashanaFashion.Models
+@using AashanaFashion.Helpers
+
+@{
+    ViewData["Title"] = "Delivery Challans";
+    var customer = ViewBag.Customer as Customer;
+    var search = ViewBag.Search as string;
+    var totalBoxes = Model.Sum(c => c.NumberOfBoxes);
+    var totalPcs = Model.Sum(c => c.TotalQuantity);
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Portal</a>
+        <h1 class="page-title">Delivery challans &amp; shipments</h1>
+        <p class="page-sub">Track dispatched boxes, transport vehicle numbers, and LR/bilty references.</p>
+    </div>
+</div>
+
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total challans</div>
+        <div class="metric-value">@Model.Count()</div>
+        <div class="metric-meta">all shipments</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Total boxes</div>
+        <div class="metric-value">@totalBoxes</div>
+        <div class="metric-meta info">cartons dispatched</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Total pieces</div>
+        <div class="metric-value">@totalPcs</div>
+        <div class="metric-meta success">garments delivered</div>
+    </div>
+</div>
+
+<div class="table-card">
+    <form method="get" class="table-toolbar">
+        <div class="toolbar-filters">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="Search challan, vehicle, LR…" value="@search" />
+            </div>
+        </div>
+        <div class="toolbar-actions">
+            @if (!string.IsNullOrEmpty(search))
+            {
+                <a asp-action="Challans" class="btn btn-ghost">Clear</a>
+            }
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-truck"></i></div>
+            <div class="es-title">No challans found</div>
+            <p>No delivery challans currently match your filters.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>Challan No.</th>
+                        <th>Challan Date</th>
+                        <th>Order Ref</th>
+                        <th>Transporter</th>
+                        <th>Vehicle No.</th>
+                        <th>LR / Bilty No.</th>
+                        <th>E-Way Bill</th>
+                        <th class="text-end">Boxes</th>
+                        <th class="text-end">Dispatched Pcs</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model)
+                    {
+                        <tr>
+                            <td><span class="mono-id">@c.ChallanNumber</span></td>
+                            <td>@c.ChallanDate.ToString("dd MMM yyyy")</td>
+                            <td>
+                                @if (c.SalesOrder != null)
+                                {
+                                    <a asp-action="OrderDetails" asp-route-id="@c.SalesOrderId" class="mono-id">@c.SalesOrder.SoNumber</a>
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </td>
+                            <td>@(c.TransporterName ?? "Direct Handover")</td>
+                            <td>@(c.VehicleNumber ?? "—")</td>
+                            <td>@(c.LrNumber ?? "—")</td>
+                            <td>@(c.EwayBillNumber ?? "—")</td>
+                            <td class="cell-num">@c.NumberOfBoxes</td>
+                            <td class="cell-num font-monospace fw-semibold text-success">@c.TotalQuantity</td>
+                            <td class="cell-actions">
+                                @if (c.SalesOrderId > 0)
+                                {
+                                    <a asp-controller="SalesOrder" asp-action="PrintChallan" asp-route-id="@c.SalesOrderId" target="_blank" class="row-action" title="Print Challan" aria-label="Print Challan">
+                                        <i class="bi bi-printer"></i>
+                                    </a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> challans</span>
+        </div>
+    }
+</div>

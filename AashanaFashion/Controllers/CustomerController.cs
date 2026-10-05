@@ -363,4 +363,64 @@ public class CustomerController : Controller
         Contacts = c.Contacts?.ToList() ?? new(),
         Commissions = c.Commissions?.ToList() ?? new()
     };
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> CreatePortalAccess(int customerId, string username, string password)
+    {
+        var customer = await _context.Customers.FindAsync(customerId);
+        if (customer == null) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            TempData["Error"] = "Username and password are required for customer portal access.";
+            return RedirectToAction(nameof(Edit), new { id = customerId });
+        }
+
+        username = username.Trim().ToLower();
+
+        // Check if an AppUser already exists for this customer
+        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.CustomerId == customerId);
+        if (existingUser != null)
+        {
+            // Reset existing user credentials
+            existingUser.Username = username;
+            existingUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+            existingUser.IsActive = true;
+            existingUser.Role = "Customer";
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Portal login updated for {customer.CustomerName}. Username: {username}";
+            return RedirectToAction(nameof(Edit), new { id = customerId });
+        }
+
+        // Check if username is taken by someone else
+        var usernameTaken = await _context.Users.AnyAsync(u => u.Username.ToLower() == username);
+        if (usernameTaken)
+        {
+            TempData["Error"] = $"Username '{username}' is already taken. Please choose another username.";
+            return RedirectToAction(nameof(Edit), new { id = customerId });
+        }
+
+        var newUser = new AppUser
+        {
+            TenantId = customer.TenantId,
+            CustomerId = customer.Id,
+            Username = username,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            Role = "Customer",
+            FirstName = customer.ContactPerson ?? customer.CustomerName,
+            LastName = "",
+            Email = customer.Email,
+            ContactNumber = customer.Phone,
+            IsActive = true
+        };
+
+        _context.Users.Add(newUser);
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = $"Portal login created for {customer.CustomerName}. Username: {username}";
+        return RedirectToAction(nameof(Edit), new { id = customerId });
+    }
 }
+
