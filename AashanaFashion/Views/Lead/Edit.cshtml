@@ -1,0 +1,139 @@
+@model AashanaFashion.Models.Lead
+@using AashanaFashion.Models
+
+@{
+    ViewData["Title"] = "Edit Lead " + Model.LeadNumber;
+    var stages = Enum.GetValues<LeadStage>();
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="page-back"><i class="bi bi-arrow-left"></i> @Model.LeadNumber</a>
+        <h1 class="page-title">Edit lead inquiry</h1>
+        <p class="page-sub">Update contact details, negotiation progress, or pipeline stage.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xl-9">
+        <form asp-action="Edit" method="post" class="data-card">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="TenantId" />
+            <input type="hidden" asp-for="CompanyId" />
+            <input type="hidden" asp-for="CustomerId" />
+            <input type="hidden" asp-for="SalesOrderId" />
+            <input type="hidden" asp-for="CreatedDate" />
+
+            <div class="data-card-header">
+                <div>
+                    <div class="data-card-title">Inquiry details</div>
+                    <div class="data-card-sub">Fields marked <span class="req">*</span> are required.</div>
+                </div>
+            </div>
+            <div class="data-card-body">
+                <div asp-validation-summary="ModelOnly" class="af-alert af-alert-danger"></div>
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label asp-for="LeadNumber" class="form-label">Lead number <span class="req">*</span></label>
+                        <input asp-for="LeadNumber" class="af-input font-monospace" readonly />
+                    </div>
+                    <div class="col-md-8">
+                        <label asp-for="Title" class="form-label">Inquiry title <span class="req">*</span></label>
+                        <input asp-for="Title" class="af-input" />
+                        <span asp-validation-for="Title" class="af-error"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="ContactPerson" class="form-label">Contact person <span class="req">*</span></label>
+                        <input asp-for="ContactPerson" class="af-input" />
+                        <span asp-validation-for="ContactPerson" class="af-error"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="CompanyName" class="form-label">Company / Brand name</label>
+                        <input asp-for="CompanyName" class="af-input" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Phone" class="form-label">Phone / WhatsApp number</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-whatsapp text-success"></i></span>
+                            <input asp-for="Phone" class="af-input" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Email" class="form-label">Email address</label>
+                        <input asp-for="Email" type="email" class="af-input" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="City" class="form-label">City</label>
+                        <input asp-for="City" class="af-input" />
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="State" class="form-label">State</label>
+                        <input asp-for="State" class="af-input" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Stage" class="form-label">Pipeline stage <span class="req">*</span></label>
+                        <select asp-for="Stage" class="af-input af-select">
+                            @foreach (LeadStage s in stages)
+                            {
+                                <option value="@s">@s</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="EstimatedQuantity" class="form-label">Estimated pieces</label>
+                        <input asp-for="EstimatedQuantity" type="number" min="0" class="af-input" />
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="EstimatedValue" class="form-label">Estimated value</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input asp-for="EstimatedValue" type="number" step="0.01" class="af-input" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Source" class="form-label">Lead source</label>
+                        <select asp-for="Source" asp-items="ViewBag.Sources" class="af-input af-select">
+                            <option value="">Select source</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="AssignedToUserId" class="form-label">Assigned salesperson</label>
+                        <select asp-for="AssignedToUserId" asp-items="ViewBag.Users" class="af-input af-select">
+                            <option value="">Unassigned</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="NextFollowUpDate" class="form-label">Next follow-up date</label>
+                        <input asp-for="NextFollowUpDate" type="date" class="af-input" value="@(Model.NextFollowUpDate?.ToString("yyyy-MM-dd"))" />
+                    </div>
+
+                    <div class="col-md-12">
+                        <label asp-for="LostReason" class="form-label">Lost reason <span class="text-muted fw-normal">(if stage is Lost)</span></label>
+                        <input asp-for="LostReason" class="af-input" placeholder="e.g. Higher pricing, competitor delivery timeline faster…" />
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="Notes" class="form-label">Requirement notes &amp; specifications</label>
+                        <textarea asp-for="Notes" rows="3" class="af-input"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions mt-4">
+                    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Update lead</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

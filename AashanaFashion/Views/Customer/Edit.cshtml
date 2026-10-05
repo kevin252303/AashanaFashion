@@ -46,6 +46,9 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="partner-tab" data-bs-toggle="tab" data-bs-target="#partner" type="button" role="tab">Partner Assignment</button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="portal-tab" data-bs-toggle="tab" data-bs-target="#portal" type="button" role="tab"><i class="bi bi-shield-lock"></i> Portal Access</button>
+                </li>
             </ul>
 
             <div class="tab-content">
@@ -745,6 +748,33 @@
                                     <option value="true">Active</option>
                                     <option value="false">Inactive</option>
                                 </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== TAB 5: PORTAL ACCESS ===== -->
+                <div class="tab-pane fade" id="portal" role="tabpanel">
+                    <div class="panel-inset p-4">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-shield-lock text-primary fs-5"></i>
+                            <h5 class="fw-semibold text-foreground mb-0">B2B Customer Portal Access</h5>
+                        </div>
+                        <p class="text-sm text-muted mb-4">Provide this customer with secure login credentials so they can log in at <strong>/Account/Login</strong> to track live order production progress, check dispatch challans, and download GST tax invoices.</p>
+                        
+                        <div class="row g-3" style="max-width: 600px;">
+                            <div class="col-md-6">
+                                <label class="form-label">Portal Username <span class="req">*</span></label>
+                                <input type="text" name="portalUsername" class="af-input" placeholder="e.g. buyer_username" value="@(Model.Email ?? Model.Phone ?? Model.CustomerName.ToLower().Replace(" ", "_"))" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">New Password <span class="req">*</span></label>
+                                <input type="password" name="portalPassword" class="af-input" placeholder="Enter password (min. 6 chars)" />
+                            </div>
+                            <div class="col-12 mt-3">
+                                <button type="submit" formaction="@Url.Action("CreatePortalAccess", "Customer", new { customerId = Model.Id })" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-key"></i> Save / Reset Portal Access
+                                </button>
                             </div>
                         </div>
                     </div>

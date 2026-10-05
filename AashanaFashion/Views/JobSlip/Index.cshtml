@@ -170,6 +170,7 @@
                             <td class="text-muted text-nowrap">@slip.IssueDate.ToString("dd-MMM-yyyy")</td>
                             <td class="cell-actions">
                                 <div class="row-actions">
+                                    <a asp-controller="WhatsApp" asp-action="JobSlip" asp-route-id="@slip.Id" target="_blank" class="row-action" title="Send WhatsApp slip" aria-label="Send WhatsApp slip"><i class="bi bi-whatsapp text-success"></i></a>
                                     <a asp-action="Print" asp-route-id="@slip.Id" target="_blank" class="row-action" title="Print challan" aria-label="Print challan"><i class="bi bi-printer"></i></a>
                                     <a asp-action="Details" asp-route-id="@slip.Id" class="row-action primary" title="View details / update status" aria-label="View details"><i class="bi bi-box-arrow-up-right"></i></a>
                                 </div>

@@ -1,0 +1,120 @@
+@model IEnumerable<AashanaFashion.Models.TaxInvoice>
+@using AashanaFashion.Models
+@using AashanaFashion.Helpers
+
+@{
+    ViewData["Title"] = "My Invoices";
+    var customer = ViewBag.Customer as Customer;
+    var search = ViewBag.Search as string;
+    var totalInvoiced = Model.Sum(i => i.GrandTotal);
+    var totalPaid = Model.Sum(i => i.PaidAmount);
+    var totalOutstanding = Model.Sum(i => i.BalanceDue);
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Portal</a>
+        <h1 class="page-title">Tax invoices &amp; bills</h1>
+        <p class="page-sub">View and download GST tax invoices, check payment status and outstanding balances.</p>
+    </div>
+</div>
+
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total invoices</div>
+        <div class="metric-value">@Model.Count()</div>
+        <div class="metric-meta">all issued invoices</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Total billed amount</div>
+        <div class="metric-value">₹@totalInvoiced.ToString("N2")</div>
+        <div class="metric-meta">including GST</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Settled / Paid</div>
+        <div class="metric-value">₹@totalPaid.ToString("N2")</div>
+        <div class="metric-meta success">cleared payments</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Outstanding balance</div>
+        <div class="metric-value">₹@totalOutstanding.ToString("N2")</div>
+        <div class="metric-meta @(totalOutstanding > 0 ? "warning" : "success")">current balance due</div>
+    </div>
+</div>
+
+<div class="table-card">
+    <form method="get" class="table-toolbar">
+        <div class="toolbar-filters">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="Search invoice number…" value="@search" />
+            </div>
+        </div>
+        <div class="toolbar-actions">
+            @if (!string.IsNullOrEmpty(search))
+            {
+                <a asp-action="Invoices" class="btn btn-ghost">Clear</a>
+            }
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-receipt"></i></div>
+            <div class="es-title">No invoices found</div>
+            <p>You currently do not have any invoices matching your search.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>Invoice Number</th>
+                        <th>Invoice Date</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th class="text-end">Invoice Total</th>
+                        <th class="text-end">Paid Amount</th>
+                        <th class="text-end">Balance Due</th>
+                        <th class="text-end">Download / Print</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inv in Model)
+                    {
+                        var isPaid = inv.BalanceDue <= 0;
+                        var isOverdue = !isPaid && inv.DueDate < DateTime.Today;
+                        var badgeClass = isPaid ? "b-green" : (isOverdue ? "b-red" : (inv.PaidAmount > 0 ? "b-yellow" : "b-gray"));
+                        var statusText = isPaid ? "Paid" : (isOverdue ? "Overdue" : (inv.PaidAmount > 0 ? "Partially paid" : "Unpaid"));
+
+                        <tr>
+                            <td>
+                                <a asp-controller="Invoice" asp-action="Print" asp-route-id="@inv.Id" target="_blank" class="mono-id">@inv.InvoiceNumber</a>
+                            </td>
+                            <td>@inv.InvoiceDate.ToString("dd MMM yyyy")</td>
+                            <td>@inv.DueDate.ToString("dd MMM yyyy")</td>
+                            <td><span class="af-badge @badgeClass">@statusText</span></td>
+                            <td class="cell-num">₹@inv.GrandTotal.ToString("N2")</td>
+                            <td class="cell-num text-success">₹@inv.PaidAmount.ToString("N2")</td>
+                            <td class="cell-num @(inv.BalanceDue > 0 ? "text-danger fw-semibold" : "text-muted")">₹@inv.BalanceDue.ToString("N2")</td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    <a asp-controller="Invoice" asp-action="Print" asp-route-id="@inv.Id" target="_blank" class="row-action" title="Print Invoice" aria-label="Print Invoice">
+                                        <i class="bi bi-printer"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> invoices</span>
+        </div>
+    }
+</div>

@@ -83,6 +83,8 @@ namespace AashanaFashion.Data
         public DbSet<Journal> Journals { get; set; }
         public DbSet<JournalEntry> JournalEntries { get; set; }
         public DbSet<JournalEntryLine> JournalEntryLines { get; set; }
+        public DbSet<Lead> Leads { get; set; }
+        public DbSet<LeadActivity> LeadActivities { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -1065,6 +1067,24 @@ namespace AashanaFashion.Data
                 entity.HasOne(l => l.Account).WithMany(a => a.Lines).HasForeignKey(l => l.AccountId).OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(l => l.Customer).WithMany().HasForeignKey(l => l.CustomerId).OnDelete(DeleteBehavior.SetNull);
                 entity.HasOne(l => l.Vendor).WithMany().HasForeignKey(l => l.VendorId).OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<AppUser>(entity =>
+            {
+                entity.HasOne(u => u.Customer)
+                    .WithMany()
+                    .HasForeignKey(u => u.CustomerId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<Lead>(entity =>
+            {
+                entity.Property(l => l.EstimatedValue).HasColumnType("decimal(18,2)");
+                entity.HasOne(l => l.Company).WithMany().HasForeignKey(l => l.CompanyId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(l => l.AssignedToUser).WithMany().HasForeignKey(l => l.AssignedToUserId).OnDelete(DeleteBehavior.SetNull);
+                entity.HasOne(l => l.Customer).WithMany().HasForeignKey(l => l.CustomerId).OnDelete(DeleteBehavior.SetNull);
+                entity.HasOne(l => l.SalesOrder).WithMany().HasForeignKey(l => l.SalesOrderId).OnDelete(DeleteBehavior.SetNull);
+                entity.HasMany(l => l.Activities).WithOne(a => a.Lead).HasForeignKey(a => a.LeadId).OnDelete(DeleteBehavior.Cascade);
             });
 
             // ——— Multi-Tenancy Global Query Filters for all entities implementing IMustHaveTenant ———

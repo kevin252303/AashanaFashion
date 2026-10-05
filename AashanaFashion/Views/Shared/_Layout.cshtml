@@ -47,6 +47,8 @@
 
     string crumbGroup = ctrl switch
     {
+        "Lead" => "CRM",
+        "CustomerPortal" => "Buyer Portal",
         "SalesOrder" => "Sales",
         "Purchase" => "Purchase",
         "Dying" or "RollPress" => "Job Work",
@@ -160,6 +162,98 @@
             </div>
         </header>
     }
+    else if (role == "Customer")
+    {
+        <aside class="sidebar" id="sidebar" aria-label="Buyer navigation">
+            <a class="sidebar-brand" asp-controller="CustomerPortal" asp-action="Index">
+                <div class="brand-mark" style="background: var(--indigo-600); color: white;">KP</div>
+                <div class="min-w-0">
+                    <div class="brand-name">Kriyex Portal</div>
+                    <div class="brand-sub">B2B Buyer Hub</div>
+                </div>
+            </a>
+
+            <nav class="sidebar-nav">
+                <div class="sb-section">Overview</div>
+                <a class="sb-link @Active(ctrl == "CustomerPortal" && action == "Index")" asp-controller="CustomerPortal" asp-action="Index">
+                    <i class="bi bi-grid-1x2"></i><span>Dashboard</span>
+                </a>
+
+                <div class="sb-section">Orders &amp; Shipments</div>
+                <a class="sb-link @Active(ctrl == "CustomerPortal" && (action == "Orders" || action == "OrderDetails"))" asp-controller="CustomerPortal" asp-action="Orders">
+                    <i class="bi bi-bag"></i><span>My Orders</span>
+                </a>
+                <a class="sb-link @Active(ctrl == "CustomerPortal" && action == "Challans")" asp-controller="CustomerPortal" asp-action="Challans">
+                    <i class="bi bi-truck"></i><span>Delivery Challans</span>
+                </a>
+
+                <div class="sb-section">Billing &amp; Tax</div>
+                <a class="sb-link @Active(ctrl == "CustomerPortal" && action == "Invoices")" asp-controller="CustomerPortal" asp-action="Invoices">
+                    <i class="bi bi-receipt"></i><span>Tax Invoices</span>
+                </a>
+
+                <div class="sb-section">Account</div>
+                <a class="sb-link @Active(ctrl == "CustomerPortal" && action == "Profile")" asp-controller="CustomerPortal" asp-action="Profile">
+                    <i class="bi bi-person"></i><span>Company Profile</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <span>Signed in as</span>
+                <span class="af-badge b-blue">BUYER PORTAL</span>
+            </div>
+        </aside>
+        <div class="sidebar-backdrop" data-sidebar-close></div>
+
+        <header class="topbar">
+            <div class="topbar-left">
+                <button type="button" class="btn btn-ghost btn-icon topbar-toggle" data-sidebar-toggle aria-label="Open navigation" aria-controls="sidebar">
+                    <i class="bi bi-list" style="font-size:18px;"></i>
+                </button>
+                <nav class="topbar-crumbs" aria-label="Breadcrumb">
+                    <span class="crumb-group">Buyer Portal</span>
+                    <i class="bi bi-chevron-right crumb-sep"></i>
+                    <span class="current">@(ViewData["Title"] ?? "Dashboard")</span>
+                </nav>
+            </div>
+            <div class="topbar-right">
+                <div class="dropdown">
+                    <button type="button" class="user-menu-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="u-avatar" style="background:var(--indigo-600);color:white;">BP</span>
+                        <span class="u-meta">
+                            <span class="u-name d-block">@fullName</span>
+                            <span class="u-role d-block">Buyer</span>
+                        </span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end mt-1" style="min-width:220px;">
+                        <li class="px-2 py-2 d-flex align-items-center gap-2">
+                            <span class="u-avatar avatar-lg" style="background:var(--indigo-600);color:white;">BP</span>
+                            <div class="min-w-0">
+                                <div class="u-name text-truncate">@fullName</div>
+                                <div class="u-role">Buyer Account</div>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">
+                                <i class="bi bi-key"></i> Change password
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bi bi-box-arrow-right"></i> Sign out
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+    }
     else
     {
         <aside class="sidebar" id="sidebar" aria-label="Main navigation">
@@ -172,7 +266,11 @@
             </a>
 
             <nav class="sidebar-nav">
-                <div class="sb-section">Main</div>
+                <div class="sb-section">Sales &amp; CRM</div>
+
+                <a class="sb-link @Active(ctrl == "Lead")" asp-controller="Lead" asp-action="Index">
+                    <i class="bi bi-funnel"></i><span>Leads &amp; CRM</span>
+                </a>
 
                 <a class="sb-link @Active(ctrl == "SalesOrder")" asp-controller="SalesOrder" asp-action="Index">
                     <i class="bi bi-bag"></i><span>Sales Orders</span>
