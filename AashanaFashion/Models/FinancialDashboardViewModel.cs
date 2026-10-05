@@ -44,6 +44,27 @@ public class CreateInvoiceViewModel
     [Display(Name = "Sales Order (Optional)")]
     public int? SalesOrderId { get; set; }
 
+    [Display(Name = "Delivery Challan (Optional)")]
+    public int? DeliveryChallanId { get; set; }
+
+    public string? DeliveryChallanNumber { get; set; }
+
+    [Display(Name = "Transporter Name")]
+    public string? TransporterName { get; set; }
+
+    [Display(Name = "Vehicle Number")]
+    public string? VehicleNumber { get; set; }
+
+    [Display(Name = "LR / Tracking Number")]
+    public string? LrNumber { get; set; }
+
+    [Display(Name = "E-Way Bill Number")]
+    public string? EwayBillNumber { get; set; }
+
+    public int TotalOrderedQuantity { get; set; }
+    public int TotalDeliveredQuantity { get; set; }
+    public string? InvoicingBasisMessage { get; set; }
+
     [Required]
     [Display(Name = "Customer")]
     public int CustomerId { get; set; }
@@ -99,10 +120,14 @@ public class CreateInvoiceViewModel
 public class InvoiceItemInputModel
 {
     public int? DesignId { get; set; }
+    public int? SalesOrderDetailId { get; set; }
     public string Description { get; set; } = string.Empty;
     public string HsnCode { get; set; } = "6204";
     public string? Colour { get; set; }
     public string? Size { get; set; }
+    public int OrderedQuantity { get; set; }
+    public int DeliveredQuantity { get; set; }
+    public int AlreadyInvoicedQuantity { get; set; }
     public int Quantity { get; set; } = 1;
     public decimal UnitPrice { get; set; }
     public decimal DiscountAmount { get; set; }

@@ -6,6 +6,9 @@ using AashanaFashion.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
+using AashanaFashion.Data;
+using Microsoft.Extensions.DependencyInjection;
+
 namespace AashanaFashion.Services;
 
 public class WhatsAppService : IWhatsAppService
@@ -13,12 +16,14 @@ public class WhatsAppService : IWhatsAppService
     private readonly IConfiguration _configuration;
     private readonly ILogger<WhatsAppService> _logger;
     private readonly HttpClient _httpClient;
+    private readonly IServiceProvider? _serviceProvider;
 
-    public WhatsAppService(IConfiguration configuration, ILogger<WhatsAppService> logger, HttpClient? httpClient = null)
+    public WhatsAppService(IConfiguration configuration, ILogger<WhatsAppService> logger, HttpClient? httpClient = null, IServiceProvider? serviceProvider = null)
     {
         _configuration = configuration;
         _logger = logger;
         _httpClient = httpClient ?? new HttpClient();
+        _serviceProvider = serviceProvider;
     }
 
     public string NormalizePhoneNumber(string? phone)
@@ -187,6 +192,29 @@ public class WhatsAppService : IWhatsAppService
         return sb.ToString();
     }
 
+    public string BuildSalesOrderMessage(SalesOrder order, Company? company)
+    {
+        var companyName = company?.CompanyName ?? "Aashana Fashion";
+        var customerName = order.Customer?.CustomerName ?? "Valued Buyer";
+        var totalQty = order.Details.Sum(d => d.Quantity);
+        var totalAmount = order.Details.Sum(d => d.TotalPrice);
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"*SALES ORDER CONFIRMATION*");
+        sb.AppendLine($"*From:* {companyName}");
+        sb.AppendLine($"*Order No:* {order.SoNumber}");
+        sb.AppendLine($"*Order Date:* {order.OrderDate:dd MMM yyyy}");
+        sb.AppendLine($"--------------------------------");
+        sb.AppendLine($"*Customer:* {customerName}");
+        sb.AppendLine($"*Total Ordered Quantity:* {totalQty} Pcs");
+        sb.AppendLine($"*Estimated Total Value:* Rs. {totalAmount:N2}");
+        sb.AppendLine($"*Status:* {order.Status}");
+        sb.AppendLine($"--------------------------------");
+        sb.AppendLine($"Your order is in manufacturing queue. We will notify you upon dispatch.");
+
+        return sb.ToString();
+    }
+
     public string BuildLeadFollowUpMessage(Lead lead, Company? company)
     {
         var companyName = company?.CompanyName ?? "Kriyex Fashion";
@@ -255,4 +283,50 @@ public class WhatsAppService : IWhatsAppService
             return (false, ex.Message);
         }
     }
+
+    public async Task LogWhatsAppSentAsync(
+        string docType,
+        int docId,
+        string docRef,
+        string phone,
+        string? recipientName,
+        string message,
+        bool isDirectApi,
+        bool success,
+        string? error = null,
+        string? sentBy = null)
+    {
+        if (_serviceProvider == null) return;
+
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var log = new CommunicationLog
+            {
+                DocumentType = docType,
+                DocumentId = docId,
+                DocumentReference = docRef,
+                Channel = CommunicationChannel.WhatsApp,
+                Recipient = NormalizePhoneNumber(phone),
+                RecipientName = recipientName,
+                Subject = $"WhatsApp — {docType} {docRef}",
+                Body = message,
+                Status = success ? CommunicationStatus.Sent : CommunicationStatus.Failed,
+                ExternalMessageId = isDirectApi ? $"WA-CLOUD-{DateTime.UtcNow:yyyyMMddHHmmss}" : $"WA-WEB-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                ErrorMessage = error,
+                SentAt = DateTime.Now,
+                SentBy = sentBy ?? "User"
+            };
+
+            db.CommunicationLogs.Add(log);
+            await db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to log WhatsApp communication to database");
+        }
+    }
 }
+

@@ -7,7 +7,7 @@
     <div>
         <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Tax invoices</a>
         <h1 class="page-title">New GST tax invoice</h1>
-        <p class="page-sub">Generate a GST-compliant tax invoice for customer billing.</p>
+        <p class="page-sub">Generate a GST-compliant tax invoice auto-fetched from delivered quantities.</p>
     </div>
 </div>
 
@@ -21,8 +21,8 @@
             <div class="data-card mb-4">
                 <div class="data-card-header">
                     <div>
-                        <div class="data-card-title">Invoice &amp; customer</div>
-                        <div class="data-card-sub">Pick a sales order to prefill, or bill a customer manually.</div>
+                        <div class="data-card-title">Invoice &amp; order linkage</div>
+                        <div class="data-card-sub">Select a sales order or shipment to auto-fetch delivered quantities.</div>
                     </div>
                 </div>
                 <div class="data-card-body">
@@ -43,18 +43,40 @@
                             <span asp-validation-for="DueDate" class="af-error"></span>
                         </div>
 
+                        <!-- Sales Order Selector -->
                         <div class="col-md-6">
                             <label asp-for="SalesOrderId" class="form-label">Sales order <span class="text-muted fw-normal">(optional)</span></label>
                             <select asp-for="SalesOrderId" class="af-input af-select" id="soSelect">
                                 <option value="">Manual invoice (no sales order)</option>
                                 @foreach (var so in (List<AashanaFashion.Models.SalesOrder>)ViewBag.SalesOrders)
                                 {
+                                    int deliveredCount = so.Challans?.Sum(c => c.TotalQuantity) ?? 0;
+                                    int orderedCount = so.Details?.Sum(d => d.Quantity) ?? 0;
                                     <option value="@so.Id" selected="@(Model.SalesOrderId == so.Id)">
-                                        @so.SoNumber — @(so.Customer?.CustomerName ?? "") (₹@so.TotalAmount.ToString("N0"))
+                                        @so.SoNumber — @(so.Customer?.CustomerName ?? "") (Delivered: @deliveredCount / @orderedCount pcs)
                                     </option>
                                 }
                             </select>
                         </div>
+
+                        <!-- Delivery Challan Selector -->
+                        <div class="col-md-6">
+                            <label asp-for="DeliveryChallanId" class="form-label">Delivery challan shipment <span class="text-muted fw-normal">(optional filter)</span></label>
+                            <select asp-for="DeliveryChallanId" class="af-input af-select" id="challanSelect">
+                                <option value="">All delivered shipments (Auto-fetch all delivered)</option>
+                                @if (ViewBag.OrderChallans != null)
+                                {
+                                    foreach (var ch in (List<AashanaFashion.Models.DeliveryChallan>)ViewBag.OrderChallans)
+                                    {
+                                        <option value="@ch.Id" selected="@(Model.DeliveryChallanId == ch.Id)">
+                                            @ch.ChallanNumber (@ch.TotalQuantity pcs — @ch.ChallanDate.ToString("dd/MM/yyyy"))
+                                        </option>
+                                    }
+                                }
+                            </select>
+                            <input type="hidden" asp-for="DeliveryChallanNumber" id="hiddenChallanNumber" />
+                        </div>
+
                         <div class="col-md-6">
                             <label asp-for="CustomerId" class="form-label">Customer <span class="req">*</span></label>
                             <select asp-for="CustomerId" class="af-input af-select" id="customerSelect" required>
@@ -67,11 +89,12 @@
                             <span asp-validation-for="CustomerId" class="af-error"></span>
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label asp-for="CustomerName" class="form-label"></label>
                             <input asp-for="CustomerName" class="af-input" id="custName" />
                             <span asp-validation-for="CustomerName" class="af-error"></span>
                         </div>
+
                         <div class="col-md-4">
                             <label asp-for="CustomerGstin" class="form-label"></label>
                             <input asp-for="CustomerGstin" class="af-input font-monospace" id="custGst" placeholder="e.g. 24AAAAA0000A1Z5" />
@@ -79,6 +102,10 @@
                         <div class="col-md-4">
                             <label asp-for="CustomerPan" class="form-label"></label>
                             <input asp-for="CustomerPan" class="af-input font-monospace" id="custPan" placeholder="PAN number" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="PlaceOfSupply" class="form-label"></label>
+                            <input asp-for="PlaceOfSupply" class="af-input" id="placeOfSupply" />
                         </div>
 
                         <div class="col-md-6">
@@ -90,40 +117,93 @@
                             <textarea asp-for="ShippingAddress" class="af-input" rows="2" id="shipAddr"></textarea>
                         </div>
 
-                        <div class="col-md-6">
-                            <label asp-for="PlaceOfSupply" class="form-label"></label>
-                            <input asp-for="PlaceOfSupply" class="af-input" id="placeOfSupply" />
-                        </div>
-                        <div class="col-md-6 d-flex align-items-end">
-                            <div class="form-check form-switch mb-2">
+                        <div class="col-12 d-flex align-items-center justify-content-between pt-1">
+                            <div class="form-check form-switch mb-0">
                                 <input asp-for="IsInterState" class="form-check-input" type="checkbox" role="switch" id="interStateCheck">
-                                <label class="form-check-label" for="interStateCheck">Inter-state supply <span class="text-muted">(IGST instead of CGST + SGST)</span></label>
+                                <label class="form-check-label text-sm fw-medium" for="interStateCheck">Inter-state supply <span class="text-muted">(IGST 5% instead of CGST 2.5% + SGST 2.5%)</span></label>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- Logistics & Shipment Details -->
+            <div class="data-card mb-4">
+                <div class="data-card-header">
+                    <div>
+                        <div class="data-card-title">Logistics &amp; transport details</div>
+                        <div class="data-card-sub">Auto-filled from the delivery challan for E-way bill and GST compliance.</div>
+                    </div>
+                </div>
+                <div class="data-card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label asp-for="TransporterName" class="form-label">Transporter</label>
+                            <input asp-for="TransporterName" class="af-input" id="transporterName" placeholder="e.g. VRL Logistics" />
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="VehicleNumber" class="form-label">Vehicle number</label>
+                            <input asp-for="VehicleNumber" class="af-input font-monospace" id="vehicleNumber" placeholder="e.g. GJ05AB1234" />
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="LrNumber" class="form-label">LR / Bilty no</label>
+                            <input asp-for="LrNumber" class="af-input font-monospace" id="lrNumber" placeholder="LR tracking no" />
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="EwayBillNumber" class="form-label">E-way bill no</label>
+                            <input asp-for="EwayBillNumber" class="af-input font-monospace" id="ewayBillNumber" placeholder="12-digit e-way bill" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Line Items Card with Invoicing Basis Banner -->
             <div class="data-card mb-4">
                 <div class="data-card-header">
                     <div>
                         <div class="data-card-title">Line items</div>
-                        <div class="data-card-sub">HSN 6204 for women’s ethnic garments.</div>
+                        <div class="data-card-sub">Quantities auto-fetched from delivered shipments.</div>
                     </div>
                     <button type="button" class="btn btn-sm btn-secondary" id="addItemBtn"><i class="bi bi-plus-lg"></i> Add row</button>
                 </div>
+
+                <!-- Invoicing Basis Banner -->
+                <div class="px-4 pt-3">
+                    <div id="invoicingBasisBanner" class="p-3 rounded border @(Model.TotalDeliveredQuantity > 0 ? "bg-success-subtle border-success-subtle text-success" : "bg-light border text-secondary")">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi @(Model.TotalDeliveredQuantity > 0 ? "bi-check-circle-fill" : "bi-info-circle") fs-5"></i>
+                                <div>
+                                    <div class="fw-semibold text-sm" id="invoicingBasisTitle">
+                                        @(Model.TotalDeliveredQuantity > 0 ? "Invoicing Basis: Auto-fetched Delivered Quantity" : "Invoicing Basis: Standard Order / Manual")
+                                    </div>
+                                    <div class="text-xs text-muted" id="invoicingBasisSubtitle">
+                                        @(Model.InvoicingBasisMessage ?? "Invoice quantities are auto-fetched from goods delivered via Delivery Challans.")
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 text-xs">
+                                <span class="badge bg-white text-secondary border">Ordered: <strong id="sumOrderedPcs">@Model.TotalOrderedQuantity</strong> pcs</span>
+                                <span class="badge @(Model.TotalDeliveredQuantity > 0 ? "bg-success text-white" : "bg-secondary text-white")">Delivered: <strong id="sumDeliveredPcs">@Model.TotalDeliveredQuantity</strong> pcs</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="table-scroll">
-                    <table class="af-table table-edit" id="itemsTable" style="min-width: 900px;">
+                    <table class="af-table table-edit" id="itemsTable" style="min-width: 950px;">
                         <thead>
                             <tr>
                                 <th style="min-width: 200px;">Description</th>
-                                <th style="width: 86px;">HSN</th>
-                                <th style="width: 190px;">Colour / size</th>
-                                <th style="width: 76px;" class="text-center">Qty</th>
-                                <th style="width: 104px;" class="text-end">Rate (₹)</th>
-                                <th style="width: 92px;" class="text-end">Disc (₹)</th>
-                                <th style="width: 110px;" class="text-end">Amount</th>
-                                <th style="width: 44px;"></th>
+                                <th style="width: 80px;">HSN</th>
+                                <th style="width: 150px;">Colour / size</th>
+                                <th style="width: 70px;" class="text-center text-muted">Ordered</th>
+                                <th style="width: 75px;" class="text-center text-success">Delivered</th>
+                                <th style="width: 85px;" class="text-center">Invoice Qty</th>
+                                <th style="width: 100px;" class="text-end">Rate (₹)</th>
+                                <th style="width: 85px;" class="text-end">Disc (₹)</th>
+                                <th style="width: 105px;" class="text-end">Amount</th>
+                                <th style="width: 40px;"></th>
                             </tr>
                         </thead>
                         <tbody id="itemsBody">
@@ -133,6 +213,8 @@
                                 {
                                     <tr>
                                         <td>
+                                            <input type="hidden" name="Items[@i].DesignId" value="@Model.Items[i].DesignId" />
+                                            <input type="hidden" name="Items[@i].SalesOrderDetailId" value="@Model.Items[i].SalesOrderDetailId" />
                                             <input type="text" name="Items[@i].Description" class="af-input af-input-sm" value="@Model.Items[i].Description" required />
                                         </td>
                                         <td>
@@ -144,8 +226,16 @@
                                                 <input type="text" name="Items[@i].Size" class="af-input af-input-sm" value="@Model.Items[i].Size" placeholder="Size" />
                                             </div>
                                         </td>
+                                        <td class="text-center tabular text-muted cell-ordered-qty">
+                                            <input type="hidden" name="Items[@i].OrderedQuantity" value="@Model.Items[i].OrderedQuantity" />
+                                            <span>@Model.Items[i].OrderedQuantity</span>
+                                        </td>
+                                        <td class="text-center tabular text-success fw-semibold cell-delivered-qty">
+                                            <input type="hidden" name="Items[@i].DeliveredQuantity" value="@Model.Items[i].DeliveredQuantity" />
+                                            <span>@Model.Items[i].DeliveredQuantity</span>
+                                        </td>
                                         <td>
-                                            <input type="number" name="Items[@i].Quantity" class="af-input af-input-sm item-qty text-center" value="@Model.Items[i].Quantity" min="1" />
+                                            <input type="number" name="Items[@i].Quantity" class="af-input af-input-sm item-qty text-center fw-bold" value="@Model.Items[i].Quantity" min="0" title="Delivered quantity to invoice" />
                                         </td>
                                         <td>
                                             <input type="number" step="0.01" name="Items[@i].UnitPrice" class="af-input af-input-sm item-rate text-end" value="@Model.Items[i].UnitPrice" />
@@ -165,11 +255,12 @@
                 </div>
             </div>
 
+            <!-- Bank & Terms Card -->
             <div class="data-card mb-4">
                 <div class="data-card-header">
                     <div>
-                        <div class="data-card-title">Bank &amp; terms</div>
-                        <div class="data-card-sub">Printed on the invoice for payment.</div>
+                        <div class="data-card-title">Bank &amp; payment terms</div>
+                        <div class="data-card-sub">Printed on the invoice for payment remittance.</div>
                     </div>
                 </div>
                 <div class="data-card-body">
@@ -202,7 +293,7 @@
         <div class="col-lg-4">
             <div class="data-card sticky-side">
                 <div class="data-card-header">
-                    <div class="data-card-title">Bill summary</div>
+                    <div class="data-card-title">Invoice summary</div>
                 </div>
                 <div class="data-card-body">
                     <div class="kv-row"><span class="k">Sub-total</span><span class="v" id="sumSubTotal">₹0.00</span></div>
@@ -221,8 +312,8 @@
                     <div class="bill-total mb-4"><span class="k">Grand total</span><span class="v" id="sumGrandTotal">₹0.00</span></div>
 
                     <div class="mb-3">
-                        <label asp-for="Notes" class="form-label">Internal notes</label>
-                        <textarea asp-for="Notes" class="af-input" rows="2" placeholder="Payment terms, transport reference…"></textarea>
+                        <label asp-for="Notes" class="form-label">Internal notes / Challan reference</label>
+                        <textarea asp-for="Notes" class="af-input" rows="2" id="invoiceNotes" placeholder="Payment terms, transport reference…"></textarea>
                     </div>
 
                     <div class="d-grid gap-2">
@@ -255,7 +346,7 @@
                 subtotal += lineGross;
                 discount += disc;
 
-                $(this).find('.item-total').text('₹' + lineNet.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+                $(this).find('.item-total').text('₹' + lineNet.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             });
 
             const taxable = Math.max(0, subtotal - discount);
@@ -269,30 +360,30 @@
                 $('#intraStateTaxSection').addClass('d-none');
                 $('#interStateTaxSection').removeClass('d-none');
                 igst = taxable * 0.05; // 5% IGST
-                $('#sumIgst').text('₹' + igst.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+                $('#sumIgst').text('₹' + igst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             } else {
                 $('#intraStateTaxSection').removeClass('d-none');
                 $('#interStateTaxSection').addClass('d-none');
                 cgst = taxable * 0.025; // 2.5% CGST
                 sgst = taxable * 0.025; // 2.5% SGST
-                $('#sumCgst').text('₹' + cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
-                $('#sumSgst').text('₹' + sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+                $('#sumCgst').text('₹' + cgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                $('#sumSgst').text('₹' + sgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             }
 
             const rawTotal = taxable + cgst + sgst + igst;
             const grandTotal = Math.round(rawTotal);
             const roundOff = grandTotal - rawTotal;
 
-            $('#sumSubTotal').text('₹' + subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
-            $('#sumDiscount').text('−₹' + discount.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
-            $('#sumTaxable').text('₹' + taxable.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+            $('#sumSubTotal').text('₹' + subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            $('#sumDiscount').text('−₹' + discount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            $('#sumTaxable').text('₹' + taxable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             $('#sumRoundOff').text('₹' + roundOff.toFixed(2));
-            $('#sumGrandTotal').text('₹' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+            $('#sumGrandTotal').text('₹' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         }
 
         $(document).on('input change', '.item-qty, .item-rate, .item-disc, #interStateCheck', recalcInvoice);
 
-        // Add Row
+        // Add Manual Row
         $('#addItemBtn').on('click', function () {
             const row = `
                 <tr>
@@ -308,8 +399,16 @@
                             <input type="text" name="Items[${itemIndex}].Size" class="af-input af-input-sm" placeholder="Size" />
                         </div>
                     </td>
+                    <td class="text-center tabular text-muted cell-ordered-qty">
+                        <input type="hidden" name="Items[${itemIndex}].OrderedQuantity" value="1" />
+                        <span>—</span>
+                    </td>
+                    <td class="text-center tabular text-success fw-semibold cell-delivered-qty">
+                        <input type="hidden" name="Items[${itemIndex}].DeliveredQuantity" value="1" />
+                        <span>—</span>
+                    </td>
                     <td>
-                        <input type="number" name="Items[${itemIndex}].Quantity" class="af-input af-input-sm item-qty text-center" value="1" min="1" />
+                        <input type="number" name="Items[${itemIndex}].Quantity" class="af-input af-input-sm item-qty text-center fw-bold" value="1" min="1" />
                     </td>
                     <td>
                         <input type="number" step="0.01" name="Items[${itemIndex}].UnitPrice" class="af-input af-input-sm item-rate text-end" value="0" />
@@ -352,12 +451,146 @@
             });
         });
 
-        // SO Select trigger redirect to prefill
+        function populateInvoiceFromOrderDetails(data) {
+            if (!data) return;
+
+            // Fill customer & tax info
+            if (data.customerId) {
+                $('#customerSelect').val(data.customerId);
+                $('#custName').val(data.customerName);
+                $('#custGst').val(data.gstin);
+                $('#custPan').val(data.pan);
+                $('#billAddr').val(data.billingAddress);
+                $('#shipAddr').val(data.shippingAddress);
+                $('#placeOfSupply').val(data.placeOfSupply);
+                $('#interStateCheck').prop('checked', data.isInterState).trigger('change');
+            }
+
+            // Fill logistics
+            $('#transporterName').val(data.transporterName || '');
+            $('#vehicleNumber').val(data.vehicleNumber || '');
+            $('#lrNumber').val(data.lrNumber || '');
+            $('#ewayBillNumber').val(data.ewayBillNumber || '');
+
+            // Notes
+            if (data.deliveryChallanNumber) {
+                $('#invoiceNotes').val('Billed against Delivery Challan #' + data.deliveryChallanNumber + ' for SO #' + data.soNumber);
+                $('#hiddenChallanNumber').val(data.deliveryChallanNumber);
+            } else if (data.soNumber) {
+                $('#invoiceNotes').val('Billed against Sales Order #' + data.soNumber);
+            }
+
+            // Update banner
+            const banner = $('#invoicingBasisBanner');
+            const title = $('#invoicingBasisTitle');
+            const subtitle = $('#invoicingBasisSubtitle');
+            $('#sumOrderedPcs').text(data.totalOrderedQuantity || 0);
+            $('#sumDeliveredPcs').text(data.totalDeliveredQuantity || 0);
+
+            if (data.totalDeliveredQuantity > 0) {
+                banner.removeClass('bg-light text-secondary').addClass('bg-success-subtle border-success-subtle text-success');
+                banner.find('i').removeClass('bi-info-circle').addClass('bi-check-circle-fill');
+                title.text('Invoicing Basis: Auto-fetched Delivered Quantity');
+                subtitle.text(data.invoicingBasisMessage || 'Quantities automatically fetched from delivered shipments.');
+            } else {
+                banner.removeClass('bg-success-subtle border-success-subtle text-success').addClass('bg-light border text-secondary');
+                banner.find('i').removeClass('bi-check-circle-fill').addClass('bi-info-circle');
+                title.text('Invoicing Basis: Order / Manual (0 pcs delivered)');
+                subtitle.text(data.invoicingBasisMessage || 'No delivery challan found for this order yet.');
+            }
+
+            // Rebuild items
+            $('#itemsBody').empty();
+            itemIndex = 0;
+
+            if (data.items && data.items.length > 0) {
+                data.items.forEach(function (item) {
+                    const row = `
+                        <tr>
+                            <td>
+                                <input type="hidden" name="Items[${itemIndex}].DesignId" value="${item.designId || ''}" />
+                                <input type="hidden" name="Items[${itemIndex}].SalesOrderDetailId" value="${item.salesOrderDetailId || ''}" />
+                                <input type="text" name="Items[${itemIndex}].Description" class="af-input af-input-sm" value="${item.description}" required />
+                            </td>
+                            <td>
+                                <input type="text" name="Items[${itemIndex}].HsnCode" class="af-input af-input-sm font-monospace" value="${item.hsnCode || '6204'}" />
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <input type="text" name="Items[${itemIndex}].Colour" class="af-input af-input-sm" value="${item.colour || ''}" placeholder="Colour" />
+                                    <input type="text" name="Items[${itemIndex}].Size" class="af-input af-input-sm" value="${item.size || ''}" placeholder="Size" />
+                                </div>
+                            </td>
+                            <td class="text-center tabular text-muted cell-ordered-qty">
+                                <input type="hidden" name="Items[${itemIndex}].OrderedQuantity" value="${item.orderedQuantity}" />
+                                <span>${item.orderedQuantity}</span>
+                            </td>
+                            <td class="text-center tabular text-success fw-semibold cell-delivered-qty">
+                                <input type="hidden" name="Items[${itemIndex}].DeliveredQuantity" value="${item.deliveredQuantity}" />
+                                <span>${item.deliveredQuantity}</span>
+                            </td>
+                            <td>
+                                <input type="number" name="Items[${itemIndex}].Quantity" class="af-input af-input-sm item-qty text-center fw-bold" value="${item.quantity}" min="0" title="Delivered quantity to invoice" />
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" name="Items[${itemIndex}].UnitPrice" class="af-input af-input-sm item-rate text-end" value="${item.unitPrice}" />
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" name="Items[${itemIndex}].DiscountAmount" class="af-input af-input-sm item-disc text-end" value="${item.discountAmount}" />
+                            </td>
+                            <td class="cell-num text-foreground fw-semibold item-total">₹0.00</td>
+                            <td class="text-center">
+                                <button type="button" class="row-action danger remove-item-btn" title="Remove" aria-label="Remove row"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    $('#itemsBody').append(row);
+                    itemIndex++;
+                });
+            } else {
+                $('#addItemBtn').trigger('click');
+            }
+
+            recalcInvoice();
+        }
+
+        // SO Select trigger AJAX to fetch delivered quantities dynamically
         $('#soSelect').on('change', function () {
             const soId = $(this).val();
-            if (soId) {
-                window.location.href = '/Invoice/Create?salesOrderId=' + soId;
+            if (!soId) {
+                $('#challanSelect').empty().append('<option value="">All delivered shipments (Auto-fetch all delivered)</option>');
+                return;
             }
+
+            $.getJSON('/Invoice/GetOrderDeliveryDetails?salesOrderId=' + soId, function (data) {
+                // Populate challan dropdown
+                const challanDropdown = $('#challanSelect');
+                challanDropdown.empty();
+                challanDropdown.append('<option value="">All delivered shipments (Auto-fetch all delivered)</option>');
+                if (data.challans && data.challans.length > 0) {
+                    data.challans.forEach(function (ch) {
+                        challanDropdown.append(`<option value="${ch.id}">${ch.challanNumber} (${ch.totalQuantity} pcs — ${ch.challanDate})</option>`);
+                    });
+                }
+
+                populateInvoiceFromOrderDetails(data);
+            });
+        });
+
+        // Specific Challan Filter trigger
+        $('#challanSelect').on('change', function () {
+            const soId = $('#soSelect').val();
+            const chId = $(this).val();
+            if (!soId) return;
+
+            let url = '/Invoice/GetOrderDeliveryDetails?salesOrderId=' + soId;
+            if (chId) {
+                url += '&deliveryChallanId=' + chId;
+            }
+
+            $.getJSON(url, function (data) {
+                populateInvoiceFromOrderDetails(data);
+            });
         });
 
         $(document).ready(function () {

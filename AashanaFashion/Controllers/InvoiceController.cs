@@ -86,7 +86,7 @@ public class InvoiceController : Controller
 
     [Authorize(Roles = "Admin,SuperAdmin,Manager")]
     [HttpGet]
-    public async Task<IActionResult> Create(int? salesOrderId)
+    public async Task<IActionResult> Create(int? salesOrderId, int? deliveryChallanId)
     {
         var activeCompany = await _companyContext.GetActiveCompanyAsync();
         var model = new CreateInvoiceViewModel
@@ -95,11 +95,32 @@ public class InvoiceController : Controller
             InvoiceDate = DateTime.Today,
             DueDate = DateTime.Today.AddDays(15),
             SalesOrderId = salesOrderId,
+            DeliveryChallanId = deliveryChallanId,
             BankName = activeCompany.BankName ?? "HDFC Bank",
             BankAccountNumber = activeCompany.BankAccountNumber ?? "50200012345678",
             BankIfsc = activeCompany.BankIfsc ?? "HDFC0001234",
             BankBranch = activeCompany.BankBranch ?? "Surat"
         };
+
+        DeliveryChallan? selectedChallan = null;
+        if (deliveryChallanId.HasValue)
+        {
+            selectedChallan = await _context.DeliveryChallans
+                .Include(c => c.Customer)
+                .Include(c => c.Items)
+                .Include(c => c.SalesOrder)
+                .ThenInclude(s => s.Details)
+                .ThenInclude(d => d.Design)
+                .FirstOrDefaultAsync(c => c.Id == deliveryChallanId.Value);
+
+            if (selectedChallan != null)
+            {
+                salesOrderId = selectedChallan.SalesOrderId;
+                model.SalesOrderId = salesOrderId;
+                model.DeliveryChallanId = selectedChallan.Id;
+                model.DeliveryChallanNumber = selectedChallan.ChallanNumber;
+            }
+        }
 
         if (salesOrderId.HasValue)
         {
@@ -139,26 +160,148 @@ public class InvoiceController : Controller
                     model.IgstRate = 5.0m;
                 }
 
-                foreach (var d in so.Details)
+                // Query all delivery challans for this order
+                var orderChallans = await _context.DeliveryChallans
+                    .Include(c => c.Items)
+                    .Where(c => c.SalesOrderId == so.Id)
+                    .OrderByDescending(c => c.ChallanDate)
+                    .ToListAsync();
+
+                // Query existing invoices to calculate already invoiced quantities
+                var existingInvoices = await _context.TaxInvoices
+                    .Include(i => i.Items)
+                    .Where(i => i.SalesOrderId == so.Id && i.PaymentStatus != InvoicePaymentStatus.Cancelled)
+                    .ToListAsync();
+
+                var activeChallan = selectedChallan ?? orderChallans.FirstOrDefault();
+                if (activeChallan != null)
                 {
-                    model.Items.Add(new InvoiceItemInputModel
+                    model.EwayBillNumber = activeChallan.EwayBillNumber;
+                    model.TransporterName = activeChallan.TransporterName;
+                    model.VehicleNumber = activeChallan.VehicleNumber;
+                    model.LrNumber = activeChallan.LrNumber;
+                    if (!string.IsNullOrWhiteSpace(activeChallan.ShippingAddress))
                     {
-                        DesignId = d.DesignId,
-                        Description = $"{d.Design?.DesignNumber ?? "Garment"} ({d.Colour} - {d.Size})",
-                        HsnCode = "6204",
-                        Colour = d.Colour,
-                        Size = d.Size,
-                        Quantity = d.Quantity,
-                        UnitPrice = d.UnitPrice,
-                        DiscountAmount = 0m,
-                        GstRate = 5.0m
-                    });
+                        model.ShippingAddress = activeChallan.ShippingAddress;
+                    }
                 }
+
+                if (selectedChallan != null)
+                {
+                    // Specific Delivery Challan billing
+                    model.Notes = $"Billed against Delivery Challan #{selectedChallan.ChallanNumber} (Dated: {selectedChallan.ChallanDate:dd/MM/yyyy}) for SO #{so.SoNumber}";
+                    foreach (var chItem in selectedChallan.Items)
+                    {
+                        var d = so.Details.FirstOrDefault(x => 
+                            (chItem.SalesOrderDetailId.HasValue && x.Id == chItem.SalesOrderDetailId.Value) ||
+                            (x.DesignNumber == chItem.DesignNumber && x.Colour == chItem.Colour && x.Size == chItem.Size));
+
+                        int orderedQty = d?.Quantity ?? chItem.QuantityDispatched;
+                        int deliveredQty = chItem.QuantityDispatched;
+                        decimal unitPrice = d?.UnitPrice ?? 0m;
+                        decimal discPct = d?.DiscountPercentage ?? 0m;
+                        decimal gstPct = d?.GstPercentage > 0 ? d.GstPercentage : 5.0m;
+
+                        model.Items.Add(new InvoiceItemInputModel
+                        {
+                            DesignId = d?.DesignId,
+                            SalesOrderDetailId = d?.Id,
+                            Description = $"{chItem.DesignNumber} ({chItem.Colour} - {chItem.Size})",
+                            HsnCode = "6204",
+                            Colour = chItem.Colour,
+                            Size = chItem.Size,
+                            OrderedQuantity = orderedQty,
+                            DeliveredQuantity = deliveredQty,
+                            AlreadyInvoicedQuantity = 0,
+                            Quantity = deliveredQty, // AUTO-FETCHED DELIVERED QUANTITY!
+                            UnitPrice = unitPrice,
+                            DiscountAmount = Math.Round((deliveredQty * unitPrice) * (discPct / 100m), 2),
+                            GstRate = gstPct
+                        });
+                    }
+                    model.TotalOrderedQuantity = model.Items.Sum(i => i.OrderedQuantity);
+                    model.TotalDeliveredQuantity = selectedChallan.TotalQuantity;
+                    model.InvoicingBasisMessage = $"Auto-fetched delivered items from Delivery Challan #{selectedChallan.ChallanNumber} ({selectedChallan.TotalQuantity} pcs).";
+                }
+                else
+                {
+                    // Full/Partial Sales Order billing auto-fetching delivered quantities
+                    if (orderChallans.Any())
+                    {
+                        model.Notes = $"Billed against Sales Order #{so.SoNumber} (Challan(s): {string.Join(", ", orderChallans.Select(c => c.ChallanNumber))})";
+                    }
+
+                    foreach (var d in so.Details)
+                    {
+                        int challanDelivered = orderChallans.SelectMany(c => c.Items)
+                            .Where(i => (i.SalesOrderDetailId.HasValue && i.SalesOrderDetailId.Value == d.Id) ||
+                                        (i.DesignNumber == d.DesignNumber && i.Colour == d.Colour && i.Size == d.Size))
+                            .Sum(i => i.QuantityDispatched);
+
+                        int totalDelivered = Math.Max(challanDelivered, d.DispatchedQuantity);
+
+                        int alreadyInvoiced = existingInvoices.SelectMany(inv => inv.Items)
+                            .Where(i => (d.DesignId.HasValue && i.DesignId == d.DesignId) ||
+                                        (i.Colour == d.Colour && i.Size == d.Size))
+                            .Sum(i => i.Quantity);
+
+                        int unbilledDelivered = Math.Max(0, totalDelivered - alreadyInvoiced);
+
+                        // If goods were delivered, auto-fetch the delivered / unbilled delivered quantity
+                        int billableQty = (totalDelivered > 0) ? unbilledDelivered : (orderChallans.Any() ? 0 : d.Quantity);
+
+                        // If delivery challans exist for this order, skip items that were completely un-dispatched (delivered = 0)
+                        if (orderChallans.Any() && totalDelivered == 0)
+                        {
+                            continue;
+                        }
+
+                        decimal discPct = d.DiscountPercentage;
+                        decimal gstPct = d.GstPercentage > 0 ? d.GstPercentage : 5.0m;
+
+                        model.Items.Add(new InvoiceItemInputModel
+                        {
+                            DesignId = d.DesignId,
+                            SalesOrderDetailId = d.Id,
+                            Description = $"{d.Design?.DesignNumber ?? d.DesignNumber} ({d.Colour} - {d.Size})",
+                            HsnCode = "6204",
+                            Colour = d.Colour,
+                            Size = d.Size,
+                            OrderedQuantity = d.Quantity,
+                            DeliveredQuantity = totalDelivered,
+                            AlreadyInvoicedQuantity = alreadyInvoiced,
+                            Quantity = billableQty, // AUTO-FETCHED DELIVERED QUANTITY!
+                            UnitPrice = d.UnitPrice,
+                            DiscountAmount = Math.Round((billableQty * d.UnitPrice) * (discPct / 100m), 2),
+                            GstRate = gstPct
+                        });
+                    }
+
+                    model.TotalOrderedQuantity = so.Details.Sum(d => d.Quantity);
+                    model.TotalDeliveredQuantity = orderChallans.Sum(c => c.TotalQuantity);
+
+                    if (orderChallans.Any())
+                    {
+                        model.InvoicingBasisMessage = $"Delivered quantity auto-fetched: {model.Items.Sum(i => i.Quantity)} pcs across {orderChallans.Count} Delivery Challan(s) (Ordered: {model.TotalOrderedQuantity} pcs).";
+                    }
+                    else
+                    {
+                        model.InvoicingBasisMessage = $"Notice: No delivery challan found for this order (0 pcs delivered). Quantities reflect ordered amount.";
+                    }
+                }
+
+                ViewBag.OrderChallans = orderChallans;
             }
         }
 
         ViewBag.Customers = await _context.Customers.Where(c => c.IsActive).OrderBy(c => c.CustomerName).ToListAsync();
-        ViewBag.SalesOrders = await _context.SalesOrders.Where(s => s.CompanyId == activeCompany.Id).Include(s => s.Customer).OrderByDescending(s => s.Id).ToListAsync();
+        ViewBag.SalesOrders = await _context.SalesOrders
+            .Where(s => s.CompanyId == activeCompany.Id)
+            .Include(s => s.Customer)
+            .Include(s => s.Details)
+            .Include(s => s.Challans)
+            .OrderByDescending(s => s.Id)
+            .ToListAsync();
 
         return View(model);
     }
@@ -214,6 +357,9 @@ public class InvoiceController : Controller
             BankBranch = model.BankBranch,
             TermsAndConditions = model.TermsAndConditions,
             Notes = model.Notes?.Trim(),
+            EwayBillNumber = model.EwayBillNumber?.Trim(),
+            TransporterName = model.TransporterName?.Trim(),
+            VehicleNumber = model.VehicleNumber?.Trim(),
             PaymentStatus = InvoicePaymentStatus.Unpaid,
             CreatedDate = DateTime.Now
         };
@@ -282,6 +428,43 @@ public class InvoiceController : Controller
 
         // Automatically calculate & post Salesman Commission entries and expense transactions
         await ProcessSalesmanCommissionsAsync(invoice);
+
+        await _context.SaveChangesAsync();
+
+        // Automated Chatter & Activity Tracking
+        var loggedUser = User.Identity?.Name ?? "User";
+        _context.CommunicationLogs.Add(new CommunicationLog
+        {
+            DocumentType = "TaxInvoice",
+            DocumentId = invoice.Id,
+            DocumentReference = invoice.InvoiceNumber,
+            Channel = CommunicationChannel.InternalNote,
+            Recipient = "Accounts & Billing",
+            RecipientName = invoice.CustomerName,
+            Subject = "Tax Invoice Generated",
+            Body = $"Generated Tax Invoice #{invoice.InvoiceNumber} for ₹{invoice.GrandTotal:N2} (Taxable: ₹{invoice.TaxableAmount:N2}, GST: ₹{(invoice.CgstAmount + invoice.SgstAmount + invoice.IgstAmount):N2}). Due date: {invoice.DueDate:dd MMM yyyy}.",
+            Status = CommunicationStatus.Sent,
+            SentAt = DateTime.Now,
+            SentBy = loggedUser
+        });
+
+        if (invoice.SalesOrderId.HasValue)
+        {
+            _context.CommunicationLogs.Add(new CommunicationLog
+            {
+                DocumentType = "SalesOrder",
+                DocumentId = invoice.SalesOrderId.Value,
+                DocumentReference = invoice.SalesOrder?.SoNumber ?? $"SO-{invoice.SalesOrderId.Value}",
+                Channel = CommunicationChannel.InternalNote,
+                Recipient = "Accounts & Billing",
+                RecipientName = invoice.CustomerName,
+                Subject = $"Billed Tax Invoice #{invoice.InvoiceNumber}",
+                Body = $"Billed Tax Invoice #{invoice.InvoiceNumber} totaling ₹{invoice.GrandTotal:N2} against this order.",
+                Status = CommunicationStatus.Sent,
+                SentAt = DateTime.Now,
+                SentBy = loggedUser
+            });
+        }
 
         await _context.SaveChangesAsync();
 
@@ -397,6 +580,40 @@ public class InvoiceController : Controller
 
         await _context.SaveChangesAsync();
 
+        // Automated Chatter & Activity Tracking
+        var payUser = User.Identity?.Name ?? "User";
+        _context.CommunicationLogs.Add(new CommunicationLog
+        {
+            DocumentType = "TaxInvoice",
+            DocumentId = invoice.Id,
+            DocumentReference = invoice.InvoiceNumber,
+            Channel = CommunicationChannel.InternalNote,
+            Recipient = "Accounts & Billing",
+            RecipientName = invoice.CustomerName,
+            Subject = $"Payment Received: ₹{model.Amount:N2}",
+            Body = $"Recorded payment of ₹{model.Amount:N2} via {model.PaymentMode} (Receipt #{receiptNo}). Ref/UTR: {model.ReferenceNumber ?? "N/A"}. Remaining Due: ₹{invoice.BalanceDue:N2}.",
+            Status = CommunicationStatus.Sent,
+            SentAt = DateTime.Now,
+            SentBy = payUser
+        });
+
+        _context.CommunicationLogs.Add(new CommunicationLog
+        {
+            DocumentType = "PaymentReceipt",
+            DocumentId = receipt.Id,
+            DocumentReference = receiptNo,
+            Channel = CommunicationChannel.InternalNote,
+            Recipient = "Accounts & Billing",
+            RecipientName = invoice.CustomerName,
+            Subject = "Payment Receipt Voucher Created",
+            Body = $"Receipt #{receiptNo} issued for ₹{model.Amount:N2} against Invoice #{invoice.InvoiceNumber}.",
+            Status = CommunicationStatus.Sent,
+            SentAt = DateTime.Now,
+            SentBy = payUser
+        });
+
+        await _context.SaveChangesAsync();
+
         TempData["Success"] = $"Payment of ₹{model.Amount:N2} recorded successfully (Receipt #{receiptNo}).";
         return RedirectToAction(nameof(Details), new { id = model.InvoiceId });
     }
@@ -420,6 +637,190 @@ public class InvoiceController : Controller
             state = state,
             isInterState = isInterState,
             placeOfSupply = !string.IsNullOrEmpty(state) ? state : "Gujarat (24)"
+        });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOrderDeliveryDetails(int? salesOrderId, int? deliveryChallanId)
+    {
+        if (!salesOrderId.HasValue && !deliveryChallanId.HasValue)
+            return BadRequest("salesOrderId or deliveryChallanId is required.");
+
+        DeliveryChallan? selectedChallan = null;
+        if (deliveryChallanId.HasValue)
+        {
+            selectedChallan = await _context.DeliveryChallans
+                .Include(c => c.Customer)
+                .Include(c => c.Items)
+                .Include(c => c.SalesOrder)
+                .ThenInclude(s => s.Details)
+                .ThenInclude(d => d.Design)
+                .FirstOrDefaultAsync(c => c.Id == deliveryChallanId.Value);
+
+            if (selectedChallan != null)
+            {
+                salesOrderId = selectedChallan.SalesOrderId;
+            }
+        }
+
+        if (!salesOrderId.HasValue)
+            return NotFound("Sales order not found.");
+
+        var so = await _context.SalesOrders
+            .Include(s => s.Customer)
+            .Include(s => s.Details)
+            .ThenInclude(d => d.Design)
+            .FirstOrDefaultAsync(s => s.Id == salesOrderId.Value);
+
+        if (so == null || so.Customer == null)
+            return NotFound("Sales order or customer not found.");
+
+        var challans = await _context.DeliveryChallans
+            .Include(c => c.Items)
+            .Where(c => c.SalesOrderId == salesOrderId.Value)
+            .OrderByDescending(c => c.ChallanDate)
+            .ToListAsync();
+
+        var existingInvoices = await _context.TaxInvoices
+            .Include(i => i.Items)
+            .Where(i => i.SalesOrderId == salesOrderId.Value && i.PaymentStatus != InvoicePaymentStatus.Cancelled)
+            .ToListAsync();
+
+        string state = so.Customer.State ?? "";
+        bool isInterState = !string.IsNullOrEmpty(state) && !state.ToLower().Contains("gujarat") && !state.Contains("24");
+
+        var activeChallan = selectedChallan ?? challans.FirstOrDefault();
+
+        var challanSummaries = challans.Select(c => new
+        {
+            id = c.Id,
+            challanNumber = c.ChallanNumber,
+            challanDate = c.ChallanDate.ToString("dd/MM/yyyy"),
+            totalQuantity = c.TotalQuantity
+        }).ToList();
+
+        var items = new List<object>();
+
+        if (selectedChallan != null)
+        {
+            foreach (var chItem in selectedChallan.Items)
+            {
+                var soDetail = so.Details.FirstOrDefault(d => 
+                    (chItem.SalesOrderDetailId.HasValue && d.Id == chItem.SalesOrderDetailId.Value) ||
+                    (d.DesignNumber == chItem.DesignNumber && d.Colour == chItem.Colour && d.Size == chItem.Size));
+
+                int orderedQty = soDetail?.Quantity ?? chItem.QuantityDispatched;
+                int deliveredQty = chItem.QuantityDispatched;
+                decimal unitPrice = soDetail?.UnitPrice ?? 0m;
+                decimal discPct = soDetail?.DiscountPercentage ?? 0m;
+                decimal gstPct = soDetail?.GstPercentage > 0 ? soDetail.GstPercentage : 5.0m;
+
+                items.Add(new
+                {
+                    designId = soDetail?.DesignId,
+                    salesOrderDetailId = soDetail?.Id,
+                    description = $"{chItem.DesignNumber} ({chItem.Colour} - {chItem.Size})",
+                    hsnCode = "6204",
+                    colour = chItem.Colour,
+                    size = chItem.Size,
+                    orderedQuantity = orderedQty,
+                    deliveredQuantity = deliveredQty,
+                    alreadyInvoicedQuantity = 0,
+                    quantity = deliveredQty, // AUTO-FETCHED DELIVERED QUANTITY!
+                    unitPrice = unitPrice,
+                    discountAmount = Math.Round((deliveredQty * unitPrice) * (discPct / 100m), 2),
+                    gstRate = gstPct
+                });
+            }
+        }
+        else
+        {
+            foreach (var d in so.Details)
+            {
+                int challanDelivered = challans.SelectMany(c => c.Items)
+                    .Where(i => (i.SalesOrderDetailId.HasValue && i.SalesOrderDetailId.Value == d.Id) ||
+                                (i.DesignNumber == d.DesignNumber && i.Colour == d.Colour && i.Size == d.Size))
+                    .Sum(i => i.QuantityDispatched);
+
+                int totalDelivered = Math.Max(challanDelivered, d.DispatchedQuantity);
+
+                int alreadyInvoiced = existingInvoices.SelectMany(inv => inv.Items)
+                    .Where(i => (d.DesignId.HasValue && i.DesignId == d.DesignId) ||
+                                (i.Colour == d.Colour && i.Size == d.Size))
+                    .Sum(i => i.Quantity);
+
+                int unbilledDelivered = Math.Max(0, totalDelivered - alreadyInvoiced);
+
+                int billableQty = (totalDelivered > 0) ? unbilledDelivered : (challans.Any() ? 0 : d.Quantity);
+
+                if (challans.Any() && totalDelivered == 0 && billableQty == 0)
+                {
+                    continue;
+                }
+
+                decimal discPct = d.DiscountPercentage;
+                decimal gstPct = d.GstPercentage > 0 ? d.GstPercentage : 5.0m;
+
+                items.Add(new
+                {
+                    designId = d.DesignId,
+                    salesOrderDetailId = d.Id,
+                    description = $"{d.Design?.DesignNumber ?? d.DesignNumber} ({d.Colour} - {d.Size})",
+                    hsnCode = "6204",
+                    colour = d.Colour,
+                    size = d.Size,
+                    orderedQuantity = d.Quantity,
+                    deliveredQuantity = totalDelivered,
+                    alreadyInvoicedQuantity = alreadyInvoiced,
+                    quantity = billableQty, // AUTO-FETCHED DELIVERED QUANTITY!
+                    unitPrice = d.UnitPrice,
+                    discountAmount = Math.Round((billableQty * d.UnitPrice) * (discPct / 100m), 2),
+                    gstRate = gstPct
+                });
+            }
+        }
+
+        int totalOrdered = so.Details.Sum(d => d.Quantity);
+        int totalDeliveredSum = challans.Sum(c => c.TotalQuantity);
+
+        string basisMsg;
+        if (selectedChallan != null)
+        {
+            basisMsg = $"Auto-fetched delivered items from Delivery Challan #{selectedChallan.ChallanNumber} ({selectedChallan.TotalQuantity} pcs).";
+        }
+        else if (challans.Any())
+        {
+            basisMsg = $"Auto-fetched delivered quantity across {challans.Count} Delivery Challan(s) ({totalDeliveredSum} of {totalOrdered} pcs delivered).";
+        }
+        else
+        {
+            basisMsg = $"No delivery challan found for this order (0 pcs delivered). Quantities reflect ordered amount.";
+        }
+
+        return Json(new
+        {
+            salesOrderId = so.Id,
+            soNumber = so.SoNumber,
+            deliveryChallanId = selectedChallan?.Id,
+            deliveryChallanNumber = selectedChallan?.ChallanNumber,
+            customerId = so.CustomerId,
+            customerName = so.Customer.CustomerName,
+            gstin = so.Customer.GstNumber ?? "",
+            pan = so.Customer.PanNumber ?? "",
+            billingAddress = so.Customer.Address ?? "",
+            shippingAddress = activeChallan?.ShippingAddress ?? so.ShippingAddress ?? so.Customer.Address ?? "",
+            state = state,
+            isInterState = isInterState,
+            placeOfSupply = !string.IsNullOrEmpty(state) ? state : "Gujarat (24)",
+            ewayBillNumber = activeChallan?.EwayBillNumber ?? "",
+            transporterName = activeChallan?.TransporterName ?? "",
+            vehicleNumber = activeChallan?.VehicleNumber ?? "",
+            lrNumber = activeChallan?.LrNumber ?? "",
+            totalOrderedQuantity = totalOrdered,
+            totalDeliveredQuantity = totalDeliveredSum,
+            invoicingBasisMessage = basisMsg,
+            challans = challanSummaries,
+            items = items
         });
     }
 
