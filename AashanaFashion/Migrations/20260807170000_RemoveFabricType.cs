@@ -15,10 +15,9 @@ namespace AashanaFashion.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Commented out because FabricType column does not exist in the database table
-            // migrationBuilder.DropColumn(
-            //     name: "FabricType",
-            //     table: "ProductionOrders");
+            migrationBuilder.DropColumn(
+                name: "FabricType",
+                table: "ProductionOrders");
         }
 
         /// <inheritdoc />
