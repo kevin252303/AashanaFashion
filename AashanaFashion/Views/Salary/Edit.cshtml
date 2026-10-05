@@ -1,96 +1,92 @@
 @model AashanaFashion.Models.SalaryRecord
 @{
     ViewData["Title"] = $"Adjust Salary — {Model.Employee?.FullName}";
+    string monthName = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(Model.Month);
 }
 
-<div class="mb-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-1">
-            <li class="breadcrumb-item"><a asp-action="Index">Payroll</a></li>
-            <li class="breadcrumb-item active">Adjust Salary</li>
-        </ol>
-    </nav>
-    <h2 class="mb-0 fw-bold">✏️ Adjust Salary Record — @Model.Employee?.FullName</h2>
-    <p class="text-muted">Month: @System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(Model.Month) @Model.Year • Code: @Model.Employee?.EmployeeCode</p>
+<div class="page-header">
+    <div>
+        <a asp-action="Index" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="page-back"><i class="bi bi-arrow-left"></i> Payroll</a>
+        <h1 class="page-title">Adjust salary — @Model.Employee?.FullName</h1>
+        <p class="page-sub">@monthName @Model.Year · <span class="font-monospace">@Model.Employee?.EmployeeCode</span></p>
+    </div>
 </div>
 
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="card border-0 shadow-sm rounded-3">
-            @Html.AntiForgeryToken()
-            <input type="hidden" asp-for="Id" />
-            <input type="hidden" asp-for="EmployeeId" />
-            <input type="hidden" asp-for="Year" />
-            <input type="hidden" asp-for="Month" />
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="EmployeeId" />
+    <input type="hidden" asp-for="Year" />
+    <input type="hidden" asp-for="Month" />
 
-            <div class="card-header bg-white py-3 border-bottom">
-                <h5 class="card-title mb-0 fw-bold">Earnings & Deductions Breakdown</h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label asp-for="BaseSalaryEarned" class="form-label fw-semibold">Base Salary Earned (₹)</label>
-                        <div class="input-group">
-                            <span class="input-group-text">₹</span>
-                            <input asp-for="BaseSalaryEarned" type="number" step="0.01" class="form-control" id="baseEarnedInput" />
-                        </div>
-                        <small class="text-muted">Attendance: @Model.DaysPresent / @Model.TotalWorkingDays days (@Model.TotalHoursWorked hrs)</small>
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="data-card">
+                <div class="data-card-header">
+                    <div>
+                        <div class="data-card-title">Earnings &amp; deductions</div>
+                        <div class="data-card-sub">Attendance: @Model.DaysPresent / @Model.TotalWorkingDays days · @Model.TotalHoursWorked hrs · OT @Model.TotalOvertimeHours hrs</div>
                     </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="OvertimePay" class="form-label fw-semibold">Overtime Pay (₹)</label>
-                        <div class="input-group">
-                            <span class="input-group-text">₹</span>
-                            <input asp-for="OvertimePay" type="number" step="0.01" class="form-control" id="otPayInput" />
-                        </div>
-                        <small class="text-muted">Logged OT: @Model.TotalOvertimeHours hours</small>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="BonusAllowance" class="form-label fw-semibold">Bonus / Performance Allowance (₹)</label>
-                        <div class="input-group">
-                            <span class="input-group-text text-success">+₹</span>
-                            <input asp-for="BonusAllowance" type="number" step="0.01" class="form-control" id="bonusInput" />
-                        </div>
-                        <small class="text-muted">Additional incentives or festive bonus.</small>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="Deductions" class="form-label fw-semibold">Deductions / Salary Advance (₹)</label>
-                        <div class="input-group">
-                            <span class="input-group-text text-danger">-₹</span>
-                            <input asp-for="Deductions" type="number" step="0.01" class="form-control" id="deductionsInput" />
-                        </div>
-                        <small class="text-muted">Advances taken, damage, or penalties.</small>
-                    </div>
-
-                    <div class="col-12">
-                        <div class="p-3 bg-light rounded-3 d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="text-muted small text-uppercase">Calculated Net Payable:</span>
-                                <h3 class="fw-bold my-0 text-primary" id="netSalaryDisplay">₹@Model.NetSalary.ToString("N2")</h3>
+                </div>
+                <div class="data-card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="BaseSalaryEarned" class="form-label">Base salary earned</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input asp-for="BaseSalaryEarned" type="number" step="0.01" class="af-input" id="baseEarnedInput" />
                             </div>
-                            <span class="badge bg-secondary fs-6">Status: @Model.PaymentStatus</span>
+                            <div class="form-text">From @Model.DaysPresent days present.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="OvertimePay" class="form-label">Overtime pay</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input asp-for="OvertimePay" type="number" step="0.01" class="af-input" id="otPayInput" />
+                            </div>
+                            <div class="form-text">Logged OT: @Model.TotalOvertimeHours hours.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BonusAllowance" class="form-label">Bonus / performance allowance</label>
+                            <div class="input-group">
+                                <span class="input-group-text text-success">+₹</span>
+                                <input asp-for="BonusAllowance" type="number" step="0.01" class="af-input" id="bonusInput" />
+                            </div>
+                            <div class="form-text">Additional incentives or festive bonus.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Deductions" class="form-label">Deductions / salary advance</label>
+                            <div class="input-group">
+                                <span class="input-group-text text-danger">−₹</span>
+                                <input asp-for="Deductions" type="number" step="0.01" class="af-input" id="deductionsInput" />
+                            </div>
+                            <div class="form-text">Advances taken, damage or penalties.</div>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Remarks" class="form-label">Adjustment remarks</label>
+                            <textarea asp-for="Remarks" rows="2" class="af-input" placeholder="Reason for adjustments…"></textarea>
                         </div>
                     </div>
-
-                    <div class="col-12">
-                        <label asp-for="Remarks" class="form-label fw-semibold">Adjustment Remarks / Notes</label>
-                        <textarea asp-for="Remarks" rows="2" class="form-control" placeholder="Reason for adjustments..."></textarea>
+                    <div class="form-actions">
+                        <a asp-action="Index" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Save adjustments</button>
                     </div>
                 </div>
             </div>
-            <div class="card-footer bg-white py-3 border-top d-flex justify-content-between">
-                <a asp-action="Index" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="btn btn-outline-secondary">
-                    Cancel
-                </a>
-                <button type="submit" class="btn btn-primary">
-                    💾 Save Salary Adjustments
-                </button>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="metric-card">
+                <div class="metric-label">Net payable</div>
+                <div class="metric-value" id="netSalaryDisplay">₹@Model.NetSalary.ToString("N2")</div>
+                <div class="metric-meta">base + overtime + bonus − deductions</div>
+                <div class="mt-3">
+                    <span class="af-badge @(Model.PaymentStatus == AashanaFashion.Models.PayrollStatus.Paid ? "b-green" : "b-yellow")">@Model.PaymentStatus.Humanize()</span>
+                </div>
             </div>
-        </form>
+        </div>
     </div>
-</div>
+</form>
 
 @section Scripts {
     <script>

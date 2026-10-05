@@ -66,20 +66,20 @@
         tr.className = 'item-row';
         tr.innerHTML =
             '<td class="text-center sr-no">' + (index + 1) + '</td>' +
-            '<td><input name="Details[' + index + '].ProductName" class="af-input item-product" list="rawMaterialsList" placeholder="Select or enter product" required autocomplete="off" />' +
+            '<td><input name="Details[' + index + '].ProductName" class="af-input af-input-sm item-product" list="rawMaterialsList" placeholder="Select or enter product" required autocomplete="off" />' +
             '<input type="hidden" name="Details[' + index + '].RawMaterialId" class="item-rawmaterial-id" /></td>' +
-            '<td><input name="Details[' + index + '].ProductDesignNo" class="af-input" placeholder="Design #" /></td>' +
-            '<td><input name="Details[' + index + '].HsnCode" class="af-input" placeholder="HSN" /></td>' +
-            '<td><select name="Details[' + index + '].Unit" class="af-input af-select unit-select">' +
+            '<td><input name="Details[' + index + '].ProductDesignNo" class="af-input af-input-sm" placeholder="Design #" /></td>' +
+            '<td><input name="Details[' + index + '].HsnCode" class="af-input af-input-sm" placeholder="HSN" /></td>' +
+            '<td><select name="Details[' + index + '].Unit" class="af-input af-input-sm af-select unit-select">' +
                 '<option value="Piece" selected>Piece</option>' +
                 '<option value="Meter">Meter</option>' +
             '</select></td>' +
-            '<td><input name="Details[' + index + '].Quantity" class="af-input item-qty" type="number" min="1" value="1" required /></td>' +
-            '<td><input name="Details[' + index + '].UnitPrice" class="af-input item-rate" type="number" step="0.01" min="0" value="0" required /></td>' +
-            '<td><input name="Details[' + index + '].DiscountPercentage" class="af-input item-disc" type="number" step="0.01" min="0" max="100" value="0" /></td>' +
-            '<td><input name="Details[' + index + '].GstPercentage" class="af-input item-gst" type="number" step="0.01" min="0" max="100" value="0" /></td>' +
-            '<td><span class="item-net">\u20B90.00</span></td>' +
-            '<td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-row">\u00D7</button></td>';
+            '<td><input name="Details[' + index + '].Quantity" class="af-input af-input-sm item-qty" type="number" min="1" value="1" required /></td>' +
+            '<td><input name="Details[' + index + '].UnitPrice" class="af-input af-input-sm item-rate" type="number" step="0.01" min="0" value="0" required /></td>' +
+            '<td><input name="Details[' + index + '].DiscountPercentage" class="af-input af-input-sm item-disc" type="number" step="0.01" min="0" max="100" value="0" /></td>' +
+            '<td><input name="Details[' + index + '].GstPercentage" class="af-input af-input-sm item-gst" type="number" step="0.01" min="0" max="100" value="0" /></td>' +
+            '<td class="cell-num text-foreground fw-semibold"><span class="item-net">\u20B90.00</span></td>' +
+            '<td><button type="button" class="row-action danger remove-row" title="Remove" aria-label="Remove"><i class="bi bi-trash"></i></button></td>';
         return tr;
     }
 
@@ -179,16 +179,13 @@
     if (erdInput && delayWarning) {
         function checkDelay() {
             if (!erdInput.value) { delayWarning.style.display = 'none'; return; }
-            const erd = new Date(erdInput.value);
+            const erd = new Date(erdInput.value + 'T00:00:00');
             const today = new Date();
             today.setHours(0,0,0,0);
             const diff = Math.floor((today - erd) / (1000 * 60 * 60 * 24));
             if (diff > 0) {
-                delayWarning.style.display = 'block';
-                delayWarning.style.background = '#fef2f2';
-                delayWarning.style.color = '#dc2626';
-                delayWarning.style.border = '1px solid #fecaca';
-                delayWarning.textContent = '⚠ Overdue by ' + diff + ' day' + (diff > 1 ? 's' : '');
+                delayWarning.style.display = 'inline-flex';
+                delayWarning.textContent = 'Overdue by ' + diff + ' day' + (diff > 1 ? 's' : '');
             } else {
                 delayWarning.style.display = 'none';
             }

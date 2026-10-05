@@ -31,30 +31,29 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Edit Order — @Model.LotNo</h1>
-        <p class="page-sub">Design: @Model.Design?.DesignNumber</p>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Production orders</a>
+        <h1 class="page-title d-flex align-items-center gap-2 flex-wrap">
+            Lot @Model.LotNo
+            <span class="af-badge @(Model.Status == AashanaFashion.Models.OrderStatus.Dispatched ? "b-gray" : (Model.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch ? "b-green" : "b-blue"))">@currentProcessName</span>
+        </h1>
+        <p class="page-sub">Design @Model.Design?.DesignNumber · @Model.TotalQuantity pcs</p>
     </div>
-    <div class="d-flex gap-2">
-        @if (Model.JobSlips != null && Model.JobSlips.Any())
-        {
-            <a asp-controller="JobSlip" asp-action="PrintAll" asp-route-lotId="@Model.Id" target="_blank" class="btn btn-sm btn-primary">📑 Print All Slips (@Model.JobSlips.Count)</a>
-        }
-        <a asp-controller="Barcode" asp-action="PrintTags" asp-route-orderId="@Model.Id" target="_blank" class="btn btn-sm btn-outline-dark">🏷️ Barcode Tags</a>
-        <a asp-controller="Barcode" asp-action="PrintLotTag" asp-route-orderId="@Model.Id" target="_blank" class="btn btn-sm btn-outline-dark">Lot Tag</a>
-        <a asp-controller="QualityControl" asp-action="Create" asp-route-orderId="@Model.Id" class="btn btn-sm btn-outline-warning">🔍 Log QC Check</a>
-        <a asp-controller="QualityControl" asp-action="Index" asp-route-orderId="@Model.Id" class="btn btn-sm btn-outline-secondary">QC Logs</a>
-        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">← Back</a>
+    <div class="page-actions">
+        <a asp-controller="QualityControl" asp-action="Index" asp-route-orderId="@Model.Id" class="btn btn-secondary">QC logs</a>
+        <a asp-controller="QualityControl" asp-action="Create" asp-route-orderId="@Model.Id" class="btn btn-secondary"><i class="bi bi-clipboard-check"></i> Log QC check</a>
+        <div class="dropdown">
+            <button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-printer"></i> Print</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                @if (Model.JobSlips != null && Model.JobSlips.Any())
+                {
+                    <li><a asp-controller="JobSlip" asp-action="PrintAll" asp-route-lotId="@Model.Id" target="_blank" class="dropdown-item"><i class="bi bi-files"></i> All job slips (@Model.JobSlips.Count)</a></li>
+                }
+                <li><a asp-controller="Barcode" asp-action="PrintTags" asp-route-orderId="@Model.Id" target="_blank" class="dropdown-item"><i class="bi bi-upc"></i> Barcode tags</a></li>
+                <li><a asp-controller="Barcode" asp-action="PrintLotTag" asp-route-orderId="@Model.Id" target="_blank" class="dropdown-item"><i class="bi bi-tag"></i> Lot tag</a></li>
+            </ul>
+        </div>
     </div>
 </div>
-
-@if (TempData["Success"] != null)
-{
-    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="af-alert af-alert-danger mb-3"><span class="alert-body">@TempData["Error"]</span><button class="alert-close">&times;</button></div>
-}
 
 <form asp-action="Edit" method="post" id="orderForm">
 @Html.AntiForgeryToken()
@@ -64,180 +63,92 @@
 <input type="hidden" name="CurrentProcess" id="currentProcessInput" value="@Model.CurrentProcess" />
 <input type="hidden" name="CompletedProcesses" id="completedProcessesInput" value="@Model.CompletedProcesses" />
 
-<!-- Workflow Stage Progression Pipeline Card (matching Product Master) -->
-<div class="card p-3 mb-4 border rounded-3 bg-light shadow-sm" id="lotWorkflowCard">
-    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+<!-- Workflow stage progression -->
+<div class="data-card mb-4" id="lotWorkflowCard">
+    <div class="data-card-header">
         <div>
-            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                <span>🔄</span> Production Stage Progression
-            </h6>
-            <small class="text-muted">
-                Configured processes for Design <strong>@(currentDesign?.DesignNumber ?? Model.Design?.DesignNumber)</strong>. Sequence is strictly enforced order-wise.
-            </small>
+            <span class="data-card-title"><i class="bi bi-diagram-3"></i> Production stage progression</span>
+            <span class="data-card-sub d-block">Configured processes for design <strong>@(currentDesign?.DesignNumber ?? Model.Design?.DesignNumber)</strong>. The sequence is enforced in order.</span>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge @(allProcessesDone ? "bg-success" : "bg-primary") px-3 py-2" id="lotStepCountBadge">
-                @(completedSteps.Count) of @(creationSteps.Count) Configured Processes Completed
-            </span>
-        </div>
+        <span class="af-badge @(allProcessesDone ? "b-green" : "b-indigo")" id="lotStepCountBadge">
+            @(completedSteps.Count) of @(creationSteps.Count) processes completed
+        </span>
     </div>
-
-    <!-- Live Flow Pipeline Flowchart -->
-    <div class="p-3 bg-white border rounded-3 mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="small fw-bold text-muted text-uppercase" style="letter-spacing:0.5px;">Workflow Stages:</span>
-            <small class="text-muted" style="font-size:0.75rem;">
-                <span class="badge bg-success me-1">✓ Completed</span>
-                <span class="badge bg-primary me-1">⚡ In Progress</span>
-                <span class="badge bg-light text-secondary border">🔒 Locked</span>
-            </small>
-        </div>
-        <div id="lotStagesPipeline" class="d-flex flex-wrap align-items-center gap-2 p-3 bg-light rounded border" style="min-height:56px;">
+    <div class="data-card-body">
+        <div id="lotStagesPipeline" class="flow mb-4">
             @for (int i = 0; i < creationSteps.Count; i++)
             {
                 var step = creationSteps[i];
                 var isCompleted = completedSteps.Contains(step);
                 var isCurrent = !isCompleted && i == currentStepIndex && !allProcessesDone;
-                var isPending = !isCompleted && !isCurrent;
 
-                <div class="d-flex align-items-center gap-2 stage-node" data-step-index="@i" data-step-name="@step">
-                    @if (isCompleted)
-                    {
-                        <span class="badge px-3 py-2 fs-6 shadow-sm d-flex align-items-center gap-2" style="background:#10b981; color:#fff; border: 1px solid #059669;">
-                            <span class="badge bg-white text-success rounded-circle" style="width:20px;height:20px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:bold;">✓</span>
-                            <span class="fw-semibold">@step</span>
-                            <span class="badge bg-white text-success font-monospace" style="font-size:0.65rem;">Done</span>
-                        </span>
-                        <span class="text-success fw-bold fs-5">➔</span>
-                    }
-                    else if (isCurrent)
-                    {
-                        <span class="badge px-3 py-2 fs-6 shadow-sm d-flex align-items-center gap-2" style="background:#2563eb; color:#fff; border: 2px solid #1d4ed8; box-shadow: 0 0 0 3px rgba(37,99,235,0.25);">
-                            <span class="badge bg-white text-primary rounded-circle font-monospace" style="width:20px;height:20px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:bold;">@(i + 1)</span>
-                            <span class="fw-bold">@step</span>
-                            <span class="badge bg-warning text-dark fw-bold font-monospace" style="font-size:0.65rem;">In Progress</span>
-                        </span>
-                        <span class="text-primary fw-bold fs-5">➔</span>
-                    }
-                    else
-                    {
-                        <span class="badge px-3 py-2 fs-6 shadow-sm d-flex align-items-center gap-2" style="background:#f8fafc; color:#94a3b8; border: 1px solid #cbd5e1; opacity:0.85;" title="Must complete previous step '@(i > 0 ? creationSteps[i - 1] : "")' first">
-                            <span class="badge bg-light text-secondary rounded-circle border" style="width:20px;height:20px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;">🔒</span>
-                            <span class="text-secondary">@step</span>
-                            <span class="badge bg-light text-muted border font-monospace" style="font-size:0.65rem;">Locked</span>
-                        </span>
-                        @if (i < creationSteps.Count - 1 || true)
-                        {
-                            <span class="text-muted fw-bold fs-5" style="opacity:0.35;">➔</span>
-                        }
-                    }
-                </div>
+                <span class="flow-step stage-node @(isCompleted ? "done" : (isCurrent ? "current" : "locked"))" data-step-index="@i" data-step-name="@step"
+                      title="@(isCompleted ? "Completed" : isCurrent ? "In progress" : $"Must complete '{(i > 0 ? creationSteps[i - 1] : "")}' first")">
+                    <span class="flow-num">@if (isCompleted) {<i class="bi bi-check"></i>} else {<text>@(i + 1)</text>}</span>
+                    @step
+                    @if (isCurrent) { <span class="flow-code">In progress</span> }
+                </span>
+                <i class="bi bi-chevron-right flow-sep"></i>
             }
 
-            <!-- Destination Node 1: Ready to Dispatch -->
             @{
                 bool isReady = Model.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch;
                 bool isPastReady = Model.Status == AashanaFashion.Models.OrderStatus.Dispatched;
-            }
-            <div class="d-flex align-items-center gap-2 stage-node-destination">
-                @if (isReady)
-                {
-                    <span class="badge px-3 py-2 fs-6 shadow-sm d-flex align-items-center gap-2" style="background:#059669; color:#fff; border: 2px solid #047857; box-shadow: 0 0 0 3px rgba(5,150,105,0.25);">
-                        <span class="badge bg-white text-success rounded-circle" style="width:20px;height:20px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:bold;">📦</span>
-                        <span class="fw-bold">Ready to Dispatch</span>
-                        <span class="badge bg-white text-success fw-bold font-monospace" style="font-size:0.65rem;">Active</span>
-                    </span>
-                    <span class="text-success fw-bold fs-5">➔</span>
-                }
-                else if (isPastReady)
-                {
-                    <span class="badge px-3 py-2 fs-6 shadow-sm d-flex align-items-center gap-2" style="background:#10b981; color:#fff; border: 1px solid #059669;">
-                        <span class="badge bg-white text-success rounded-circle" style="width:20px;height:20px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:bold;">✓</span>
-                        <span class="fw-semibold">Ready to Dispatch</span>
-                        <span class="badge bg-white text-success font-monospace" style="font-size:0.65rem;">Done</span>
-                    </span>
-                    <span class="text-success fw-bold fs-5">➔</span>
-                }
-                else
-                {
-                    <span class="badge px-3 py-2 fs-6 shadow-sm d-flex align-items-center gap-2" style="background:#f8fafc; color:#94a3b8; border: 1px solid #cbd5e1; opacity:0.85;" title="Will unlock once all configured processes are completed">
-                        <span class="badge bg-light text-secondary rounded-circle border" style="width:20px;height:20px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;">🔒</span>
-                        <span class="text-secondary">Ready to Dispatch</span>
-                        <span class="badge bg-light text-muted border font-monospace" style="font-size:0.65rem;">Locked</span>
-                    </span>
-                    <span class="text-muted fw-bold fs-5" style="opacity:0.35;">➔</span>
-                }
-            </div>
-
-            <!-- Destination Node 2: Dispatched -->
-            @{
                 bool isDispatched = Model.Status == AashanaFashion.Models.OrderStatus.Dispatched;
             }
-            <div class="d-flex align-items-center gap-2 stage-node-destination">
-                @if (isDispatched)
+            <span class="flow-step stage-node-destination @(isPastReady ? "done" : (isReady ? "current" : "locked"))" title="@(isReady || isPastReady ? "" : "Unlocks once all configured processes are completed")">
+                <span class="flow-num">@if (isPastReady) {<i class="bi bi-check"></i>} else {<i class="bi bi-box-seam"></i>}</span>
+                Ready to Dispatch
+                @if (isReady) { <span class="flow-code">Active</span> }
+            </span>
+            <i class="bi bi-chevron-right flow-sep"></i>
+            <span class="flow-step stage-node-destination @(isDispatched ? "done" : "locked")" title="Final status after dispatching">
+                <span class="flow-num">@if (isDispatched) {<i class="bi bi-check"></i>} else {<i class="bi bi-truck"></i>}</span>
+                Dispatched
+            </span>
+        </div>
+
+        <div class="panel-inset d-flex justify-content-between align-items-center flex-wrap gap-3 mb-0">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="micro-label mb-0">Current stage</span>
+                <span class="af-badge @(Model.Status == AashanaFashion.Models.OrderStatus.Dispatched ? "b-gray" : (Model.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch ? "b-green" : "b-indigo"))">@currentProcessName</span>
+                @if (!allProcessesDone && !string.IsNullOrEmpty(nextProcessName))
                 {
-                    <span class="badge px-3 py-2 fs-6 shadow-sm d-flex align-items-center gap-2" style="background:#334155; color:#fff; border: 1px solid #1e293b;">
-                        <span class="badge bg-white text-dark rounded-circle" style="width:20px;height:20px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:bold;">🚚</span>
-                        <span class="fw-bold">Dispatched</span>
-                        <span class="badge bg-white text-dark font-monospace" style="font-size:0.65rem;">Completed</span>
-                    </span>
-                }
-                else
-                {
-                    <span class="badge px-3 py-2 fs-6 shadow-sm d-flex align-items-center gap-2" style="background:#f8fafc; color:#94a3b8; border: 1px solid #cbd5e1; opacity:0.85;" title="Final status after dispatching">
-                        <span class="badge bg-light text-secondary rounded-circle border" style="width:20px;height:20px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;">🔒</span>
-                        <span class="text-secondary">Dispatched</span>
-                        <span class="badge bg-light text-muted border font-monospace" style="font-size:0.65rem;">Pending</span>
-                    </span>
+                    <span class="text-sm text-muted">Next: <strong class="text-foreground">@nextProcessName</strong></span>
                 }
             </div>
-        </div>
-    </div>
 
-    <!-- Active Stage Progression Controls & Toolbar -->
-    <div class="p-3 bg-white border rounded-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <span class="small fw-bold text-muted text-uppercase" style="letter-spacing:0.5px;">Current Active Stage:</span>
-            <span class="badge @(Model.Status == AashanaFashion.Models.OrderStatus.Dispatched ? "bg-secondary" : (Model.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch ? "bg-success" : "bg-primary")) fs-6 px-3 py-2 shadow-sm d-inline-flex align-items-center gap-2">
-                <span>@(allProcessesDone ? (Model.Status == AashanaFashion.Models.OrderStatus.Dispatched ? "🚚 Dispatched" : "📦 Ready to Dispatch") : $"⚡ {currentProcessName}")</span>
-            </span>
-            @if (!allProcessesDone && !string.IsNullOrEmpty(nextProcessName))
-            {
-                <span class="text-muted small ms-1">Next in pipeline: <strong>@nextProcessName</strong></span>
-            }
-        </div>
-
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            @if (!allProcessesDone)
-            {
-                <button type="submit" formaction="@Url.Action("AdvanceStage", "Production", new { id = Model.Id })" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm d-flex align-items-center gap-2" title="Mark '@currentProcessName' complete and unlock '@nextProcessName'">
-                    <span>✓</span> Mark <strong>@currentProcessName</strong> Completed & Advance ➔
-                </button>
-            }
-            else if (Model.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch)
-            {
-                <button type="submit" formaction="@Url.Action("AdvanceStage", "Production", new { id = Model.Id })" class="btn btn-dark btn-sm px-3 py-2 fw-bold shadow-sm d-flex align-items-center gap-2" title="Mark this lot as Dispatched">
-                    <span>🚚</span> Mark Lot Dispatched ➔
-                </button>
-            }
-
-            @if (completedSteps.Any() || Model.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch || Model.Status == AashanaFashion.Models.OrderStatus.Dispatched)
-            {
-                <button type="submit" formaction="@Url.Action("RevertStage", "Production", new { id = Model.Id })" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold" title="Step back to previous stage if needed" onclick="return confirm('Step back to previous stage?');">
-                    <span>↩</span> Revert Previous Step
-                </button>
-            }
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                @if (completedSteps.Any() || Model.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch || Model.Status == AashanaFashion.Models.OrderStatus.Dispatched)
+                {
+                    <button type="submit" formaction="@Url.Action("RevertStage", "Production", new { id = Model.Id })" class="btn btn-sm btn-ghost" title="Step back to previous stage if needed" onclick="return confirm('Step back to previous stage?');">
+                        <i class="bi bi-arrow-counterclockwise"></i> Revert previous step
+                    </button>
+                }
+                @if (!allProcessesDone)
+                {
+                    <button type="submit" formaction="@Url.Action("AdvanceStage", "Production", new { id = Model.Id })" class="btn btn-sm btn-primary" title="Mark '@currentProcessName' complete and unlock '@nextProcessName'">
+                        Mark @currentProcessName complete <i class="bi bi-arrow-right"></i>
+                    </button>
+                }
+                else if (Model.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch)
+                {
+                    <button type="submit" formaction="@Url.Action("AdvanceStage", "Production", new { id = Model.Id })" class="btn btn-sm btn-primary" title="Mark this lot as Dispatched">
+                        <i class="bi bi-truck"></i> Mark lot dispatched
+                    </button>
+                }
+            </div>
         </div>
     </div>
 </div>
 
-<div class="row">
+<div class="row g-4">
     <div class="col-lg-4">
-        <div class="data-card mb-3">
+        <div class="data-card">
             <div class="data-card-header">
-                <div class="data-card-title">Order Details</div>
+                <span class="data-card-title">Order details</span>
             </div>
-            <div style="padding:1.5rem;">
+            <div class="data-card-body">
 
                     @if (isAdmin)
                     {
@@ -250,7 +161,7 @@
                         </div>
                         <div class="af-form-group">
                             <label class="af-label">Lot No</label>
-                            <input type="text" name="LotNo" class="af-input" value="@Model.LotNo" />
+                            <input type="text" name="LotNo" class="af-input font-monospace" value="@Model.LotNo" />
                         </div>
                     }
                     else
@@ -258,21 +169,21 @@
                         <input type="hidden" name="DesignId" value="@Model.DesignId" />
                         <div class="af-form-group">
                             <label class="af-label">Design</label>
-                            <input type="text" class="af-input" value="@Model.Design?.DesignNumber" disabled style="background:#f8fafc;" />
+                            <input type="text" class="af-input" value="@Model.Design?.DesignNumber" disabled />
                         </div>
                         <div class="af-form-group">
                             <label class="af-label">Lot No</label>
-                            <input type="text" class="af-input" value="@Model.LotNo" disabled style="background:#f8fafc;" />
+                            <input type="text" class="af-input font-monospace" value="@Model.LotNo" disabled />
                         </div>
                     }
 
-                    <div class="af-form-group mb-3">
-                        <label class="af-label">Active Stage</label>
-                        <div class="d-flex align-items-center gap-2 p-2 rounded border bg-light">
-                            <span class="badge @(Model.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch ? "bg-success" : (Model.Status == AashanaFashion.Models.OrderStatus.Dispatched ? "bg-secondary" : "bg-primary")) fs-6 px-3 py-1">
+                    <div class="af-form-group mb-0">
+                        <label class="af-label">Active stage</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="af-badge @(Model.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch ? "b-green" : (Model.Status == AashanaFashion.Models.OrderStatus.Dispatched ? "b-gray" : "b-indigo"))">
                                 @(allProcessesDone ? (Model.Status == AashanaFashion.Models.OrderStatus.Dispatched ? "Dispatched" : "Ready to Dispatch") : currentProcessName)
                             </span>
-                            <span class="text-muted small">(@(completedSteps.Count)/@(creationSteps.Count) completed)</span>
+                            <span class="text-muted text-xs">(@(completedSteps.Count)/@(creationSteps.Count) completed)</span>
                         </div>
                     </div>
 
@@ -284,11 +195,6 @@
                     <input type="hidden" name="HandworkDupatta" id="fallbackHwDupatta" value="@(Model.HandworkDupatta ? "true" : "false")" />
 
                     <input type="hidden" id="totalQuantity" name="TotalQuantity" value="@Model.TotalQuantity" />
-
-                    <div style="display:flex;gap:.75rem;margin-top:1rem;">
-                        <button type="submit" class="btn-af btn-af-primary">Save Changes</button>
-                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
-                    </div>
             </div>
         </div>
     </div>
@@ -296,24 +202,23 @@
     <div class="col-lg-8">
         <div class="data-card">
             <div class="data-card-header">
-                <div class="data-card-title">Colour & Size Matrix</div>
-                <span class="af-badge b-blue" id="totalPieces">Total: @Model.TotalQuantity pcs</span>
+                <span class="data-card-title">Colour &amp; size quantities</span>
+                <span class="af-badge b-indigo" id="totalPieces">Total: @Model.TotalQuantity pcs</span>
             </div>
-            <div style="padding:1rem;">
-                <div id="matrixContainer">
-                    <div class="text-center p-4 text-muted" id="matrixPlaceholder" style="display:none;">
-                        Select a design to see colour/size matrix
-                    </div>
-                    <div id="matrixGrid" style="overflow-x:auto;">
-                        <table class="af-table" id="matrixTable" style="min-width:100%;">
-                            <thead>
-                                <tr id="matrixHeader">
-                                    <th style="min-width:100px;">Colour ↓ / Size →</th>
-                                </tr>
-                            </thead>
-                            <tbody id="matrixBody"></tbody>
-                        </table>
-                    </div>
+            <div id="matrixContainer">
+                <div class="empty-state py-5" id="matrixPlaceholder" style="display:none;">
+                    <div class="es-icon"><i class="bi bi-grid-3x3"></i></div>
+                    <p>Select a design to see its colour / size matrix.</p>
+                </div>
+                <div id="matrixGrid" class="table-scroll">
+                    <table class="af-table table-edit matrix-table" id="matrixTable" style="min-width:100%;">
+                        <thead>
+                            <tr id="matrixHeader">
+                                <th style="min-width:110px;">Colour \ Size</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrixBody"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -321,86 +226,79 @@
 </div>
 
 <!-- Garment Components & Process Vendor Assignments Matrix -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="data-card mb-3" id="componentMatrixCard">
-            <div class="data-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                    <span class="data-card-title">Garment Components & Process Vendor Planning Matrix</span>
-                    <span class="text-muted ms-2" style="font-size:0.8rem;">Every component (e.g. Chaniya, Choli, Dupatta, Belt, Jacket) can be assigned to different vendors for different processes.</span>
-                </div>
-                <span class="af-badge b-blue" id="lotComponentCountBadge">@Model.GetComponentsList().Count Components</span>
+<div class="data-card mt-4" id="componentMatrixCard">
+    <div class="data-card-header">
+        <div>
+            <span class="data-card-title">Garment components &amp; vendor planning</span>
+            <span class="data-card-sub d-block">Each component (Chaniya, Choli, Dupatta, Belt, Jacket…) can go to a different vendor for each process.</span>
+        </div>
+        <span class="af-badge b-indigo" id="lotComponentCountBadge">@Model.GetComponentsList().Count Components</span>
+    </div>
+    <div class="data-card-body">
+        <div class="panel-inset">
+            <span class="micro-label">Components for this lot (3 or more parts)</span>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2" id="lotComponentBadgesContainer">
+                <!-- Badges rendered by JS -->
             </div>
-            <div style="padding:1.25rem;">
-                <!-- Components Bar -->
-                <div class="p-3 bg-light border rounded-3 mb-3">
-                    <label class="form-label small fw-bold text-muted mb-2 text-uppercase" style="letter-spacing:0.5px;">
-                        Components for this Lot (Can have 3 or more parts):
-                    </label>
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2" id="lotComponentBadgesContainer">
-                        <!-- Badges rendered by JS -->
-                    </div>
-                    <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
-                        <span class="small text-muted fw-semibold me-1">Quick Add:</span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Belt" style="font-size:0.75rem;">+ Belt</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Jacket" style="font-size:0.75rem;">+ Jacket / Shrug</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Inner" style="font-size:0.75rem;">+ Inner / Lining</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Cape" style="font-size:0.75rem;">+ Cape</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Koti" style="font-size:0.75rem;">+ Koti</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 quick-add-lot-comp" data-name="Stole" style="font-size:0.75rem;">+ Stole</button>
-                        
-                        <div class="input-group input-group-sm ms-auto" style="max-width:260px;">
-                            <input type="text" id="customLotComponentInput" class="form-control form-control-sm" placeholder="Custom component name..." />
-                            <button type="button" class="btn btn-primary btn-sm" id="btnAddCustomLotComponent">+ Add Part</button>
-                        </div>
-                    </div>
-                    <input type="hidden" name="Components" id="lotComponentsHiddenInput" value="@Model.Components" />
-                </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
+                <span class="text-xs text-muted me-1">Quick add</span>
+                <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Belt"><i class="bi bi-plus"></i> Belt</button>
+                <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Jacket"><i class="bi bi-plus"></i> Jacket / Shrug</button>
+                <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Inner"><i class="bi bi-plus"></i> Inner / Lining</button>
+                <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Cape"><i class="bi bi-plus"></i> Cape</button>
+                <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Koti"><i class="bi bi-plus"></i> Koti</button>
+                <button type="button" class="btn btn-sm btn-secondary quick-add-lot-comp" data-name="Stole"><i class="bi bi-plus"></i> Stole</button>
 
-                <!-- Matrix Table -->
-                <div class="table-responsive bg-white border rounded-3">
-                    <table class="table table-bordered table-hover align-middle mb-0" id="lotComponentMatrixTable">
-                        <thead class="table-light">
-                            <tr id="lotMatrixHeaderRow" style="font-size:0.82rem;">
-                                <th style="min-width:140px; background:#f1f5f9;">Component Part</th>
-                                <th style="width:50px; text-align:center; background:#f1f5f9;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="lotMatrixTableBody">
-                            <!-- Dynamic rows injected by JS -->
-                        </tbody>
-                    </table>
+                <div class="input-group input-group-sm ms-auto" style="max-width:280px;">
+                    <input type="text" id="customLotComponentInput" class="form-control form-control-sm" placeholder="Custom component name…" />
+                    <button type="button" class="btn btn-secondary btn-sm" id="btnAddCustomLotComponent"><i class="bi bi-plus"></i> Add part</button>
                 </div>
             </div>
+            <input type="hidden" name="Components" id="lotComponentsHiddenInput" value="@Model.Components" />
+        </div>
+
+        <div class="grid-card">
+            <table class="af-table table-edit" id="lotComponentMatrixTable">
+                <thead>
+                    <tr id="lotMatrixHeaderRow">
+                        <th style="min-width:140px;">Component</th>
+                        <th style="width:50px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="lotMatrixTableBody">
+                    <!-- Dynamic rows injected by JS -->
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
+
+<div class="form-footer">
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+</div>
 </form>
 
-<!-- Job Work Slips (Challans) Card for External Processes -->
-<div class="card p-3 mt-4 border rounded-3 bg-light shadow-sm" id="jobSlipsCard">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+<!-- Job Work Slips (Challans) for external processes -->
+<div class="table-card mt-4" id="jobSlipsCard">
+    <div class="data-card-header">
         <div>
-            <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                <span>📑</span> Vendor Job Slips (Challans)
-            </h5>
-            <small class="text-muted">
-                Automatically generated for outside vendor processes based on the Component Planning Matrix. In-house processes are handled internally without challans.
-            </small>
+            <span class="data-card-title"><i class="bi bi-files"></i> Vendor job slips (challans)</span>
+            <span class="data-card-sub d-block">Generated for outside vendor processes from the component planning matrix. In-house processes need no challans.</span>
         </div>
         <div class="d-flex align-items-center gap-2">
             @if (Model.JobSlips != null && Model.JobSlips.Any())
             {
-                <a asp-controller="JobSlip" asp-action="PrintAll" asp-route-lotId="@Model.Id" target="_blank" class="btn btn-sm btn-primary">
-                    🖨️ Print All Slips (@Model.JobSlips.Count)
+                <a asp-controller="JobSlip" asp-action="PrintAll" asp-route-lotId="@Model.Id" target="_blank" class="btn btn-sm btn-secondary">
+                    <i class="bi bi-printer"></i> Print all (@Model.JobSlips.Count)
                 </a>
             }
             <form asp-controller="JobSlip" asp-action="Regenerate" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="lotId" value="@Model.Id" />
                 <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Re-sync job slips with the latest component vendor assignments">
-                    🔄 Sync / Regenerate Slips
+                <button type="submit" class="btn btn-sm btn-secondary" title="Re-sync job slips with the latest component vendor assignments">
+                    <i class="bi bi-arrow-repeat"></i> Sync slips
                 </button>
             </form>
         </div>
@@ -408,85 +306,73 @@
 
     @if (Model.JobSlips != null && Model.JobSlips.Any())
     {
-        <div class="table-responsive bg-white border rounded-3">
-            <table class="table table-hover align-middle mb-0" style="font-size:0.875rem;">
-                <thead class="table-light">
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
                     <tr>
-                        <th class="ps-3">Slip #</th>
+                        <th>Slip #</th>
                         <th>Process</th>
                         <th>Vendor (Job Worker)</th>
-                        <th>Assigned Component(s)</th>
-                        <th class="text-center">Total Pcs</th>
+                        <th>Component(s)</th>
+                        <th class="text-end">Total Pcs</th>
                         <th class="text-end">Rate / Total</th>
-                        <th class="text-center">Status</th>
+                        <th>Status</th>
                         <th>Issue Date</th>
-                        <th class="text-end pe-3">Actions</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var slip in Model.JobSlips.OrderBy(s => s.ProcessName).ThenBy(s => s.Vendor?.VendorName))
                     {
                         var statusBadge = slip.Status switch {
-                            "Issued" => "bg-primary text-white",
-                            "In Process" => "bg-warning text-dark",
-                            "Received" => "bg-success text-white",
-                            "Cancelled" => "bg-danger text-white",
-                            _ => "bg-secondary text-white"
+                            "Issued" => "b-blue",
+                            "In Process" => "b-yellow",
+                            "Received" => "b-green",
+                            "Cancelled" => "b-red",
+                            _ => "b-gray"
                         };
 
                         <tr>
-                            <td class="ps-3 fw-bold font-monospace">
-                                <a asp-controller="JobSlip" asp-action="Details" asp-route-id="@slip.Id" class="text-decoration-none">
-                                    @slip.SlipNumber
-                                </a>
-                            </td>
                             <td>
-                                <span class="badge bg-light text-dark border px-2 py-1">@slip.ProcessName</span>
+                                <a asp-controller="JobSlip" asp-action="Details" asp-route-id="@slip.Id" class="font-monospace fw-medium">@slip.SlipNumber</a>
                             </td>
+                            <td><span class="tag">@slip.ProcessName</span></td>
                             <td>
-                                <div class="fw-semibold text-dark">@(slip.Vendor?.VendorName ?? $"Vendor #{slip.VendorId}")</div>
+                                <span class="cell-title">@(slip.Vendor?.VendorName ?? $"Vendor #{slip.VendorId}")</span>
                                 @if (!string.IsNullOrEmpty(slip.Vendor?.Phone))
                                 {
-                                    <small class="text-muted">📞 @slip.Vendor.Phone</small>
+                                    <span class="cell-sub">@slip.Vendor.Phone</span>
                                 }
                             </td>
                             <td>
-                                @foreach (var comp in slip.GetComponentsList())
-                                {
-                                    <span class="badge bg-secondary-subtle text-secondary border me-1">@comp</span>
-                                }
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var comp in slip.GetComponentsList())
+                                    {
+                                        <span class="tag">@comp</span>
+                                    }
+                                </div>
                             </td>
-                            <td class="text-center fw-bold">
-                                @slip.TotalQuantity <span class="text-muted fw-normal" style="font-size:0.75rem;">pcs</span>
-                            </td>
-                            <td class="text-end">
+                            <td class="cell-num"><span class="text-foreground fw-medium">@slip.TotalQuantity</span> <span class="text-xs text-muted">pcs</span></td>
+                            <td class="cell-num">
                                 @if (slip.Rate.HasValue && slip.Rate > 0)
                                 {
-                                    <span class="font-monospace">₹@slip.Rate.Value.ToString("N2")/pc</span>
+                                    <span>₹@slip.Rate.Value.ToString("N2")/pc</span>
                                     @if (slip.TotalAmount.HasValue && slip.TotalAmount > 0)
                                     {
-                                        <br /><small class="text-muted fw-bold">₹@slip.TotalAmount.Value.ToString("N2")</small>
+                                        <span class="cell-sub">₹@slip.TotalAmount.Value.ToString("N2")</span>
                                     }
                                 }
                                 else
                                 {
-                                    <span class="text-muted">—</span>
+                                    <span class="text-placeholder">—</span>
                                 }
                             </td>
-                            <td class="text-center">
-                                <span class="badge @statusBadge px-2 py-1">@slip.Status</span>
-                            </td>
-                            <td style="font-size:0.8rem; color:#64748b;">
-                                @slip.IssueDate.ToString("dd-MMM-yyyy")
-                            </td>
-                            <td class="text-end pe-3">
-                                <div class="btn-group btn-group-sm">
-                                    <a asp-controller="JobSlip" asp-action="Print" asp-route-id="@slip.Id" target="_blank" class="btn btn-outline-primary" title="Print Challan">
-                                        🖨️ Print
-                                    </a>
-                                    <a asp-controller="JobSlip" asp-action="Details" asp-route-id="@slip.Id" class="btn btn-outline-secondary" title="View Details">
-                                        👁️ View
-                                    </a>
+                            <td><span class="af-badge @statusBadge">@slip.Status</span></td>
+                            <td class="text-muted text-nowrap">@slip.IssueDate.ToString("dd-MMM-yyyy")</td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    <a asp-controller="JobSlip" asp-action="Print" asp-route-id="@slip.Id" target="_blank" class="row-action" title="Print challan" aria-label="Print challan"><i class="bi bi-printer"></i></a>
+                                    <a asp-controller="JobSlip" asp-action="Details" asp-route-id="@slip.Id" class="row-action primary" title="View details" aria-label="View details"><i class="bi bi-box-arrow-up-right"></i></a>
                                 </div>
                             </td>
                         </tr>
@@ -497,124 +383,115 @@
     }
     else
     {
-        <div class="p-4 bg-white border rounded-3 text-center">
-            <div style="font-size: 2rem;" class="mb-2">📑</div>
-            <h6 class="fw-bold text-dark">No External Job Slips Generated</h6>
-            <p class="text-muted mb-3" style="max-width:550px; margin:0 auto; font-size:0.85rem;">
-                Job slips are automatically created when processes are delegated to external vendors in the planning matrix above. In-house processes do not generate external job slips.
-            </p>
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-files"></i></div>
+            <div class="es-title">No external job slips</div>
+            <p>Job slips are created when processes are delegated to external vendors in the planning matrix above.</p>
             <form asp-controller="JobSlip" asp-action="Regenerate" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="lotId" value="@Model.Id" />
                 <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                <button type="submit" class="btn btn-sm btn-primary">
-                    ⚡ Check & Generate Job Slips Now
+                <button type="submit" class="btn btn-secondary">
+                    <i class="bi bi-lightning-charge"></i> Check &amp; generate job slips
                 </button>
             </form>
         </div>
     }
 </div>
 
-
 @if (Model.Design?.BomItems?.Any() == true)
 {
     var hasShortage = false;
-    <div class="data-card mt-4">
-        <div class="data-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="table-card mt-4">
+        <div class="data-card-header">
             <div>
-                <span class="data-card-title">Raw Material Requirements (BOM Consumption)</span>
-                <span style="font-size: 0.8rem; color: #64748b; margin-left: 0.5rem;">Calculated for @Model.TotalQuantity pcs based on Design #@Model.Design.DesignNumber recipe</span>
+                <span class="data-card-title">Raw material requirements (BOM)</span>
+                <span class="data-card-sub d-block">Calculated for @Model.TotalQuantity pcs from design @Model.Design.DesignNumber's recipe</span>
             </div>
             <div>
                 @if (Model.IsMaterialIssued)
                 {
-                    <span class="af-badge" style="background:#dcfce7;color:#16a34a;font-size:0.85rem;padding:0.4rem 0.75rem;">
-                        ✔ Materials Issued on @Model.MaterialIssuedDate?.ToString("dd-MMM-yyyy HH:mm")
-                    </span>
+                    <span class="af-badge b-green"><i class="bi bi-check2"></i> Materials issued on @Model.MaterialIssuedDate?.ToString("dd-MMM-yyyy HH:mm")</span>
                 }
                 else
                 {
-                    <form asp-action="IssueMaterials" asp-route-id="@Model.Id" method="post" style="display:inline;" onsubmit="return confirm('Issue raw materials from stock for this lot? This will deduct the required quantities from inventory.');">
+                    <form asp-action="IssueMaterials" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Issue raw materials from stock for this lot? This will deduct the required quantities from inventory.');">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn-af btn-af-primary btn-af-sm">
-                            📦 Issue Materials from Stock
+                        <button type="submit" class="btn btn-sm btn-primary">
+                            <i class="bi bi-box-seam"></i> Issue materials from stock
                         </button>
                     </form>
                 }
             </div>
         </div>
-        <div style="padding: 1rem;">
-            <div style="overflow-x:auto;">
-                <table class="af-table" style="font-size: 0.85rem;">
-                    <thead>
-                        <tr>
-                            <th>Component</th>
-                            <th>Raw Material</th>
-                            <th class="text-end">Per Piece</th>
-                            <th class="text-end">Wastage %</th>
-                            <th class="text-end">Total Required (@Model.TotalQuantity pcs)</th>
-                            <th class="text-end">Current Stock</th>
-                            <th class="text-center">Availability</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var bom in Model.Design.BomItems)
-                        {
-                            var totalReq = Model.TotalQuantity * bom.EffectiveQuantity;
-                            var currentStock = bom.RawMaterial?.CurrentStock ?? 0;
-                            var isShortage = currentStock < totalReq;
-                            if (isShortage) hasShortage = true;
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Raw Material</th>
+                        <th class="text-end">Per Piece</th>
+                        <th class="text-end">Wastage %</th>
+                        <th class="text-end">Required (@Model.TotalQuantity pcs)</th>
+                        <th class="text-end">Current Stock</th>
+                        <th>Availability</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var bom in Model.Design.BomItems)
+                    {
+                        var totalReq = Model.TotalQuantity * bom.EffectiveQuantity;
+                        var currentStock = bom.RawMaterial?.CurrentStock ?? 0;
+                        var isShortage = currentStock < totalReq;
+                        if (isShortage) hasShortage = true;
 
-                            <tr>
-                                <td><span class="af-badge b-gray">@bom.Component</span></td>
-                                <td>
-                                    <strong>@(bom.RawMaterial?.Name ?? $"Material #{bom.RawMaterialId}")</strong>
-                                    @if (!string.IsNullOrEmpty(bom.Remarks))
-                                    {
-                                        <span style="font-size: 0.75rem; color: #64748b;">(@bom.Remarks)</span>
-                                    }
-                                </td>
-                                <td class="text-end">@bom.QuantityPerPiece.ToString("N2") @bom.RawMaterial?.Unit</td>
-                                <td class="text-end">@bom.WastagePercentage.ToString("N1")%</td>
-                                <td class="text-end" style="font-weight: 700; color: #0f172a;">@totalReq.ToString("N2") @bom.RawMaterial?.Unit</td>
-                                <td class="text-end" style="font-weight: 600; color: @(isShortage ? "#dc2626" : "#16a34a");">
-                                    @currentStock.ToString("N2") @bom.RawMaterial?.Unit
-                                </td>
-                                <td class="text-center">
-                                    @if (isShortage)
-                                    {
-                                        <span class="af-badge" style="background:#fee2e2;color:#dc2626;">
-                                            Shortage (-@((totalReq - currentStock).ToString("N2")))
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="af-badge" style="background:#dcfce7;color:#16a34a;">
-                                            Available
-                                        </span>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-            @if (hasShortage && !Model.IsMaterialIssued)
-            {
-                <div class="af-alert af-alert-warning mt-3 mb-0" style="font-size: 0.85rem;">
-                    <span class="alert-body">⚠ Some raw materials have insufficient stock for this lot. You can still issue or create a Purchase Order to replenish stock.</span>
-                </div>
-            }
+                        <tr>
+                            <td><span class="tag">@bom.Component</span></td>
+                            <td>
+                                <span class="cell-title">@(bom.RawMaterial?.Name ?? $"Material #{bom.RawMaterialId}")</span>
+                                @if (!string.IsNullOrEmpty(bom.Remarks))
+                                {
+                                    <span class="cell-sub">@bom.Remarks</span>
+                                }
+                            </td>
+                            <td class="cell-num">@bom.QuantityPerPiece.ToString("N2") @bom.RawMaterial?.Unit</td>
+                            <td class="cell-num">@bom.WastagePercentage.ToString("N1")%</td>
+                            <td class="cell-num text-foreground fw-semibold">@totalReq.ToString("N2") @bom.RawMaterial?.Unit</td>
+                            <td class="cell-num fw-medium @(isShortage ? "text-danger" : "text-success")">@currentStock.ToString("N2") @bom.RawMaterial?.Unit</td>
+                            <td>
+                                @if (isShortage)
+                                {
+                                    <span class="af-badge b-red">Short by @((totalReq - currentStock).ToString("N2"))</span>
+                                }
+                                else
+                                {
+                                    <span class="af-badge b-green">Available</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
+        @if (hasShortage && !Model.IsMaterialIssued)
+        {
+            <div class="data-card-footer">
+                <div class="af-alert af-alert-warning mb-0">
+                    <div class="alert-body">Some raw materials have insufficient stock for this lot. You can still issue them or raise a Purchase Order to replenish stock.</div>
+                </div>
+            </div>
+        }
     </div>
 }
 else
 {
-    <div class="data-card mt-4 p-4 text-center">
-        <p style="color: #64748b; margin-bottom: 0.75rem;">No Bill of Materials (BOM) recipe configured for Design <strong>@Model.Design?.DesignNumber</strong>.</p>
-        <a asp-controller="Design" asp-action="Bom" asp-route-id="@Model.DesignId" class="btn-af btn-af-ghost btn-af-sm">
-            ⚙ Configure BOM Recipe & Costing Sheet →
-        </a>
+    <div class="data-card mt-4">
+        <div class="empty-state py-5">
+            <div class="es-icon"><i class="bi bi-calculator"></i></div>
+            <div class="es-title">No BOM recipe</div>
+            <p>No bill of materials is configured for design <strong>@Model.Design?.DesignNumber</strong>.</p>
+            <a asp-controller="Design" asp-action="Bom" asp-route-id="@Model.DesignId" class="btn btn-secondary"><i class="bi bi-gear"></i> Configure BOM &amp; costing</a>
+        </div>
     </div>
 }
 
@@ -654,22 +531,8 @@ else
         function renderLotComponentBadges() {
             var html = '';
             lotComponentsList.forEach(function(comp) {
-                var icon = '🧵';
-                var clow = comp.toLowerCase();
-                if (clow.includes('chaniya') || clow.includes('lehenga') || clow.includes('skirt')) icon = '👗';
-                else if (clow.includes('choli') || clow.includes('blouse') || clow.includes('top')) icon = '👚';
-                else if (clow.includes('dupatta') || clow.includes('chunri') || clow.includes('scarf')) icon = '🧣';
-                else if (clow.includes('jacket') || clow.includes('shrug') || clow.includes('koti')) icon = '🧥';
-                else if (clow.includes('belt')) icon = '🎗️';
-                else if (clow.includes('inner') || clow.includes('lining')) icon = '🩱';
-                else if (clow.includes('cape')) icon = '✨';
-
                 html += `
-                    <span class="badge bg-white text-dark border shadow-sm p-2 d-inline-flex align-items-center gap-2">
-                        <span>${icon}</span>
-                        <span class="fw-semibold">${comp}</span>
-                        <button type="button" class="btn-close btn-close-sm remove-lot-component-btn" data-name="${comp}" title="Remove component" style="font-size:0.65rem;"></button>
-                    </span>
+                    <span class="tag">${comp} <button type="button" class="tag-remove remove-lot-component-btn" data-name="${comp}" title="Remove component" aria-label="Remove ${comp}"><i class="bi bi-x"></i></button></span>
                 `;
             });
             $('#lotComponentBadgesContainer').html(html);
@@ -679,30 +542,19 @@ else
 
         function renderLotMatrixTable() {
             var procs = currentLotProcesses || [];
-            var thead = '<th style="min-width:140px; background:#f1f5f9;">Component Part</th>';
+            var thead = '<th style="min-width:140px;">Component</th>';
             procs.forEach(function(p) {
-                thead += `<th style="min-width:170px; background:#f1f5f9; text-align:center;">${p}</th>`;
+                thead += `<th style="min-width:180px;">${p}</th>`;
             });
-            thead += '<th style="width:50px; text-align:center; background:#f1f5f9;">Action</th>';
+            thead += '<th style="width:50px;"></th>';
             $('#lotMatrixHeaderRow').html(thead);
 
             var tbody = '';
             var assignmentIdx = 0;
 
             lotComponentsList.forEach(function(comp) {
-                var icon = '🧵';
-                var clow = comp.toLowerCase();
-                if (clow.includes('chaniya') || clow.includes('lehenga')) icon = '👗';
-                else if (clow.includes('choli') || clow.includes('blouse')) icon = '👚';
-                else if (clow.includes('dupatta') || clow.includes('chunri')) icon = '🧣';
-                else if (clow.includes('jacket') || clow.includes('shrug')) icon = '🧥';
-                else if (clow.includes('belt')) icon = '🎗️';
-                else if (clow.includes('inner') || clow.includes('lining')) icon = '🩱';
-
                 tbody += `<tr>
-                    <td class="fw-bold text-dark" style="white-space:nowrap; vertical-align:middle;">
-                        <span class="me-1">${icon}</span> ${comp}
-                    </td>`;
+                    <td class="cell-title text-nowrap">${comp}</td>`;
 
                 procs.forEach(function(p) {
                     var key = comp + '___' + p;
@@ -717,13 +569,13 @@ else
                     }
 
                     tbody += `
-                        <td class="p-2">
+                        <td>
                             <select name="ComponentAssignments[${assignmentIdx}].VendorId" class="form-select form-select-sm lot-matrix-vendor-select" data-comp="${comp}" data-proc="${p}">
                                 ${options}
                             </select>
                             <div class="input-group input-group-sm mt-1">
-                                <span class="input-group-text py-0 px-1 text-muted" style="font-size:0.7rem;">₹</span>
-                                <input type="number" step="0.01" min="0" name="ComponentAssignments[${assignmentIdx}].Rate" value="${val.rate || ''}" placeholder="Rate" class="form-control form-control-sm py-0 lot-matrix-rate-input" data-comp="${comp}" data-proc="${p}" style="font-size:0.75rem;" />
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" min="0" name="ComponentAssignments[${assignmentIdx}].Rate" value="${val.rate || ''}" placeholder="Rate" class="form-control form-control-sm lot-matrix-rate-input" data-comp="${comp}" data-proc="${p}" />
                             </div>
                             <input type="hidden" name="ComponentAssignments[${assignmentIdx}].ComponentName" value="${comp}" />
                             <input type="hidden" name="ComponentAssignments[${assignmentIdx}].ProcessName" value="${p}" />
@@ -733,11 +585,7 @@ else
                 });
 
                 tbody += `
-                    <td class="text-center" style="vertical-align:middle;">
-                        <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 remove-lot-component-btn" data-name="${comp}" title="Remove ${comp}">
-                            🗑️
-                        </button>
-                    </td>
+                    <td class="text-center"><button type="button" class="row-action danger remove-lot-component-btn" data-name="${comp}" title="Remove ${comp}" aria-label="Remove ${comp}"><i class="bi bi-trash"></i></button></td>
                 </tr>`;
             });
 

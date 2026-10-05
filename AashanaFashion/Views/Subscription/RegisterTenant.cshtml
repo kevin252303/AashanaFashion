@@ -1,153 +1,126 @@
 @model AashanaFashion.Models.RegisterTenantViewModel
-
 @{
-    Layout = "_Layout";
+    Layout = "_LoginLayout";
     ViewData["Title"] = "Start Free Trial — Kriyex Cloud ERP";
 }
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="text-center mb-4">
-                <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold mb-2">
-                    <i class="bi bi-stars me-1"></i> 14-Day Full Access Free Trial &bull; No Credit Card Required
-                </span>
-                <h1 class="display-6 fw-bold text-dark">Get Your Garment Business on Kriyex Cloud</h1>
-                <p class="text-muted lead fs-6">
-                    Join hundreds of textile brands, garment factories, and job workers streamlining production, payroll, and GST accounting.
-                </p>
-            </div>
+<section class="auth-brand">
+    <div class="d-flex align-items-center gap-2">
+        <div class="brand-mark">KX</div>
+        <span class="fw-bold fs-4 text-dark">Kriyex</span>
+    </div>
 
-            <div class="card shadow-lg border-0 rounded-4">
-                <div class="card-body p-4 p-md-5">
-                    <form asp-controller="Subscription" asp-action="RegisterTenant" method="post" id="registerForm">
-                        @Html.AntiForgeryToken()
+    <div class="auth-pitch">
+        <div class="auth-eyebrow">14-day free trial · no credit card</div>
+        <h1 class="auth-headline">Put your garment business on Kriyex Cloud.</h1>
+        <p class="auth-lede">Production, payroll and GST accounting for textile brands, garment factories and job workers.</p>
+        <ul class="auth-features">
+            <li><i class="bi bi-diagram-3"></i> Production lots, job slips &amp; QC</li>
+            <li><i class="bi bi-receipt"></i> GST invoicing, e-invoice &amp; returns</li>
+            <li><i class="bi bi-journal-text"></i> Double-entry ledger &amp; statements</li>
+            <li><i class="bi bi-person-badge"></i> Face kiosk attendance &amp; payroll</li>
+        </ul>
+    </div>
 
-                        @if (!ViewData.ModelState.IsValid && ViewData.ModelState[string.Empty]?.Errors.Count > 0)
-                        {
-                            <div class="alert alert-danger" role="alert">
-                                @foreach (var error in ViewData.ModelState[string.Empty]!.Errors)
-                                {
-                                    <div><i class="bi bi-exclamation-circle me-1"></i> @error.ErrorMessage</div>
-                                }
-                            </div>
-                        }
+    <div class="auth-legal">© @DateTime.Now.Year Kriyex · Production Management System</div>
+</section>
 
-                        <!-- Step 1: Business Details -->
-                        <h5 class="fw-bold text-primary mb-3">
-                            <i class="bi bi-building me-2"></i>1. Business Information
-                        </h5>
+<main class="auth-main">
+    <div class="auth-card auth-card-wide">
+        <div class="auth-card-mark brand-mark">KX</div>
+        <h2 class="auth-title">Start your free trial</h2>
+        <p class="auth-sub">Full access for 14 days on .kriyex.com. Pick a plan now — you won’t be charged during the trial.</p>
 
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <label asp-for="BusinessName" class="form-label fw-semibold"></label>
-                                <input asp-for="BusinessName" class="form-control form-control-lg" placeholder="e.g. Surat Textile Mills" required id="bizNameInput" />
-                                <span asp-validation-for="BusinessName" class="text-danger small"></span>
-                            </div>
+        <form asp-controller="Subscription" asp-action="RegisterTenant" method="post" id="registerForm">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="af-alert af-alert-danger"></div>
 
-                            <div class="col-md-6">
-                                <label asp-for="Subdomain" class="form-label fw-semibold"></label>
-                                <div class="input-group input-group-lg">
-                                    <input asp-for="Subdomain" class="form-control" placeholder="surattextile" required id="subdomainInput" />
-                                    <span class="input-group-text bg-light text-muted fw-semibold small">.kriyex.com</span>
-                                </div>
-                                <span asp-validation-for="Subdomain" class="text-danger small"></span>
-                                <small class="text-muted" id="subdomainPreview">Your workspace URL: https://[subdomain].kriyex.com</small>
-                            </div>
-                        </div>
-
-                        <!-- Step 2: Admin Login Account -->
-                        <h5 class="fw-bold text-primary mb-3">
-                            <i class="bi bi-person-lock me-2"></i>2. Administrator Account
-                        </h5>
-
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <label asp-for="AdminFullName" class="form-label fw-semibold"></label>
-                                <input asp-for="AdminFullName" class="form-control" placeholder="e.g. Rajesh Shah" required />
-                                <span asp-validation-for="AdminFullName" class="text-danger small"></span>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label asp-for="AdminEmail" class="form-label fw-semibold"></label>
-                                <input asp-for="AdminEmail" type="email" class="form-control" placeholder="rajesh@surattextile.com" required />
-                                <span asp-validation-for="AdminEmail" class="text-danger small"></span>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label asp-for="Phone" class="form-label fw-semibold"></label>
-                                <input asp-for="Phone" class="form-control" placeholder="+91 98765 43210" />
-                                <span asp-validation-for="Phone" class="text-danger small"></span>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label asp-for="Username" class="form-label fw-semibold"></label>
-                                <input asp-for="Username" class="form-control" placeholder="admin" required />
-                                <span asp-validation-for="Username" class="text-danger small"></span>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label asp-for="Password" class="form-label fw-semibold"></label>
-                                <input asp-for="Password" type="password" class="form-control" placeholder="At least 6 characters" required />
-                                <span asp-validation-for="Password" class="text-danger small"></span>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label asp-for="ConfirmPassword" class="form-label fw-semibold"></label>
-                                <input asp-for="ConfirmPassword" type="password" class="form-control" placeholder="Repeat your password" required />
-                                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <!-- Step 3: Choose Your Initial Plan Tier -->
-                        <h5 class="fw-bold text-primary mb-3">
-                            <i class="bi bi-award me-2"></i>3. Select Your Plan (Free during 14-day trial)
-                        </h5>
-
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-4">
-                                <label class="card h-100 p-3 border rounded-3 cursor-pointer text-center" for="planOptStarter">
-                                    <input type="radio" class="form-check-input mx-auto mb-2" id="planOptStarter" name="PlanType" value="@SubscriptionTier.Starter" />
-                                    <h6 class="fw-bold mb-1">Starter</h6>
-                                    <div class="text-primary fw-bold mb-2">₹2,499<small class="text-muted">/mo</small></div>
-                                    <small class="text-muted">5 Desk Seats &bull; 25 Workers</small>
-                                </label>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="card h-100 p-3 border border-primary bg-primary-subtle rounded-3 cursor-pointer text-center" for="planOptGrowth">
-                                    <input type="radio" class="form-check-input mx-auto mb-2" id="planOptGrowth" name="PlanType" value="@SubscriptionTier.Growth" checked />
-                                    <h6 class="fw-bold mb-1">Growth (Recommended)</h6>
-                                    <div class="text-primary fw-bold mb-2">₹6,999<small class="text-muted">/mo</small></div>
-                                    <small class="text-muted">15 Desk Seats &bull; 100 Workers</small>
-                                </label>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="card h-100 p-3 border rounded-3 cursor-pointer text-center" for="planOptEnterprise">
-                                    <input type="radio" class="form-check-input mx-auto mb-2" id="planOptEnterprise" name="PlanType" value="@SubscriptionTier.Enterprise" />
-                                    <h6 class="fw-bold mb-1">Enterprise</h6>
-                                    <div class="text-primary fw-bold mb-2">₹18,999<small class="text-muted">/mo</small></div>
-                                    <small class="text-muted">50 Desk Seats &bull; 500 Workers</small>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="d-grid mb-3">
-                            <button type="submit" class="btn btn-primary btn-lg fw-bold py-3 shadow">
-                                <i class="bi bi-rocket-takeoff me-2"></i> Launch My 14-Day Free Trial
-                            </button>
-                        </div>
-
-                        <p class="text-center text-muted small mb-0">
-                            Already have an account? <a asp-controller="Account" asp-action="Login" class="text-primary fw-semibold">Sign in here</a>
-                        </p>
-                    </form>
+            <div class="section-label mb-3">Business</div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label asp-for="BusinessName" class="form-label"></label>
+                    <input asp-for="BusinessName" class="af-input" id="bizNameInput" placeholder="e.g. Surat Textile Mills" required />
+                    <span asp-validation-for="BusinessName" class="af-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Subdomain" class="form-label"></label>
+                    <div class="input-group">
+                        <input asp-for="Subdomain" class="af-input font-monospace" placeholder="surattextile" required id="subdomainInput" />
+                        <span class="input-group-text">.kriyex.com</span>
+                    </div>
+                    <span asp-validation-for="Subdomain" class="af-error"></span>
+                    <div class="form-text" id="subdomainPreview">Your workspace URL: https://[subdomain].kriyex.com</div>
                 </div>
             </div>
-        </div>
+
+            <div class="section-label mb-3">Administrator account</div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label asp-for="AdminFullName" class="form-label"></label>
+                    <input asp-for="AdminFullName" class="af-input" placeholder="e.g. Rajesh Shah" required />
+                    <span asp-validation-for="AdminFullName" class="af-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="AdminEmail" class="form-label"></label>
+                    <input asp-for="AdminEmail" type="email" class="af-input" placeholder="rajesh@surattextile.com" required />
+                    <span asp-validation-for="AdminEmail" class="af-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Phone" class="form-label"></label>
+                    <input asp-for="Phone" class="af-input" placeholder="+91 98765 43210" />
+                    <span asp-validation-for="Phone" class="af-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Username" class="form-label"></label>
+                    <input asp-for="Username" class="af-input" placeholder="admin" required />
+                    <span asp-validation-for="Username" class="af-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Password" class="form-label"></label>
+                    <input asp-for="Password" type="password" class="af-input" placeholder="At least 6 characters" required />
+                    <span asp-validation-for="Password" class="af-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ConfirmPassword" class="form-label"></label>
+                    <input asp-for="ConfirmPassword" type="password" class="af-input" placeholder="Repeat your password" required />
+                    <span asp-validation-for="ConfirmPassword" class="af-error"></span>
+                </div>
+            </div>
+
+            <div class="section-label mb-3">Plan</div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="plan-card compact" for="planOptStarter">
+                        <div class="plan-head"><span class="plan-name">Starter</span></div>
+                        <div class="plan-price">₹2,499<small>/mo</small></div>
+                        <p class="plan-desc">5 desk seats · 25 workers</p>
+                        <span class="plan-select"><input type="radio" class="form-check-input" id="planOptStarter" name="PlanType" value="@SubscriptionTier.Starter" /> Select</span>
+                    </label>
+                </div>
+                <div class="col-md-4">
+                    <label class="plan-card compact" for="planOptGrowth">
+                        <div class="plan-head"><span class="plan-name">Growth</span><span class="af-badge b-indigo">Recommended</span></div>
+                        <div class="plan-price">₹6,999<small>/mo</small></div>
+                        <p class="plan-desc">15 desk seats · 100 workers</p>
+                        <span class="plan-select"><input type="radio" class="form-check-input" id="planOptGrowth" name="PlanType" value="@SubscriptionTier.Growth" checked /> Select</span>
+                    </label>
+                </div>
+                <div class="col-md-4">
+                    <label class="plan-card compact" for="planOptEnterprise">
+                        <div class="plan-head"><span class="plan-name">Enterprise</span></div>
+                        <div class="plan-price">₹18,999<small>/mo</small></div>
+                        <p class="plan-desc">50 desk seats · 500 workers</p>
+                        <span class="plan-select"><input type="radio" class="form-check-input" id="planOptEnterprise" name="PlanType" value="@SubscriptionTier.Enterprise" /> Select</span>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-rocket-takeoff"></i> Start 14-day free trial</button>
+        </form>
+
+        <div class="auth-trial">Already have an account? <a asp-controller="Account" asp-action="Login" class="fw-semibold">Sign in</a></div>
     </div>
-</div>
+</main>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

@@ -101,7 +101,7 @@ $(document).ready(function () {
         // Generate matrix rows
         currentColours.forEach(function (colour) {
             var row = $('<tr>');
-            row.append('<td><strong>' + colour + '</strong></td>');
+            row.append('<td class="cell-title">' + colour + '</td>');
 
             var rowIndex = currentColours.indexOf(colour);
 
@@ -110,8 +110,8 @@ $(document).ready(function () {
                 var isDisc = isVariantDiscontinued(colour, size);
                 if (isDisc) {
                     row.append(
-                        '<td class="text-center" style="background:#fef2f2;vertical-align:middle;" title="Variant is discontinued - cannot create production order">' +
-                        '<div style="font-size:0.68rem;color:#dc2626;font-weight:700;">🚫 Disc.</div>' +
+                        '<td class="matrix-disc" title="Variant is discontinued - cannot create production order">' +
+                        '<span class="af-badge b-red">Disc.</span>' +
                         '<input type="hidden" name="Details[' + detailIndex + '].Colour" value="' + colour + '" />' +
                         '<input type="hidden" name="Details[' + detailIndex + '].Size" value="' + size + '" />' +
                         '<input type="hidden" name="Details[' + detailIndex + '].Quantity" value="0" />' +
@@ -119,29 +119,29 @@ $(document).ready(function () {
                     );
                 } else {
                     row.append(
-                        '<td class="text-center">' +
+                        '<td>' +
                         '<input type="hidden" name="Details[' + detailIndex + '].Colour" value="' + colour + '" />' +
                         '<input type="hidden" name="Details[' + detailIndex + '].Size" value="' + size + '" />' +
-                        '<input type="number" class="matrix-input" data-row="' + rowIndex + '" data-col="' + sizeIdx + '" ' +
+                        '<input type="number" class="af-input af-input-sm matrix-input" data-row="' + rowIndex + '" data-col="' + sizeIdx + '" ' +
                         'name="Details[' + detailIndex + '].Quantity" ' +
-                        'min="0" value="0" style="width:70px;text-align:center;padding:.4rem;" />' +
+                        'min="0" value="0" />' +
                         '</td>'
                     );
                 }
             });
 
             // Row total
-            row.append('<td class="text-center" style="background:#f0fdf4;"><strong class="row-total" data-row="' + rowIndex + '">0</strong></td>');
+            row.append('<td class="cell-total"><span class="row-total" data-row="' + rowIndex + '">0</span></td>');
             tbody.append(row);
         });
 
         // Add column totals row
-        var totalRow = $('<tr style="background:#f8fafc;font-weight:bold;">');
-        totalRow.append('<td><strong>Total</strong></td>');
+        var totalRow = $('<tr class="matrix-total-row">');
+        totalRow.append('<td>Total</td>');
         currentSizes.forEach(function (size, sizeIdx) {
-            totalRow.append('<td class="text-center" style="background:#f0fdf4;"><strong class="col-total" data-col="' + sizeIdx + '">0</strong></td>');
+            totalRow.append('<td><span class="col-total" data-col="' + sizeIdx + '">0</span></td>');
         });
-        totalRow.append('<td class="text-center" style="background:#dcfce7;"><strong id="grandTotal">0</strong></td>');
+        totalRow.append('<td class="grand-total"><span id="grandTotal">0</span></td>');
         tbody.append(totalRow);
 
         // Add event listeners
@@ -200,8 +200,8 @@ $(document).ready(function () {
             var fieldName = verificationMap[step];
             if (fieldName) {
                 container.append(
-                    '<label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">' +
-                    '<input type="checkbox" name="' + fieldName + '" style="accent-color:#6366f1;width:16px;height:16px;" />' +
+                    '<label class="check-item">' +
+                    '<input type="checkbox" class="form-check-input m-0" name="' + fieldName + '" />' +
                     step + ' Verified' +
                     '</label>'
                 );
@@ -213,21 +213,10 @@ $(document).ready(function () {
     function renderLotComponentBadges() {
         var html = '';
         lotComponentsList.forEach(function(comp) {
-            var icon = '🧵';
-            var clow = comp.toLowerCase();
-            if (clow.includes('chaniya') || clow.includes('lehenga') || clow.includes('skirt')) icon = '👗';
-            else if (clow.includes('choli') || clow.includes('blouse') || clow.includes('top')) icon = '👚';
-            else if (clow.includes('dupatta') || clow.includes('chunri') || clow.includes('scarf')) icon = '🧣';
-            else if (clow.includes('jacket') || clow.includes('shrug') || clow.includes('koti')) icon = '🧥';
-            else if (clow.includes('belt')) icon = '🎗️';
-            else if (clow.includes('inner') || clow.includes('lining')) icon = '🩱';
-            else if (clow.includes('cape')) icon = '✨';
-
             html += `
-                <span class="badge bg-white text-dark border shadow-sm p-2 d-inline-flex align-items-center gap-2">
-                    <span>${icon}</span>
-                    <span class="fw-semibold">${comp}</span>
-                    <button type="button" class="btn-close btn-close-sm remove-lot-component-btn" data-name="${comp}" title="Remove component" style="font-size:0.65rem;"></button>
+                <span class="tag">
+                    ${comp}
+                    <button type="button" class="tag-remove remove-lot-component-btn" data-name="${comp}" title="Remove component" aria-label="Remove ${comp}"><i class="bi bi-x"></i></button>
                 </span>
             `;
         });
@@ -238,30 +227,19 @@ $(document).ready(function () {
 
     function renderLotMatrixTable() {
         var procs = currentLotProcesses || [];
-        var thead = '<th style="min-width:140px; background:#f1f5f9;">Component Part</th>';
+        var thead = '<th style="min-width:140px;">Component</th>';
         procs.forEach(function(p) {
-            thead += `<th style="min-width:170px; background:#f1f5f9; text-align:center;">${p}</th>`;
+            thead += `<th style="min-width:180px;">${p}</th>`;
         });
-        thead += '<th style="width:50px; text-align:center; background:#f1f5f9;">Action</th>';
+        thead += '<th style="width:50px;"></th>';
         $('#lotMatrixHeaderRow').html(thead);
 
         var tbody = '';
         var assignmentIdx = 0;
 
         lotComponentsList.forEach(function(comp) {
-            var icon = '🧵';
-            var clow = comp.toLowerCase();
-            if (clow.includes('chaniya') || clow.includes('lehenga')) icon = '👗';
-            else if (clow.includes('choli') || clow.includes('blouse')) icon = '👚';
-            else if (clow.includes('dupatta') || clow.includes('chunri')) icon = '🧣';
-            else if (clow.includes('jacket') || clow.includes('shrug')) icon = '🧥';
-            else if (clow.includes('belt')) icon = '🎗️';
-            else if (clow.includes('inner') || clow.includes('lining')) icon = '🩱';
-
             tbody += `<tr>
-                <td class="fw-bold text-dark" style="white-space:nowrap; vertical-align:middle;">
-                    <span class="me-1">${icon}</span> ${comp}
-                </td>`;
+                <td class="cell-title text-nowrap">${comp}</td>`;
 
             procs.forEach(function(p) {
                 var key = comp + '___' + p;
@@ -276,13 +254,13 @@ $(document).ready(function () {
                 }
 
                 tbody += `
-                    <td class="p-2">
+                    <td>
                         <select name="ComponentAssignments[${assignmentIdx}].VendorId" class="form-select form-select-sm lot-matrix-vendor-select" data-comp="${comp}" data-proc="${p}">
                             ${options}
                         </select>
                         <div class="input-group input-group-sm mt-1">
-                            <span class="input-group-text py-0 px-1 text-muted" style="font-size:0.7rem;">₹</span>
-                            <input type="number" step="0.01" min="0" name="ComponentAssignments[${assignmentIdx}].Rate" value="${val.rate || ''}" placeholder="Rate" class="form-control form-control-sm py-0 lot-matrix-rate-input" data-comp="${comp}" data-proc="${p}" style="font-size:0.75rem;" />
+                            <span class="input-group-text">₹</span>
+                            <input type="number" step="0.01" min="0" name="ComponentAssignments[${assignmentIdx}].Rate" value="${val.rate || ''}" placeholder="Rate" class="form-control form-control-sm lot-matrix-rate-input" data-comp="${comp}" data-proc="${p}" />
                         </div>
                         <input type="hidden" name="ComponentAssignments[${assignmentIdx}].ComponentName" value="${comp}" />
                         <input type="hidden" name="ComponentAssignments[${assignmentIdx}].ProcessName" value="${p}" />
@@ -292,10 +270,8 @@ $(document).ready(function () {
             });
 
             tbody += `
-                <td class="text-center" style="vertical-align:middle;">
-                    <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 remove-lot-component-btn" data-name="${comp}" title="Remove ${comp}">
-                        🗑️
-                    </button>
+                <td class="text-center">
+                    <button type="button" class="row-action danger remove-lot-component-btn" data-name="${comp}" title="Remove ${comp}" aria-label="Remove ${comp}"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });

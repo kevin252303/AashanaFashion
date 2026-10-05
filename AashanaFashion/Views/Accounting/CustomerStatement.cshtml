@@ -3,193 +3,117 @@
     ViewData["Title"] = $"Statement of Account — {Model.Customer.CustomerName}";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 d-print-none">
+<div class="page-header d-print-none">
     <div>
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <a asp-action="AgedReceivables" class="btn btn-sm btn-outline-secondary">
-                ← Back to Aged Receivables
-            </a>
-            <h1 class="page-title mb-0">📜 Statement of Account</h1>
-        </div>
-        <p class="page-sub mb-0 text-muted">Customer statement of transactions and running balance for <strong>@Model.Customer.CustomerName</strong></p>
+        <a asp-action="AgedReceivables" class="page-back"><i class="bi bi-arrow-left"></i> Aged receivables</a>
+        <h1 class="page-title">Statement of account</h1>
+        <p class="page-sub">Transactions and running balance for @Model.Customer.CustomerName.</p>
     </div>
-    <div class="d-flex gap-2">
-        <button type="button" class="btn btn-primary" onclick="window.print()">
-            🖨️ Print / Save PDF
-        </button>
+    <div class="page-actions">
+        <button type="button" class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i> Print / save PDF</button>
     </div>
 </div>
 
-<!-- Statement Container (Print-optimized) -->
-<div class="card border-0 shadow-sm rounded-3 p-4">
-    <!-- Letterhead -->
-    <div class="row align-items-start border-bottom pb-4 mb-4">
-        <div class="col-sm-7">
-            <h3 class="fw-bold text-dark mb-1">@Model.Company.CompanyName</h3>
-            <p class="small text-muted mb-1">
-                @Model.Company.Address1 @Model.Company.Address2<br />
-                @Model.Company.City, @Model.Company.State - @Model.Company.PinCode
-            </p>
-            <div class="small">
-                <strong>GSTIN:</strong> <span class="font-monospace fw-bold text-primary">@(Model.Company.Gstin ?? "Not Set")</span> |
-                <strong>Phone:</strong> @Model.Company.Phone
-            </div>
+<div class="data-card doc-sheet">
+    <div class="doc-head">
+        <div>
+            <div class="doc-company">@Model.Company.CompanyName</div>
+            <div class="text-sm text-muted">@Model.Company.Address1 @Model.Company.Address2</div>
+            <div class="text-sm text-muted">@Model.Company.City, @Model.Company.State – @Model.Company.PinCode</div>
+            <div class="text-xs text-muted mt-1">GSTIN <span class="font-monospace text-foreground">@(Model.Company.Gstin ?? "Not set")</span></div>
+                    <span class="text-xs text-muted">Phone @Model.Company.Phone</span>
         </div>
-        <div class="col-sm-5 text-sm-end">
-            <span class="badge bg-dark text-white text-uppercase px-3 py-1 mb-2 fs-6">Statement of Account</span>
-            <div class="small text-muted">Statement Period:</div>
-            <strong class="fs-6 text-dark">@Model.FromDate.ToString("dd-MMM-yyyy") to @Model.ToDate.ToString("dd-MMM-yyyy")</strong>
+        <div class="doc-kind">
+            <span class="micro-label">Statement of account</span>
+            <strong>@Model.FromDate.ToString("dd MMM yyyy") – @Model.ToDate.ToString("dd MMM yyyy")</strong>
         </div>
     </div>
 
-    <!-- Customer Details & Bank Remittance Details -->
     <div class="row g-3 mb-4">
-        <div class="col-md-6">
-            <div class="border rounded-3 p-3 bg-light h-100">
-                <span class="small text-muted text-uppercase fw-bold d-block mb-1">Bill To / Customer Details</span>
-                <h5 class="fw-bold mb-1 text-dark">@Model.Customer.CustomerName</h5>
-                <div class="small text-muted mb-1">@(Model.Customer.Address ?? "Address on file")</div>
-                <div class="small text-muted">@(Model.Customer.City ?? ""), @(Model.Customer.State ?? "")</div>
-                <div class="small mt-2">
-                    <strong>GSTIN:</strong> <span class="font-monospace fw-bold text-dark">@(Model.Customer.GstNumber ?? "URP (Unregistered)")</span><br />
-                    <strong>Phone:</strong> @(Model.Customer.Phone ?? "N/A")
+            <div class="col-md-6">
+                <div class="panel-inset h-100 mb-0">
+                    <span class="micro-label mb-1">Bill to</span>
+                    <div class="text-foreground fw-semibold">@Model.Customer.CustomerName</div>
+                    <div class="text-sm text-muted">@(Model.Customer.Address ?? "Address on file")</div>
+                    <div class="text-sm text-muted">@(Model.Customer.City ?? "")@(string.IsNullOrEmpty(Model.Customer.State) ? "" : ", " + Model.Customer.State)</div>
+                    <div class="kv-row mt-2"><span class="k">GSTIN</span><span class="v font-monospace">@(Model.Customer.GstNumber ?? "URP (unregistered)")</span></div>
+                    <div class="kv-row"><span class="k">Phone</span><span class="v">@(Model.Customer.Phone ?? "—")</span></div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-6">
-            <div class="border rounded-3 p-3 bg-light h-100">
-                <span class="small text-muted text-uppercase fw-bold d-block mb-1">Bank Payment Details (Remittance)</span>
-                <div class="small"><strong>Bank:</strong> @(Model.Company.BankName ?? "State Bank of India")</div>
-                <div class="small"><strong>Account Name:</strong> @Model.Company.CompanyName</div>
-                <div class="small"><strong>A/c Number:</strong> <span class="font-monospace fw-bold">@(Model.Company.BankAccountNumber ?? "39201948201")</span></div>
-                <div class="small"><strong>IFSC Code:</strong> <span class="font-monospace fw-bold">@(Model.Company.BankIfsc ?? "SBIN0001234")</span></div>
-                <div class="small"><strong>Branch:</strong> @(Model.Company.BankBranch ?? "Surat Textile Market")</div>
+            <div class="col-md-6">
+                <div class="panel-inset h-100 mb-0">
+                    <span class="micro-label mb-1">Remit payment to</span>
+                    <div class="kv-row"><span class="k">Bank</span><span class="v">@(Model.Company.BankName ?? "Not set")</span></div>
+                    <div class="kv-row"><span class="k">Account name</span><span class="v">@Model.Company.CompanyName</span></div>
+                    <div class="kv-row"><span class="k">A/c number</span><span class="v font-monospace">@(Model.Company.BankAccountNumber ?? "Not set")</span></div>
+                    <div class="kv-row"><span class="k">IFSC</span><span class="v font-monospace">@(Model.Company.BankIfsc ?? "Not set")</span></div>
+                    <div class="kv-row"><span class="k">Branch</span><span class="v">@(Model.Company.BankBranch ?? "Not set")</span></div>
+                </div>
             </div>
-        </div>
     </div>
 
-    <!-- Summary Statistics -->
-    <div class="row g-2 mb-4 text-center">
-        <div class="col-6 col-md-3">
-            <div class="p-2 border rounded bg-light">
-                <span class="small text-muted d-block">Opening Balance</span>
-                <strong class="fs-6 font-monospace">₹@Model.OpeningBalance.ToString("N2")</strong>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="p-2 border rounded bg-light">
-                <span class="small text-muted d-block">Invoiced (+)</span>
-                <strong class="fs-6 text-primary font-monospace">₹@Model.TotalInvoiced.ToString("N2")</strong>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="p-2 border rounded bg-light">
-                <span class="small text-muted d-block">Payments / Returns (-)</span>
-                <strong class="fs-6 text-success font-monospace">₹@((Model.TotalPaid + Model.TotalReturns).ToString("N2"))</strong>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="p-2 border rounded bg-primary-subtle border-primary">
-                <span class="small text-primary fw-bold d-block">Balance Due</span>
-                <strong class="fs-5 text-primary font-monospace">₹@Model.ClosingBalance.ToString("N2")</strong>
-            </div>
-        </div>
+    <div class="stat-strip mb-4">
+        <div><div class="info-label">Opening balance</div><div class="info-value">₹@Model.OpeningBalance.ToString("N2")</div></div>
+        <div><div class="info-label">Invoiced (+)</div><div class="info-value">₹@Model.TotalInvoiced.ToString("N2")</div></div>
+        <div><div class="info-label">Payments / returns (−)</div><div class="info-value @(Model.TotalPaid + Model.TotalReturns > 0 ? "text-success" : "")">₹@((Model.TotalPaid + Model.TotalReturns).ToString("N2"))</div></div>
+        <div class="is-total"><div class="info-label">Balance due</div><div class="info-value">₹@Model.ClosingBalance.ToString("N2")</div></div>
     </div>
 
-    <!-- Statement Transactions Table -->
-    <div class="table-responsive mb-4">
-        <table class="table table-bordered table-sm align-middle mb-0">
-            <thead class="table-light small text-uppercase">
+    <div class="grid-card">
+        <table class="af-table">
+            <thead>
                 <tr>
-                    <th style="width: 100px;">Date</th>
-                    <th style="width: 90px;">Type</th>
-                    <th style="width: 130px;">Doc #</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Document</th>
                     <th>Description</th>
-                    <th class="text-end" style="width: 130px;">Invoiced (₹)</th>
-                    <th class="text-end" style="width: 130px;">Paid (₹)</th>
-                    <th class="text-end" style="width: 140px;">Balance (₹)</th>
+                    <th class="text-end">Invoiced</th>
+                    <th class="text-end">Paid</th>
+                    <th class="text-end">Balance</th>
                 </tr>
             </thead>
             <tbody>
-                <tr class="table-light">
-                    <td colspan="4" class="fw-bold text-muted ps-3">Opening Balance as on @Model.FromDate.ToString("dd-MMM-yyyy")</td>
-                    <td class="text-end font-monospace text-muted">—</td>
-                    <td class="text-end font-monospace text-muted">—</td>
-                    <td class="text-end font-monospace fw-bold">₹@Model.OpeningBalance.ToString("N2")</td>
+                <tr class="row-muted">
+                    <td colspan="4" class="text-muted fw-medium">Opening balance as on @Model.FromDate.ToString("dd MMM yyyy")</td>
+                    <td class="cell-num text-muted">—</td>
+                    <td class="cell-num text-muted">—</td>
+                    <td class="cell-num text-foreground fw-semibold">₹@Model.OpeningBalance.ToString("N2")</td>
                 </tr>
                 @if (!Model.Transactions.Any())
                 {
+                    <tr><td colspan="7" class="text-center text-muted py-4">No transactions recorded in this period.</td></tr>
+                }
+                @foreach (var t in Model.Transactions)
+                {
                     <tr>
-                        <td colspan="7" class="text-center py-3 text-muted">
-                            No transactions recorded in this period.
-                        </td>
+                        <td class="text-nowrap text-muted tabular">@t.Date.ToString("dd MMM yyyy")</td>
+                        <td><span class="af-badge @(t.Type == "Invoice" ? "b-blue" : t.Type == "Payment" ? "b-green" : "b-yellow")">@t.Type</span></td>
+                        <td><span class="mono-id">@t.ReferenceNumber</span></td>
+                        <td class="text-muted">@t.Description</td>
+                        <td class="cell-num @(t.Debit > 0 ? "text-foreground" : "text-muted")">@(t.Debit > 0 ? $"₹{t.Debit:N2}" : "—")</td>
+                        <td class="cell-num @(t.Credit > 0 ? "text-success" : "text-muted")">@(t.Credit > 0 ? $"₹{t.Credit:N2}" : "—")</td>
+                        <td class="cell-num text-foreground fw-semibold">₹@t.RunningBalance.ToString("N2")</td>
                     </tr>
                 }
-                else
-                {
-                    @foreach (var t in Model.Transactions)
-                    {
-                        <tr>
-                            <td class="small text-muted">@t.Date.ToString("dd-MMM-yyyy")</td>
-                            <td>
-                                <span class="badge @(t.Type == "Invoice" ? "bg-primary-subtle text-primary" : (t.Type == "Payment" ? "bg-success-subtle text-success" : "bg-warning-subtle text-dark"))" style="font-size: 0.72rem;">
-                                    @t.Type
-                                </span>
-                            </td>
-                            <td class="font-monospace fw-bold small">@t.ReferenceNumber</td>
-                            <td class="small">@t.Description</td>
-                            <td class="text-end font-monospace @(t.Debit > 0 ? "fw-semibold" : "text-muted")">
-                                @(t.Debit > 0 ? $"₹{t.Debit:N2}" : "—")
-                            </td>
-                            <td class="text-end font-monospace text-success @(t.Credit > 0 ? "fw-semibold" : "text-muted")">
-                                @(t.Credit > 0 ? $"₹{t.Credit:N2}" : "—")
-                            </td>
-                            <td class="text-end font-monospace fw-bold text-dark">
-                                ₹@t.RunningBalance.ToString("N2")
-                            </td>
-                        </tr>
-                    }
-                }
             </tbody>
-            <tfoot class="table-light fw-bold fs-6">
+            <tfoot>
                 <tr>
-                    <td colspan="4" class="text-uppercase small">Total Period Activity &amp; Closing Outstanding:</td>
-                    <td class="text-end font-monospace text-primary">₹@Model.TotalInvoiced.ToString("N2")</td>
-                    <td class="text-end font-monospace text-success">₹@((Model.TotalPaid + Model.TotalReturns).ToString("N2"))</td>
-                    <td class="text-end font-monospace text-primary fs-5">₹@Model.ClosingBalance.ToString("N2")</td>
+                    <td colspan="4" class="text-end">Period activity &amp; closing balance</td>
+                    <td class="text-end tabular">₹@Model.TotalInvoiced.ToString("N2")</td>
+                    <td class="text-end tabular">₹@((Model.TotalPaid + Model.TotalReturns).ToString("N2"))</td>
+                    <td class="text-end tabular">₹@Model.ClosingBalance.ToString("N2")</td>
                 </tr>
             </tfoot>
         </table>
     </div>
 
-    <!-- Statement Aging Analysis Breakdown Footer -->
-    <div class="border rounded-3 p-3 bg-light">
-        <h6 class="fw-bold mb-2 small text-uppercase text-secondary">Aging Breakdown of Outstanding Balance:</h6>
-        <div class="row text-center g-2 small">
-            <div class="col">
-                <span class="text-muted d-block">Current (Not Due)</span>
-                <strong class="font-monospace text-success">₹@Model.CurrentNotDue.ToString("N2")</strong>
-            </div>
-            <div class="col">
-                <span class="text-muted d-block">1 - 30 Days</span>
-                <strong class="font-monospace text-warning">₹@Model.Days1To30.ToString("N2")</strong>
-            </div>
-            <div class="col">
-                <span class="text-muted d-block">31 - 60 Days</span>
-                <strong class="font-monospace" style="color: #fd7e14;">₹@Model.Days31To60.ToString("N2")</strong>
-            </div>
-            <div class="col">
-                <span class="text-muted d-block">61 - 90 Days</span>
-                <strong class="font-monospace text-danger">₹@Model.Days61To90.ToString("N2")</strong>
-            </div>
-            <div class="col">
-                <span class="text-muted d-block">90+ Days Overdue</span>
-                <strong class="font-monospace text-danger">₹@Model.Days90Plus.ToString("N2")</strong>
-            </div>
-            <div class="col">
-                <span class="text-primary fw-bold d-block">Total Due</span>
-                <strong class="font-monospace text-primary fs-6">₹@Model.ClosingBalance.ToString("N2")</strong>
-            </div>
-        </div>
+    <div class="section-label mt-4 mb-3">Aging of outstanding balance</div>
+    <div class="stat-strip">
+        <div><div class="info-label">Current</div><div class="info-value @(Model.CurrentNotDue > 0 ? "age-current" : "")">₹@Model.CurrentNotDue.ToString("N2")</div></div>
+        <div><div class="info-label">1–30 days</div><div class="info-value @(Model.Days1To30 > 0 ? "age-30" : "")">₹@Model.Days1To30.ToString("N2")</div></div>
+        <div><div class="info-label">31–60 days</div><div class="info-value @(Model.Days31To60 > 0 ? "age-60" : "")">₹@Model.Days31To60.ToString("N2")</div></div>
+        <div><div class="info-label">61–90 days</div><div class="info-value @(Model.Days61To90 > 0 ? "age-90" : "")">₹@Model.Days61To90.ToString("N2")</div></div>
+        <div><div class="info-label">90+ days</div><div class="info-value @(Model.Days90Plus > 0 ? "age-90p" : "")">₹@Model.Days90Plus.ToString("N2")</div></div>
+        <div class="is-total"><div class="info-label">Total due</div><div class="info-value">₹@Model.ClosingBalance.ToString("N2")</div></div>
     </div>
 </div>

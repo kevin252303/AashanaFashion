@@ -2,13 +2,13 @@
     ViewData["Title"] = "Access Denied";
 }
 
-<div style="display:flex;align-items:center;justify-content:center;min-height:65vh;">
-    <div style="text-align:center;max-width:380px;">
-        <div style="width:72px;height:72px;background:#fef2f2;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto 1.25rem;">🚫</div>
-        <div style="font-size:1.3rem;font-weight:800;color:#0f172a;margin-bottom:.5rem;">Access Denied</div>
-        <div style="color:#94a3b8;font-size:.85rem;line-height:1.6;margin-bottom:1.75rem;">
-            You don't have permission to access this page.<br />Contact your administrator if you think this is a mistake.
+<div class="d-flex align-items-center justify-content-center" style="min-height: 60vh;">
+    <div class="data-card" style="max-width: 420px; width: 100%;">
+        <div class="empty-state">
+            <div class="es-icon bg-danger-subtle text-danger"><i class="bi bi-shield-lock"></i></div>
+            <div class="es-title">Access denied</div>
+            <p>You don't have permission to access this page. Contact your administrator if you think this is a mistake.</p>
+            <a asp-controller="Production" asp-action="Index" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Back to dashboard</a>
         </div>
-        <a asp-controller="Production" asp-action="Index" class="btn-af btn-af-primary">← Back to Dashboard</a>
     </div>
 </div>

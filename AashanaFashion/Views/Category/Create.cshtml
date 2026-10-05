@@ -4,115 +4,105 @@
     var parents = (List<AashanaFashion.Models.ProductCategory>?)ViewBag.ParentCategories ?? new List<AashanaFashion.Models.ProductCategory>();
 }
 
-<div class="page-header d-flex justify-content-between align-items-center mb-3">
+<div class="page-header">
     <div>
-        <h1 class="page-title mb-1">New Product Category</h1>
-        <p class="page-sub text-muted mb-0">Define a category for organizing garments and setting tax & pricing defaults</p>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Categories</a>
+        <h1 class="page-title">New Product Category</h1>
+        <p class="page-sub">Define a category for organizing garments and setting tax &amp; pricing defaults</p>
     </div>
-    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back to Categories</a>
 </div>
 
-<div class="row">
+<div class="row g-4">
     <div class="col-lg-7">
-        <div class="data-card shadow-sm rounded-3 bg-white">
-            <div class="data-card-header border-bottom p-3">
-                <div class="data-card-title fw-bold">Category Information</div>
+        <form asp-action="Create" method="post" class="data-card">
+            @Html.AntiForgeryToken()
+            <div class="data-card-header">
+                <span class="data-card-title">Category information</span>
             </div>
-            <div class="p-4">
-                <form asp-action="Create" method="post">
-                    @Html.AntiForgeryToken()
-
-                    <div class="row g-3">
-                        <div class="col-md-8">
-                            <div class="af-form-group">
-                                <label asp-for="CategoryName" class="af-label fw-semibold">Category Name <span class="text-danger">*</span></label>
-                                <input asp-for="CategoryName" class="af-input" placeholder="e.g. Kurtis, Sarees, Lehengas" required />
-                                <span asp-validation-for="CategoryName" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="af-form-group">
-                                <label asp-for="CategoryCode" class="af-label fw-semibold">Short Code</label>
-                                <input asp-for="CategoryCode" class="af-input text-uppercase font-monospace" placeholder="e.g. KRT" maxlength="10" />
-                                <span asp-validation-for="CategoryCode" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <div class="col-md-12">
-                            <div class="af-form-group">
-                                <label asp-for="ParentCategoryId" class="af-label fw-semibold">Parent Category</label>
-                                <select asp-for="ParentCategoryId" class="af-input af-select">
-                                    <option value="">-- None (Top Level Category) --</option>
-                                    @foreach (var parent in parents)
-                                    {
-                                        <option value="@parent.Id">📁 @parent.CategoryName</option>
-                                    }
-                                </select>
-                                <small class="text-muted">Use for hierarchical grouping (e.g. Ethnic Wear → Kurtis).</small>
-                                <span asp-validation-for="ParentCategoryId" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="af-form-group">
-                                <label asp-for="DefaultHsnCode" class="af-label fw-semibold">Default HSN/SAC Code</label>
-                                <input asp-for="DefaultHsnCode" class="af-input font-monospace" placeholder="e.g. 6204, 5208" />
-                                <small class="text-muted">Auto-suggested when creating products in this category.</small>
-                                <span asp-validation-for="DefaultHsnCode" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="af-form-group">
-                                <label asp-for="DefaultGstRate" class="af-label fw-semibold">Default GST Rate (%)</label>
-                                <select asp-for="DefaultGstRate" class="af-input af-select">
-                                    <option value="5.00">5% (Garments under ₹1,000 / Standard Apparel)</option>
-                                    <option value="12.00">12% (Garments above ₹1,000 / Luxury Apparel)</option>
-                                    <option value="18.00">18% (Synthetic / Specialized)</option>
-                                    <option value="0.00">0% (Nil Rated / Exempt)</option>
-                                </select>
-                                <span asp-validation-for="DefaultGstRate" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <div class="col-md-12">
-                            <div class="af-form-group">
-                                <label asp-for="Description" class="af-label fw-semibold">Description / Notes</label>
-                                <textarea asp-for="Description" class="af-input" rows="3" placeholder="Category notes, style types, or production guidelines..."></textarea>
-                                <span asp-validation-for="Description" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <div class="col-md-12">
-                            <div class="form-check form-switch mt-2">
-                                <input class="form-check-input" type="checkbox" asp-for="IsActive" id="isActiveSwitch" checked />
-                                <label class="form-check-label fw-semibold ms-2" for="isActiveSwitch">Active Category</label>
-                            </div>
-                        </div>
+            <div class="data-card-body">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label asp-for="CategoryName" class="af-label">Category Name <span class="req">*</span></label>
+                        <input asp-for="CategoryName" class="af-input" placeholder="e.g. Kurtis, Sarees, Lehengas" required />
+                        <span asp-validation-for="CategoryName" class="af-error"></span>
                     </div>
 
-                    <div class="d-flex gap-2 mt-4 pt-3 border-top">
-                        <button type="submit" class="btn-af btn-af-primary px-4">Save Category</button>
-                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    <div class="col-md-4">
+                        <label asp-for="CategoryCode" class="af-label">Short Code</label>
+                        <input asp-for="CategoryCode" class="af-input text-uppercase font-monospace" placeholder="e.g. KRT" maxlength="10" />
+                        <span asp-validation-for="CategoryCode" class="af-error"></span>
                     </div>
-                </form>
+
+                    <div class="col-12">
+                        <label asp-for="ParentCategoryId" class="af-label">Parent Category</label>
+                        <select asp-for="ParentCategoryId" class="af-input af-select">
+                            <option value="">None (top-level category)</option>
+                            @foreach (var parent in parents)
+                            {
+                                <option value="@parent.Id">@parent.CategoryName</option>
+                            }
+                        </select>
+                        <span class="af-hint">Use for hierarchical grouping (e.g. Ethnic Wear → Kurtis).</span>
+                        <span asp-validation-for="ParentCategoryId" class="af-error"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="DefaultHsnCode" class="af-label">Default HSN/SAC Code</label>
+                        <input asp-for="DefaultHsnCode" class="af-input font-monospace" placeholder="e.g. 6204, 5208" />
+                        <span class="af-hint">Auto-suggested when creating products in this category.</span>
+                        <span asp-validation-for="DefaultHsnCode" class="af-error"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="DefaultGstRate" class="af-label">Default GST Rate (%)</label>
+                        <select asp-for="DefaultGstRate" class="af-input af-select">
+                            <option value="5.00">5% (Garments under ₹1,000 / Standard Apparel)</option>
+                            <option value="12.00">12% (Garments above ₹1,000 / Luxury Apparel)</option>
+                            <option value="18.00">18% (Synthetic / Specialized)</option>
+                            <option value="0.00">0% (Nil Rated / Exempt)</option>
+                        </select>
+                        <span asp-validation-for="DefaultGstRate" class="af-error"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="Description" class="af-label">Description / Notes</label>
+                        <textarea asp-for="Description" class="af-input" rows="3" placeholder="Category notes, style types, or production guidelines…"></textarea>
+                        <span asp-validation-for="Description" class="af-error"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" asp-for="IsActive" id="isActiveSwitch" checked />
+                            <label class="form-check-label" for="isActiveSwitch">Active category</label>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+            <div class="data-card-footer d-flex justify-content-end gap-2">
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Category</button>
+            </div>
+        </form>
     </div>
 
-    <!-- Help & Guide Box -->
     <div class="col-lg-5">
-        <div class="card border-0 shadow-sm rounded-3 bg-light p-3">
-            <div class="d-flex align-items-center gap-2 mb-2">
-                <span class="fs-5">💡</span>
-                <span class="fw-bold">How Categories Are Used</span>
+        <div class="data-card">
+            <div class="data-card-header">
+                <span class="data-card-title"><i class="bi bi-lightbulb"></i> How categories are used</span>
             </div>
-            <ul class="text-muted small ps-3 mb-0" style="line-height: 1.7;">
-                <li><strong>Product Master:</strong> Every design can be assigned a category. When assigned, its default HSN and tax rates are auto-suggested.</li>
-                <li><strong>Pricelist Rules:</strong> You can create pricing rules applied specifically at the Category level (e.g. 10% discount on all <em>Kurtis</em>).</li>
-                <li><strong>Hierarchy:</strong> Subcategories inherit reporting context from their parent category while allowing specific product tagging.</li>
-            </ul>
+            <div class="data-card-body">
+                <ul class="activity-list">
+                    <li class="activity-item">
+                        <div class="activity-text"><strong>Product Master</strong> — every design can be assigned a category. Its default HSN and tax rate are auto-suggested.</div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-text"><strong>Pricelist rules</strong> — create pricing rules at category level (e.g. 10% off all <em>Kurtis</em>).</div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-text"><strong>Hierarchy</strong> — subcategories inherit reporting context from their parent while allowing specific product tagging.</div>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>

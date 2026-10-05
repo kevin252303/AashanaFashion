@@ -4,16 +4,19 @@
 }
 
 <div class="row justify-content-center">
-    <div class="col-lg-5">
+    <div class="col-lg-6 col-xl-5">
+        <div class="page-header">
+            <div>
+                <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Roles</a>
+                <h1 class="page-title">Edit Role — @Model.RoleName</h1>
+                <p class="page-sub">Role ID #@Model.Id</p>
+            </div>
+        </div>
         <div class="data-card">
             <div class="data-card-header">
-                <div>
-                    <div class="data-card-title">Edit Role — @Model.RoleName</div>
-                    <div style="font-size:.75rem;color:#94a3b8;">ID #@Model.Id</div>
-                </div>
-                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
+                <span class="data-card-title">Role details</span>
             </div>
-            <div style="padding:1.5rem;">
+            <div class="data-card-body">
                 <form asp-action="Edit" method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" asp-for="Id" />
@@ -42,15 +45,15 @@
                     </div>
 
                     <div class="af-form-group">
-                        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.83rem;color:#374151;">
-                            <input asp-for="IsActive" type="checkbox" style="accent-color:#6366f1;width:16px;height:16px;" />
-                            Active
-                        </label>
+                        <div class="form-check form-switch">
+                            <input asp-for="IsActive" type="checkbox" class="form-check-input" />
+                            <label asp-for="IsActive" class="form-check-label">Active</label>
+                        </div>
                     </div>
 
-                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
-                        <button type="submit" class="btn-af btn-af-primary">Save Changes</button>
-                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    <div class="form-footer">
+                        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                 </form>
             </div>

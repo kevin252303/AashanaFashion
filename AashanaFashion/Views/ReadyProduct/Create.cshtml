@@ -6,59 +6,42 @@
     var sizes = ViewBag.Sizes as List<AashanaFashion.Models.Size> ?? new();
 }
 
-<div class="container-fluid px-4 py-3">
-    <!-- Header Breadcrumb -->
-    <div class="d-flex align-items-center justify-content-between mb-4">
+<div>
+    <div class="page-header">
         <div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-1">
-                    <li class="breadcrumb-item"><a asp-action="Index" class="text-decoration-none text-muted">Ready Products</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">New Ready Product Set</li>
-                </ol>
-            </nav>
-            <h3 class="fw-bold mb-0 text-dark">
-                <i class="bi bi-box-seam text-primary me-2"></i>New Ready Product (3-Piece Set)
-            </h3>
-            <p class="text-muted small mb-0">Add finished inventory item. 1 Ready Product = 1 Chaniya + 1 Choli + 1 Duppata of identical design, colour, and size.</p>
-        </div>
-        <div>
-            <a asp-action="Index" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Back to Inventory
-            </a>
+            <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Ready products</a>
+            <h1 class="page-title">New Ready Product (3-Piece Set)</h1>
+            <p class="page-sub">1 Ready Product = 1 Chaniya + 1 Choli + 1 Duppata of identical design, colour, and size.</p>
         </div>
     </div>
 
-    <!-- Alert / Rule Notice -->
-    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center mb-4">
-        <i class="bi bi-info-circle-fill fs-3 text-info me-3"></i>
-        <div>
-            <strong class="d-block text-dark">Ready Product Specification Rule:</strong>
-            <span class="text-secondary small">
-                Every unit in ready goods inventory represents <strong>1 complete matching set</strong> (1 Chaniya + 1 Choli + 1 Duppata).
-                Inventory is tracked uniquely by <code>(Design Number, Colour, Size)</code> with custom or auto-inherited photos.
-            </span>
+    <div class="af-alert af-alert-info">
+        <div class="alert-body">
+            <span class="alert-title">Ready product specification rule</span>
+            Every unit in ready goods inventory represents <strong>1 complete matching set</strong> (1 Chaniya + 1 Choli + 1 Duppata).
+            Inventory is tracked uniquely by <strong>design number, colour and size</strong> with custom or auto-inherited photos.
         </div>
     </div>
 
     <form asp-action="Create" method="post" enctype="multipart/form-data" id="readyProductForm">
         @Html.AntiForgeryToken()
-        <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm mb-4"></div>
+        <div asp-validation-summary="ModelOnly" class="af-alert af-alert-danger"></div>
 
         <div class="row g-4">
             <!-- Left Form Column -->
             <div class="col-lg-8">
-                <div class="card border-0 shadow-sm rounded-3 mb-4">
-                    <div class="card-header bg-white py-3 border-bottom">
-                        <h5 class="card-title fw-bold mb-0 text-dark">
-                            <i class="bi bi-card-checklist text-primary me-2"></i>1. Product Specification
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-card-checklist"></i> 1. Product Specification
                         </h5>
                     </div>
-                    <div class="card-body p-4">
+                    <div class="card-body">
                         <div class="row g-3">
                             <!-- Design Selector -->
                             <div class="col-md-12">
-                                <label asp-for="DesignId" class="form-label fw-semibold">Select Design <span class="text-danger">*</span></label>
-                                <select asp-for="DesignId" id="designSelect" class="form-select form-select-lg shadow-none" required>
+                                <label asp-for="DesignId" class="form-label">Select Design <span class="req">*</span></label>
+                                <select asp-for="DesignId" id="designSelect" class="form-select" required>
                                     <option value="">-- Choose Design --</option>
                                     @foreach (var d in designs)
                                     {
@@ -67,13 +50,13 @@
                                         </option>
                                     }
                                 </select>
-                                <span asp-validation-for="DesignId" class="text-danger small"></span>
+                                <span asp-validation-for="DesignId" class="af-error"></span>
                                 <input type="hidden" asp-for="DesignNumber" id="designNumberHidden" />
                             </div>
 
                             <!-- Colour -->
                             <div class="col-md-6">
-                                <label asp-for="Colour" class="form-label fw-semibold">Colour <span class="text-danger">*</span></label>
+                                <label asp-for="Colour" class="form-label">Colour <span class="req">*</span></label>
                                 <div class="input-group">
                                     <input asp-for="Colour" id="colourInput" class="form-control" list="colourList" placeholder="e.g. Navy Blue, Maroon" required />
                                     <datalist id="colourList">
@@ -83,13 +66,13 @@
                                         }
                                     </datalist>
                                 </div>
-                                <span asp-validation-for="Colour" class="text-danger small"></span>
+                                <span asp-validation-for="Colour" class="af-error"></span>
                                 <div class="form-text">Matching colour across Chaniya, Choli, and Duppata.</div>
                             </div>
 
                             <!-- Size -->
                             <div class="col-md-6">
-                                <label asp-for="Size" class="form-label fw-semibold">Size <span class="text-danger">*</span></label>
+                                <label asp-for="Size" class="form-label">Size <span class="req">*</span></label>
                                 <div class="input-group">
                                     <input asp-for="Size" id="sizeInput" class="form-control" list="sizeList" placeholder="e.g. M, L, XL, Free Size" required />
                                     <datalist id="sizeList">
@@ -99,18 +82,18 @@
                                         }
                                     </datalist>
                                 </div>
-                                <span asp-validation-for="Size" class="text-danger small"></span>
+                                <span asp-validation-for="Size" class="af-error"></span>
                                 <div class="form-text">Matching size for the 3-piece set.</div>
                             </div>
 
                             <!-- Auto-generated SKU -->
                             <div class="col-md-12">
-                                <label asp-for="Sku" class="form-label fw-semibold">SKU / Item Code</label>
+                                <label asp-for="Sku" class="form-label">SKU / Item Code</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="bi bi-upc-scan"></i></span>
+                                    <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
                                     <input asp-for="Sku" id="skuInput" class="form-control font-monospace" placeholder="Auto-generated if left blank" />
                                 </div>
-                                <span asp-validation-for="Sku" class="text-danger small"></span>
+                                <span asp-validation-for="Sku" class="af-error"></span>
                                 <div class="form-text">Format: RP-DESIGN-COLOUR-SIZE (also used for product barcode).</div>
                             </div>
                         </div>
@@ -118,81 +101,81 @@
                 </div>
 
                 <!-- Stock & Pricing -->
-                <div class="card border-0 shadow-sm rounded-3 mb-4">
-                    <div class="card-header bg-white py-3 border-bottom">
-                        <h5 class="card-title fw-bold mb-0 text-dark">
-                            <i class="bi bi-boxes text-success me-2"></i>2. Stock & Pricing
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-boxes"></i> 2. Stock & Pricing
                         </h5>
                     </div>
-                    <div class="card-body p-4">
+                    <div class="card-body">
                         <div class="row g-3">
                             <!-- Initial Stock -->
                             <div class="col-md-4">
-                                <label asp-for="InitialQuantity" class="form-label fw-semibold">Initial Ready Sets (Stock)</label>
+                                <label asp-for="InitialQuantity" class="form-label">Initial Ready Sets (Stock)</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="bi bi-stack"></i></span>
+                                    <span class="input-group-text"><i class="bi bi-stack"></i></span>
                                     <input asp-for="InitialQuantity" type="number" min="0" class="form-control" />
                                 </div>
-                                <span asp-validation-for="InitialQuantity" class="text-danger small"></span>
+                                <span asp-validation-for="InitialQuantity" class="af-error"></span>
                                 <div class="form-text">Opening complete 3-pc sets.</div>
                             </div>
 
                             <!-- Minimum Stock Alert -->
                             <div class="col-md-4">
-                                <label asp-for="MinimumStockAlert" class="form-label fw-semibold">Low Stock Threshold</label>
+                                <label asp-for="MinimumStockAlert" class="form-label">Low Stock Threshold</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="bi bi-exclamation-triangle"></i></span>
+                                    <span class="input-group-text"><i class="bi bi-exclamation-triangle"></i></span>
                                     <input asp-for="MinimumStockAlert" type="number" min="0" class="form-control" />
                                 </div>
-                                <span asp-validation-for="MinimumStockAlert" class="text-danger small"></span>
+                                <span asp-validation-for="MinimumStockAlert" class="af-error"></span>
                                 <div class="form-text">Alerts when stock falls below this.</div>
                             </div>
 
                             <!-- Warehouse Location -->
                             <div class="col-md-4">
-                                <label asp-for="WarehouseLocation" class="form-label fw-semibold">Rack / Location</label>
+                                <label asp-for="WarehouseLocation" class="form-label">Rack / Location</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="bi bi-geo-alt"></i></span>
+                                    <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
                                     <input asp-for="WarehouseLocation" class="form-control" placeholder="e.g. Rack A-04, Bin 12" />
                                 </div>
-                                <span asp-validation-for="WarehouseLocation" class="text-danger small"></span>
+                                <span asp-validation-for="WarehouseLocation" class="af-error"></span>
                                 <div class="form-text">Physical storage spot.</div>
                             </div>
 
                             <!-- Selling Price -->
                             <div class="col-md-6">
-                                <label asp-for="UnitPrice" class="form-label fw-semibold">Sales Price (MRP / Set)</label>
+                                <label asp-for="UnitPrice" class="form-label">Sales Price (MRP / Set)</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">₹</span>
+                                    <span class="input-group-text">₹</span>
                                     <input asp-for="UnitPrice" id="unitPriceInput" type="number" step="0.01" min="0" class="form-control" />
                                 </div>
-                                <span asp-validation-for="UnitPrice" class="text-danger small"></span>
+                                <span asp-validation-for="UnitPrice" class="af-error"></span>
                                 <div class="form-text">Selling price for 1 full ready set.</div>
                             </div>
 
                             <!-- Cost Price -->
                             <div class="col-md-6">
-                                <label asp-for="CostPrice" class="form-label fw-semibold">Cost Price (Estimated / Set)</label>
+                                <label asp-for="CostPrice" class="form-label">Cost Price (Estimated / Set)</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">₹</span>
+                                    <span class="input-group-text">₹</span>
                                     <input asp-for="CostPrice" id="costPriceInput" type="number" step="0.01" min="0" class="form-control" />
                                 </div>
-                                <span asp-validation-for="CostPrice" class="text-danger small"></span>
+                                <span asp-validation-for="CostPrice" class="af-error"></span>
                                 <div class="form-text">Total production cost of the 3 pieces.</div>
                             </div>
 
                             <!-- Remarks -->
                             <div class="col-12">
-                                <label asp-for="Remarks" class="form-label fw-semibold">Notes / Remarks</label>
+                                <label asp-for="Remarks" class="form-label">Notes / Remarks</label>
                                 <textarea asp-for="Remarks" class="form-control" rows="2" placeholder="Optional notes about fabric, embellishments, packing, etc."></textarea>
-                                <span asp-validation-for="Remarks" class="text-danger small"></span>
+                                <span asp-validation-for="Remarks" class="af-error"></span>
                             </div>
 
                             <!-- Active Status -->
                             <div class="col-12">
                                 <div class="form-check form-switch mt-2">
                                     <input class="form-check-input" type="checkbox" asp-for="IsActive" checked id="isActiveSwitch">
-                                    <label class="form-check-label fw-semibold" for="isActiveSwitch">Active Ready Product (Available for dispatch & billing)</label>
+                                    <label class="form-check-label" for="isActiveSwitch">Active Ready Product (Available for dispatch & billing)</label>
                                 </div>
                             </div>
                         </div>
@@ -203,15 +186,15 @@
             <!-- Right Sidebar Column: Photo & 3-Piece Breakdown -->
             <div class="col-lg-4">
                 <!-- Photo Upload & Preview Card -->
-                <div class="card border-0 shadow-sm rounded-3 mb-4">
-                    <div class="card-header bg-white py-3 border-bottom">
-                        <h5 class="card-title fw-bold mb-0 text-dark">
-                            <i class="bi bi-camera text-primary me-2"></i>Product Photo
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-camera"></i> Product Photo
                         </h5>
                     </div>
-                    <div class="card-body p-4 text-center">
+                    <div class="card-body text-center">
                         <div class="mb-3 position-relative d-inline-block w-100">
-                            <div class="rounded-3 border overflow-hidden bg-light d-flex align-items-center justify-content-center" style="height: 260px; max-width: 100%;">
+                            <div class="photo-frame w-100" style="height: 260px;">
                                 <img id="photoPreview" 
                                      src="@(string.IsNullOrEmpty(Model.ExistingPhotoPath) ? "/images/placeholder-product.svg" : Model.ExistingPhotoPath)" 
                                      alt="Product Preview" 
@@ -223,50 +206,32 @@
                         <input type="hidden" asp-for="ExistingPhotoPath" id="existingPhotoPath" />
 
                         <div class="mb-3 text-start">
-                            <label asp-for="PhotoFile" class="form-label fw-semibold small text-muted">Upload Ready Product Photo</label>
-                            <input asp-for="PhotoFile" id="photoFileInput" type="file" class="form-control form-control-sm" accept="image/*" />
-                            <span asp-validation-for="PhotoFile" class="text-danger small"></span>
-                            <div class="form-text small">Upload actual finished photo or inherit design picture automatically.</div>
+                            <label asp-for="PhotoFile" class="form-label">Upload ready product photo</label>
+                            <input asp-for="PhotoFile" id="photoFileInput" type="file" class="form-control" accept="image/*" />
+                            <span asp-validation-for="PhotoFile" class="af-error"></span>
+                            <div class="form-text">Upload actual finished photo or inherit design picture automatically.</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 3-Piece Set Manifest Card -->
-                <div class="card border-0 shadow-sm rounded-3 border-top border-4 border-info">
-                    <div class="card-body p-4">
-                        <h6 class="fw-bold text-dark mb-3">
-                            <i class="bi bi-puzzle text-info me-2"></i>3-Piece Set Composition
-                        </h6>
-                        <ul class="list-group list-group-flush small">
-                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent py-2">
-                                <span><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Chaniya</strong> (Lehenga)</span>
-                                <span class="badge bg-secondary rounded-pill">1 Piece</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent py-2">
-                                <span><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Choli</strong> (Blouse)</span>
-                                <span class="badge bg-secondary rounded-pill">1 Piece</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent py-2">
-                                <span><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Duppata</strong> (Scarf)</span>
-                                <span class="badge bg-secondary rounded-pill">1 Piece</span>
-                            </li>
-                        </ul>
-                        <div class="mt-3 p-2 rounded bg-light text-muted small text-center">
-                            All 3 components must match the selected <strong>Design</strong>, <strong>Colour</strong>, and <strong>Size</strong>.
-                        </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0"><i class="bi bi-puzzle"></i> 3-piece set composition</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="kv-row"><span class="k"><strong class="text-foreground">Chaniya</strong> (Lehenga)</span><span class="tag">1 piece</span></div>
+                        <div class="kv-row"><span class="k"><strong class="text-foreground">Choli</strong> (Blouse)</span><span class="tag">1 piece</span></div>
+                        <div class="kv-row"><span class="k"><strong class="text-foreground">Duppata</strong> (Scarf)</span><span class="tag">1 piece</span></div>
+                        <p class="text-xs text-muted mt-3 mb-0">All 3 components must match the selected design, colour, and size.</p>
                     </div>
                 </div>
-
-                <!-- Submit Button -->
-                <div class="d-grid gap-2 mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg fw-semibold shadow-sm">
-                        <i class="bi bi-check2-circle me-1"></i> Save to Ready Inventory
-                    </button>
-                    <a asp-action="Index" class="btn btn-outline-secondary">
-                        Cancel
-                    </a>
-                </div>
             </div>
+        </div>
+
+        <div class="form-footer">
+            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save to Ready Inventory</button>
         </div>
     </form>
 </div>

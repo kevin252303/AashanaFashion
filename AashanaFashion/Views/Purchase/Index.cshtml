@@ -6,138 +6,159 @@
     bool canCreate = isAdmin || User.HasClaim("Permission.Purchase.CanCreate", "true");
     bool canEdit   = isAdmin || User.HasClaim("Permission.Purchase.CanEdit", "true");
     bool canDelete = isAdmin || User.HasClaim("Permission.Purchase.CanDelete", "true");
+    var vendors = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new();
+    bool filtered = !string.IsNullOrEmpty(ViewBag.Search as string) || ViewBag.SelectedVendorId != null || ViewBag.SelectedStatus != null;
 }
 
 <div class="page-header">
     <div>
         <h1 class="page-title">Purchase Orders</h1>
-        <p class="page-sub">Manage all purchase orders</p>
+        <p class="page-sub">Raw material and job-work purchases from vendors.</p>
     </div>
     @if (canCreate)
     {
-        <a asp-action="Create" class="btn-af btn-af-primary">+ New Purchase Order</a>
+        <div class="page-actions">
+            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New purchase order</a>
+        </div>
     }
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
-}
-
-<!-- Search & Filter Bar -->
-<div class="data-card mb-4 p-3">
-    <form method="get" asp-action="Index">
-        <div class="row g-2 align-items-center">
-            <div class="col-md-4">
-                <input type="text" name="search" class="af-input" placeholder="Search PO#, Vendor, Agent, Invoice..." value="@ViewBag.Search" style="font-size: 0.85rem;" />
+<div class="table-card">
+    <form method="get" asp-action="Index" class="table-toolbar">
+        <div class="toolbar-filters">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="PO #, vendor, agent, invoice…" value="@ViewBag.Search" />
             </div>
-            <div class="col-md-3">
-                <select name="vendorId" class="af-input af-select" style="font-size: 0.85rem;">
-                    <option value="">— All Vendors —</option>
-                    @if (ViewBag.Vendors != null)
-                    {
-                        foreach (var v in (List<AashanaFashion.Models.Vendor>)ViewBag.Vendors)
-                        {
-                            <option value="@v.Id" selected="@(ViewBag.SelectedVendorId != null && (int)ViewBag.SelectedVendorId == v.Id ? "selected" : null)">@v.VendorName</option>
-                        }
-                    }
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select name="status" class="af-input af-select" style="font-size: 0.85rem;">
-                    <option value="">— All Statuses —</option>
-                    @foreach (var s in Enum.GetValues<AashanaFashion.Models.PurchaseOrderStatus>())
-                    {
-                        <option value="@s" selected="@(ViewBag.SelectedStatus != null && (AashanaFashion.Models.PurchaseOrderStatus)ViewBag.SelectedStatus == s ? "selected" : null)">@s</option>
-                    }
-                </select>
-            </div>
-            <div class="col-md-2 d-flex gap-2">
-                <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
-                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
-            </div>
+            <select name="vendorId" class="af-input af-select" onchange="this.form.submit()" aria-label="Vendor">
+                <option value="">All vendors</option>
+                @foreach (var v in vendors)
+                {
+                    <option value="@v.Id" selected="@(ViewBag.SelectedVendorId != null && (int)ViewBag.SelectedVendorId == v.Id ? "selected" : null)">@v.VendorName</option>
+                }
+            </select>
+            <select name="status" class="af-input af-select" onchange="this.form.submit()" aria-label="Status">
+                <option value="">All statuses</option>
+                @foreach (var s in Enum.GetValues<AashanaFashion.Models.PurchaseOrderStatus>())
+                {
+                    <option value="@s" selected="@(ViewBag.SelectedStatus != null && (AashanaFashion.Models.PurchaseOrderStatus)ViewBag.SelectedStatus == s ? "selected" : null)">@s.Humanize()</option>
+                }
+            </select>
+        </div>
+        <div class="toolbar-actions">
+            @if (filtered)
+            {
+                <a asp-action="Index" class="btn btn-ghost">Clear</a>
+            }
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
         </div>
     </form>
-</div>
 
-<div class="data-card">
-    <table class="af-table">
-        <thead>
-            <tr>
-                <th>PO No</th>
-                <th>Vendor</th>
-                <th>Agent</th>
-                <th>Invoice No</th>
-                <th>Order Date</th>
-                <th>Expected Receiving</th>
-                <th>Items</th>
-                <th>Total Amount</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
-                var isOverdue = item.ExpectedReceivingDate.HasValue
-                    && item.Status != PurchaseOrderStatus.Received
-                    && item.Status != PurchaseOrderStatus.Cancelled
-                    && (DateTime.Now.Date - item.ExpectedReceivingDate.Value.Date).Days > 0;
-                <tr>
-                    <td><strong>@item.PoNumber</strong></td>
-                    <td>@item.Vendor?.VendorName</td>
-                    <td>@item.AgentName</td>
-                    <td>@item.InvoiceNumber</td>
-                    <td>@item.OrderDate.ToString("dd-MMM-yyyy")</td>
-                    <td style="@(isOverdue ? "color:#dc2626;font-weight:700;" : "")">
-                        @if (item.ExpectedReceivingDate.HasValue)
-                        {
-                            @item.ExpectedReceivingDate.Value.ToString("dd-MMM-yyyy")
-                            if (isOverdue)
-                            {
-                                var d = (DateTime.Now.Date - item.ExpectedReceivingDate.Value.Date).Days;
-                                <span style="display:block;font-size:.75rem;">@d day@(d > 1 ? "s" : "") overdue</span>
-                            }
-                        }
-                        else
-                        {
-                            <span style="color:#cbd5e1;">—</span>
-                        }
-                    </td>
-                    <td class="text-center">@item.Details.Count</td>
-                    <td>@item.TotalAmount.ToString("N2")</td>
-                    <td>
-                        <span class="af-badge @(item.Status switch {
-                            PurchaseOrderStatus.Pending => "b-warn",
-                            PurchaseOrderStatus.Approved => "b-blue",
-                            PurchaseOrderStatus.PartiallyReceived => "b-purple",
-                            PurchaseOrderStatus.Received => "b-green",
-                            PurchaseOrderStatus.Cancelled => "b-gray",
-                            _ => "b-gray"
-                        })">@item.Status</span>
-                    </td>
-                    <td>
-                        <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-                            <a asp-action="Details" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">View</a>
-                            @if (canEdit)
-                            {
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
-                            }
-                            @if (canDelete)
-                            {
-                                <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete this purchase order?')">Delete</button>
-                                </form>
-                            }
-                        </div>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
     @if (!Model.Any())
     {
-        <div class="text-center p-4 text-muted">No purchase orders found. <a asp-action="Create">Create the first one</a>.</div>
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi @(filtered ? "bi-search" : "bi-cart3")"></i></div>
+            <div class="es-title">@(filtered ? "No results found" : "No purchase orders yet")</div>
+            <p>@(filtered ? "No purchase orders match your filters." : "Create a purchase order to track vendor purchases.")</p>
+            @if (filtered)
+            {
+                <a asp-action="Index" class="btn btn-secondary">Clear search</a>
+            }
+            else if (canCreate)
+            {
+                <a asp-action="Create" class="btn btn-secondary">New purchase order</a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>PO</th>
+                        <th>Vendor</th>
+                        <th>Agent</th>
+                        <th>Invoice</th>
+                        <th>Order date</th>
+                        <th>Expected receiving</th>
+                        <th class="text-end">Items</th>
+                        <th class="text-end">Total</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        var isOverdue = item.ExpectedReceivingDate.HasValue
+                            && item.Status != PurchaseOrderStatus.Received
+                            && item.Status != PurchaseOrderStatus.Cancelled
+                            && (DateTime.Now.Date - item.ExpectedReceivingDate.Value.Date).Days > 0;
+                        <tr>
+                            <td><a asp-action="Details" asp-route-id="@item.Id" class="cell-title">@item.PoNumber</a></td>
+                            <td><span class="text-foreground fw-medium">@item.Vendor?.VendorName</span></td>
+                            <td class="text-muted">@(string.IsNullOrEmpty(item.AgentName) ? "—" : item.AgentName)</td>
+                            <td>
+                                @if (string.IsNullOrEmpty(item.InvoiceNumber))
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                                else
+                                {
+                                    <span class="mono-id">@item.InvoiceNumber</span>
+                                }
+                            </td>
+                            <td class="text-nowrap text-muted tabular">@item.OrderDate.ToString("dd MMM yyyy")</td>
+                            <td class="text-nowrap tabular">
+                                @if (item.ExpectedReceivingDate.HasValue)
+                                {
+                                    <span class="@(isOverdue ? "text-danger fw-semibold" : "text-muted")">@item.ExpectedReceivingDate.Value.ToString("dd MMM yyyy")</span>
+                                    if (isOverdue)
+                                    {
+                                        var d = (DateTime.Now.Date - item.ExpectedReceivingDate.Value.Date).Days;
+                                        <span class="cell-sub text-danger">@d day@(d > 1 ? "s" : "") overdue</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-placeholder">—</span>
+                                }
+                            </td>
+                            <td class="cell-num">@item.Details.Count</td>
+                            <td class="cell-num text-foreground fw-semibold">₹@item.TotalAmount.ToString("N2")</td>
+                            <td>
+                                <span class="af-badge @(item.Status switch {
+                                    PurchaseOrderStatus.Pending => "b-yellow",
+                                    PurchaseOrderStatus.Approved => "b-blue",
+                                    PurchaseOrderStatus.PartiallyReceived => "b-purple",
+                                    PurchaseOrderStatus.Received => "b-green",
+                                    _ => "b-gray"
+                                })">@item.Status.Humanize()</span>
+                            </td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    <a asp-action="Details" asp-route-id="@item.Id" class="row-action" title="View details" aria-label="View"><i class="bi bi-eye"></i></a>
+                                    @if (canEdit)
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="row-action" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                    }
+                                    @if (canDelete)
+                                    {
+                                        <form asp-action="Delete" asp-route-id="@item.Id" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="row-action danger" title="Delete" aria-label="Delete" onclick="return confirm('Delete this purchase order?')"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> purchase @(Model.Count() == 1 ? "order" : "orders")</span>
+        </div>
     }
 </div>

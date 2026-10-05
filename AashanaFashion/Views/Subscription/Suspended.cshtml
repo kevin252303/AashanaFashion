@@ -1,40 +1,40 @@
 @{
-    Layout = "_Layout";
+    Layout = "_LoginLayout";
     ViewData["Title"] = "Subscription Suspended";
 }
 
-<div class="container py-5 text-center">
-    <div class="row justify-content-center">
-        <div class="col-md-7 col-lg-6">
-            <div class="card shadow-lg border-0 border-top border-danger border-4 rounded-3 p-4">
-                <div class="card-body">
-                    <div class="text-danger mb-3">
-                        <i class="bi bi-exclamation-octagon-fill display-1"></i>
-                    </div>
-                    <h2 class="fw-bold text-dark mb-2">Subscription Suspended</h2>
-                    <p class="text-muted mb-4">
-                        Your organization's SaaS subscription has expired or is currently suspended. Access to portal modules has been temporarily restricted.
-                    </p>
+<main class="auth-main auth-solo">
+    <div class="auth-card">
+        <div class="empty-state p-0 mb-4">
+            <div class="es-icon"><i class="bi bi-pause-circle"></i></div>
+            <div class="es-title">Subscription suspended</div>
+            <p>Your organisation’s subscription has expired or is suspended, so desk access is temporarily restricted.</p>
+        </div>
 
-                    <div class="alert alert-warning text-start small mb-4">
-                        <strong><i class="bi bi-info-circle me-1"></i> What happens next?</strong>
-                        <ul class="mb-0 mt-2 ps-3">
-                            <li>All production data, accounting ledgers, and employee attendance records remain 100% secure.</li>
-                            <li>Factory floor workers can continue scanning their face at physical attendance kiosks.</li>
-                            <li>To restore full desk access, please renew or reactivate your subscription below.</li>
-                        </ul>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <a href="mailto:billing@kriyex.com?subject=Reactivate%20Subscription" class="btn btn-primary btn-lg">
-                            <i class="bi bi-envelope-fill me-2"></i> Contact Billing & Support
-                        </a>
-                        <a asp-controller="Account" asp-action="Logout" class="btn btn-outline-secondary">
-                            <i class="bi bi-box-arrow-right me-1"></i> Sign Out
-                        </a>
-                    </div>
-                </div>
+        <div class="af-alert af-alert-info mb-4">
+            <div class="alert-body">
+                <span class="alert-title">What happens next</span>
+                <ul class="mb-0 ps-3">
+                    <li>Production data, ledgers and attendance records stay secure.</li>
+                    <li>Floor workers can keep using the face attendance kiosks.</li>
+                    <li>Renew or reactivate your subscription to restore desk access.</li>
+                </ul>
             </div>
         </div>
+
+        <div class="d-grid gap-2">
+            <a href="mailto:billing@kriyex.com?subject=Reactivate%20Subscription" class="btn btn-primary btn-lg"><i class="bi bi-envelope"></i> Contact billing &amp; support</a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <form asp-controller="Account" asp-action="Logout" method="post" class="d-grid">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-secondary"><i class="bi bi-box-arrow-right"></i> Sign out</button>
+                </form>
+            }
+            else
+            {
+                <a asp-controller="Account" asp-action="Login" class="btn btn-secondary"><i class="bi bi-box-arrow-in-right"></i> Back to sign in</a>
+            }
+        </div>
     </div>
-</div>
+</main>

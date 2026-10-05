@@ -4,9 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] — Kriyex</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="icon" href="~/favicon.ico" />
+    <link rel="stylesheet" href="~/lib/inter/inter.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-5.3.3/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
 
@@ -29,15 +32,42 @@
     bool canViewDesign      = isAdmin || User.HasClaim("Permission.DesignMaster.CanView",    "true");
     bool canViewVendor      = isAdmin || User.HasClaim("Permission.VendorMaster.CanView",    "true");
     bool canViewCustomer    = isAdmin || User.HasClaim("Permission.CustomerMaster.CanView",  "true");
-    bool canCreateOrder     = isAdmin || User.HasClaim("Permission.ProductionOrder.CanCreate", "true");
     bool canViewUserMgmt    = isAdmin || User.HasClaim("Permission.UserManagement.CanView",  "true");
     bool canViewPurchase    = isAdmin || User.HasClaim("Permission.Purchase.CanView",      "true");
+    bool canViewFinance     = isAdmin || role == "Manager" || role == "System Admin" || User.HasClaim("Permission.Accounting.CanView", "true");
+
+    // Active-state helpers for collapsible groups
+    bool inMasters    = ctrl is "Design" or "Archive" or "Vendor" or "Customer" or "RawMaterial" or "Colour" or "Size" or "ProcessMaster" or "Pricelist" or "Category" or "Company"
+                        || (ctrl == "ReadyProduct" && action != "Assemble");
+    bool inJobWork    = ctrl is "Dying" or "RollPress";
+    bool inProduction = ctrl is "Production" or "PMS" or "QualityControl" or "JobSlip" or "Barcode" || (ctrl == "ReadyProduct" && action == "Assemble");
+    bool inUsers      = ctrl is "UserManagement" or "Role";
+    bool inHr         = ctrl is "Employee" or "Attendance" or "Salary" or "BiometricDevice";
+    bool inAccounts   = ctrl == "Accounting" && action != "Commissions";
+
+    string crumbGroup = ctrl switch
+    {
+        "SalesOrder" => "Sales",
+        "Purchase" => "Purchase",
+        "Dying" or "RollPress" => "Job Work",
+        "UserManagement" or "Role" => "Users",
+        "Employee" or "Attendance" or "Salary" or "BiometricDevice" => "HR & Payroll",
+        "Invoice" or "Accounting" or "GstReturn" => "Finance",
+        "PlatformAdmin" or "Subscription" => "SaaS",
+        "Account" => "Account",
+        _ when inProduction => "Production",
+        _ when inMasters => "Admin Master",
+        _ => "Home"
+    };
+
+    string Active(bool on) => on ? "active" : "";
+    string Group(bool on) => on ? "sb-group open has-active" : "sb-group";
 
     @if (role == "Developer")
     {
         <aside class="sidebar" id="sidebar" style="background: #0f172a;">
             <div class="sidebar-brand" style="background: #020617; border-bottom: 1px solid #1e293b;">
-                <div class="brand-icon" style="background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); color:white;">⚡</div>
+                <div class="brand-mark" style="background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); color:white;">⚡</div>
                 <div>
                     <div class="brand-name" style="color: #f8fafc;">Kriyex Console</div>
                     <div class="brand-sub" style="color: #818cf8;">kriyex.com Platform</div>
@@ -45,467 +75,410 @@
             </div>
 
             <nav class="sidebar-nav">
-                <div class="nav-label" style="color: #64748b;">SaaS Operations</div>
+                <div class="sb-section" style="color: #64748b;">SaaS Operations</div>
 
-                <a class="s-link @(ctrl == "PlatformAdmin" ? "active" : "")"
+                <a class="sb-link @Active(ctrl == "PlatformAdmin")"
                    asp-controller="PlatformAdmin" asp-action="Index">
-                    <span class="ico">👑</span> SaaS Client Operations
+                    <i class="bi bi-shield-check"></i><span>SaaS Client Operations</span>
                 </a>
 
-                <a class="s-link @(ctrl == "Subscription" ? "active" : "")"
+                <a class="sb-link @Active(ctrl == "Subscription")"
                    asp-controller="Subscription" asp-action="Index">
-                    <span class="ico">☁️</span> Subscription Quotas
+                    <i class="bi bi-cloud"></i><span>Subscription Quotas</span>
                 </a>
 
-                <div class="nav-label" style="color: #64748b;">Tenant Management</div>
+                <div class="sb-section" style="color: #64748b;">Tenant Management</div>
 
-                <a class="s-link" href="@Url.Action("Index", "PlatformAdmin")#onboardSection">
-                    <span class="ico">🚀</span> Onboard New Client
+                <a class="sb-link" href="@Url.Action("Index", "PlatformAdmin")#onboardSection">
+                    <i class="bi bi-rocket-takeoff"></i><span>Onboard New Client</span>
                 </a>
 
-                <a class="s-link" href="@Url.Action("Index", "PlatformAdmin")#tenantsTable">
-                    <span class="ico">🏢</span> Client Directory
+                <a class="sb-link" href="@Url.Action("Index", "PlatformAdmin")#tenantsTable">
+                    <i class="bi bi-building"></i><span>Client Directory</span>
                 </a>
             </nav>
 
-            <div class="role-pill" style="background: #4f46e5; color: white; font-weight: 700; letter-spacing: 0.5px;">DEVELOPER</div>
-        </aside>
-
-        <div class="topbar">
-            <div class="topbar-left">
-                <span class="page-title">@(ViewData["Title"] ?? "Kriyex SaaS Control Center")</span>
-                <span class="badge ms-2" style="background: #e0e7ff; color: #4338ca; font-weight: 600; font-size: 0.75rem; border: 1px solid #c7d2fe;">
-                    ⚡ KRIYEX PLATFORM
-                </span>
+            <div class="sidebar-footer">
+                <span>Signed in as</span>
+                <span class="af-badge b-indigo">DEVELOPER</span>
             </div>
-            <div class="d-flex align-items-center gap-2.5">
-                <a asp-controller="PlatformAdmin" asp-action="SwitchToDefault" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1.5 px-3 py-1 shadow-sm" style="border-radius: 20px; font-size: 0.78rem;" title="Reset Tenant Context">
+        </aside>
+        <div class="sidebar-backdrop" data-sidebar-close></div>
+
+        <header class="topbar">
+            <div class="topbar-left">
+                <button type="button" class="btn btn-ghost btn-icon topbar-toggle" data-sidebar-toggle aria-label="Open navigation" aria-controls="sidebar">
+                    <i class="bi bi-list" style="font-size:18px;"></i>
+                </button>
+                <nav class="topbar-crumbs" aria-label="Breadcrumb">
+                    <span class="crumb-group">SaaS</span>
+                    <i class="bi bi-chevron-right crumb-sep"></i>
+                    <span class="current">@(ViewData["Title"] ?? "Kriyex SaaS Control Center")</span>
+                </nav>
+                <span class="af-badge b-indigo ms-2">⚡ KRIYEX PLATFORM</span>
+            </div>
+            <div class="topbar-right">
+                <a asp-controller="PlatformAdmin" asp-action="SwitchToDefault" class="btn btn-secondary btn-sm" title="Reset Tenant Context">
                     <i class="bi bi-arrow-counterclockwise"></i>
                     <span>Reset Context</span>
                 </a>
 
-                <div class="user-chip dropdown">
-                    <div class="d-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
-                        <div class="u-avatar" style="background: #4f46e5; color: white;">DEV</div>
-                        <div>
-                            <div class="u-name">@fullName</div>
-                            <div class="u-role text-primary fw-bold">Developer</div>
-                        </div>
-                        <span class="ms-1" style="font-size:0.75rem; color:#94a3b8;">▾</span>
-                    </div>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2" style="min-width: 220px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0.5rem;">
-                        <li class="px-3 py-2 border-bottom mb-1">
-                            <div class="fw-bold text-dark" style="font-size:0.9rem;">@fullName</div>
-                            <div class="small text-muted">Role: <span class="badge" style="background: #4f46e5; color:white; font-size:0.72rem;">Developer</span></div>
+                <div class="dropdown">
+                    <button type="button" class="user-menu-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="u-avatar" style="background:#4f46e5;color:white;">DEV</span>
+                        <span class="u-meta">
+                            <span class="u-name d-block">@fullName</span>
+                            <span class="u-role d-block">Developer</span>
+                        </span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end mt-1" style="min-width:220px;">
+                        <li class="px-2 py-2 d-flex align-items-center gap-2">
+                            <span class="u-avatar avatar-lg" style="background:#4f46e5;color:white;">DEV</span>
+                            <div class="min-w-0">
+                                <div class="u-name text-truncate">@fullName</div>
+                                <div class="u-role">Developer</div>
+                            </div>
                         </li>
+                        <li><hr class="dropdown-divider"></li>
                         <li>
-                            <a class="dropdown-item py-2 d-flex align-items-center gap-2" asp-controller="Account" asp-action="ChangePassword">
-                                <span>🔑</span> Change Password
+                            <a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">
+                                <i class="bi bi-key"></i> Change password
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider my-1"></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li>
-                            <form asp-controller="Account" asp-action="Logout" method="post" class="m-0 p-0">
+                            <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger w-100 border-0 bg-transparent text-start">
-                                    <span>🚪</span> Sign Out
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bi bi-box-arrow-right"></i> Sign out
                                 </button>
                             </form>
                         </li>
                     </ul>
                 </div>
             </div>
-        </div>
+        </header>
     }
     else
     {
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-brand">
-                <div class="brand-icon">KX</div>
-                <div>
+        <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+            <a class="sidebar-brand" asp-controller="Production" asp-action="Index">
+                <div class="brand-mark">KX</div>
+                <div class="min-w-0">
                     <div class="brand-name">Kriyex</div>
                     <div class="brand-sub">Production System</div>
                 </div>
-            </div>
-
-        <nav class="sidebar-nav">
-            <div class="nav-label">Main</div>
-
-            <a class="s-link @(ctrl == "SalesOrder" ? "active" : "")"
-               asp-controller="SalesOrder" asp-action="Index">
-                <span class="ico">🛍️</span> Sales Orders
             </a>
 
-            @if (canViewPurchase)
-            {
-                <a class="s-link @(ctrl == "Purchase" ? "active" : "")"
-                   asp-controller="Purchase" asp-action="Index">
-                    <span class="ico">🛒</span> Purchase Orders
-                </a>
-            }
+            <nav class="sidebar-nav">
+                <div class="sb-section">Main</div>
 
-            @if (canViewDesign || canViewVendor || canViewCustomer || isAdmin)
-            {
-                <a class="s-link s-link-toggle @(ctrl == "Design" || ctrl == "Archive" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" || ctrl == "ReadyProduct" || ctrl == "Colour" || ctrl == "Size" || ctrl == "ProcessMaster" || ctrl == "Pricelist" || ctrl == "Category" || ctrl == "Company" ? "open" : "")" onclick="toggleNav(this)">
-                    <span class="ico">⚙️</span> Admin Master
-                    <span class="nav-arrow">▾</span>
+                <a class="sb-link @Active(ctrl == "SalesOrder")" asp-controller="SalesOrder" asp-action="Index">
+                    <i class="bi bi-bag"></i><span>Sales Orders</span>
                 </a>
-                <div class="s-submenu @(ctrl == "Design" || ctrl == "Archive" || ctrl == "Vendor" || ctrl == "Customer" || ctrl == "RawMaterial" || ctrl == "ReadyProduct" || ctrl == "Colour" || ctrl == "Size" || ctrl == "ProcessMaster" || ctrl == "Pricelist" || ctrl == "Category" || ctrl == "Company" ? "" : "d-none")">
-                    @if (canViewDesign)
-                    {
-                        <a class="s-link s-sublink @(ctrl == "Design" ? "active" : "")"
-                           asp-controller="Design" asp-action="Index">
-                            <span class="ico">🎨</span> Product Master
-                        </a>
-                        <a class="s-link s-sublink @(ctrl == "Archive" ? "active" : "")"
-                           asp-controller="Archive" asp-action="Index">
-                            <span class="ico">📦</span> Archive (Discontinued)
-                        </a>
-                        <a class="s-link s-sublink @(ctrl == "Category" ? "active" : "")"
-                           asp-controller="Category" asp-action="Index">
-                            <span class="ico">🗂️</span> Category Master
-                        </a>
-                    }
-                    @if (canViewCustomer)
-                    {
-                        <a class="s-link s-sublink @(ctrl == "Customer" ? "active" : "")"
-                           asp-controller="Customer" asp-action="Index">
-                            <span class="ico">👥</span> Customer Master
-                        </a>
-                    }
-                    @if (isAdmin || canViewCustomer || canViewDesign)
-                    {
-                        <a class="s-link s-sublink @(ctrl == "Pricelist" ? "active" : "")"
-                           asp-controller="Pricelist" asp-action="Index">
-                            <span class="ico">🏷️</span> Pricelist Master
-                        </a>
-                    }
-                    @if (canViewVendor)
-                    {
-                        <a class="s-link s-sublink @(ctrl == "Vendor" ? "active" : "")"
-                           asp-controller="Vendor" asp-action="Index">
-                            <span class="ico">🏢</span> Vendor Master
-                        </a>
-                    }
-                    <a class="s-link s-sublink @(ctrl == "ReadyProduct" && action == "Index" ? "active" : "")"
-                       asp-controller="ReadyProduct" asp-action="Index">
-                        <span class="ico">👗</span> Ready Product Stock
-                    </a>
-                    <a class="s-link s-sublink @(ctrl == "ReadyProduct" && action == "Outward" ? "active" : "")"
-                       asp-controller="ReadyProduct" asp-action="Outward">
-                        <span class="ico">📤</span> Outward Dispatch
-                    </a>
-                    <a class="s-link s-sublink @(ctrl == "ReadyProduct" && action == "Ledger" ? "active" : "")"
-                       asp-controller="ReadyProduct" asp-action="Ledger">
-                        <span class="ico">📋</span> Ready Stock Ledger
-                    </a>
-                    <a class="s-link s-sublink @(ctrl == "RawMaterial" && (action == "Index" || action == "InOut" || action == "AdjustStock") ? "active" : "")"
-                       asp-controller="RawMaterial" asp-action="Index">
-                        <span class="ico">🧵</span> Inventory & Stock
-                    </a>
-                    <a class="s-link s-sublink @(ctrl == "RawMaterial" && action == "Ledger" ? "active" : "")"
-                       asp-controller="RawMaterial" asp-action="Ledger">
-                        <span class="ico">📜</span> Stock Ledger
-                    </a>
-                    <a class="s-link s-sublink @(ctrl == "Colour" ? "active" : "")"
-                       asp-controller="Colour" asp-action="Index">
-                        <span class="ico">🎨</span> Colour Master
-                    </a>
-                    <a class="s-link s-sublink @(ctrl == "Size" ? "active" : "")"
-                       asp-controller="Size" asp-action="Index">
-                        <span class="ico">📏</span> Size Master
-                    </a>
-                    <a class="s-link s-sublink @(ctrl == "ProcessMaster" ? "active" : "")"
-                       asp-controller="ProcessMaster" asp-action="Index">
-                        <span class="ico">🔄</span> Process Master
-                    </a>
-                    @if (isAdmin)
-                    {
-                        <a class="s-link s-sublink @(ctrl == "Company" ? "active" : "")"
-                           asp-controller="Company" asp-action="Index">
-                            <span class="ico">🏢</span> Company Master
-                        </a>
-                    }
-                </div>
-            }
 
-            @if (role == "Admin" || role == "Manager")
-            {
-                <a class="s-link s-link-toggle @(ctrl == "Dying" || ctrl == "RollPress" ? "open" : "")" onclick="toggleNav(this)">
-                    <span class="ico">🏭</span> Job Work Entry
-                    <span class="nav-arrow">▾</span>
-                </a>
-                <div class="s-submenu @(ctrl == "Dying" || ctrl == "RollPress" ? "" : "d-none")">
-                    <a class="s-link s-sublink @(ctrl == "Dying" ? "active" : "")"
-                       asp-controller="Dying" asp-action="Index">
-                        <span class="ico">🎨</span> Dying Entry
+                @if (canViewPurchase)
+                {
+                    <a class="sb-link @Active(ctrl == "Purchase")" asp-controller="Purchase" asp-action="Index">
+                        <i class="bi bi-cart3"></i><span>Purchase Orders</span>
                     </a>
-                    <a class="s-link s-sublink @(ctrl == "RollPress" ? "active" : "")"
-                       asp-controller="RollPress" asp-action="Index">
-                        <span class="ico">🧵</span> Roll Press Entry
-                    </a>
-                </div>
-            }
+                }
 
-            <div class="nav-label">Production</div>
-            <a class="s-link s-link-toggle @(ctrl == "Production" || ctrl == "PMS" || ctrl == "QualityControl" || ctrl == "JobSlip" || (ctrl == "ReadyProduct" && action == "Assemble") ? "open" : "")" onclick="toggleNav(this)">
-                <span class="ico">📦</span> Production Work
-                <span class="nav-arrow">▾</span>
-            </a>
-            <div class="s-submenu @(ctrl == "Production" || ctrl == "PMS" || ctrl == "QualityControl" || ctrl == "JobSlip" || (ctrl == "ReadyProduct" && action == "Assemble") ? "" : "d-none")">
-                <a class="s-link s-sublink @(ctrl == "PMS" && action == "Index" ? "active" : "")"
-                   asp-controller="PMS" asp-action="Index">
-                    <span class="ico">📊</span> Dashboard (WIP)
-                </a>
-                <a class="s-link s-sublink @(ctrl == "Production" ? "active" : "")"
-                   asp-controller="Production" asp-action="Index">
-                    <span class="ico">📋</span> Order Lots (Plans)
-                </a>
-                <a class="s-link s-sublink @(ctrl == "JobSlip" ? "active" : "")"
-                   asp-controller="JobSlip" asp-action="Index">
-                    <span class="ico">📑</span> Job Slips (Challans)
-                </a>
-                <a class="s-link s-sublink @(ctrl == "PMS" && (action == "ProcessTracking" || action == "ProductionEntities") ? "active" : "")"
-                   asp-controller="PMS" asp-action="ProcessTracking">
-                    <span class="ico">🔄</span> Process & Piece Tracking
-                </a>
-                <a class="s-link s-sublink @(ctrl == "QualityControl" ? "active" : "")"
-                   asp-controller="QualityControl" asp-action="Index">
-                    <span class="ico">🔍</span> Quality Control (QC)
-                </a>
-                <a class="s-link s-sublink @(ctrl == "Barcode" && action == "Scanner" ? "active" : "")"
-                   asp-controller="Barcode" asp-action="Scanner">
-                    <span class="ico">📱</span> Barcode Scanner
-                </a>
-                <a class="s-link s-sublink @(ctrl == "Barcode" && action == "ConfigureTag" ? "active" : "")"
-                   asp-controller="Barcode" asp-action="ConfigureTag">
-                    <span class="ico">🏷️</span> Configure Barcode Tag
-                </a>
-            </div>
-
-            @if (canViewUserMgmt)
-            {
-                <div class="nav-label">Users</div>
-                <a class="s-link s-link-toggle @(ctrl == "UserManagement" || ctrl == "Role" ? "open" : "")" onclick="toggleNav(this)">
-                    <span class="ico">👥</span> User Management
-                    <span class="nav-arrow">▾</span>
-                </a>
-                <div class="s-submenu @(ctrl == "UserManagement" || ctrl == "Role" ? "" : "d-none")">
-                    <a class="s-link s-sublink @(ctrl == "UserManagement" && action == "Index" ? "active" : "")"
-                       asp-controller="UserManagement" asp-action="Index">
-                        <span class="ico">📋</span> User List
-                    </a>
-                    @if (isAdmin)
-                    {
-                        <a class="s-link s-sublink @(ctrl == "Role" ? "active" : "")"
-                           asp-controller="Role" asp-action="Index">
-                            <span class="ico">🔐</span> Role List
-                        </a>
-                    }
-                </div>
-            }
-
-            <div class="nav-label">HR & Payroll</div>
-            <a class="s-link s-link-toggle @(ctrl == "Employee" || ctrl == "Attendance" || ctrl == "Salary" ? "open" : "")" onclick="toggleNav(this)">
-                <span class="ico">👥</span> Attendance & HR
-                <span class="nav-arrow">▾</span>
-            </a>
-            <div class="s-submenu @(ctrl == "Employee" || ctrl == "Attendance" || ctrl == "Salary" ? "" : "d-none")">
-                <a class="s-link s-sublink @(ctrl == "Attendance" && action == "Kiosk" ? "active" : "")"
-                   asp-controller="Attendance" asp-action="Kiosk">
-                    <span class="ico">📷</span> Face Scanner Kiosk
-                </a>
-                <a class="s-link s-sublink @(ctrl == "Attendance" && action == "Index" ? "active" : "")"
-                   asp-controller="Attendance" asp-action="Index">
-                    <span class="ico">📅</span> Daily Register
-                </a>
-                <a class="s-link s-sublink @(ctrl == "Attendance" && action == "MonthlyReport" ? "active" : "")"
-                   asp-controller="Attendance" asp-action="MonthlyReport">
-                    <span class="ico">📊</span> Attendance Grid
-                </a>
-                <a class="s-link s-sublink @(ctrl == "Employee" ? "active" : "")"
-                   asp-controller="Employee" asp-action="Index">
-                    <span class="ico">👤</span> Employees
-                </a>
-                <a class="s-link s-sublink @(ctrl == "Salary" ? "active" : "")"
-                   asp-controller="Salary" asp-action="Index">
-                    <span class="ico">💵</span> Salary & Payroll
-                </a>
-                <a class="s-link s-sublink @(ctrl == "BiometricDevice" ? "active" : "")"
-                   asp-controller="BiometricDevice" asp-action="Index">
-                    <span class="ico">📟</span> Biometric Terminals
-                </a>
-            </div>
-
-            @if (isAdmin || role == "Manager" || role == "System Admin" || User.HasClaim("Permission.Accounting.CanView", "true"))
-            {
-                <div class="nav-label">Finance & Accounts</div>
-                <a class="s-link @(ctrl == "Invoice" ? "active" : "")"
-                   asp-controller="Invoice" asp-action="Index">
-                    <span class="ico">🧾</span> Tax Invoices
-                </a>
-                <a class="s-link @(ctrl == "Accounting" && action == "ChartOfAccounts" ? "active" : "")"
-                   asp-controller="Accounting" asp-action="ChartOfAccounts">
-                    <span class="ico">🏛️</span> Chart of Accounts
-                </a>
-                <a class="s-link @(ctrl == "Accounting" && action == "JournalEntries" ? "active" : "")"
-                   asp-controller="Accounting" asp-action="JournalEntries">
-                    <span class="ico">📖</span> Journal Entries
-                </a>
-                <a class="s-link @(ctrl == "Accounting" && action == "TrialBalance" ? "active" : "")"
-                   asp-controller="Accounting" asp-action="TrialBalance">
-                    <span class="ico">⚖️</span> Trial Balance
-                </a>
-                <a class="s-link @(ctrl == "Accounting" && action == "ProfitAndLoss" ? "active" : "")"
-                   asp-controller="Accounting" asp-action="ProfitAndLoss">
-                    <span class="ico">📈</span> Profit &amp; Loss
-                </a>
-                <a class="s-link @(ctrl == "Accounting" && action == "BalanceSheet" ? "active" : "")"
-                   asp-controller="Accounting" asp-action="BalanceSheet">
-                    <span class="ico">📊</span> Balance Sheet
-                </a>
-                <a class="s-link @(ctrl == "GstReturn" ? "active" : "")"
-                   asp-controller="GstReturn" asp-action="Index">
-                    <span class="ico">🇮🇳</span> GST Returns &amp; Filing
-                </a>
-                <a class="s-link @(ctrl == "Accounting" && action == "Index" ? "active" : "")"
-                   asp-controller="Accounting" asp-action="Index">
-                    <span class="ico">💰</span> Cash &amp; Bank Ledger
-                </a>
-                <a class="s-link @(ctrl == "Accounting" && action == "AgedReceivables" ? "active" : "")"
-                   asp-controller="Accounting" asp-action="AgedReceivables">
-                    <span class="ico">👥</span> Aged Receivables (AR)
-                </a>
-                <a class="s-link @(ctrl == "Accounting" && action == "AgedPayables" ? "active" : "")"
-                   asp-controller="Accounting" asp-action="AgedPayables">
-                    <span class="ico">🏢</span> Aged Payables (AP)
-                </a>
-                <a class="s-link @(ctrl == "Accounting" && action == "ThreeWayMatching" ? "active" : "")"
-                   asp-controller="Accounting" asp-action="ThreeWayMatching">
-                    <span class="ico">🔍</span> 3-Way Matching
-                </a>
-                <a class="s-link @(ctrl == "Accounting" && action == "Commissions" ? "active" : "")"
-                   asp-controller="Accounting" asp-action="Commissions">
-                    <span class="ico">🤝</span> Salesman Commission
-                </a>
-            }
-
-            @if (isAdmin)
-            {
-                <div class="nav-label">Organization</div>
-                <a class="s-link @(ctrl == "Subscription" ? "active" : "")"
-                   asp-controller="Subscription" asp-action="Index">
-                    <span class="ico">☁️</span> Subscription &amp; Quotas
-                </a>
-            }
-        </nav>
-
-        <div class="role-pill rp-@role">@role</div>
-    </aside>
-
-    <div class="topbar">
-        <div class="topbar-left">
-            <span class="page-title">@(ViewData["Title"] ?? "Dashboard")</span>
-        </div>
-        <div class="d-flex align-items-center gap-2.5">
-            <!-- Odoo-Style Company Switcher -->
-            <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-2 bg-white px-3 py-1.5 shadow-sm border" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 20px; font-weight: 500; font-size: 0.82rem;">
-                    <i class="bi bi-buildings-fill text-primary"></i>
-                    <span class="text-truncate" style="max-width: 170px;">@activeCompany.CompanyName</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2 border-0" style="min-width: 260px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;">
-                    <li class="px-3 py-2 border-bottom bg-light rounded-top">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Active Company</span>
-                            <span class="badge bg-secondary-subtle text-secondary font-monospace" style="font-size: 0.65rem;">@activeCompany.CompanyCode</span>
+                @if (canViewDesign || canViewVendor || canViewCustomer || isAdmin)
+                {
+                    <div class="@Group(inMasters)">
+                        <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inMasters ? "true" : "false")">
+                            <i class="bi bi-database"></i><span>Admin Master</span><i class="bi bi-chevron-down sb-chevron"></i>
+                        </button>
+                        <div class="sb-sub">
+                            @if (canViewDesign)
+                            {
+                                <a class="sb-sublink @Active(ctrl == "Design")" asp-controller="Design" asp-action="Index">Product Master</a>
+                                <a class="sb-sublink @Active(ctrl == "Archive")" asp-controller="Archive" asp-action="Index">Archive (Discontinued)</a>
+                                <a class="sb-sublink @Active(ctrl == "Category")" asp-controller="Category" asp-action="Index">Category Master</a>
+                            }
+                            @if (canViewCustomer)
+                            {
+                                <a class="sb-sublink @Active(ctrl == "Customer")" asp-controller="Customer" asp-action="Index">Customer Master</a>
+                            }
+                            @if (isAdmin || canViewCustomer || canViewDesign)
+                            {
+                                <a class="sb-sublink @Active(ctrl == "Pricelist")" asp-controller="Pricelist" asp-action="Index">Pricelist Master</a>
+                            }
+                            @if (canViewVendor)
+                            {
+                                <a class="sb-sublink @Active(ctrl == "Vendor")" asp-controller="Vendor" asp-action="Index">Vendor Master</a>
+                            }
+                            <a class="sb-sublink @Active(ctrl == "ReadyProduct" && action == "Index")" asp-controller="ReadyProduct" asp-action="Index">Ready Product Stock</a>
+                            <a class="sb-sublink @Active(ctrl == "ReadyProduct" && action == "Outward")" asp-controller="ReadyProduct" asp-action="Outward">Outward Dispatch</a>
+                            <a class="sb-sublink @Active(ctrl == "ReadyProduct" && action == "Ledger")" asp-controller="ReadyProduct" asp-action="Ledger">Ready Stock Ledger</a>
+                            <a class="sb-sublink @Active(ctrl == "RawMaterial" && (action == "Index" || action == "InOut" || action == "AdjustStock"))" asp-controller="RawMaterial" asp-action="Index">Inventory &amp; Stock</a>
+                            <a class="sb-sublink @Active(ctrl == "RawMaterial" && action == "Ledger")" asp-controller="RawMaterial" asp-action="Ledger">Stock Ledger</a>
+                            <a class="sb-sublink @Active(ctrl == "Colour")" asp-controller="Colour" asp-action="Index">Colour Master</a>
+                            <a class="sb-sublink @Active(ctrl == "Size")" asp-controller="Size" asp-action="Index">Size Master</a>
+                            <a class="sb-sublink @Active(ctrl == "ProcessMaster")" asp-controller="ProcessMaster" asp-action="Index">Process Master</a>
+                            @if (isAdmin)
+                            {
+                                <a class="sb-sublink @Active(ctrl == "Company")" asp-controller="Company" asp-action="Index">Company Master</a>
+                            }
                         </div>
-                    </li>
-                    @foreach (var c in userCompanies)
-                    {
-                        var isCurrent = c.Id == activeCompany.Id;
-                        <li>
-                            <a class="dropdown-item py-2 px-3 d-flex align-items-center justify-content-between @(isCurrent ? "bg-primary-subtle text-primary fw-bold" : "")"
-                               asp-controller="Company" asp-action="Switch" asp-route-companyId="@c.Id" asp-route-returnUrl="@Context.Request.Path">
-                                <div class="d-flex align-items-center gap-2 text-truncate me-2">
-                                    <i class="bi bi-circle-fill @(isCurrent ? "text-primary" : "text-secondary")" style="font-size: 0.45rem;"></i>
-                                    <span class="text-truncate">@c.CompanyName</span>
-                                </div>
-                                @if (isCurrent)
-                                {
-                                    <i class="bi bi-check-circle-fill text-primary" style="font-size: 0.95rem;"></i>
-                                }
-                            </a>
-                        </li>
-                    }
-                    @if (isAdmin)
-                    {
-                        <li><hr class="dropdown-divider my-1"></li>
-                        <li>
-                            <a class="dropdown-item py-2 px-3 text-primary small d-flex align-items-center gap-2" asp-controller="Company" asp-action="Index">
-                                <i class="bi bi-gear-fill"></i> Manage Companies
-                            </a>
-                        </li>
-                    }
-                </ul>
+                    </div>
+                }
+
+                @if (role == "Admin" || role == "Manager")
+                {
+                    <div class="@Group(inJobWork)">
+                        <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inJobWork ? "true" : "false")">
+                            <i class="bi bi-tools"></i><span>Job Work Entry</span><i class="bi bi-chevron-down sb-chevron"></i>
+                        </button>
+                        <div class="sb-sub">
+                            <a class="sb-sublink @Active(ctrl == "Dying")" asp-controller="Dying" asp-action="Index">Dying Entry</a>
+                            <a class="sb-sublink @Active(ctrl == "RollPress")" asp-controller="RollPress" asp-action="Index">Roll Press Entry</a>
+                        </div>
+                    </div>
+                }
+
+                <div class="sb-section">Production</div>
+                <div class="@Group(inProduction)">
+                    <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inProduction ? "true" : "false")">
+                        <i class="bi bi-boxes"></i><span>Production Work</span><i class="bi bi-chevron-down sb-chevron"></i>
+                    </button>
+                    <div class="sb-sub">
+                        <a class="sb-sublink @Active(ctrl == "PMS" && action == "Index")" asp-controller="PMS" asp-action="Index">Dashboard (WIP)</a>
+                        <a class="sb-sublink @Active(ctrl == "Production")" asp-controller="Production" asp-action="Index">Order Lots (Plans)</a>
+                        <a class="sb-sublink @Active(ctrl == "JobSlip")" asp-controller="JobSlip" asp-action="Index">Job Slips (Challans)</a>
+                        <a class="sb-sublink @Active(ctrl == "PMS" && (action == "ProcessTracking" || action == "ProductionEntities"))" asp-controller="PMS" asp-action="ProcessTracking">Process &amp; Piece Tracking</a>
+                        <a class="sb-sublink @Active(ctrl == "QualityControl")" asp-controller="QualityControl" asp-action="Index">Quality Control (QC)</a>
+                        <a class="sb-sublink @Active(ctrl == "Barcode" && action == "Scanner")" asp-controller="Barcode" asp-action="Scanner">Barcode Scanner</a>
+                        <a class="sb-sublink @Active(ctrl == "Barcode" && action == "ConfigureTag")" asp-controller="Barcode" asp-action="ConfigureTag">Configure Barcode Tag</a>
+                    </div>
+                </div>
+
+                @if (canViewUserMgmt)
+                {
+                    <div class="sb-section">Users</div>
+                    <div class="@Group(inUsers)">
+                        <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inUsers ? "true" : "false")">
+                            <i class="bi bi-people"></i><span>User Management</span><i class="bi bi-chevron-down sb-chevron"></i>
+                        </button>
+                        <div class="sb-sub">
+                            <a class="sb-sublink @Active(ctrl == "UserManagement" && action == "Index")" asp-controller="UserManagement" asp-action="Index">User List</a>
+                            @if (isAdmin)
+                            {
+                                <a class="sb-sublink @Active(ctrl == "Role")" asp-controller="Role" asp-action="Index">Role List</a>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="sb-section">HR &amp; Payroll</div>
+                <div class="@Group(inHr)">
+                    <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inHr ? "true" : "false")">
+                        <i class="bi bi-person-badge"></i><span>Attendance &amp; HR</span><i class="bi bi-chevron-down sb-chevron"></i>
+                    </button>
+                    <div class="sb-sub">
+                        <a class="sb-sublink @Active(ctrl == "Attendance" && action == "Kiosk")" asp-controller="Attendance" asp-action="Kiosk">Face Scanner Kiosk</a>
+                        <a class="sb-sublink @Active(ctrl == "Attendance" && action == "Index")" asp-controller="Attendance" asp-action="Index">Daily Register</a>
+                        <a class="sb-sublink @Active(ctrl == "Attendance" && action == "MonthlyReport")" asp-controller="Attendance" asp-action="MonthlyReport">Attendance Grid</a>
+                        <a class="sb-sublink @Active(ctrl == "Employee")" asp-controller="Employee" asp-action="Index">Employees</a>
+                        <a class="sb-sublink @Active(ctrl == "Salary")" asp-controller="Salary" asp-action="Index">Salary &amp; Payroll</a>
+                        <a class="sb-sublink @Active(ctrl == "BiometricDevice")" asp-controller="BiometricDevice" asp-action="Index">Biometric Terminals</a>
+                    </div>
+                </div>
+
+                @if (canViewFinance)
+                {
+                    <div class="sb-section">Finance &amp; Accounts</div>
+                    <a class="sb-link @Active(ctrl == "Invoice")" asp-controller="Invoice" asp-action="Index">
+                        <i class="bi bi-receipt"></i><span>Tax Invoices</span>
+                    </a>
+                    <div class="@Group(inAccounts)">
+                        <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inAccounts ? "true" : "false")">
+                            <i class="bi bi-journal-text"></i><span>Accounting</span><i class="bi bi-chevron-down sb-chevron"></i>
+                        </button>
+                        <div class="sb-sub">
+                            <a class="sb-sublink @Active(ctrl == "Accounting" && action is "ChartOfAccounts" or "GeneralLedger")" asp-controller="Accounting" asp-action="ChartOfAccounts">Chart of Accounts</a>
+                            <a class="sb-sublink @Active(ctrl == "Accounting" && action is "JournalEntries" or "CreateJournalEntry" or "JournalEntryDetails")" asp-controller="Accounting" asp-action="JournalEntries">Journal Entries</a>
+                            <a class="sb-sublink @Active(ctrl == "Accounting" && action == "TrialBalance")" asp-controller="Accounting" asp-action="TrialBalance">Trial Balance</a>
+                            <a class="sb-sublink @Active(ctrl == "Accounting" && action == "ProfitAndLoss")" asp-controller="Accounting" asp-action="ProfitAndLoss">Profit &amp; Loss</a>
+                            <a class="sb-sublink @Active(ctrl == "Accounting" && action == "BalanceSheet")" asp-controller="Accounting" asp-action="BalanceSheet">Balance Sheet</a>
+                            <a class="sb-sublink @Active(ctrl == "Accounting" && action is "Index" or "Create" or "Edit")" asp-controller="Accounting" asp-action="Index">Cash &amp; Bank Ledger</a>
+                            <a class="sb-sublink @Active(ctrl == "Accounting" && action is "AgedReceivables" or "CustomerStatement")" asp-controller="Accounting" asp-action="AgedReceivables">Aged Receivables (AR)</a>
+                            <a class="sb-sublink @Active(ctrl == "Accounting" && action is "AgedPayables" or "VendorStatement")" asp-controller="Accounting" asp-action="AgedPayables">Aged Payables (AP)</a>
+                            <a class="sb-sublink @Active(ctrl == "Accounting" && action == "ThreeWayMatching")" asp-controller="Accounting" asp-action="ThreeWayMatching">3-Way Matching</a>
+                        </div>
+                    </div>
+                    <a class="sb-link @Active(ctrl == "GstReturn")" asp-controller="GstReturn" asp-action="Index">
+                        <i class="bi bi-bank"></i><span>GST Returns &amp; Filing</span>
+                    </a>
+                    <a class="sb-link @Active(ctrl == "Accounting" && action == "Commissions")" asp-controller="Accounting" asp-action="Commissions">
+                        <i class="bi bi-percent"></i><span>Salesman Commission</span>
+                    </a>
+                }
+
+                @if (isAdmin)
+                {
+                    <div class="sb-section">Organization</div>
+                    <a class="sb-link @Active(ctrl == "Subscription")" asp-controller="Subscription" asp-action="Index">
+                        <i class="bi bi-cloud"></i><span>Subscription &amp; Quotas</span>
+                    </a>
+                }
+            </nav>
+
+            <div class="sidebar-footer">
+                <span>Signed in as</span>
+                <span class="af-badge b-indigo">@role</span>
+            </div>
+        </aside>
+        <div class="sidebar-backdrop" data-sidebar-close></div>
+
+        <header class="topbar">
+            <div class="topbar-left">
+                <button type="button" class="btn btn-ghost btn-icon topbar-toggle" data-sidebar-toggle aria-label="Open navigation" aria-controls="sidebar">
+                    <i class="bi bi-list" style="font-size:18px;"></i>
+                </button>
+                <nav class="topbar-crumbs" aria-label="Breadcrumb">
+                    <span class="crumb-group">@crumbGroup</span>
+                    <i class="bi bi-chevron-right crumb-sep"></i>
+                    <span class="current">@(ViewData["Title"] ?? "Dashboard")</span>
+                </nav>
             </div>
 
-            <!-- User Chip -->
-            <div class="user-chip dropdown">
-                <div class="d-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
-                    <div class="u-avatar">@initials</div>
-                    <div>
-                        <div class="u-name">@fullName</div>
-                        <div class="u-role">@role</div>
-                    </div>
-                    <span class="ms-1" style="font-size:0.75rem; color:#94a3b8;">▾</span>
+            <div class="topbar-right">
+                <div class="dropdown company-switch">
+                    <button class="btn btn-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Switch company">
+                        <i class="bi bi-buildings text-placeholder"></i>
+                        <span class="company-name">@activeCompany.CompanyName</span>
+                        <i class="bi bi-chevron-down text-placeholder" style="font-size:11px;"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end company-menu mt-1">
+                        <li>
+                            <div class="dropdown-header d-flex align-items-center justify-content-between">
+                                <span>Active company</span>
+                                <span class="mono-id">@activeCompany.CompanyCode</span>
+                            </div>
+                        </li>
+                        @foreach (var c in userCompanies)
+                        {
+                            var isCurrent = c.Id == activeCompany.Id;
+                            <li>
+                                <a class="dropdown-item @(isCurrent ? "current" : "")"
+                                   asp-controller="Company" asp-action="Switch" asp-route-companyId="@c.Id" asp-route-returnUrl="@Context.Request.Path">
+                                    <i class="bi @(isCurrent ? "bi-check2 text-primary" : "bi-building")"></i>
+                                    <span class="text-truncate">@c.CompanyName</span>
+                                </a>
+                            </li>
+                        }
+                        @if (isAdmin)
+                        {
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="Company" asp-action="Index">
+                                    <i class="bi bi-gear"></i> Manage companies
+                                </a>
+                            </li>
+                        }
+                    </ul>
                 </div>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2" style="min-width: 220px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0.5rem;">
-                    <li class="px-3 py-2 border-bottom mb-1">
-                        <div class="fw-bold text-dark" style="font-size:0.9rem;">@fullName</div>
-                        <div class="small text-muted">Role: <span class="badge bg-primary" style="font-size:0.72rem;">@role</span></div>
-                    </li>
-                    <li>
-                        <a class="dropdown-item py-2 d-flex align-items-center gap-2" asp-controller="Account" asp-action="ChangePassword">
-                            <span>🔑</span> Change Password
-                        </a>
-                    </li>
-                    @if (canViewUserMgmt)
-                    {
+
+                <div class="dropdown">
+                    <button type="button" class="user-menu-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="u-avatar">@initials</span>
+                        <span class="u-meta">
+                            <span class="u-name d-block">@fullName</span>
+                            <span class="u-role d-block">@role</span>
+                        </span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end mt-1" style="min-width:230px;">
+                        <li class="px-2 py-2 d-flex align-items-center gap-2">
+                            <span class="u-avatar avatar-lg">@initials</span>
+                            <div class="min-w-0">
+                                <div class="u-name text-truncate">@fullName</div>
+                                <div class="u-role">@role</div>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
                         <li>
-                            <a class="dropdown-item py-2 d-flex align-items-center gap-2" asp-controller="UserManagement" asp-action="Index">
-                                <span>👥</span> User Management
+                            <a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">
+                                <i class="bi bi-key"></i> Change password
                             </a>
                         </li>
-                    }
-                    @if (isAdmin)
-                    {
+                        @if (canViewUserMgmt)
+                        {
+                            <li>
+                                <a class="dropdown-item" asp-controller="UserManagement" asp-action="Index">
+                                    <i class="bi bi-people"></i> User management
+                                </a>
+                            </li>
+                        }
+                        @if (isAdmin)
+                        {
+                            <li>
+                                <a class="dropdown-item" asp-controller="Subscription" asp-action="Index">
+                                    <i class="bi bi-cloud"></i> Subscription &amp; quotas
+                                </a>
+                            </li>
+                        }
+                        <li><hr class="dropdown-divider"></li>
                         <li>
-                            <a class="dropdown-item py-2 d-flex align-items-center gap-2 text-primary fw-semibold" asp-controller="Subscription" asp-action="Index">
-                                <span>☁️</span> SaaS Subscription & Quotas
-                            </a>
+                            <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bi bi-box-arrow-right"></i> Sign out
+                                </button>
+                            </form>
                         </li>
-                    }
-                    <li><hr class="dropdown-divider my-1"></li>
-                    <li>
-                        <form asp-controller="Account" asp-action="Logout" method="post" class="m-0 p-0">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger w-100 border-0 bg-transparent text-start">
-                                <span>🚪</span> Sign Out
-                            </button>
-                        </form>
-                    </li>
-                </ul>
+                    </ul>
+                </div>
             </div>
-        </div>
-    </div>
+        </header>
     }
 
-    <div class="main-wrap">
+    var flashSuccess = TempData["Success"]?.ToString();
+    var flashInfo    = TempData["Info"]?.ToString();
+    var flashWarning = TempData["Warning"]?.ToString();
+    var flashError   = TempData["Error"]?.ToString();
+
+    <div class="toast-stack" aria-live="polite" aria-atomic="true">
+        @if (!string.IsNullOrEmpty(flashSuccess))
+        {
+            <div class="af-toast success" role="status" data-autohide>
+                <i class="bi bi-check-circle-fill"></i>
+                <div class="toast-body">@flashSuccess</div>
+                <button type="button" class="alert-close" aria-label="Dismiss">&times;</button>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(flashInfo))
+        {
+            <div class="af-toast info" role="status" data-autohide>
+                <i class="bi bi-info-circle-fill"></i>
+                <div class="toast-body">@flashInfo</div>
+                <button type="button" class="alert-close" aria-label="Dismiss">&times;</button>
+            </div>
+        }
+    </div>
+
+    <main class="main-wrap">
         <div class="page-body">
+            @if (!string.IsNullOrEmpty(flashError))
+            {
+                <div class="af-alert af-alert-danger" role="alert">
+                    <div class="alert-body">@flashError</div>
+                    <button type="button" class="alert-close" aria-label="Dismiss">&times;</button>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(flashWarning))
+            {
+                <div class="af-alert af-alert-warning" role="alert">
+                    <div class="alert-body">@flashWarning</div>
+                    <button type="button" class="alert-close" aria-label="Dismiss">&times;</button>
+                </div>
+            }
             @RenderBody()
         </div>
-    </div>
+    </main>
 }
 else
 {
@@ -513,19 +486,9 @@ else
 }
 
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
-<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    function toggleNav(el) {
-        el.classList.toggle('open');
-        var sub = el.nextElementSibling;
-        sub.classList.toggle('d-none');
-    }
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.alert-close')) {
-            e.target.closest('.af-alert').remove();
-        }
-    });
-</script>
+<script src="~/lib/bootstrap-5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+
 <!-- Global Print Watermark -->
 <div class="print-watermark-container" aria-hidden="true">
     <img src="~/images/aashana_watermark.png" alt="Aashana Fashion Watermark" class="print-watermark-img" />

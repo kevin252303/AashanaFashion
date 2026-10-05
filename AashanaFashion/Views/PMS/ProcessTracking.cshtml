@@ -8,6 +8,7 @@
     var colours = ViewBag.Colours as List<string> ?? new();
     var vendors = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new();
     var activeTab = Model.ActiveTab ?? "dispatches";
+    bool canManage = role == "Admin" || role == "Manager";
 }
 
 <div class="page-header">

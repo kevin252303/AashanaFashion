@@ -5,10 +5,10 @@
 
 <div class="page-header">
     <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Back</a>
         <h1 class="page-title">New Vendor</h1>
         <p class="page-sub">Add a new vendor with all details</p>
     </div>
-    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
 </div>
 
 <form asp-action="Create" method="post" id="vendorForm">
@@ -29,10 +29,10 @@
         <div class="data-card-header">
             <div class="data-card-title">Vendor Details</div>
         </div>
-        <div style="padding:0;">
+        <div>
 
             <!-- Tabs -->
-            <ul class="nav nav-tabs" id="vendorTabs" role="tablist" style="padding:0 1.5rem;border-bottom:2px solid #e2e8f0;">
+            <ul class="nav nav-tabs card-tabs" id="vendorTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="contacts-tab" data-bs-toggle="tab" data-bs-target="#contacts" type="button" role="tab">Contacts</button>
                 </li>
@@ -47,14 +47,14 @@
                 </li>
             </ul>
 
-            <div class="tab-content" style="padding:1.5rem;">
+            <div class="tab-content">
 
                 <!-- ===== TAB 1: CONTACTS ===== -->
                 <div class="tab-pane fade show active" id="contacts" role="tabpanel">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="af-form-group">
-                                <label asp-for="VendorName" class="af-label">Vendor Name *</label>
+                                <label asp-for="VendorName" class="af-label">Vendor Name <span class="req">*</span></label>
                                 <input asp-for="VendorName" class="af-input" required />
                                 <span asp-validation-for="VendorName" class="af-error"></span>
                             </div>
@@ -62,13 +62,22 @@
                         <div class="col-md-6">
                             <div class="af-form-group">
                                 <label asp-for="GstNumber" class="af-label">GST Number</label>
-                                <input asp-for="GstNumber" class="af-input" id="GstNumber" style="text-transform:uppercase;" />
+                                <input asp-for="GstNumber" class="af-input text-uppercase" id="GstNumber" />
                             </div>
-                            <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
-                                <input type="text" id="gstInput" class="af-input" style="width:220px;text-transform:uppercase;" placeholder="Enter GST to fetch" maxlength="15" />
-                                <button type="button" id="fetchGstBtn" class="btn-af btn-af-primary btn-af-sm">Fetch</button>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="af-form-group">
+                                <label class="af-label" for="gstInput">Auto-fill from GSTIN</label>
+                                <div class="input-group">
+                                    <input type="text" id="gstInput" class="af-input text-uppercase" placeholder="Enter 15-character GSTIN" maxlength="15" />
+                                    <button type="button" id="fetchGstBtn" class="btn btn-secondary">Fetch</button>
+                                </div>
                                 <span id="gstError" class="af-error" style="display:none;"></span>
-                                <span id="gstSuccess" style="display:none;color:#16a34a;font-size:.85rem;"></span>
+                                <span id="gstSuccess" class="form-text text-success" style="display:none;"></span>
+                                <span class="af-hint">Looks up the GST registry and fills name, address and PAN.</span>
                             </div>
                         </div>
                     </div>
@@ -98,7 +107,7 @@
                         <div class="col-md-4">
                             <div class="af-form-group">
                                 <label asp-for="PanNumber" class="af-label">PAN Number</label>
-                                <input asp-for="PanNumber" class="af-input" style="text-transform:uppercase;" />
+                                <input asp-for="PanNumber" class="af-input text-uppercase" />
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -162,17 +171,16 @@
                         </div>
                     </div>
 
-                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;">Additional Contacts</label>
-                    <div style="overflow-x:auto;margin-top:.5rem;">
-                        <table class="af-table" id="contactTable">
+                    <div class="form-section-title">Additional Contacts</div>
+                    <div class="grid-card">
+                        <table class="af-table table-edit" id="contactTable">
                             <thead>
                                 <tr>
                                     <th>Name</th>
                                     <th>Phone</th>
                                     <th>Email</th>
                                     <th>Role</th>
-                                    <th style="width:40px;"></th>
+                                    <th style="width:48px;"></th>
                                 </tr>
                             </thead>
                             <tbody id="contactBody">
@@ -181,17 +189,17 @@
                                     <td><input name="Contacts[0].ContactPhone" class="af-input" placeholder="Phone" /></td>
                                     <td><input name="Contacts[0].ContactEmail" class="af-input" placeholder="Email" /></td>
                                     <td><input name="Contacts[0].ContactRole" class="af-input" placeholder="Role" /></td>
-                                    <td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-contact-row" style="display:none;">×</button></td>
+                                    <td><button type="button" class="row-action danger remove-contact-row" title="Remove" aria-label="Remove" style="display:none;"><i class="bi bi-trash"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <button type="button" id="addContactRow" class="btn-af btn-af-ghost btn-af-sm mt-2">+ Add Contact</button>
+                    <button type="button" id="addContactRow" class="btn btn-sm btn-secondary mt-3"><i class="bi bi-plus-lg"></i> Add contact</button>
                 </div>
 
                 <!-- ===== TAB 2: PURCHASE ===== -->
                 <div class="tab-pane fade" id="salespurchase" role="tabpanel">
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Purchase</label>
+                    <div class="form-section-title">Purchase</div>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
@@ -241,15 +249,20 @@
                                 <input asp-for="CompanyId" class="af-input" />
                             </div>
                         </div>
-                        <div class="col-md-3 d-flex align-items-center" style="padding-top:1.8rem;">
-                            <label><input asp-for="GroupRFQ" /> Group RFQ</label>
+                        <div class="col-md-3">
+                            <div class="field-check">
+                                <div class="form-check">
+                                    <input asp-for="GroupRFQ" class="form-check-input" />
+                                    <label asp-for="GroupRFQ" class="form-check-label">Group RFQ</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- ===== TAB 3: ACCOUNTING ===== -->
                 <div class="tab-pane fade" id="accounting" role="tabpanel">
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Accounting Information</label>
+                    <div class="form-section-title">Accounting Information</div>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
@@ -293,13 +306,17 @@
                                 <input asp-for="AnalyticDistribution" class="af-input" />
                             </div>
                         </div>
-                        <div class="col-md-4 d-flex align-items-center" style="padding-top:1.8rem;">
-                            <label><input asp-for="AutoPostBills" /> Auto-post Bills</label>
+                        <div class="col-md-4">
+                            <div class="field-check">
+                                <div class="form-check">
+                                    <input asp-for="AutoPostBills" class="form-check-input" />
+                                    <label asp-for="AutoPostBills" class="form-check-label">Auto-post Bills</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Bank Accounts</label>
+                    <div class="form-section-title">Bank Accounts</div>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
@@ -316,13 +333,12 @@
                         <div class="col-md-4">
                             <div class="af-form-group">
                                 <label asp-for="IfscCode" class="af-label">IFSC Code</label>
-                                <input asp-for="IfscCode" class="af-input" style="text-transform:uppercase;" />
+                                <input asp-for="IfscCode" class="af-input text-uppercase" />
                             </div>
                         </div>
                     </div>
 
-                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Follow-up</label>
+                    <div class="form-section-title">Follow-up</div>
                     <div class="row">
                         <div class="col-md-3">
                             <div class="af-form-group">
@@ -368,8 +384,7 @@
                         </div>
                     </div>
 
-                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Credit Limits</label>
+                    <div class="form-section-title">Credit Limits</div>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
@@ -379,8 +394,7 @@
                         </div>
                     </div>
 
-                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Commission</label>
+                    <div class="form-section-title">Commission</div>
                     <div class="row">
                         <div class="col-md-3">
                             <div class="af-form-group">
@@ -438,10 +452,15 @@
 
                 <!-- ===== TAB 4: PARTNER ASSIGNMENT ===== -->
                 <div class="tab-pane fade" id="partner" role="tabpanel">
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Partner Activation</label>
+                    <div class="form-section-title">Partner Activation</div>
                     <div class="row">
-                        <div class="col-md-3 d-flex align-items-center" style="padding-top:1.8rem;">
-                            <label><input asp-for="Activation" /> Activation</label>
+                        <div class="col-md-3">
+                            <div class="field-check">
+                                <div class="form-check">
+                                    <input asp-for="Activation" class="form-check-input" />
+                                    <label asp-for="Activation" class="form-check-label">Activation</label>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <div class="af-form-group">
@@ -451,8 +470,7 @@
                         </div>
                     </div>
 
-                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Partner Review</label>
+                    <div class="form-section-title">Partner Review</div>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
@@ -474,8 +492,7 @@
                         </div>
                     </div>
 
-                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
-                    <label class="af-label" style="font-weight:700;font-size:.95rem;color:#6366f1;">Geolocation</label>
+                    <div class="form-section-title">Geolocation</div>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="af-form-group">
@@ -489,12 +506,17 @@
                                 <input asp-for="GeoLongitude" class="af-input" type="number" step="0.000001" />
                             </div>
                         </div>
-                        <div class="col-md-4 d-flex align-items-center" style="padding-top:1.8rem;">
-                            <label><input asp-for="ComputeBasedOnAddress" /> Compute Based on Address</label>
+                        <div class="col-md-4">
+                            <div class="field-check">
+                                <div class="form-check">
+                                    <input asp-for="ComputeBasedOnAddress" class="form-check-input" />
+                                    <label asp-for="ComputeBasedOnAddress" class="form-check-label">Compute Based on Address</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <hr style="margin:1rem 0;border-color:#e2e8f0;" />
+                    <hr class="my-4" />
                     <div class="row">
                         <div class="col-md-3">
                             <div class="af-form-group">
@@ -512,9 +534,9 @@
         </div>
     </div>
 
-    <div style="display:flex;gap:.75rem;margin-top:1rem;">
-        <button type="submit" class="btn-af btn-af-primary">Save Vendor</button>
-        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+    <div class="form-footer">
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Vendor</button>
     </div>
 </form>
 

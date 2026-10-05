@@ -6,117 +6,90 @@
     bool canManage = isAdmin || role == "Manager";
 }
 
-<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+<div class="page-header">
     <div>
         <h1 class="page-title">Raw Material Inventory</h1>
-        <p class="page-sub">Real-time stock ledger, valuation & inventory tracking</p>
+        <p class="page-sub">Real-time stock ledger, valuation &amp; inventory tracking</p>
     </div>
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        <a asp-action="Ledger" class="btn-af btn-af-ghost btn-af-sm">
-            <span>📜</span> Stock Ledger
-        </a>
+    <div class="page-actions">
+        <a asp-action="Ledger" class="btn btn-secondary"><i class="bi bi-journal-text"></i> Stock Ledger</a>
         @if (canManage)
         {
-            <a asp-action="InOut" class="btn-af btn-af-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;">
-                <span>⇄</span> Quick In/Out
-            </a>
-            <a asp-action="AdjustStock" class="btn-af btn-af-ghost btn-af-sm" style="border-color:#cbd5e1;">
-                <span>⚖️</span> Audit / Adjust
-            </a>
+            <a asp-action="AdjustStock" class="btn btn-secondary"><i class="bi bi-clipboard-check"></i> Audit / Adjust</a>
+            <a asp-action="InOut" class="btn btn-secondary"><i class="bi bi-arrow-left-right"></i> Quick In/Out</a>
         }
         @if (isAdmin)
         {
-            <a asp-action="CreateMaterial" class="btn-af btn-af-primary btn-af-sm">+ Add Material</a>
+            <a asp-action="CreateMaterial" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Material</a>
         }
     </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="af-alert af-alert-success mb-3">
-        <span class="alert-body">@TempData["Success"]</span>
-        <button class="alert-close">&times;</button>
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total materials</div>
+        <div class="metric-value">@Model.Materials.Count</div>
+        <div class="metric-meta">active catalog items</div>
     </div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="af-alert af-alert-danger mb-3">
-        <span class="alert-body">@TempData["Error"]</span>
-        <button class="alert-close">&times;</button>
+    <div class="metric-card">
+        <div class="metric-label">Inventory valuation</div>
+        <div class="metric-value">₹@Model.TotalValuation.ToString("N2")</div>
+        <div class="metric-meta">total asset value on hand</div>
     </div>
-}
-
-<!-- KPI Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-sm-6 col-lg-3">
-        <div class="data-card p-3" style="border-left: 4px solid #3b82f6;">
-            <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Materials</div>
-            <div style="font-size: 1.6rem; font-weight: 700; color: #0f172a; margin-top: 4px;">@Model.Materials.Count</div>
-            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">Active catalog items</div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Low stock</div>
+        <div class="metric-value">@Model.LowStockCount</div>
+        <div class="metric-meta warning">at or below reorder level</div>
     </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="data-card p-3" style="border-left: 4px solid #10b981;">
-            <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Inventory Valuation</div>
-            <div style="font-size: 1.6rem; font-weight: 700; color: #16a34a; margin-top: 4px;">₹@Model.TotalValuation.ToString("N2")</div>
-            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">Total asset value on-hand</div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="data-card p-3" style="border-left: 4px solid #f59e0b;">
-            <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Low Stock Warning</div>
-            <div style="font-size: 1.6rem; font-weight: 700; color: #d97706; margin-top: 4px;">@Model.LowStockCount</div>
-            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">At or below reorder level</div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="data-card p-3" style="border-left: 4px solid #ef4444;">
-            <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Out of Stock</div>
-            <div style="font-size: 1.6rem; font-weight: 700; color: #dc2626; margin-top: 4px;">@Model.OutOfStockCount</div>
-            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">Zero or negative quantity</div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Out of stock</div>
+        <div class="metric-value">@Model.OutOfStockCount</div>
+        <div class="metric-meta @(Model.OutOfStockCount > 0 ? "danger" : "")">zero or negative quantity</div>
     </div>
 </div>
 
-<!-- Search and Filter Bar -->
-<div class="data-card mb-4">
-    <div class="data-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span class="data-card-title">Current Stock Status</span>
-        <div style="display:flex;gap:.5rem;">
-            <input type="text" id="inventorySearch" class="af-input" placeholder="Search material..." style="width: 220px; font-size: 0.85rem; padding: 0.35rem 0.65rem;" />
-            <select id="stockFilter" class="af-input af-select" style="width: 140px; font-size: 0.85rem; padding: 0.35rem 0.65rem;">
-                <option value="all">All Items</option>
-                <option value="low">Low Stock</option>
-                <option value="out">Out of Stock</option>
-                <option value="in">Healthy Stock</option>
+<div class="table-card mb-4">
+    <div class="table-toolbar">
+        <div class="toolbar-filters">
+            <span class="data-card-title me-2">Current stock</span>
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" id="inventorySearch" class="af-input" placeholder="Search material…" />
+            </div>
+            <select id="stockFilter" class="af-input af-select">
+                <option value="all">All items</option>
+                <option value="low">Low stock</option>
+                <option value="out">Out of stock</option>
+                <option value="in">Healthy stock</option>
             </select>
         </div>
     </div>
-    
+
     @if (!Model.Materials.Any())
     {
-        <div class="empty-state p-5 text-center">
-            <div class="es-icon" style="font-size: 3rem;">🧵</div>
-            <p style="color: #64748b; margin-top: 1rem;">No materials found in inventory.</p>
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-boxes"></i></div>
+            <div class="es-title">No materials yet</div>
+            <p>Add fabrics, linings and trims to start tracking stock.</p>
             @if (isAdmin)
             {
-                <a asp-action="CreateMaterial" class="btn-af btn-af-primary btn-af-sm mt-2">+ Add First Material</a>
+                <a asp-action="CreateMaterial" class="btn btn-secondary">Add Material</a>
             }
         </div>
     }
     else
     {
-        <div style="overflow-x:auto;">
+        <div class="table-scroll">
             <table class="af-table" id="materialsTable">
                 <thead>
                     <tr>
-                        <th>Material Name</th>
+                        <th>Material</th>
                         <th class="text-end">Current Stock</th>
                         <th>Unit</th>
                         <th class="text-end">Min Stock</th>
                         <th class="text-end">Rate / Cost</th>
                         <th class="text-end">Asset Value</th>
-                        <th class="text-center">Status</th>
+                        <th>Status</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -128,51 +101,49 @@
                         var rowCategory = isOut ? "out" : (isLow ? "low" : "in");
                         var valuation = m.CurrentStock * m.Rate;
 
-                        <tr class="material-row" data-category="@rowCategory" style="@(isOut ? "background:#fff1f2;" : (isLow ? "background:#fffbeb;" : ""))">
+                        <tr class="material-row" data-category="@rowCategory">
                             <td>
-                                <strong>@m.Name</strong>
+                                <span class="cell-title">@m.Name</span>
                                 @if (!string.IsNullOrEmpty(m.Description))
                                 {
-                                    <div style="font-size: 0.75rem; color: #64748b;">@m.Description</div>
+                                    <span class="cell-sub">@m.Description</span>
                                 }
                             </td>
-                            <td class="text-end">
-                                <strong style="font-size: 1rem; color: @(isOut ? "#dc2626" : (isLow ? "#d97706" : "#0f172a"));">
-                                    @m.CurrentStock.ToString("N2")
-                                </strong>
+                            <td class="cell-num">
+                                <span class="fw-semibold @(isOut ? "text-danger" : (isLow ? "text-warning" : "text-foreground"))">@m.CurrentStock.ToString("N2")</span>
                             </td>
                             <td>@m.Unit</td>
-                            <td class="text-end" style="color: #64748b;">@m.MinimumStock.ToString("N2")</td>
-                            <td class="text-end">₹@m.Rate.ToString("N2")</td>
-                            <td class="text-end" style="font-weight: 600;">₹@valuation.ToString("N2")</td>
-                            <td class="text-center">
+                            <td class="cell-num text-muted">@m.MinimumStock.ToString("N2")</td>
+                            <td class="cell-num">₹@m.Rate.ToString("N2")</td>
+                            <td class="cell-num text-foreground fw-medium">₹@valuation.ToString("N2")</td>
+                            <td>
                                 @if (isOut)
                                 {
-                                    <span class="af-badge" style="background:#fee2e2;color:#dc2626;">Out of Stock</span>
+                                    <span class="af-badge b-red">Out of stock</span>
                                 }
                                 else if (isLow)
                                 {
-                                    <span class="af-badge" style="background:#fef3c7;color:#d97706;">Low Stock</span>
+                                    <span class="af-badge b-yellow">Low stock</span>
                                 }
                                 else
                                 {
-                                    <span class="af-badge" style="background:#dcfce7;color:#16a34a;">In Stock</span>
+                                    <span class="af-badge b-green">In stock</span>
                                 }
                             </td>
-                            <td class="text-end">
-                                <div style="display:inline-flex;gap:.3rem;align-items:center;">
-                                    <a asp-action="Ledger" asp-route-materialId="@m.Id" class="btn-af btn-af-ghost btn-af-sm" title="View Transaction Ledger">📜</a>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    <a asp-action="Ledger" asp-route-materialId="@m.Id" class="row-action" title="Transaction ledger" aria-label="Transaction ledger"><i class="bi bi-journal-text"></i></a>
                                     @if (canManage)
                                     {
-                                        <a asp-action="InOut" asp-route-materialId="@m.Id" class="btn-af btn-af-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;" title="Quick In/Out">In/Out</a>
-                                        <a asp-action="AdjustStock" asp-route-materialId="@m.Id" class="btn-af btn-af-ghost btn-af-sm" title="Stock Adjustment">Adjust</a>
+                                        <a asp-action="InOut" asp-route-materialId="@m.Id" class="row-action success" title="Quick in / out" aria-label="Quick in / out"><i class="bi bi-arrow-left-right"></i></a>
+                                        <a asp-action="AdjustStock" asp-route-materialId="@m.Id" class="row-action" title="Stock adjustment" aria-label="Stock adjustment"><i class="bi bi-sliders"></i></a>
                                     }
                                     @if (isAdmin)
                                     {
-                                        <a asp-action="EditMaterial" asp-route-id="@m.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
-                                        <form asp-action="DeleteMaterial" asp-route-id="@m.Id" method="post" style="display:inline;">
+                                        <a asp-action="EditMaterial" asp-route-id="@m.Id" class="row-action" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                        <form asp-action="DeleteMaterial" asp-route-id="@m.Id" method="post">
                                             @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn-af btn-af-danger btn-af-sm" onclick="return confirm('Delete material \'@m.Name\'?')">×</button>
+                                            <button type="submit" class="row-action danger" title="Delete" aria-label="Delete" onclick="return confirm('Delete material \'@m.Name\'?')"><i class="bi bi-trash"></i></button>
                                         </form>
                                     }
                                 </div>
@@ -182,19 +153,21 @@
                 </tbody>
             </table>
         </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Materials.Count</strong> @(Model.Materials.Count == 1 ? "material" : "materials")</span>
+        </div>
     }
 </div>
 
-<!-- Recent Stock Movements Card -->
 @if (Model.RecentTransactions.Any())
 {
-    <div class="data-card">
-        <div class="data-card-header d-flex justify-content-between align-items-center">
-            <span class="data-card-title">Recent Stock Activity</span>
-            <a asp-action="Ledger" class="btn-af btn-af-ghost btn-af-sm">View Full Ledger →</a>
+    <div class="table-card">
+        <div class="data-card-header">
+            <span class="data-card-title">Recent stock activity</span>
+            <a asp-action="Ledger" class="btn btn-sm btn-ghost">View full ledger <i class="bi bi-arrow-right"></i></a>
         </div>
-        <div style="overflow-x:auto;">
-            <table class="af-table" style="font-size: 0.85rem;">
+        <div class="table-scroll">
+            <table class="af-table">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -212,39 +185,37 @@
                         var isIn = tx.Type == "Inward";
                         var isAdj = tx.Type == "Adjustment";
                         <tr>
-                            <td style="color: #64748b;">@tx.CreatedDate.ToString("dd-MMM-yyyy HH:mm")</td>
-                            <td><strong>@(tx.RawMaterial?.Name ?? $"Material #{tx.RawMaterialId}")</strong></td>
+                            <td class="text-muted text-nowrap">@tx.CreatedDate.ToString("dd-MMM-yyyy HH:mm")</td>
+                            <td><span class="cell-title">@(tx.RawMaterial?.Name ?? $"Material #{tx.RawMaterialId}")</span></td>
                             <td>
                                 @if (isIn)
                                 {
-                                    <span class="af-badge" style="background:#dcfce7;color:#16a34a;">+ Inward</span>
+                                    <span class="af-badge b-green"><i class="bi bi-arrow-down-left"></i> Inward</span>
                                 }
                                 else if (isAdj)
                                 {
-                                    <span class="af-badge" style="background:#e0e7ff;color:#4f46e5;">⚖ Adjustment</span>
+                                    <span class="af-badge b-indigo">Adjustment</span>
                                 }
                                 else
                                 {
-                                    <span class="af-badge" style="background:#fee2e2;color:#dc2626;">- Outward</span>
+                                    <span class="af-badge b-red"><i class="bi bi-arrow-up-right"></i> Outward</span>
                                 }
                             </td>
-                            <td class="text-end" style="font-weight: 600; color: @(isIn ? "#16a34a" : (isAdj ? "#4f46e5" : "#dc2626"));">
+                            <td class="cell-num fw-medium @(isIn ? "text-success" : (isAdj ? "text-primary" : "text-danger"))">
                                 @(isIn ? "+" : (isAdj && tx.Quantity > 0 ? "+" : ""))@tx.Quantity.ToString("N2") @tx.RawMaterial?.Unit
                             </td>
-                            <td class="text-end" style="font-weight: 700;">
-                                @tx.BalanceAfter.ToString("N2") @tx.RawMaterial?.Unit
-                            </td>
+                            <td class="cell-num text-foreground fw-semibold">@tx.BalanceAfter.ToString("N2") @tx.RawMaterial?.Unit</td>
                             <td>
                                 @if (!string.IsNullOrEmpty(tx.ReferenceType))
                                 {
-                                    <span class="af-badge b-gray">@tx.ReferenceType @(tx.ReferenceId.HasValue ? $"#{tx.ReferenceId}" : "")</span>
+                                    <span class="mono-id">@tx.ReferenceType @(tx.ReferenceId.HasValue ? $"#{tx.ReferenceId}" : "")</span>
                                 }
                                 else
                                 {
-                                    <span style="color: #94a3b8;">—</span>
+                                    <span class="text-placeholder">—</span>
                                 }
                             </td>
-                            <td style="color: #475569;">@(tx.Remarks ?? "—")</td>
+                            <td class="text-muted">@(tx.Remarks ?? "—")</td>
                         </tr>
                     }
                 </tbody>

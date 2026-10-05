@@ -11,7 +11,7 @@
                 '<td><input name="AttributeLines[' + index + '].Attribute" class="af-input" placeholder="e.g. Size, Color" /></td>' +
                 '<td><input name="AttributeLines[' + index + '].Values" class="af-input" placeholder="e.g. S,M,L / Red,Blue" /></td>' +
                 '<td class="text-center"><input name="AttributeLines[' + index + '].ColourCheck" type="checkbox" value="true" /><input type="hidden" name="AttributeLines[' + index + '].ColourCheck" value="false" /></td>' +
-                '<td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-attr-row">\u00D7</button></td>';
+                '<td><button type="button" class="row-action danger remove-attr-row" title="Remove" aria-label="Remove"><i class="bi bi-trash"></i></button></td>';
             return tr;
         }
 
@@ -64,7 +64,7 @@
                 '<td><input name="Pricelists[' + index + '].AppliedOn" class="af-input" placeholder="e.g. Product, Category" /></td>' +
                 '<td><input name="Pricelists[' + index + '].Price" class="af-input" type="number" step="0.01" min="0" value="0" /></td>' +
                 '<td><input name="Pricelists[' + index + '].MinQuantity" class="af-input" type="number" step="1" min="0" value="1" /></td>' +
-                '<td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-price-row">\u00D7</button></td>';
+                '<td><button type="button" class="row-action danger remove-price-row" title="Remove" aria-label="Remove"><i class="bi bi-trash"></i></button></td>';
             return tr;
         }
 
@@ -124,7 +124,7 @@
                 '</select></td>' +
                 '<td><input name="ProductVendors[' + index + '].UnitPrice" class="af-input" type="number" step="0.01" min="0" value="0" /></td>' +
                 '<td><input name="ProductVendors[' + index + '].LeadTime" class="af-input" type="number" min="0" value="0" /></td>' +
-                '<td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-vendor-row">\u00D7</button></td>';
+                '<td><button type="button" class="row-action danger remove-vendor-row" title="Remove" aria-label="Remove"><i class="bi bi-trash"></i></button></td>';
             return tr;
         }
 
@@ -175,7 +175,7 @@
             tr.innerHTML =
                 '<td><input name="Packagings[' + index + '].PackagingName" class="af-input" placeholder="Packaging" /></td>' +
                 '<td><input name="Packagings[' + index + '].Quantity" class="af-input" type="number" step="1" min="0" value="1" /></td>' +
-                '<td><button type="button" class="btn-af btn-af-danger btn-af-sm remove-pkg-row">\u00D7</button></td>';
+                '<td><button type="button" class="row-action danger remove-pkg-row" title="Remove" aria-label="Remove"><i class="bi bi-trash"></i></button></td>';
             return tr;
         }
 

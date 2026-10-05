@@ -1,239 +1,131 @@
 @model AashanaFashion.Models.BalanceSheetViewModel
 @{
     ViewData["Title"] = $"Balance Sheet — As of {Model.AsOfDate:dd MMM yyyy}";
+
+    void Section(string title, AashanaFashion.Models.FinancialReportSection sec, bool skipIfEmpty = false)
+    {
+        if (skipIfEmpty && !sec.Lines.Any()) return;
+        <tr class="fs-group">
+            <td colspan="2">@title</td>
+            <td class="cell-num">₹@sec.TotalAmount.ToString("N2")</td>
+        </tr>
+        foreach (var l in sec.Lines)
+        {
+            <tr>
+                <td class="fs-indent">@l.Name</td>
+                <td class="font-monospace text-xs text-muted">@l.Code</td>
+                <td class="cell-num">@l.Amount.ToString("N2")</td>
+            </tr>
+        }
+    }
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="page-header">
     <div>
-        <h1 class="page-title mb-1">📊 Balance Sheet (Statement of Financial Position)</h1>
-        <p class="page-sub mb-0 text-muted">Summary of assets, liabilities, and owners' equity verifying fundamental accounting equation (Assets = Liabilities + Equity)</p>
+        <h1 class="page-title">Balance Sheet</h1>
+        <p class="page-sub">Assets, liabilities and equity as of @Model.AsOfDate.ToString("dd MMM yyyy") (assets = liabilities + equity).</p>
     </div>
-    <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
-            🖨️ Print / Save PDF
-        </button>
-        <a asp-action="ProfitAndLoss" class="btn btn-outline-success">
-            📈 Profit &amp; Loss
-        </a>
+    <div class="page-actions d-print-none">
+        <a asp-action="ProfitAndLoss" class="btn btn-secondary"><i class="bi bi-graph-up-arrow"></i> Profit &amp; loss</a>
+        <button type="button" class="btn btn-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
     </div>
 </div>
 
-<!-- Date Filter & Balance Indicator -->
-<div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-body p-3">
-        <form method="get" asp-action="BalanceSheet" class="row g-2 align-items-center">
-            <div class="col-md-auto">
-                <span class="small fw-bold text-secondary">As of Date:</span>
-            </div>
-            <div class="col-md-3">
-                <input type="date" name="asOfDate" value="@Model.AsOfDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
-            </div>
-            <div class="col-md-auto">
-                <button type="submit" class="btn btn-sm btn-dark">Update</button>
-            </div>
-            <div class="col-md-auto ms-auto d-flex align-items-center gap-2">
-                @if (Model.IsBalanced)
-                {
-                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
-                        ✅ Balance Sheet Balanced: ₹@Model.TotalAssets.ToString("N2")
-                    </span>
-                }
-                else
-                {
-                    <span class="badge bg-warning-subtle text-dark border px-3 py-2 fs-6">
-                        Difference: ₹@Math.Abs(Model.TotalAssets - Model.TotalLiabilitiesAndEquity).ToString("N2")
-                    </span>
-                }
-            </div>
-        </form>
+@if (Model.IsBalanced)
+{
+    <div class="af-alert af-alert-success">
+        <div class="alert-body"><span class="alert-title">Balance sheet is balanced</span>Assets and liabilities + equity both total ₹@Model.TotalAssets.ToString("N2").</div>
     </div>
+}
+else
+{
+    <div class="af-alert af-alert-warning">
+        <div class="alert-body"><span class="alert-title">Difference of ₹@Math.Abs(Model.TotalAssets - Model.TotalLiabilitiesAndEquity).ToString("N2")</span>Assets don’t equal liabilities + equity. Check unposted or one-sided entries.</div>
+    </div>
+}
+
+<div class="table-card mb-4 d-print-none">
+    <form method="get" asp-action="BalanceSheet" class="table-toolbar align-end">
+        <div class="toolbar-filters align-items-end">
+            <div class="toolbar-field">
+                <label for="bsAsOf">As of date</label>
+                <input type="date" id="bsAsOf" name="asOfDate" value="@Model.AsOfDate.ToString("yyyy-MM-dd")" class="af-input" />
+            </div>
+        </div>
+        <div class="toolbar-actions">
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-arrow-repeat"></i> Update</button>
+        </div>
+    </form>
 </div>
 
 <div class="row g-4">
-    <!-- Left Column: Assets -->
     <div class="col-lg-6">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold text-primary">🏛️ ASSETS</h5>
-                <span class="badge bg-primary-subtle text-primary fs-6 font-monospace">₹@Model.TotalAssets.ToString("N2")</span>
+        <div class="table-card h-100">
+            <div class="data-card-header">
+                <div class="data-card-title">Assets</div>
+                <span class="fw-semibold text-foreground tabular">₹@Model.TotalAssets.ToString("N2")</span>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <tbody>
-                            <!-- Bank & Cash -->
-                            <tr class="table-light">
-                                <td colspan="2" class="fw-bold text-uppercase small text-secondary">Current Assets: Cash &amp; Bank</td>
-                                <td class="text-end fw-bold font-monospace">₹@Model.BankAndCash.TotalAmount.ToString("N2")</td>
-                            </tr>
-                            @foreach (var l in Model.BankAndCash.Lines)
-                            {
-                                <tr>
-                                    <td class="ps-4">@l.Name</td>
-                                    <td class="text-muted font-monospace small">@l.Code</td>
-                                    <td class="text-end font-monospace">₹@l.Amount.ToString("N2")</td>
-                                </tr>
-                            }
-
-                            <!-- Accounts Receivable -->
-                            <tr class="table-light">
-                                <td colspan="2" class="fw-bold text-uppercase small text-secondary">Trade Debtors (Accounts Receivable)</td>
-                                <td class="text-end fw-bold font-monospace">₹@Model.AccountsReceivable.TotalAmount.ToString("N2")</td>
-                            </tr>
-                            @foreach (var l in Model.AccountsReceivable.Lines)
-                            {
-                                <tr>
-                                    <td class="ps-4">@l.Name</td>
-                                    <td class="text-muted font-monospace small">@l.Code</td>
-                                    <td class="text-end font-monospace">₹@l.Amount.ToString("N2")</td>
-                                </tr>
-                            }
-
-                            <!-- Inventory -->
-                            <tr class="table-light">
-                                <td colspan="2" class="fw-bold text-uppercase small text-secondary">Inventories</td>
-                                <td class="text-end fw-bold font-monospace">₹@Model.Inventory.TotalAmount.ToString("N2")</td>
-                            </tr>
-                            @foreach (var l in Model.Inventory.Lines)
-                            {
-                                <tr>
-                                    <td class="ps-4">@l.Name</td>
-                                    <td class="text-muted font-monospace small">@l.Code</td>
-                                    <td class="text-end font-monospace">₹@l.Amount.ToString("N2")</td>
-                                </tr>
-                            }
-
-                            <!-- Other Current Assets & GST -->
-                            @if (Model.CurrentAssets.Lines.Any())
-                            {
-                                <tr class="table-light">
-                                    <td colspan="2" class="fw-bold text-uppercase small text-secondary">Input GST &amp; Current Assets</td>
-                                    <td class="text-end fw-bold font-monospace">₹@Model.CurrentAssets.TotalAmount.ToString("N2")</td>
-                                </tr>
-                                @foreach (var l in Model.CurrentAssets.Lines)
-                                {
-                                    <tr>
-                                        <td class="ps-4">@l.Name</td>
-                                        <td class="text-muted font-monospace small">@l.Code</td>
-                                        <td class="text-end font-monospace">₹@l.Amount.ToString("N2")</td>
-                                    </tr>
-                                }
-                            }
-
-                            <!-- Fixed Assets -->
-                            @if (Model.FixedAssets.Lines.Any())
-                            {
-                                <tr class="table-light">
-                                    <td colspan="2" class="fw-bold text-uppercase small text-secondary">Property, Plant &amp; Equipment</td>
-                                    <td class="text-end fw-bold font-monospace">₹@Model.FixedAssets.TotalAmount.ToString("N2")</td>
-                                </tr>
-                                @foreach (var l in Model.FixedAssets.Lines)
-                                {
-                                    <tr>
-                                        <td class="ps-4">@l.Name</td>
-                                        <td class="text-muted font-monospace small">@l.Code</td>
-                                        <td class="text-end font-monospace">₹@l.Amount.ToString("N2")</td>
-                                    </tr>
-                                }
-                            }
-                        </tbody>
-                        <tfoot class="table-primary fw-bold fs-6">
-                            <tr>
-                                <td colspan="2">TOTAL ASSETS</td>
-                                <td class="text-end font-monospace">₹@Model.TotalAssets.ToString("N2")</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
+            <div class="table-scroll">
+                <table class="af-table fin-table">
+                    <tbody>
+                        @{
+                            Section("Cash & bank", Model.BankAndCash);
+                            Section("Trade debtors (accounts receivable)", Model.AccountsReceivable);
+                            Section("Inventories", Model.Inventory);
+                            Section("Input GST & current assets", Model.CurrentAssets, true);
+                            Section("Property, plant & equipment", Model.FixedAssets, true);
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2">Total assets</td>
+                            <td class="text-end tabular">₹@Model.TotalAssets.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- Right Column: Liabilities & Equity -->
     <div class="col-lg-6">
-        <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold text-danger">🏢 LIABILITIES &amp; EQUITY</h5>
-                <span class="badge bg-danger-subtle text-danger fs-6 font-monospace">₹@Model.TotalLiabilitiesAndEquity.ToString("N2")</span>
+        <div class="table-card h-100">
+            <div class="data-card-header">
+                <div class="data-card-title">Liabilities &amp; equity</div>
+                <span class="fw-semibold text-foreground tabular">₹@Model.TotalLiabilitiesAndEquity.ToString("N2")</span>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <tbody>
-                            <!-- Accounts Payable -->
-                            <tr class="table-light">
-                                <td colspan="2" class="fw-bold text-uppercase small text-secondary">Trade Creditors (Accounts Payable)</td>
-                                <td class="text-end fw-bold font-monospace">₹@Model.AccountsPayable.TotalAmount.ToString("N2")</td>
-                            </tr>
-                            @foreach (var l in Model.AccountsPayable.Lines)
-                            {
-                                <tr>
-                                    <td class="ps-4">@l.Name</td>
-                                    <td class="text-muted font-monospace small">@l.Code</td>
-                                    <td class="text-end font-monospace">₹@l.Amount.ToString("N2")</td>
-                                </tr>
-                            }
-
-                            <!-- Output Taxes & Duties -->
-                            <tr class="table-light">
-                                <td colspan="2" class="fw-bold text-uppercase small text-secondary">Output GST &amp; Tax Liabilities</td>
-                                <td class="text-end fw-bold font-monospace">₹@Model.DutiesAndTaxes.TotalAmount.ToString("N2")</td>
-                            </tr>
-                            @foreach (var l in Model.DutiesAndTaxes.Lines)
-                            {
-                                <tr>
-                                    <td class="ps-4">@l.Name</td>
-                                    <td class="text-muted font-monospace small">@l.Code</td>
-                                    <td class="text-end font-monospace">₹@l.Amount.ToString("N2")</td>
-                                </tr>
-                            }
-
-                            <!-- Current Liabilities -->
-                            @if (Model.CurrentLiabilities.Lines.Any())
-                            {
-                                <tr class="table-light">
-                                    <td colspan="2" class="fw-bold text-uppercase small text-secondary">Other Current Liabilities</td>
-                                    <td class="text-end fw-bold font-monospace">₹@Model.CurrentLiabilities.TotalAmount.ToString("N2")</td>
-                                </tr>
-                                @foreach (var l in Model.CurrentLiabilities.Lines)
-                                {
-                                    <tr>
-                                        <td class="ps-4">@l.Name</td>
-                                        <td class="text-muted font-monospace small">@l.Code</td>
-                                        <td class="text-end font-monospace">₹@l.Amount.ToString("N2")</td>
-                                    </tr>
-                                }
-                            }
-
-                            <!-- Equity -->
-                            <tr class="table-light">
-                                <td colspan="2" class="fw-bold text-uppercase small text-primary">Equity &amp; Reserves</td>
-                                <td class="text-end fw-bold font-monospace">₹@Model.TotalEquity.ToString("N2")</td>
-                            </tr>
-                            @foreach (var l in Model.CapitalAndReserves.Lines)
-                            {
-                                <tr>
-                                    <td class="ps-4">@l.Name</td>
-                                    <td class="text-muted font-monospace small">@l.Code</td>
-                                    <td class="text-end font-monospace">₹@l.Amount.ToString("N2")</td>
-                                </tr>
-                            }
+            <div class="table-scroll">
+                <table class="af-table fin-table">
+                    <tbody>
+                        @{
+                            Section("Trade creditors (accounts payable)", Model.AccountsPayable);
+                            Section("Output GST & tax liabilities", Model.DutiesAndTaxes);
+                            Section("Other current liabilities", Model.CurrentLiabilities, true);
+                        }
+                        <tr class="fs-group">
+                            <td colspan="2">Equity &amp; reserves</td>
+                            <td class="cell-num">₹@Model.TotalEquity.ToString("N2")</td>
+                        </tr>
+                        @foreach (var l in Model.CapitalAndReserves.Lines)
+                        {
                             <tr>
-                                <td class="ps-4 fw-semibold text-success">Current Period Profit / (Loss)</td>
-                                <td class="text-muted font-monospace small">P&amp;L</td>
-                                <td class="text-end font-monospace fw-bold @(Model.CurrentPeriodProfitOrLoss >= 0 ? "text-success" : "text-danger")">
-                                    ₹@Model.CurrentPeriodProfitOrLoss.ToString("N2")
-                                </td>
+                                <td class="fs-indent">@l.Name</td>
+                                <td class="font-monospace text-xs text-muted">@l.Code</td>
+                                <td class="cell-num">@l.Amount.ToString("N2")</td>
                             </tr>
-                        </tbody>
-                        <tfoot class="table-danger fw-bold fs-6">
-                            <tr>
-                                <td colspan="2">TOTAL LIABILITIES &amp; EQUITY</td>
-                                <td class="text-end font-monospace">₹@Model.TotalLiabilitiesAndEquity.ToString("N2")</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
+                        }
+                        <tr>
+                            <td class="fs-indent">Current period profit / (loss)</td>
+                            <td class="font-monospace text-xs text-muted">P&amp;L</td>
+                            <td class="cell-num fw-semibold @(Model.CurrentPeriodProfitOrLoss >= 0 ? "text-success" : "text-danger")">@Model.CurrentPeriodProfitOrLoss.ToString("N2")</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2">Total liabilities &amp; equity</td>
+                            <td class="text-end tabular">₹@Model.TotalLiabilitiesAndEquity.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
     </div>

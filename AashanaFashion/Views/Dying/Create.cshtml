@@ -5,10 +5,10 @@
 
 <div class="page-header">
     <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Entries</a>
         <h1 class="page-title">Add Dying Entry</h1>
         <p class="page-sub">Record cloth sent for dying</p>
     </div>
-    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
 </div>
 
 <div class="row justify-content-center">
@@ -17,7 +17,7 @@
             <div class="data-card-header">
                 <div class="data-card-title">Dying Entry</div>
             </div>
-            <div style="padding:1.5rem;">
+            <div class="data-card-body">
                 <form asp-action="Create" method="post">
                     @Html.AntiForgeryToken()
 
@@ -33,18 +33,18 @@
                     }
 
                     <div class="af-form-group">
-                        <label asp-for="LotNo" class="af-label">Lot No *</label>
+                        <label asp-for="LotNo" class="af-label">Lot No <span class="req">*</span></label>
                         <input asp-for="LotNo" class="af-input" placeholder="e.g. LOT-001" required />
                         <span asp-validation-for="LotNo" class="af-error"></span>
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="EntryDate" class="af-label">Date *</label>
+                        <label asp-for="EntryDate" class="af-label">Date <span class="req">*</span></label>
                         <input asp-for="EntryDate" class="af-input" type="date" required />
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="Meters" class="af-label">Meters *</label>
+                        <label asp-for="Meters" class="af-label">Meters <span class="req">*</span></label>
                         <input asp-for="Meters" class="af-input" type="number" step="0.01" min="0.01" placeholder="0.00" required />
                         <span asp-validation-for="Meters" class="af-error"></span>
                     </div>
@@ -54,9 +54,9 @@
                         <input asp-for="Remarks" class="af-input" placeholder="Optional notes" />
                     </div>
 
-                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
-                        <button type="submit" class="btn-af btn-af-primary">Save Entry</button>
-                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    <div class="form-footer">
+                        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Entry</button>
                     </div>
                 </form>
             </div>

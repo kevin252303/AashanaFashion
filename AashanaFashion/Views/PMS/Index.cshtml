@@ -6,113 +6,121 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Production Management System</h1>
-        <p class="page-sub">Monitor and track production lifecycle</p>
+        <h1 class="page-title">Production Dashboard</h1>
+        <p class="page-sub">Monitor and track the production lifecycle</p>
+    </div>
+    @if (role == "Admin" || role == "Manager" || User.HasClaim("Permission.ProductionOrder.CanCreate", "true"))
+    {
+        <div class="page-actions">
+            <a asp-controller="Production" asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Order Lot</a>
+        </div>
+    }
+</div>
+
+<div class="metric-grid">
+    <a asp-controller="Production" asp-action="Index" class="metric-card text-reset">
+        <div class="metric-label">Total orders</div>
+        <div class="metric-value">@Model.TotalOrders</div>
+        <div class="metric-meta">all production lots</div>
+    </a>
+    <div class="metric-card">
+        <div class="metric-label">In progress</div>
+        <div class="metric-value">@Model.InProgress</div>
+        <div class="metric-meta info">moving through stages</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Ready to dispatch</div>
+        <div class="metric-value">@Model.ReadyToDispatch</div>
+        <div class="metric-meta success">inwarded to ready stock</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Dispatched</div>
+        <div class="metric-value">@Model.Dispatched</div>
     </div>
 </div>
 
-<!-- Summary Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-xl-3">
-        <a asp-action="Index" style="text-decoration:none;color:inherit;">
-            <div class="stat-card">
-                <div class="stat-icon si-blue">📦</div>
-                <div><div class="stat-val">@Model.TotalOrders</div><div class="stat-lbl">Total Orders</div></div>
-            </div>
-        </a>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-yellow">⚙️</div>
-            <div><div class="stat-val">@Model.InProgress</div><div class="stat-lbl">In Progress</div></div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-green">✅</div>
-            <div><div class="stat-val">@Model.ReadyToDispatch</div><div class="stat-lbl">Ready to Dispatch</div></div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-gray">🚚</div>
-            <div><div class="stat-val">@Model.Dispatched</div><div class="stat-lbl">Dispatched</div></div>
-        </div>
-    </div>
-</div>
-
-<!-- Quick Links -->
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <a asp-action="ProductionEntities" class="quick-link-card">
-            <div class="ql-icon">🔢</div>
+            <div class="ql-icon"><i class="bi bi-123"></i></div>
             <div class="ql-content">
-                <div class="ql-title">Production Entities</div>
+                <div class="ql-title">Production entities</div>
                 <div class="ql-desc">Track individual items</div>
             </div>
+            <i class="bi bi-chevron-right ql-arrow"></i>
         </a>
     </div>
     <div class="col-md-4">
         <a asp-action="ProcessTracking" class="quick-link-card">
-            <div class="ql-icon">📋</div>
+            <div class="ql-icon"><i class="bi bi-diagram-3"></i></div>
             <div class="ql-content">
-                <div class="ql-title">Process Tracking</div>
+                <div class="ql-title">Process tracking</div>
                 <div class="ql-desc">Monitor process status</div>
             </div>
+            <i class="bi bi-chevron-right ql-arrow"></i>
         </a>
     </div>
     <div class="col-md-4">
         <a asp-controller="RawMaterial" asp-action="Index" class="quick-link-card">
-            <div class="ql-icon">🧵</div>
+            <div class="ql-icon"><i class="bi bi-boxes"></i></div>
             <div class="ql-content">
-                <div class="ql-title">Raw Material</div>
+                <div class="ql-title">Raw material</div>
                 <div class="ql-desc">Manage inventory</div>
             </div>
+            <i class="bi bi-chevron-right ql-arrow"></i>
         </a>
     </div>
 </div>
 
-<!-- Recent Orders -->
-<div class="data-card">
+<div class="table-card">
     <div class="data-card-header">
-        <span class="data-card-title">Production Orders</span>
-        <div style="display:flex;gap:.5rem;">
-            @if (role == "Admin" || role == "Manager" || User.HasClaim("Permission.ProductionOrder.CanCreate", "true"))
-            {
-                <a asp-controller="Production" asp-action="Create" class="btn-af btn-af-primary btn-af-sm">+ New Order Lot</a>
-            }
-            <a asp-controller="Production" asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">View All</a>
-        </div>
+        <span class="data-card-title">Production orders</span>
+        <a asp-controller="Production" asp-action="Index" class="btn btn-sm btn-ghost">View all <i class="bi bi-arrow-right"></i></a>
     </div>
-    <table class="af-table">
-        <thead>
-            <tr>
-                <th>Lot No</th>
-                <th>Design</th>
-                <th>Qty</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var order in Model.Orders.Take(10))
-            {
-                <tr>
-                    <td><strong>@order.LotNo</strong></td>
-                    <td>@order.Design?.DesignNumber</td>
-                    <td>@order.TotalQuantity pcs</td>
-                    <td><span class="af-badge @GetStatusBadge(order.Status)">@order.Status</span></td>
-                    <td>
-                        <a asp-action="ProductionEntities" asp-route-orderId="@order.Id" class="btn-af btn-af-ghost btn-af-sm">Entities</a>
-                        @if (role == "Admin")
-                        {
-                            <a asp-action="GenerateEntities" asp-route-orderId="@order.Id" class="btn-af btn-af-primary btn-af-sm">Generate</a>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    @if (Model.Orders.Any())
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>Lot No</th>
+                        <th>Design</th>
+                        <th class="text-end">Qty</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model.Orders.Take(10))
+                    {
+                        <tr>
+                            <td><span class="mono-id">@order.LotNo</span></td>
+                            <td><span class="cell-title">@order.Design?.DesignNumber</span></td>
+                            <td class="cell-num">@order.TotalQuantity <span class="text-xs text-muted">pcs</span></td>
+                            <td><span class="af-badge @GetStatusBadge(order.Status)">@order.Status.Humanize()</span></td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    <a asp-action="ProductionEntities" asp-route-orderId="@order.Id" class="btn btn-sm btn-secondary">Entities</a>
+                                    @if (role == "Admin")
+                                    {
+                                        <a asp-action="GenerateEntities" asp-route-orderId="@order.Id" class="btn btn-sm btn-secondary ms-1"><i class="bi bi-magic"></i> Generate</a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-clipboard-data"></i></div>
+            <div class="es-title">No production orders yet</div>
+            <p>Order lots you create will appear here.</p>
+        </div>
+    }
 </div>
 
 @functions {

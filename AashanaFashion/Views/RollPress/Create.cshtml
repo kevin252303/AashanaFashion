@@ -5,10 +5,10 @@
 
 <div class="page-header">
     <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Entries</a>
         <h1 class="page-title">Add Roll Press Entry</h1>
         <p class="page-sub">Record cloth sent for roll press</p>
     </div>
-    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
 </div>
 
 <div class="row justify-content-center">
@@ -17,7 +17,7 @@
             <div class="data-card-header">
                 <div class="data-card-title">Roll Press Entry</div>
             </div>
-            <div style="padding:1.5rem;">
+            <div class="data-card-body">
                 <form asp-action="Create" method="post">
                     @Html.AntiForgeryToken()
 
@@ -33,29 +33,29 @@
                     }
 
                     <div class="af-form-group">
-                        <label asp-for="LotNo" class="af-label">Lot No *</label>
+                        <label asp-for="LotNo" class="af-label">Lot No <span class="req">*</span></label>
                         <input asp-for="LotNo" class="af-input" placeholder="e.g. LOT-001" required />
                         <span asp-validation-for="LotNo" class="af-error"></span>
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="DesignNo" class="af-label">Design No *</label>
+                        <label asp-for="DesignNo" class="af-label">Design No <span class="req">*</span></label>
                         <input asp-for="DesignNo" class="af-input" placeholder="e.g. AF-001" required />
                         <span asp-validation-for="DesignNo" class="af-error"></span>
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="GivenDate" class="af-label">Given Date *</label>
+                        <label asp-for="GivenDate" class="af-label">Given Date <span class="req">*</span></label>
                         <input asp-for="GivenDate" class="af-input" type="date" required />
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="ArrivalDate" class="af-label">Arrival Date *</label>
+                        <label asp-for="ArrivalDate" class="af-label">Arrival Date <span class="req">*</span></label>
                         <input asp-for="ArrivalDate" class="af-input" type="date" required />
                     </div>
 
                     <div class="af-form-group">
-                        <label asp-for="NumberOfPieces" class="af-label">Number of Pieces *</label>
+                        <label asp-for="NumberOfPieces" class="af-label">Number of Pieces <span class="req">*</span></label>
                         <input asp-for="NumberOfPieces" class="af-input" type="number" min="1" placeholder="0" required />
                         <span asp-validation-for="NumberOfPieces" class="af-error"></span>
                     </div>
@@ -65,9 +65,9 @@
                         <input asp-for="Remarks" class="af-input" placeholder="Optional notes" />
                     </div>
 
-                    <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
-                        <button type="submit" class="btn-af btn-af-primary">Save Entry</button>
-                        <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
+                    <div class="form-footer">
+                        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Entry</button>
                     </div>
                 </form>
             </div>

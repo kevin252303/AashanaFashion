@@ -1,289 +1,250 @@
 @model IEnumerable<AashanaFashion.Models.AccountingTransaction>
 @{
-    ViewData["Title"] = "Financial Accounting & General Ledger";
+    ViewData["Title"] = "General Ledger";
+    var balance = (decimal)ViewBag.NetBalance;
+    var categories = ViewBag.Categories as List<string> ?? new List<string>();
+    bool filtered = !string.IsNullOrEmpty(ViewBag.Search as string) || !string.IsNullOrEmpty(ViewBag.StartDate as string)
+                    || !string.IsNullOrEmpty(ViewBag.EndDate as string) || ViewBag.Type != null || !string.IsNullOrEmpty(ViewBag.Category as string);
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
     <div>
-        <h1 class="page-title mb-1">💰 Financial Accounting & General Ledger</h1>
-        <p class="page-sub mb-0 text-muted">Comprehensive double-entry cash flow, GST summary, AR/AP, and expense ledger</p>
+        <h1 class="page-title">General Ledger</h1>
+        <p class="page-sub">Double-entry cash flow, GST summary, receivables / payables and expense ledger.</p>
     </div>
-    <div class="d-flex gap-2">
-        <a asp-action="Commissions" class="btn btn-outline-info">
-            🤝 Salesman Commission
-        </a>
-        <a asp-controller="Invoice" asp-action="Index" class="btn btn-outline-primary">
-            🧾 Tax Invoices & Receivables
-        </a>
-        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#vendorPayoutModal">
-            📤 Record Vendor Payout
-        </button>
-        <a asp-action="Create" class="btn btn-primary">+ Record Entry</a>
+    <div class="page-actions">
+        <a asp-action="Commissions" class="btn btn-secondary"><i class="bi bi-percent"></i> Commissions</a>
+        <a asp-controller="Invoice" asp-action="Index" class="btn btn-secondary"><i class="bi bi-receipt"></i> Tax invoices</a>
+        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#vendorPayoutModal"><i class="bi bi-box-arrow-up-right"></i> Vendor payout</button>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Record entry</a>
     </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <strong>Success!</strong> @TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Revenue / inflow</div>
+        <div class="metric-value">₹@(((decimal)ViewBag.TotalIncome).ToString("N2"))</div>
+        <div class="metric-meta success">cleared sales &amp; income</div>
     </div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <strong>Error:</strong> @TempData["Error"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <div class="metric-card">
+        <div class="metric-label">Operating expenses</div>
+        <div class="metric-value">₹@(((decimal)ViewBag.TotalExpense).ToString("N2"))</div>
+        <div class="metric-meta danger">purchases, labour, job work</div>
     </div>
-}
-
-<!-- Summary Statistics -->
-<div class="row g-3 mb-4">
-    <div class="col-sm-6 col-lg-4">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Total Revenue / Inflow</span>
-                <h3 class="fw-bold my-1 text-success">₹@(((decimal)ViewBag.TotalIncome).ToString("N2"))</h3>
-                <small class="text-muted">Cleared sales and income receipts</small>
-            </div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Net operating balance</div>
+        <div class="metric-value @(balance < 0 ? "text-danger" : "")">₹@balance.ToString("N2")</div>
+        <div class="metric-meta">net financial position</div>
     </div>
-    <div class="col-sm-6 col-lg-4">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Total Operating Expenses</span>
-                <h3 class="fw-bold my-1 text-danger">₹@(((decimal)ViewBag.TotalExpense).ToString("N2"))</h3>
-                <small class="text-muted">Purchases, labor, and job-work payouts</small>
-            </div>
-        </div>
+</div>
+<div class="metric-grid">
+    <a asp-controller="Invoice" asp-action="Index" class="metric-card text-reset">
+        <div class="metric-label">Customer receivables</div>
+        <div class="metric-value">₹@(((decimal)ViewBag.TotalReceivables).ToString("N2"))</div>
+        <div class="metric-meta warning">view unpaid invoices <i class="bi bi-arrow-right"></i></div>
+    </a>
+    <div class="metric-card">
+        <div class="metric-label">Output GST collected</div>
+        <div class="metric-value">₹@(((decimal)ViewBag.TotalOutputGst).ToString("N2"))</div>
+        <div class="metric-meta">tax liability from sales</div>
     </div>
-    <div class="col-sm-6 col-lg-4">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Net Operating Balance</span>
-                @{
-                    var balance = (decimal)ViewBag.NetBalance;
-                }
-                <h3 class="fw-bold my-1 @(balance >= 0 ? "text-primary" : "text-danger")">
-                    ₹@balance.ToString("N2")
-                </h3>
-                <small class="text-muted">Net financial position</small>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-sm-6 col-lg-4">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Customer Receivables (AR)</span>
-                <h4 class="fw-bold my-1 text-warning">₹@(((decimal)ViewBag.TotalReceivables).ToString("N2"))</h4>
-                <small class="text-muted"><a asp-controller="Invoice" asp-action="Index" class="text-decoration-none">View Unpaid Invoices →</a></small>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-4">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Output GST Collected</span>
-                <h4 class="fw-bold my-1 text-dark">₹@(((decimal)ViewBag.TotalOutputGst).ToString("N2"))</h4>
-                <small class="text-muted">Tax liability collected from sales</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-4">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">Vendor Disbursements</span>
-                <h4 class="fw-bold my-1 text-secondary">₹@(((decimal)ViewBag.TotalVendorPaid).ToString("N2"))</h4>
-                <small class="text-muted">Direct vendor & job-worker settlements</small>
-            </div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Vendor disbursements</div>
+        <div class="metric-value">₹@(((decimal)ViewBag.TotalVendorPaid).ToString("N2"))</div>
+        <div class="metric-meta">vendor &amp; job-worker settlements</div>
     </div>
 </div>
 
-<!-- Filters -->
-<div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-body py-3">
-        <form method="get" asp-action="Index" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold" for="search">Search</label>
-                <input type="text" id="search" name="search" value="@ViewBag.Search" placeholder="Ref, Party, Narration, Mode..." class="form-control form-control-sm" />
+<div class="table-card">
+    <form method="get" asp-action="Index" class="table-toolbar align-end">
+        <div class="toolbar-filters align-items-end">
+            <div class="toolbar-field">
+                <label for="search">Search</label>
+                <div class="search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="search" name="search" value="@ViewBag.Search" placeholder="Ref, party, narration…" class="af-input" />
+                </div>
             </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-semibold" for="startDate">Start Date</label>
-                <input type="date" id="startDate" name="startDate" value="@ViewBag.StartDate" class="form-control form-control-sm" />
+            <div class="toolbar-field">
+                <label for="startDate">From</label>
+                <input type="date" id="startDate" name="startDate" value="@ViewBag.StartDate" class="af-input" />
             </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-semibold" for="endDate">End Date</label>
-                <input type="date" id="endDate" name="endDate" value="@ViewBag.EndDate" class="form-control form-control-sm" />
+            <div class="toolbar-field">
+                <label for="endDate">To</label>
+                <input type="date" id="endDate" name="endDate" value="@ViewBag.EndDate" class="af-input" />
             </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-semibold" for="type">Type</label>
-                <select id="type" name="type" class="form-select form-select-sm">
-                    <option value="">— All —</option>
+            <div class="toolbar-field">
+                <label for="type">Type</label>
+                <select id="type" name="type" class="af-input af-select">
+                    <option value="">All</option>
                     <option value="Income" selected="@(ViewBag.Type == AashanaFashion.Models.TransactionType.Income)">Income</option>
                     <option value="Expense" selected="@(ViewBag.Type == AashanaFashion.Models.TransactionType.Expense)">Expense</option>
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-semibold" for="category">Category</label>
-                <select id="category" name="category" class="form-select form-select-sm">
-                    <option value="">— All —</option>
-                    @foreach (var cat in (List<string>)ViewBag.Categories)
+            <div class="toolbar-field">
+                <label for="category">Category</label>
+                <select id="category" name="category" class="af-input af-select">
+                    <option value="">All categories</option>
+                    @foreach (var cat in categories)
                     {
                         <option value="@cat" selected="@(ViewBag.Category == cat)">@cat</option>
                     }
                 </select>
             </div>
-            <div class="col-md-1 d-flex gap-1">
-                <button type="submit" class="btn btn-sm btn-primary flex-fill">Filter</button>
-                <a asp-action="Index" class="btn btn-sm btn-outline-secondary" title="Clear">✕</a>
-            </div>
-        </form>
-    </div>
-</div>
+        </div>
+        <div class="toolbar-actions">
+            @if (filtered)
+            {
+                <a asp-action="Index" class="btn btn-ghost">Clear</a>
+            }
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
 
-<!-- Ledger Table -->
-<div class="card border-0 shadow-sm rounded-3">
-    <div class="card-header bg-white py-3 border-bottom">
-        <h5 class="card-title mb-0 fw-bold">📜 General Ledger Journal</h5>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+    @if (Model.Any())
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
                     <tr>
                         <th>Date</th>
                         <th>Type</th>
                         <th>Category</th>
                         <th class="text-end">Amount</th>
-                        <th>Party / Entity</th>
+                        <th>Party</th>
                         <th>Reference</th>
                         <th>Description</th>
-                        <th class="text-center">Actions</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var tx in Model)
                     {
+                        bool income = tx.Type == AashanaFashion.Models.TransactionType.Income;
                         <tr>
-                            <td>@tx.Date.ToString("dd/MM/yyyy")</td>
-                            <td>
-                                @if (tx.Type == AashanaFashion.Models.TransactionType.Income)
-                                {
-                                    <span class="badge bg-success">Income</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-danger">Expense</span>
-                                }
-                            </td>
-                            <td><span class="badge bg-light text-dark border">@tx.Category</span></td>
-                            <td class="text-end fw-bold @(tx.Type == AashanaFashion.Models.TransactionType.Income ? "text-success" : "text-danger")">
-                                @(tx.Type == AashanaFashion.Models.TransactionType.Income ? "+" : "-")₹@tx.Amount.ToString("N2")
-                            </td>
+                            <td class="text-nowrap tabular">@tx.Date.ToString("dd/MM/yyyy")</td>
+                            <td><span class="af-badge @(income ? "b-green" : "b-red")">@(income ? "Income" : "Expense")</span></td>
+                            <td><span class="af-badge b-gray">@tx.Category</span></td>
+                            <td class="cell-num fw-semibold @(income ? "text-success" : "text-danger")">@(income ? "+" : "−")₹@tx.Amount.ToString("N2")</td>
                             <td>
                                 @if (tx.VendorId.HasValue)
                                 {
-                                    <small><span class="text-muted">Vendor:</span> <strong>@tx.Vendor?.VendorName</strong></small>
+                                    <span class="text-foreground">@tx.Vendor?.VendorName</span>
+                                    <span class="cell-sub">Vendor</span>
                                 }
                                 else if (tx.CustomerId.HasValue)
                                 {
-                                    <small><span class="text-muted">Customer:</span> <strong>@tx.Customer?.CustomerName</strong></small>
+                                    <span class="text-foreground">@tx.Customer?.CustomerName</span>
+                                    <span class="cell-sub">Customer</span>
                                 }
                                 else
                                 {
                                     <span class="text-muted">—</span>
                                 }
                             </td>
-                            <td><code>@(tx.Reference ?? "—")</code></td>
-                            <td class="small" style="max-width: 250px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="@tx.Description">
-                                @tx.Description
+                            <td>
+                                @if (string.IsNullOrEmpty(tx.Reference))
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                                else
+                                {
+                                    <span class="mono-id">@tx.Reference</span>
+                                }
                             </td>
-                            <td class="text-center">
-                                <div class="btn-group btn-group-sm">
-                                    <a asp-action="Edit" asp-route-id="@tx.Id" class="btn btn-outline-secondary">Edit</a>
-                                    <form asp-action="Delete" asp-route-id="@tx.Id" method="post" class="d-inline" onsubmit="return confirm('Delete this ledger transaction?')">
+                            <td class="text-muted text-truncate" style="max-width: 260px;" title="@tx.Description">@tx.Description</td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    <a asp-action="Edit" asp-route-id="@tx.Id" class="row-action" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                    <form asp-action="Delete" asp-route-id="@tx.Id" method="post" onsubmit="return confirm('Delete this ledger transaction?')">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-outline-danger">✕</button>
+                                        <button type="submit" class="row-action danger" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                                     </form>
                                 </div>
                             </td>
                         </tr>
                     }
-                    @if (!Model.Any())
-                    {
-                        <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">No transactions found matching your criteria.</td>
-                        </tr>
-                    }
                 </tbody>
             </table>
         </div>
-    </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> @(Model.Count() == 1 ? "transaction" : "transactions")</span>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi @(filtered ? "bi-search" : "bi-journal-text")"></i></div>
+            <div class="es-title">@(filtered ? "No results found" : "No ledger entries yet")</div>
+            <p>@(filtered ? "No transactions match your filters." : "Record income or expense entries to build the ledger.")</p>
+            @if (filtered)
+            {
+                <a asp-action="Index" class="btn btn-secondary">Clear filters</a>
+            }
+            else
+            {
+                <a asp-action="Create" class="btn btn-secondary">Record entry</a>
+            }
+        </div>
+    }
 </div>
 
-<!-- Record Vendor Payout Modal -->
 <div class="modal fade" id="vendorPayoutModal" tabindex="-1" aria-labelledby="vendorPayoutModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form asp-action="RecordVendorPayment" method="post">
                 @Html.AntiForgeryToken()
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold" id="vendorPayoutModalLabel">📤 Record Vendor Payout Voucher</h5>
+                    <h5 class="modal-title" id="vendorPayoutModalLabel">Record vendor payout</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Vendor / Job Worker</label>
-                        <select name="VendorId" class="form-select" required>
-                            <option value="">-- Select Vendor --</option>
-                            @foreach (var v in (List<AashanaFashion.Models.Vendor>)ViewBag.Vendors)
-                            {
-                                <option value="@v.Id">@v.VendorName (@(v.Industry ?? "Vendor"))</option>
-                            }
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Link Purchase Order (Optional)</label>
-                        <select name="PurchaseOrderId" class="form-select">
-                            <option value="">-- None / General Job Work --</option>
-                            @foreach (var po in (List<AashanaFashion.Models.PurchaseOrder>)ViewBag.PurchaseOrders)
-                            {
-                                <option value="@po.Id">PO #@po.Id — @(po.Vendor?.VendorName ?? "") (₹@po.TotalAmount.ToString("N0"))</option>
-                            }
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Disbursement Amount (₹)</label>
-                        <input type="number" step="0.01" name="Amount" class="form-control form-control-lg fw-bold text-danger" placeholder="0.00" min="0.01" required />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Payment Date</label>
-                        <input type="date" name="PaymentDate" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Payment Mode</label>
-                        <select name="PaymentMode" class="form-select" asp-items="Html.GetEnumSelectList<AashanaFashion.Models.PaymentMode>()"></select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Reference / UTR / Cheque #</label>
-                        <input type="text" name="ReferenceNumber" class="form-control" placeholder="Transaction Reference" />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Notes</label>
-                        <textarea name="Notes" class="form-control" rows="2" placeholder="Job-work lot reference or bill settlement note..."></textarea>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label" for="vpVendor">Vendor / job worker <span class="req">*</span></label>
+                            <select id="vpVendor" name="VendorId" class="af-input af-select" required>
+                                <option value="">Select vendor</option>
+                                @foreach (var v in (List<AashanaFashion.Models.Vendor>)ViewBag.Vendors)
+                                {
+                                    <option value="@v.Id">@v.VendorName (@(v.Industry ?? "Vendor"))</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="vpPo">Purchase order <span class="text-muted fw-normal">(optional)</span></label>
+                            <select id="vpPo" name="PurchaseOrderId" class="af-input af-select">
+                                <option value="">None / general job work</option>
+                                @foreach (var po in (List<AashanaFashion.Models.PurchaseOrder>)ViewBag.PurchaseOrders)
+                                {
+                                    <option value="@po.Id">PO #@po.Id — @(po.Vendor?.VendorName ?? "") (₹@po.TotalAmount.ToString("N0"))</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="vpAmount">Amount (₹) <span class="req">*</span></label>
+                            <input type="number" step="0.01" id="vpAmount" name="Amount" class="af-input fw-semibold" placeholder="0.00" min="0.01" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="vpDate">Payment date <span class="req">*</span></label>
+                            <input type="date" id="vpDate" name="PaymentDate" class="af-input" value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="vpMode">Payment mode</label>
+                            <select id="vpMode" name="PaymentMode" class="af-input af-select" asp-items="Html.GetEnumSelectList<AashanaFashion.Models.PaymentMode>()"></select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="vpRef">Reference / UTR / cheque</label>
+                            <input type="text" id="vpRef" name="ReferenceNumber" class="af-input font-monospace" placeholder="Transaction reference" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="vpNotes">Notes</label>
+                            <textarea id="vpNotes" name="Notes" class="af-input" rows="2" placeholder="Job-work lot reference or bill settlement note…"></textarea>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger fw-bold">Disburse Payment</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Record payout</button>
                 </div>
             </form>
         </div>

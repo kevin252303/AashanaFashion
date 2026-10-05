@@ -6,141 +6,131 @@
     bool canCreate  = isAdmin || User.HasClaim("Permission.ProductionOrder.CanCreate", "true");
     bool canEdit    = isAdmin || User.HasClaim("Permission.ProductionOrder.CanEdit",   "true");
     bool canDelete  = isAdmin || User.HasClaim("Permission.ProductionOrder.CanDelete", "true");
+    bool filtered   = !string.IsNullOrEmpty(ViewBag.Search as string) || ViewBag.SelectedStatus != null;
 }
 
-@if (TempData["Success"] != null)
-{
-    <div class="af-alert af-alert-success mb-3"><span class="alert-body">@TempData["Success"]</span><button class="alert-close">&times;</button></div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="af-alert af-alert-danger mb-3"><span class="alert-body">@TempData["Error"]</span><button class="alert-close">&times;</button></div>
-}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Production Orders</h1>
+        <p class="page-sub">Plan production lots, assign vendors per component and follow each lot through its creation flow.</p>
+    </div>
+    @if (canCreate)
+    {
+        <div class="page-actions">
+            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Order Lot</a>
+        </div>
+    }
+</div>
 
-<!-- Stats -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-blue">📦</div>
-            <div><div class="stat-val">@ViewBag.Total</div><div class="stat-lbl">Total Orders</div></div>
-        </div>
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total orders</div>
+        <div class="metric-value">@ViewBag.Total</div>
     </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-yellow">⚙️</div>
-            <div><div class="stat-val">@ViewBag.InProgress</div><div class="stat-lbl">In Progress</div></div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">In progress</div>
+        <div class="metric-value">@ViewBag.InProgress</div>
+        <div class="metric-meta info">moving through stages</div>
     </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-green">✅</div>
-            <div><div class="stat-val">@ViewBag.ReadyToDispatch</div><div class="stat-lbl">Ready to Dispatch</div></div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Ready to dispatch</div>
+        <div class="metric-value">@ViewBag.ReadyToDispatch</div>
+        <div class="metric-meta success">inwarded to ready stock</div>
     </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon si-gray">🚚</div>
-            <div><div class="stat-val">@ViewBag.Dispatched</div><div class="stat-lbl">Dispatched</div></div>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Dispatched</div>
+        <div class="metric-value">@ViewBag.Dispatched</div>
     </div>
 </div>
 
-<!-- Search & Filter Bar -->
-<div class="data-card mb-4 p-3">
-    <form method="get" asp-action="Index">
-        <div class="row g-2 align-items-center">
-            <div class="col-md-5">
-                <input type="text" name="search" class="af-input" placeholder="Search Design Number or Lot No..." value="@ViewBag.Search" style="font-size: 0.85rem;" />
+<div class="table-card">
+    <form method="get" asp-action="Index" class="table-toolbar">
+        <div class="toolbar-filters">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="Search design number or lot no…" value="@ViewBag.Search" />
             </div>
-            <div class="col-md-4">
-                <select name="status" class="af-input af-select" style="font-size: 0.85rem;">
-                    <option value="">— All Stages / Statuses —</option>
-                    @foreach (var s in Enum.GetValues<AashanaFashion.Models.OrderStatus>())
-                    {
-                        <option value="@s" selected="@(ViewBag.SelectedStatus != null && (AashanaFashion.Models.OrderStatus)ViewBag.SelectedStatus == s ? "selected" : null)">@s</option>
-                    }
-                </select>
-            </div>
-            <div class="col-md-3 d-flex gap-2">
-                <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
-                <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
-            </div>
+            <select name="status" class="af-input af-select" onchange="this.form.submit()">
+                <option value="">All stages / statuses</option>
+                @foreach (var s in Enum.GetValues<AashanaFashion.Models.OrderStatus>())
+                {
+                    <option value="@s" selected="@(ViewBag.SelectedStatus != null && (AashanaFashion.Models.OrderStatus)ViewBag.SelectedStatus == s ? "selected" : null)">@s.Humanize()</option>
+                }
+            </select>
+        </div>
+        <div class="toolbar-actions">
+            @if (filtered)
+            {
+                <a asp-action="Index" class="btn btn-ghost">Clear</a>
+            }
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
         </div>
     </form>
-</div>
-
-<!-- Table -->
-<div class="data-card">
-    <div class="data-card-header">
-        <span class="data-card-title">All Production Orders</span>
-        @if (canCreate)
-        {
-            <a asp-action="Create" class="btn-af btn-af-primary btn-af-sm">+ New Order</a>
-        }
-    </div>
 
     @if (!Model.Any())
     {
         <div class="empty-state">
-            <div class="es-icon">📦</div>
-            <p>No production orders found.</p>
+            <div class="es-icon"><i class="bi @(filtered ? "bi-search" : "bi-clipboard-data")"></i></div>
+            <div class="es-title">@(filtered ? "No results found" : "No production orders yet")</div>
+            <p>@(filtered ? "No orders match your filters." : "Create an order lot to start tracking production.")</p>
+            @if (filtered)
+            {
+                <a asp-action="Index" class="btn btn-secondary">Clear search</a>
+            }
+            else if (canCreate)
+            {
+                <a asp-action="Create" class="btn btn-secondary">New Order Lot</a>
+            }
         </div>
     }
     else
     {
-        <div class="table-responsive">
+        <div class="table-scroll">
             <table class="af-table">
                 <thead>
                     <tr>
-                        <th class="ps-4">#</th>
-                        <th>Design No.</th>
-                        <th>Qty</th>
+                        <th style="width: 56px;">#</th>
+                        <th>Design / Lot</th>
+                        <th class="text-end">Qty</th>
                         <th>Stage</th>
                         <th>Status</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var item in Model)
                     {
+                        bool done = item.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch || item.Status == AashanaFashion.Models.OrderStatus.Dispatched;
                         <tr>
-                            <td class="ps-4 text-muted">@item.Id</td>
+                            <td class="text-muted tabular">@item.Id</td>
                             <td>
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="d-flex align-items-start gap-3">
                                     @if (!string.IsNullOrEmpty(item.PhotoPath))
                                     {
-                                        <img src="@item.PhotoPath" alt="@item.DesignNumber" class="rounded shadow-sm object-fit-cover" style="width: 40px; height: 40px; min-width: 40px;" onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
+                                        <img src="@item.PhotoPath" alt="@item.DesignNumber" class="thumb" onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
                                     }
-                                    <div>
+                                    <div class="min-w-0">
                                         @if (canEdit)
                                         {
-                                            <span class="ctx-trigger" style="font-weight:600;color:#6366f1;cursor:pointer;text-decoration:underline dotted;"
+                                            <span class="cell-title ctx-trigger link-trigger"
                                                   data-id="@item.Id"
                                                   data-edit="@Url.Action("Edit", "Production", new { id = item.Id })"
                                                   data-can-delete="@canDelete.ToString().ToLower()">@item.DesignNumber</span>
                                         }
                                         else
                                         {
-                                            <span style="font-weight:600;color:#0f172a;">@item.DesignNumber</span>
+                                            <span class="cell-title">@item.DesignNumber</span>
                                         }
-                                        <br><span style="font-size:.75rem;color:#94a3b8;">@item.LotNo</span>
-                                        @if (item.JobSlipCount > 0)
-                                        {
-                                            <a asp-controller="JobSlip" asp-action="Index" asp-route-lotId="@item.Id" class="badge bg-light text-primary border text-decoration-none ms-1 py-1 px-2" title="View @item.JobSlipCount Job Slips for this Lot">
-                                                📑 @item.JobSlipCount Slips
-                                            </a>
-                                            <a asp-controller="JobSlip" asp-action="PrintAll" asp-route-lotId="@item.Id" target="_blank" class="badge bg-primary text-white text-decoration-none ms-1 py-1 px-2" title="Print All Slips for Lot @item.LotNo">
-                                                🖨️ Print
-                                            </a>
-                                        }
+                                        <span class="mono-id ms-1">@item.LotNo</span>
+
                                         @if (item.ComponentAssignments != null && item.ComponentAssignments.Any())
                                         {
-                                            <div class="mt-1" style="font-size:0.72rem; color:#475569;">
+                                            <div class="mt-1">
                                                 @foreach (var procGroup in item.ComponentAssignments.GroupBy(a => a.ProcessName))
                                                 {
-                                                    var assignmentTexts = procGroup.Select(a => $"{a.ComponentName} ➔ {(a.Vendor != null ? a.Vendor.VendorName : "Vendor #" + a.VendorId)}").ToList();
-                                                    <div class="text-truncate" style="max-width:280px;" title="@string.Join(", ", assignmentTexts)">
-                                                        <span class="badge bg-light text-dark border py-0 px-1 font-monospace" style="font-size:0.65rem;">@procGroup.Key</span>:
-                                                        @string.Join(", ", assignmentTexts)
+                                                    var assignmentTexts = procGroup.Select(a => $"{a.ComponentName} → {(a.Vendor != null ? a.Vendor.VendorName : "Vendor #" + a.VendorId)}").ToList();
+                                                    <div class="cell-sub text-truncate" style="max-width:320px;" title="@string.Join(", ", assignmentTexts)">
+                                                        <span class="text-secondary fw-medium">@procGroup.Key:</span> @string.Join(", ", assignmentTexts)
                                                     </div>
                                                 }
                                             </div>
@@ -149,48 +139,28 @@
                                         {
                                             @if (!string.IsNullOrEmpty(item.StitchingWorkerName))
                                             {
-                                                <div style="font-size:0.73rem; color:#475569; white-space:nowrap;">🪡 Stitch: <strong>@item.StitchingWorkerName</strong></div>
+                                                <span class="cell-sub text-nowrap">Stitch: <strong>@item.StitchingWorkerName</strong></span>
                                             }
                                             @if (!string.IsNullOrEmpty(item.HandworkWorkerName))
                                             {
-                                                <div style="font-size:0.73rem; color:#475569; white-space:nowrap;">✨ Hand: <strong>@item.HandworkWorkerName</strong> <span class="text-muted">(@item.HandworkParts)</span></div>
+                                                <span class="cell-sub text-nowrap">Hand: <strong>@item.HandworkWorkerName</strong> (@item.HandworkParts)</span>
                                             }
                                         }
                                     </div>
                                 </div>
                             </td>
-                            <td>@item.TotalQuantity <span style="color:#94a3b8;font-size:.75rem;">pcs</span></td>
-                            <td>
-                                <div>
-                                    @if (item.Status == AashanaFashion.Models.OrderStatus.Dispatched)
-                                    {
-                                        <span class="badge bg-secondary text-white px-2 py-1 shadow-sm d-inline-flex align-items-center gap-1">
-                                            <span>🚚</span> Dispatched
-                                        </span>
-                                    }
-                                    else if (item.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch)
-                                    {
-                                        <span class="badge bg-success text-white px-2 py-1 shadow-sm d-inline-flex align-items-center gap-1">
-                                            <span>📦</span> Ready to Dispatch
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-primary text-white px-2 py-1 shadow-sm d-inline-flex align-items-center gap-1">
-                                            <span class="badge bg-white text-primary rounded-circle" style="font-size:0.6rem;padding:1px 3px;">⚡</span>
-                                            @item.CurrentStage
-                                        </span>
-                                    }
-                                    @if (item.CreationSteps.Any())
-                                    {
-                                        <div class="mt-1 d-flex align-items-center gap-2" style="font-size: 0.72rem; color: #64748b;">
-                                            <div class="progress flex-grow-1" style="height: 5px; width: 60px;">
-                                                <div class="progress-bar @(item.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch || item.Status == AashanaFashion.Models.OrderStatus.Dispatched ? "bg-success" : "bg-primary")" role="progressbar" style="width: @item.ProgressPercentage%;" aria-valuenow="@item.ProgressPercentage" aria-valuemin="0" aria-valuemax="100"></div>
-                                            </div>
-                                            <span class="font-monospace">@(item.CompletedProcesses.Count)/@(item.CreationSteps.Count)</span>
+                            <td class="cell-num"><span class="text-foreground">@item.TotalQuantity</span> <span class="text-xs text-muted">pcs</span></td>
+                            <td style="min-width: 180px;">
+                                <span class="text-foreground fw-medium">@(item.Status == AashanaFashion.Models.OrderStatus.Dispatched ? "Dispatched" : item.Status == AashanaFashion.Models.OrderStatus.ReadyToDispatch ? "Ready to Dispatch" : item.CurrentStage)</span>
+                                @if (item.CreationSteps.Any())
+                                {
+                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                        <div class="af-progress flex-grow-1" style="max-width: 120px;">
+                                            <div class="af-progress-bar @(done ? "bg-success" : "")" role="progressbar" style="width: @item.ProgressPercentage%;" aria-valuenow="@item.ProgressPercentage" aria-valuemin="0" aria-valuemax="100"></div>
                                         </div>
-                                    }
-                                </div>
+                                        <span class="text-xs text-muted tabular">@(item.CompletedProcesses.Count)/@(item.CreationSteps.Count)</span>
+                                    </div>
+                                }
                             </td>
                             <td>
                                 @if (item.Status == AashanaFashion.Models.OrderStatus.Dispatched)
@@ -200,41 +170,45 @@
                                 else
                                 { <span class="af-badge b-blue">In Progress</span> }
                             </td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    @if (item.JobSlipCount > 0)
+                                    {
+                                        <a asp-controller="JobSlip" asp-action="Index" asp-route-lotId="@item.Id" class="btn btn-sm btn-secondary me-1" title="View @item.JobSlipCount job slips for this lot"><i class="bi bi-files"></i> @item.JobSlipCount slips</a>
+                                        <a asp-controller="JobSlip" asp-action="PrintAll" asp-route-lotId="@item.Id" target="_blank" class="row-action" title="Print all slips for lot @item.LotNo" aria-label="Print all slips"><i class="bi bi-printer"></i></a>
+                                    }
+                                    @if (canEdit)
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="row-action" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                    }
+                                    @if (canDelete)
+                                    {
+                                        <form asp-action="Delete" asp-route-id="@item.Id" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="row-action danger" title="Delete" aria-label="Delete" onclick="return confirm('Delete this order?')"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> @(Model.Count() == 1 ? "order" : "orders")</span>
+        </div>
     }
 </div>
 
-@functions {
-    string GetStageBadge(AashanaFashion.Models.OrderStatus s) => s switch {
-        AashanaFashion.Models.OrderStatus.RawMaterialArrived => "b-gray",
-        AashanaFashion.Models.OrderStatus.AtDying            => "b-cyan",
-        AashanaFashion.Models.OrderStatus.AtHandwork         => "b-yellow",
-        AashanaFashion.Models.OrderStatus.AtStitching        => "b-purple",
-        AashanaFashion.Models.OrderStatus.ReadyToDispatch    => "b-green",
-        AashanaFashion.Models.OrderStatus.Dispatched         => "b-gray",
-        _                                                    => "b-gray"
-    };
-}
-
 <!-- Context Menu -->
-<ul id="ctxMenu" style="
-    display:none; position:fixed; z-index:9999;
-    background:#fff; border:1px solid #e2e8f0; border-radius:10px;
-    box-shadow:0 8px 24px rgba(0,0,0,.12); padding:.4rem 0; min-width:140px; list-style:none; margin:0;">
+<ul id="ctxMenu" class="dropdown-menu" style="display:none; position:fixed; z-index:9999;">
     <li>
-        <a id="ctxEdit" href="#" style="display:flex;align-items:center;gap:.6rem;padding:.55rem 1rem;color:#1e293b;text-decoration:none;font-size:.95rem;font-weight:500;">
-            ✏️ Edit
-        </a>
+        <a id="ctxEdit" href="#" class="dropdown-item"><i class="bi bi-pencil"></i> Edit</a>
     </li>
     <li id="ctxDeleteItem">
-        <hr style="margin:.3rem 0;border-color:#f1f5f9;">
-        <a id="ctxDelete" href="#" style="display:flex;align-items:center;gap:.6rem;padding:.55rem 1rem;color:#dc2626;text-decoration:none;font-size:.95rem;font-weight:500;">
-            🗑️ Delete
-        </a>
+        <hr class="dropdown-divider">
+        <a id="ctxDelete" href="#" class="dropdown-item text-danger"><i class="bi bi-trash"></i> Delete</a>
     </li>
 </ul>
 
@@ -279,11 +253,5 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideMenu(); });
 
     function hideMenu() { menu.style.display = 'none'; }
-
-    // Hover highlight
-    menu.querySelectorAll('a').forEach(function(a) {
-        a.addEventListener('mouseenter', function() { this.style.background = '#f8fafc'; });
-        a.addEventListener('mouseleave', function() { this.style.background = ''; });
-    });
 </script>
 }

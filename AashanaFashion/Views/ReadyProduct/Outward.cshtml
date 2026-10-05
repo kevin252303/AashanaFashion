@@ -5,177 +5,151 @@
     var photoSrc = !string.IsNullOrEmpty(Model.PhotoPath) ? Model.PhotoPath : "/images/placeholder-product.svg";
 }
 
-<div class="container-fluid px-4 py-3">
-    <!-- Header -->
-    <div class="d-flex align-items-center justify-content-between mb-4">
-        <div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-1">
-                    <li class="breadcrumb-item"><a asp-action="Index" class="text-decoration-none text-muted">Ready Products</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Outward Dispatch</li>
-                </ol>
-            </nav>
-            <h3 class="fw-bold mb-0 text-dark">
-                <i class="bi bi-box-arrow-up text-danger me-2"></i>Outward Ready Product Dispatch
-            </h3>
-            <p class="text-muted small mb-0">Record outward movement for sales dispatches, showroom/sample issues, or defect removals (1 set = 1 Chaniya + 1 Choli + 1 Duppata).</p>
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Ready inventory</a>
+        <h1 class="page-title">Outward Ready Product Dispatch</h1>
+        <p class="page-sub">Record outward movement for sales dispatches, showroom/sample issues, or defect removals (1 set = 1 Chaniya + 1 Choli + 1 Duppata).</p>
+    </div>
+</div>
+
+<form asp-action="Outward" method="post" id="outwardForm">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="af-alert af-alert-danger"></div>
+
+    <div class="row g-4">
+        <!-- Left Column: Form Details -->
+        <div class="col-lg-7">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-card-checklist"></i> Outward Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Select Ready Product -->
+                        <div class="col-12">
+                            <label asp-for="ReadyProductId" class="form-label">Select Ready Product Set <span class="req">*</span></label>
+                            <select asp-for="ReadyProductId" id="readyProductSelect" class="form-select" required>
+                                <option value="">-- Choose Ready Product --</option>
+                                @foreach (var p in products)
+                                {
+                                    <option value="@p.Id" 
+                                            selected="@(Model.ReadyProductId == p.Id)"
+                                            data-stock="@p.QuantityOnHand"
+                                            data-design="@p.DesignNumber"
+                                            data-colour="@p.Colour"
+                                            data-size="@p.Size"
+                                            data-photo="@p.EffectivePhotoPath"
+                                            data-sku="@p.Sku"
+                                            data-price="@p.UnitPrice">
+                                        @p.DesignNumber — @p.Colour (Size: @p.Size) | In Stock: @p.QuantityOnHand sets
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="ReadyProductId" class="af-error"></span>
+                            <div class="form-text">Choose the 3-piece matching set to dispatch.</div>
+                        </div>
+
+                        <!-- Outward Purpose / Category -->
+                        <div class="col-md-6">
+                            <label asp-for="OutwardType" class="form-label">Outward Purpose <span class="req">*</span></label>
+                            <select asp-for="OutwardType" id="outwardTypeSelect" class="form-select" required>
+                                <option value="OutwardSales">Customer Dispatch / Sales</option>
+                                <option value="SampleIssue">Sample / Showroom Display</option>
+                                <option value="DamagedScrapped">Damaged / Defect Removal</option>
+                            </select>
+                            <span asp-validation-for="OutwardType" class="af-error"></span>
+                        </div>
+
+                        <!-- Quantity -->
+                        <div class="col-md-6">
+                            <label asp-for="Quantity" class="form-label">Quantity to Dispatch (Sets) <span class="req">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-boxes"></i></span>
+                                <input asp-for="Quantity" id="outwardQtyInput" type="number" min="1" class="form-control" required />
+                            </div>
+                            <span asp-validation-for="Quantity" class="af-error"></span>
+                            <div class="form-text">Each set contains 1 Chaniya + 1 Choli + 1 Duppata.</div>
+                        </div>
+
+                        <!-- Recipient / Customer / Destination -->
+                        <div class="col-md-6">
+                            <label asp-for="Recipient" class="form-label">Recipient / Customer / Branch</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input asp-for="Recipient" class="form-control" placeholder="e.g. Surat Boutique, Main Showroom" />
+                            </div>
+                            <span asp-validation-for="Recipient" class="af-error"></span>
+                        </div>
+
+                        <!-- Reference / Challan / Invoice Number -->
+                        <div class="col-md-6">
+                            <label asp-for="ReferenceNumber" class="form-label">Challan / Invoice / Gate Pass #</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-receipt"></i></span>
+                                <input asp-for="ReferenceNumber" class="form-control" placeholder="e.g. DC-2026-0042, INV-109" />
+                            </div>
+                            <span asp-validation-for="ReferenceNumber" class="af-error"></span>
+                        </div>
+
+                        <!-- Remarks -->
+                        <div class="col-12">
+                            <label asp-for="Remarks" class="form-label">Notes / Remarks</label>
+                            <textarea asp-for="Remarks" class="form-control" rows="3" placeholder="Optional dispatch notes, packing instructions, or transport details..."></textarea>
+                            <span asp-validation-for="Remarks" class="af-error"></span>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="card-footer d-flex justify-content-end gap-2">
+                    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" id="btnSubmitOutward" class="btn btn-primary"><i class="bi bi-box-arrow-up"></i> Confirm &amp; deduct stock</button>
+                </div>
+            </div>
         </div>
-        <div>
-            <a asp-action="Index" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Back to Inventory
-            </a>
+
+        <!-- Right Column: Live Stock & Projection Preview -->
+        <div class="col-lg-5">
+            <div class="card overflow-hidden mb-4">
+                <div class="bg-raised p-3 text-center border-bottom">
+                    <img id="productPhotoPreview" 
+                         src="@photoSrc" 
+                         alt="Product" 
+                         class="img-fluid rounded" 
+                         style="max-height: 240px; object-fit: contain;" 
+                         onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                        <span class="ql-title" id="previewDesignNumber">@(string.IsNullOrEmpty(Model.DesignNumber) ? "Select Product" : Model.DesignNumber)</span>
+                        <span class="mono-id" id="previewSku">@(Model.AvailableProducts?.FirstOrDefault(p => p.Id == Model.ReadyProductId)?.Sku ?? "")</span>
+                    </div>
+                    <div class="d-flex gap-1 mb-3">
+                        <span class="tag" id="previewColour">@(string.IsNullOrEmpty(Model.Colour) ? "Colour" : Model.Colour)</span>
+                        <span class="tag" id="previewSize">Size @(string.IsNullOrEmpty(Model.Size) ? "—" : Model.Size)</span>
+                    </div>
+
+                    <div class="panel-inset">
+                        <div class="kv-row"><span class="k">Current stock on hand</span><span class="v" id="previewCurrentStock">@Model.CurrentStock sets</span></div>
+                        <div class="text-xs text-muted">1 Set = 1 Chaniya + 1 Choli + 1 Duppata</div>
+                    </div>
+
+                    <div class="metric-card text-center">
+                        <div class="metric-label">Projected remaining stock</div>
+                        <div class="metric-value"><span id="previewProjectedStock" class="text-danger">@Math.Max(0, Model.CurrentStock - Model.Quantity)</span></div>
+                        <div class="metric-meta">sets after this outward dispatch</div>
+                    </div>
+
+                    <div id="insufficientStockAlert" class="af-alert af-alert-danger mt-3 mb-0 d-none">
+                        <div class="alert-body"><span class="alert-title">Insufficient stock</span>Outward quantity exceeds the sets currently on hand.</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-
-    <form asp-action="Outward" method="post" id="outwardForm">
-        @Html.AntiForgeryToken()
-        <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm mb-4"></div>
-
-        <div class="row g-4">
-            <!-- Left Column: Form Details -->
-            <div class="col-lg-7">
-                <div class="card border-0 shadow-sm rounded-3 mb-4">
-                    <div class="card-header bg-white py-3 border-bottom">
-                        <h5 class="card-title fw-bold mb-0 text-dark">
-                            <i class="bi bi-card-checklist text-primary me-2"></i>Outward Details
-                        </h5>
-                    </div>
-                    <div class="card-body p-4">
-                        <div class="row g-3">
-                            <!-- Select Ready Product -->
-                            <div class="col-12">
-                                <label asp-for="ReadyProductId" class="form-label fw-semibold">Select Ready Product Set <span class="text-danger">*</span></label>
-                                <select asp-for="ReadyProductId" id="readyProductSelect" class="form-select form-select-lg shadow-none" required>
-                                    <option value="">-- Choose Ready Product --</option>
-                                    @foreach (var p in products)
-                                    {
-                                        <option value="@p.Id" 
-                                                selected="@(Model.ReadyProductId == p.Id)"
-                                                data-stock="@p.QuantityOnHand"
-                                                data-design="@p.DesignNumber"
-                                                data-colour="@p.Colour"
-                                                data-size="@p.Size"
-                                                data-photo="@p.EffectivePhotoPath"
-                                                data-sku="@p.Sku"
-                                                data-price="@p.UnitPrice">
-                                            @p.DesignNumber — @p.Colour (Size: @p.Size) | In Stock: @p.QuantityOnHand sets
-                                        </option>
-                                    }
-                                </select>
-                                <span asp-validation-for="ReadyProductId" class="text-danger small"></span>
-                                <div class="form-text">Choose the 3-piece matching set to dispatch.</div>
-                            </div>
-
-                            <!-- Outward Purpose / Category -->
-                            <div class="col-md-6">
-                                <label asp-for="OutwardType" class="form-label fw-semibold">Outward Purpose <span class="text-danger">*</span></label>
-                                <select asp-for="OutwardType" id="outwardTypeSelect" class="form-select" required>
-                                    <option value="OutwardSales">Customer Dispatch / Sales</option>
-                                    <option value="SampleIssue">Sample / Showroom Display</option>
-                                    <option value="DamagedScrapped">Damaged / Defect Removal</option>
-                                </select>
-                                <span asp-validation-for="OutwardType" class="text-danger small"></span>
-                            </div>
-
-                            <!-- Quantity -->
-                            <div class="col-md-6">
-                                <label asp-for="Quantity" class="form-label fw-semibold">Quantity to Dispatch (Sets) <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="bi bi-boxes"></i></span>
-                                    <input asp-for="Quantity" id="outwardQtyInput" type="number" min="1" class="form-control" required />
-                                </div>
-                                <span asp-validation-for="Quantity" class="text-danger small"></span>
-                                <div class="form-text">Each set contains 1 Chaniya + 1 Choli + 1 Duppata.</div>
-                            </div>
-
-                            <!-- Recipient / Customer / Destination -->
-                            <div class="col-md-6">
-                                <label asp-for="Recipient" class="form-label fw-semibold">Recipient / Customer / Branch</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
-                                    <input asp-for="Recipient" class="form-control" placeholder="e.g. Surat Boutique, Main Showroom" />
-                                </div>
-                                <span asp-validation-for="Recipient" class="text-danger small"></span>
-                            </div>
-
-                            <!-- Reference / Challan / Invoice Number -->
-                            <div class="col-md-6">
-                                <label asp-for="ReferenceNumber" class="form-label fw-semibold">Challan / Invoice / Gate Pass #</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="bi bi-receipt"></i></span>
-                                    <input asp-for="ReferenceNumber" class="form-control" placeholder="e.g. DC-2026-0042, INV-109" />
-                                </div>
-                                <span asp-validation-for="ReferenceNumber" class="text-danger small"></span>
-                            </div>
-
-                            <!-- Remarks -->
-                            <div class="col-12">
-                                <label asp-for="Remarks" class="form-label fw-semibold">Notes / Remarks</label>
-                                <textarea asp-for="Remarks" class="form-control" rows="3" placeholder="Optional dispatch notes, packing instructions, or transport details..."></textarea>
-                                <span asp-validation-for="Remarks" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div class="d-flex gap-2 mt-4 pt-3 border-top">
-                            <button type="submit" id="btnSubmitOutward" class="btn btn-danger btn-lg fw-semibold shadow-sm px-4">
-                                <i class="bi bi-box-arrow-up me-1"></i> Confirm & Deduct Stock
-                            </button>
-                            <a asp-action="Index" class="btn btn-outline-secondary btn-lg">
-                                Cancel
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Column: Live Stock & Projection Preview -->
-            <div class="col-lg-5">
-                <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
-                    <div class="bg-light p-3 text-center border-bottom">
-                        <img id="productPhotoPreview" 
-                             src="@photoSrc" 
-                             alt="Product" 
-                             class="img-fluid rounded-3" 
-                             style="max-height: 240px; object-fit: contain;" 
-                             onerror="this.onerror=null;this.src='/images/placeholder-product.svg';" />
-                    </div>
-                    <div class="card-body p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h4 class="fw-bold text-dark mb-0" id="previewDesignNumber">@(string.IsNullOrEmpty(Model.DesignNumber) ? "Select Product" : Model.DesignNumber)</h4>
-                            <span class="badge bg-secondary font-monospace" id="previewSku">@(Model.AvailableProducts?.FirstOrDefault(p => p.Id == Model.ReadyProductId)?.Sku ?? "")</span>
-                        </div>
-                        <div class="mb-3">
-                            <span class="badge bg-secondary me-1" id="previewColour">@(string.IsNullOrEmpty(Model.Colour) ? "Colour" : Model.Colour)</span>
-                            <span class="badge bg-dark" id="previewSize">Size: @(string.IsNullOrEmpty(Model.Size) ? "—" : Model.Size)</span>
-                        </div>
-
-                        <!-- Current Stock -->
-                        <div class="p-3 bg-light rounded-3 border mb-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-muted small">Current Stock on Hand:</span>
-                                <span class="fs-4 fw-bold text-dark" id="previewCurrentStock">@Model.CurrentStock <span class="fs-6 fw-normal text-muted">sets</span></span>
-                            </div>
-                            <small class="text-muted d-block mt-1">1 Set = 1 Chaniya + 1 Choli + 1 Duppata</small>
-                        </div>
-
-                        <!-- Projected Stock Deduction -->
-                        <div class="p-3 rounded-3 border border-danger border-opacity-25 bg-danger bg-opacity-10 text-center">
-                            <span class="text-muted small d-block">Projected Remaining Stock:</span>
-                            <span id="previewProjectedStock" class="fs-2 fw-bold text-danger">@Math.Max(0, Model.CurrentStock - Model.Quantity)</span>
-                            <span class="text-muted small d-block">sets after this outward dispatch</span>
-                        </div>
-
-                        <div id="insufficientStockAlert" class="alert alert-danger mt-3 mb-0 d-none">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                            <strong>Insufficient Stock:</strong> Outward quantity exceeds current available sets on hand.
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </form>
-</div>
+</form>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
@@ -193,8 +167,8 @@
 
                 $('#previewDesignNumber').text(design);
                 $('#previewColour').text(colour);
-                $('#previewSize').text('Size: ' + size);
-                $('#previewCurrentStock').html(stock + ' <span class="fs-6 fw-normal text-muted">sets</span>');
+                $('#previewSize').text('Size ' + size);
+                $('#previewCurrentStock').text(stock + ' sets');
                 $('#previewSku').text(sku);
                 $('#productPhotoPreview').attr('src', photo);
 

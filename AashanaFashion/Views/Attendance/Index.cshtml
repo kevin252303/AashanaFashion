@@ -13,237 +13,197 @@
     int absentCount = ViewBag.AbsentCount ?? 0;
 }
 
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+<div class="page-header">
     <div>
-        <h2 class="mb-1 fw-bold">📅 Daily Attendance Register</h2>
-        <p class="text-muted mb-0">Floor attendance records, clock in/out timestamps, and working hours.</p>
+        <h1 class="page-title">Daily Attendance Register</h1>
+        <p class="page-sub">Floor attendance records, clock in/out timestamps, and working hours.</p>
     </div>
-    <div class="d-flex gap-2">
-        <a asp-action="Kiosk" class="btn btn-primary">
-            📷 Open Face Scanner Kiosk
-        </a>
-        <a asp-action="MonthlyReport" class="btn btn-outline-secondary">
-            📊 Monthly Matrix
-        </a>
-        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#manualPunchModal">
-            ➕ Manual Entry
-        </button>
+    <div class="page-actions">
+        <a asp-action="MonthlyReport" class="btn btn-secondary"><i class="bi bi-calendar3"></i> Monthly matrix</a>
+        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#manualPunchModal"><i class="bi bi-plus-lg"></i> Manual entry</button>
+        <a asp-action="Kiosk" class="btn btn-primary"><i class="bi bi-camera"></i> Open face kiosk</a>
     </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show af-alert mb-4" role="alert">
-        <span>✅ @TempData["Success"]</span>
-        <button type="button" class="btn-close alert-close"></button>
+<div class="metric-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+    <div class="metric-card">
+        <div class="metric-label">Total active</div>
+        <div class="metric-value">@totalEmployees</div>
+        <div class="metric-meta">staff &amp; workers</div>
     </div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show af-alert mb-4" role="alert">
-        <span>⚠️ @TempData["Error"]</span>
-        <button type="button" class="btn-close alert-close"></button>
+    <div class="metric-card">
+        <div class="metric-label">Present</div>
+        <div class="metric-value">@presentCount</div>
+        <div class="metric-meta success">full shift</div>
     </div>
-}
-
-<!-- Metrics Summary Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-md-2 col-6">
-        <div class="card border-0 shadow-sm rounded-3 text-center p-3">
-            <span class="text-muted small text-uppercase">Total Active</span>
-            <h3 class="fw-bold my-1 text-dark">@totalEmployees</h3>
-            <small class="text-muted">Staff & Workers</small>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Late arrival</div>
+        <div class="metric-value">@lateCount</div>
+        <div class="metric-meta info">after 9:30 AM</div>
     </div>
-    <div class="col-md-2 col-6">
-        <div class="card border-0 shadow-sm rounded-3 text-center p-3 border-start border-success border-4">
-            <span class="text-muted small text-uppercase">Present</span>
-            <h3 class="fw-bold my-1 text-success">@presentCount</h3>
-            <small class="text-muted">Full Shift</small>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Half day</div>
+        <div class="metric-value">@halfDayCount</div>
+        <div class="metric-meta warning">&lt; 4 hours</div>
     </div>
-    <div class="col-md-2 col-6">
-        <div class="card border-0 shadow-sm rounded-3 text-center p-3 border-start border-info border-4">
-            <span class="text-muted small text-uppercase">Late Arrival</span>
-            <h3 class="fw-bold my-1 text-info">@lateCount</h3>
-            <small class="text-muted">After 9:30 AM</small>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Absent</div>
+        <div class="metric-value">@absentCount</div>
+        <div class="metric-meta danger">no punch recorded</div>
     </div>
-    <div class="col-md-2 col-6">
-        <div class="card border-0 shadow-sm rounded-3 text-center p-3 border-start border-warning border-4">
-            <span class="text-muted small text-uppercase">Half Day</span>
-            <h3 class="fw-bold my-1 text-warning">@halfDayCount</h3>
-            <small class="text-muted">&lt; 4 Hours</small>
-        </div>
-    </div>
-    <div class="col-md-2 col-6">
-        <div class="card border-0 shadow-sm rounded-3 text-center p-3 border-start border-danger border-4">
-            <span class="text-muted small text-uppercase">Absent</span>
-            <h3 class="fw-bold my-1 text-danger">@absentCount</h3>
-            <small class="text-muted">No Punch Recorded</small>
-        </div>
-    </div>
-    <div class="col-md-2 col-6">
-        <div class="card border-0 shadow-sm rounded-3 text-center p-3 bg-light">
-            <span class="text-muted small text-uppercase">Attendance %</span>
-            <h3 class="fw-bold my-1 text-primary">
-                @(totalEmployees > 0 ? Math.Round(((decimal)(presentCount + lateCount) / totalEmployees) * 100, 1) : 0)%
-            </h3>
-            <small class="text-muted">Turnout Rate</small>
-        </div>
+    <div class="metric-card">
+        <div class="metric-label">Attendance</div>
+        <div class="metric-value">@(totalEmployees > 0 ? Math.Round(((decimal)(presentCount + lateCount) / totalEmployees) * 100, 1) : 0)%</div>
+        <div class="metric-meta">turnout rate</div>
     </div>
 </div>
 
-<!-- Filters Bar -->
-<div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-body p-3">
-        <form method="get" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="small text-muted fw-semibold">Search:</label>
-                <input type="text" name="search" value="@ViewBag.Search" placeholder="Search code, name..." class="form-control form-control-sm" />
+<div class="table-card">
+    <form method="get" class="table-toolbar align-end">
+        <div class="toolbar-filters align-items-end">
+            <div class="toolbar-field">
+                <label for="atSearch">Search</label>
+                <div class="search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="atSearch" name="search" value="@ViewBag.Search" placeholder="Code, name…" class="af-input" />
+                </div>
             </div>
-            <div class="col-md-2">
-                <label class="small text-muted fw-semibold">Select Date:</label>
-                <input type="date" name="date" value="@targetDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+            <div class="toolbar-field">
+                <label for="atDate">Date</label>
+                <input type="date" id="atDate" name="date" value="@targetDate.ToString("yyyy-MM-dd")" class="af-input" />
             </div>
-            <div class="col-md-2">
-                <label class="small text-muted fw-semibold">Department:</label>
-                <select name="department" class="form-select form-select-sm">
-                    <option value="">All Departments</option>
+            <div class="toolbar-field">
+                <label for="atDept">Department</label>
+                <select id="atDept" name="department" class="af-input af-select">
+                    <option value="">All departments</option>
                     @foreach (var d in departments)
                     {
                         <option value="@d" selected="@(d == currentDept)">@d</option>
                     }
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="small text-muted fw-semibold">Status:</label>
-                <select name="status" class="form-select form-select-sm">
-                    <option value="">All Statuses</option>
+            <div class="toolbar-field">
+                <label for="atStatus">Status</label>
+                <select id="atStatus" name="status" class="af-input af-select">
+                    <option value="">All statuses</option>
                     @foreach (AashanaFashion.Models.AttendanceStatus st in Enum.GetValues(typeof(AashanaFashion.Models.AttendanceStatus)))
                     {
-                        <option value="@st" selected="@(ViewBag.Status != null && (AashanaFashion.Models.AttendanceStatus)ViewBag.Status == st)">@st</option>
+                        <option value="@st" selected="@(ViewBag.Status != null && (AashanaFashion.Models.AttendanceStatus)ViewBag.Status == st)">@st.Humanize()</option>
                     }
                 </select>
             </div>
-            <div class="col-md-3 d-flex gap-1">
-                <button type="submit" class="btn btn-primary btn-sm flex-fill">Filter</button>
-                <a asp-action="Index" class="btn btn-outline-secondary btn-sm" title="Reset">Reset</a>
-                <a asp-action="Index" asp-route-date="@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-outline-primary btn-sm">Today</a>
-                <a asp-action="Index" asp-route-date="@DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd")" class="btn btn-outline-secondary btn-sm">Yest</a>
+            <div class="segmented" role="group" aria-label="Quick dates">
+                <a asp-action="Index" asp-route-date="@DateTime.Today.ToString("yyyy-MM-dd")" class="segment @(targetDate.Date == DateTime.Today ? "active" : "")">Today</a>
+                <a asp-action="Index" asp-route-date="@DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd")" class="segment @(targetDate.Date == DateTime.Today.AddDays(-1) ? "active" : "")">Yesterday</a>
             </div>
-        </form>
-    </div>
-</div>
+        </div>
+        <div class="toolbar-actions">
+            <a asp-action="Index" class="btn btn-ghost" title="Reset">Reset</a>
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
 
-<!-- Attendance Register Table -->
-<div class="card border-0 shadow-sm rounded-3">
-    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0 fw-bold">
-            📋 Attendance for @targetDate.ToString("dddd, dd MMMM yyyy")
-        </h5>
-        <span class="badge bg-light text-dark border">@Model.Count() Employees</span>
+    <div class="data-card-header">
+        <span class="data-card-title">Attendance for @targetDate.ToString("dddd, dd MMMM yyyy")</span>
+        <span class="count-pill">@Model.Count()</span>
     </div>
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th class="ps-3">Employee</th>
-                    <th>Code & Dept</th>
-                    <th>Check In</th>
-                    <th>Check Out</th>
-                    <th>Hours Worked</th>
-                    <th>Overtime</th>
-                    <th>Status</th>
-                    <th>Verification</th>
-                    <th class="text-end pe-3">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (!Model.Any())
-                {
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-people"></i></div>
+            <div class="es-title">No employees found</div>
+            <p>Try another department or clear the search.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
                     <tr>
-                        <td colspan="9" class="text-center py-5 text-muted">
-                            No employees found.
-                        </td>
+                        <th>Employee</th>
+                        <th>Code &amp; Dept</th>
+                        <th>Check In</th>
+                        <th>Check Out</th>
+                        <th class="text-end">Hours</th>
+                        <th>Overtime</th>
+                        <th>Status</th>
+                        <th>Verification</th>
+                        <th class="text-end">Actions</th>
                     </tr>
-                }
-                else
-                {
+                </thead>
+                <tbody>
                     @foreach (var emp in Model)
                     {
                         var hasRecord = recordDict.TryGetValue(emp.Id, out var rec);
                         <tr>
-                            <td class="ps-3">
+                            <td>
                                 <div class="d-flex align-items-center gap-2">
                                     @if (hasRecord && !string.IsNullOrEmpty(rec!.CheckInPhoto))
                                     {
-                                        <img src="@rec.CheckInPhoto" class="rounded-circle border" style="width: 38px; height: 38px; object-fit: cover;" title="Snapshot at Punch In" />
+                                        <img src="@rec.CheckInPhoto" class="thumb rounded-circle" style="width:36px;height:36px;" title="Snapshot at punch in" alt="" />
                                     }
                                     else if (!string.IsNullOrEmpty(emp.FacePhotoPath))
                                     {
-                                        <img src="@emp.FacePhotoPath" class="rounded-circle border" style="width: 38px; height: 38px; object-fit: cover;" />
+                                        <img src="@emp.FacePhotoPath" class="thumb rounded-circle" style="width:36px;height:36px;" alt="" />
                                     }
                                     else
                                     {
-                                        <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center text-muted fw-bold" style="width: 38px; height: 38px;">
-                                            @(emp.FullName.Length > 0 ? emp.FullName[0].ToString() : "E")
-                                        </div>
+                                        <span class="u-avatar avatar-lg" style="width:36px;height:36px;">@(emp.FullName.Length > 0 ? emp.FullName[0].ToString() : "E")</span>
                                     }
                                     <div>
-                                        <div class="fw-bold text-dark">@emp.FullName</div>
-                                        <small class="text-muted">@emp.Designation</small>
+                                        <span class="cell-title">@emp.FullName</span>
+                                        <span class="cell-sub">@emp.Designation</span>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <div class="font-monospace fw-semibold">@emp.EmployeeCode</div>
-                                <small class="text-muted">@emp.Department</small>
+                                <span class="mono-id">@emp.EmployeeCode</span>
+                                <span class="cell-sub">@emp.Department</span>
                             </td>
                             <td>
                                 @if (hasRecord)
                                 {
-                                    <span class="fw-bold text-success font-monospace">@rec!.CheckInTime.ToString("hh:mm tt")</span>
+                                    <span class="text-foreground fw-medium tabular">@rec!.CheckInTime.ToString("hh:mm tt")</span>
                                 }
                                 else
                                 {
-                                    <span class="text-muted">—</span>
+                                    <span class="text-placeholder">—</span>
                                 }
                             </td>
                             <td>
                                 @if (hasRecord && rec!.CheckOutTime.HasValue)
                                 {
-                                    <span class="fw-bold text-primary font-monospace">@rec.CheckOutTime.Value.ToString("hh:mm tt")</span>
+                                    <span class="text-foreground fw-medium tabular">@rec.CheckOutTime.Value.ToString("hh:mm tt")</span>
                                 }
                                 else if (hasRecord)
                                 {
-                                    <span class="badge bg-warning-subtle text-warning">Working (In)</span>
+                                    <span class="af-badge b-blue"><span class="status-dot info"></span> Working</span>
                                 }
                                 else
                                 {
-                                    <span class="text-muted">—</span>
+                                    <span class="text-placeholder">—</span>
                                 }
                             </td>
-                            <td>
+                            <td class="cell-num">
                                 @if (hasRecord && rec!.TotalHours > 0)
                                 {
-                                    <span class="fw-bold">@rec.TotalHours hrs</span>
+                                    <span class="text-foreground">@rec.TotalHours hrs</span>
                                 }
                                 else
                                 {
-                                    <span class="text-muted">—</span>
+                                    <span class="text-placeholder">—</span>
                                 }
                             </td>
                             <td>
                                 @if (hasRecord && rec!.OvertimeHours > 0)
                                 {
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                        +@rec.OvertimeHours hrs OT
-                                    </span>
+                                    <span class="af-badge b-green">+@rec.OvertimeHours hrs OT</span>
                                 }
                                 else
                                 {
-                                    <span class="text-muted">0 hrs</span>
+                                    <span class="text-muted text-xs">0 hrs</span>
                                 }
                             </td>
                             <td>
@@ -252,28 +212,28 @@
                                     switch (rec!.Status)
                                     {
                                         case AashanaFashion.Models.AttendanceStatus.Present:
-                                            <span class="badge bg-success">Present</span>
+                                            <span class="af-badge b-green">Present</span>
                                             break;
                                         case AashanaFashion.Models.AttendanceStatus.Late:
-                                            <span class="badge bg-info text-dark">Late</span>
+                                            <span class="af-badge b-blue">Late</span>
                                             break;
                                         case AashanaFashion.Models.AttendanceStatus.HalfDay:
-                                            <span class="badge bg-warning text-dark">Half Day</span>
+                                            <span class="af-badge b-yellow">Half day</span>
                                             break;
                                         case AashanaFashion.Models.AttendanceStatus.Absent:
-                                            <span class="badge bg-danger">Absent</span>
+                                            <span class="af-badge b-red">Absent</span>
                                             break;
                                         case AashanaFashion.Models.AttendanceStatus.OnLeave:
-                                            <span class="badge bg-secondary">On Leave</span>
+                                            <span class="af-badge b-gray">On leave</span>
                                             break;
                                         default:
-                                            <span class="badge bg-light text-dark">@rec.Status</span>
+                                            <span class="af-badge b-gray">@rec.Status.Humanize()</span>
                                             break;
                                     }
                                 }
                                 else
                                 {
-                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Absent</span>
+                                    <span class="af-badge b-red">Absent</span>
                                 }
                             </td>
                             <td>
@@ -281,39 +241,35 @@
                                 {
                                     if (rec!.VerificationMethod == AashanaFashion.Models.VerificationMethod.FaceScan)
                                     {
-                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle d-inline-flex align-items-center gap-1">
-                                            <span>📷</span> Face Scan @(rec.FaceConfidence.HasValue ? $"({Math.Round(rec.FaceConfidence.Value)}%)" : "")
-                                        </span>
+                                        <span class="af-badge b-indigo"><i class="bi bi-person-bounding-box"></i> Face @(rec.FaceConfidence.HasValue ? $"{Math.Round(rec.FaceConfidence.Value)}%" : "")</span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-light text-muted border">
-                                            ✍️ @rec.VerificationMethod
-                                        </span>
+                                        <span class="tag">@rec.VerificationMethod.Humanize()</span>
                                     }
                                 }
                                 else
                                 {
-                                    <span class="text-muted">—</span>
+                                    <span class="text-placeholder">—</span>
                                 }
                             </td>
-                            <td class="text-end pe-3">
-                                <button type="button" class="btn btn-sm btn-outline-secondary btnEditPunch"
+                            <td class="cell-actions">
+                                <button type="button" class="row-action btnEditPunch" title="Edit attendance" aria-label="Edit attendance"
                                         data-emp-id="@emp.Id"
                                         data-emp-name="@emp.FullName"
                                         data-in-time="@(hasRecord ? rec!.CheckInTime.ToString("HH:mm") : "09:00")"
                                         data-out-time="@(hasRecord && rec!.CheckOutTime.HasValue ? rec.CheckOutTime.Value.ToString("HH:mm") : "")"
                                         data-status="@(hasRecord ? rec!.Status.ToString() : "Present")"
                                         data-notes="@(hasRecord ? rec!.Notes : "")">
-                                    ✏️ Edit
+                                    <i class="bi bi-pencil"></i>
                                 </button>
                             </td>
                         </tr>
                     }
-                }
-            </tbody>
-        </table>
-    </div>
+                </tbody>
+            </table>
+        </div>
+    }
 </div>
 
 <!-- Manual Entry / Correction Modal -->
@@ -322,12 +278,12 @@
         <form asp-action="ManualPunch" method="post" class="modal-content">
             @Html.AntiForgeryToken()
             <div class="modal-header">
-                <h5 class="modal-title fw-bold">✍️ Manual Attendance Record</h5>
+                <h5 class="modal-title">Manual Attendance Record</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Employee <span class="text-danger">*</span></label>
+                    <label class="form-label">Employee <span class="req">*</span></label>
                     <select name="EmployeeId" id="modalEmployeeId" class="form-select" required>
                         <option value="">Select Employee...</option>
                         @foreach (var emp in Model)
@@ -337,26 +293,26 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
+                    <label class="form-label">Date <span class="req">*</span></label>
                     <input type="date" name="Date" id="modalDate" value="@targetDate.ToString("yyyy-MM-dd")" class="form-control" required />
                 </div>
                 <div class="row g-2 mb-3">
                     <div class="col-6">
-                        <label class="form-label fw-semibold">Check In Time <span class="text-danger">*</span></label>
+                        <label class="form-label">Check In Time <span class="req">*</span></label>
                         <input type="time" name="CheckInTime" id="modalCheckInTime" value="09:00" class="form-control" required />
                     </div>
                     <div class="col-6">
-                        <label class="form-label fw-semibold">Check Out Time</label>
+                        <label class="form-label">Check Out Time</label>
                         <input type="time" name="CheckOutTime" id="modalCheckOutTime" value="18:00" class="form-control" />
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Attendance Status</label>
+                    <label class="form-label">Attendance Status</label>
                     <select name="Status" id="modalStatus" class="form-select" asp-items="Html.GetEnumSelectList<AashanaFashion.Models.AttendanceStatus>()">
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Remarks / Reason</label>
+                    <label class="form-label">Remarks / Reason</label>
                     <input type="text" name="Notes" id="modalNotes" placeholder="e.g. Approved shift override" class="form-control" />
                 </div>
             </div>

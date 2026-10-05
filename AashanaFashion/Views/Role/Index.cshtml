@@ -1,96 +1,108 @@
 @model IEnumerable<AashanaFashion.Models.UserRole>
 @{
     ViewData["Title"] = "Role List";
+    bool filtered = !string.IsNullOrEmpty(ViewBag.Search as string) || ViewBag.ActiveOnly == true;
 }
 
-@if (TempData["Success"] != null)
-{
-    <div class="af-alert af-alert-success mb-3"><span class="alert-body">✅ @TempData["Success"]</span><button class="alert-close">&times;</button></div>
-}
-
-<!-- Search & Filter -->
-<div class="data-card mb-4 p-3">
-    <form method="get" asp-action="Index" class="row g-2 align-items-center">
-        <div class="col-md-7">
-            <input type="text" name="search" class="af-input" placeholder="Search role name, description..." value="@ViewBag.Search" />
-        </div>
-        <div class="col-md-3">
-            <div class="form-check ms-1">
-                <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnly" @(ViewBag.ActiveOnly == true ? "checked" : "") />
-                <label class="form-check-label small" for="activeOnly">Active Roles Only</label>
-            </div>
-        </div>
-        <div class="col-md-2 d-flex gap-2">
-            <button type="submit" class="btn-af btn-af-primary btn-af-sm flex-fill">Filter</button>
-            <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">Reset</a>
-        </div>
-    </form>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Role List</h1>
+        <p class="page-sub">Roles bundle module permissions that you assign to users</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Role</a>
+    </div>
 </div>
 
-<div class="data-card">
-    <div class="data-card-header">
-        <span class="data-card-title">User Role List</span>
-        <a asp-action="Create" class="btn-af btn-af-primary btn-af-sm">+ New Role</a>
-    </div>
-    <div class="table-responsive">
-        <table class="af-table">
-            <thead>
-                <tr>
-                    <th class="ps-4">#</th>
-                    <th>Role Name</th>
-                    <th>Description</th>
-                    <th>Modules Assigned</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var role in Model)
-                {
-                    <tr>
-                        <td class="ps-4" style="color:#94a3b8;">@role.Id</td>
-                        <td><strong style="color:#0f172a;">@role.RoleName</strong></td>
-                        <td style="color:#64748b;font-size:.9rem;">@(role.Description ?? "—")</td>
-                        <td>
-                            @if (role.Permissions.Any())
-                            {
-                                @foreach (var p in role.Permissions)
-                                {
-                                    <span class="af-badge b-blue" style="margin:1px;">@p.Module</span>
-                                }
-                            }
-                            else
-                            {
-                                <span style="color:#cbd5e1;font-size:.85rem;">No permissions assigned</span>
-                            }
-                        </td>
-                        <td>
-                            @if (role.IsActive)
-                            { <span class="af-badge b-green">Active</span> }
-                            else
-                            { <span class="af-badge b-gray">Inactive</span> }
-                        </td>
-                        <td>
-                            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-                                <a asp-action="Permissions" asp-route-id="@role.Id" class="btn-af btn-af-primary btn-af-sm">🔐 Assign Permissions</a>
-                                <a asp-action="Edit" asp-route-id="@role.Id" class="btn-af btn-af-ghost btn-af-sm">Edit</a>
-                                <form asp-action="Delete" asp-route-id="@role.Id" method="post" class="d-inline"
-                                      onsubmit="return confirm('Delete role @role.RoleName?')">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn-af btn-af-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;">Delete</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-        @if (!Model.Any())
-        {
-            <div class="empty-state">
-                <div class="es-icon">🔐</div>
-                <p>No roles found. <a asp-action="Create">Create the first one</a>.</p>
+<div class="table-card">
+    <form method="get" asp-action="Index" class="table-toolbar">
+        <div class="toolbar-filters">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="af-input" placeholder="Search role name, description…" value="@ViewBag.Search" />
             </div>
-        }
-    </div>
+            <div class="form-check m-0">
+                <input class="form-check-input" type="checkbox" name="activeOnly" value="true" id="activeOnly" @(ViewBag.ActiveOnly == true ? "checked" : "") onchange="this.form.submit()" />
+                <label class="form-check-label" for="activeOnly">Active roles only</label>
+            </div>
+        </div>
+        <div class="toolbar-actions">
+            @if (filtered)
+            {
+                <a asp-action="Index" class="btn btn-ghost">Clear</a>
+            }
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
+
+    @if (Model.Any())
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th style="width: 56px;">#</th>
+                        <th>Role</th>
+                        <th>Description</th>
+                        <th>Modules Assigned</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var role in Model)
+                    {
+                        <tr>
+                            <td class="text-muted tabular">@role.Id</td>
+                            <td><span class="cell-title">@role.RoleName</span></td>
+                            <td class="text-muted">@(role.Description ?? "—")</td>
+                            <td style="max-width: 420px;">
+                                @if (role.Permissions.Any())
+                                {
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @foreach (var p in role.Permissions)
+                                        {
+                                            <span class="tag">@p.Module.Humanize()</span>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-placeholder text-xs">No permissions assigned</span>
+                                }
+                            </td>
+                            <td>
+                                @if (role.IsActive)
+                                { <span class="af-badge b-green">Active</span> }
+                                else
+                                { <span class="af-badge b-gray">Inactive</span> }
+                            </td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    <a asp-action="Permissions" asp-route-id="@role.Id" class="btn btn-sm btn-secondary me-1"><i class="bi bi-shield-lock"></i> Permissions</a>
+                                    <a asp-action="Edit" asp-route-id="@role.Id" class="row-action" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                    <form asp-action="Delete" asp-route-id="@role.Id" method="post" onsubmit="return confirm('Delete role @role.RoleName?')">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="row-action danger" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count()</strong> @(Model.Count() == 1 ? "role" : "roles")</span>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-shield-lock"></i></div>
+            <div class="es-title">@(filtered ? "No results found" : "No roles yet")</div>
+            <p>@(filtered ? "No roles match your filters." : "Create a role, then assign module permissions to it.")</p>
+            <a asp-action="@(filtered ? "Index" : "Create")" class="btn btn-secondary">@(filtered ? "Clear search" : "New Role")</a>
+        </div>
+    }
 </div>

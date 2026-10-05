@@ -5,63 +5,64 @@
 
 <div class="page-header">
     <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Inventory</a>
         <h1 class="page-title">Add Raw Material</h1>
         <p class="page-sub">Add a new material to the master</p>
     </div>
-    <a asp-action="Index" class="btn-af btn-af-ghost btn-af-sm">← Back</a>
 </div>
 
-<div class="data-card" style="max-width:600px;">
-    <div style="padding:1.5rem;">
-        <form asp-action="CreateMaterial" method="post">
-            @Html.AntiForgeryToken()
-
-            <div class="af-form-group">
-                <label asp-for="Name" class="af-label">Material Name *</label>
-                <input asp-for="Name" class="af-input" required />
-            </div>
-
-            <div class="af-form-group">
-                <label asp-for="Description" class="af-label">Description</label>
-                <input asp-for="Description" class="af-input" />
-            </div>
-
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="af-form-group">
-                        <label asp-for="Unit" class="af-label">Unit *</label>
-                        <select asp-for="Unit" class="af-input af-select" required>
-                            <option value="">— Select —</option>
-                            <option value="Kg">Kg</option>
-                            <option value="Meter">Meter</option>
-                            <option value="Piece">Piece</option>
-                            <option value="Liter">Liter</option>
-                            <option value="Roll">Roll</option>
-                            <option value="Gram">Gram</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="af-form-group">
-                        <label asp-for="CurrentStock" class="af-label">Opening Stock</label>
-                        <input asp-for="CurrentStock" type="number" step="0.01" class="af-input" value="0" />
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="af-form-group">
-                        <label asp-for="MinimumStock" class="af-label">Min Stock</label>
-                        <input asp-for="MinimumStock" type="number" step="0.01" class="af-input" value="0" />
-                    </div>
-                </div>
-            </div>
-
-            <div class="af-form-group">
-                <label asp-for="Rate" class="af-label">Rate (₹)</label>
-                <input asp-for="Rate" type="number" step="0.01" class="af-input" value="0" />
-            </div>
-
-            <button type="submit" class="btn-af btn-af-primary">Save Material</button>
-            <a asp-action="Index" class="btn-af btn-af-ghost">Cancel</a>
-        </form>
+<form asp-action="CreateMaterial" method="post" class="data-card" style="max-width:640px;">
+    @Html.AntiForgeryToken()
+    <div class="data-card-header">
+        <span class="data-card-title">Material details</span>
     </div>
-</div>
+    <div class="data-card-body">
+        <div class="af-form-group">
+            <label asp-for="Name" class="af-label">Material Name <span class="req">*</span></label>
+            <input asp-for="Name" class="af-input" required />
+        </div>
+
+        <div class="af-form-group">
+            <label asp-for="Description" class="af-label">Description</label>
+            <input asp-for="Description" class="af-input" />
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="af-form-group">
+                    <label asp-for="Unit" class="af-label">Unit <span class="req">*</span></label>
+                    <select asp-for="Unit" class="af-input af-select" required>
+                        <option value="">— Select —</option>
+                        <option value="Kg">Kg</option>
+                        <option value="Meter">Meter</option>
+                        <option value="Piece">Piece</option>
+                        <option value="Liter">Liter</option>
+                        <option value="Roll">Roll</option>
+                        <option value="Gram">Gram</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="af-form-group">
+                    <label asp-for="CurrentStock" class="af-label">Opening Stock</label>
+                    <input asp-for="CurrentStock" type="number" step="0.01" class="af-input" value="0" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="af-form-group">
+                    <label asp-for="MinimumStock" class="af-label">Min Stock</label>
+                    <input asp-for="MinimumStock" type="number" step="0.01" class="af-input" value="0" />
+                </div>
+            </div>
+        </div>
+
+        <div class="af-form-group mb-0">
+            <label asp-for="Rate" class="af-label">Rate (₹)</label>
+            <input asp-for="Rate" type="number" step="0.01" class="af-input" value="0" />
+        </div>
+    </div>
+    <div class="data-card-footer d-flex justify-content-end gap-2">
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Material</button>
+    </div>
+</form>

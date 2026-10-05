@@ -1,89 +1,63 @@
 @model IEnumerable<AashanaFashion.Models.Account>
 @{
-    ViewData["Title"] = "Chart of Accounts (COA)";
+    ViewData["Title"] = "Chart of Accounts";
     var balances = ViewBag.Balances as Dictionary<int, (decimal TotalDebit, decimal TotalCredit)> ?? new();
     var selectedType = ViewBag.SelectedType as AashanaFashion.Models.AccountType?;
+    var groups = Model.GroupBy(a => a.Type).OrderBy(g => g.Key).ToList();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="page-header">
     <div>
-        <h1 class="page-title mb-1">🏛️ Chart of Accounts (COA)</h1>
-        <p class="page-sub mb-0 text-muted">Double-entry ledger accounts structured for manufacturing, inventory, taxes, and financial statements</p>
+        <h1 class="page-title">Chart of Accounts</h1>
+        <p class="page-sub">Double-entry ledger accounts for manufacturing, inventory, taxes and financial statements.</p>
     </div>
-    <div class="d-flex gap-2 flex-wrap">
-        <a asp-action="JournalEntries" class="btn btn-outline-secondary">📖 Journal Entries</a>
-        <a asp-action="TrialBalance" class="btn btn-outline-primary">⚖️ Trial Balance</a>
-        <a asp-action="ProfitAndLoss" class="btn btn-outline-success">📈 Profit &amp; Loss</a>
-        <a asp-action="BalanceSheet" class="btn btn-outline-info">📊 Balance Sheet</a>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newAccountModal">
-            + New Account
-        </button>
+    <div class="page-actions">
+        <a asp-action="JournalEntries" class="btn btn-secondary"><i class="bi bi-journal-text"></i> Journal entries</a>
+        <a asp-action="TrialBalance" class="btn btn-secondary"><i class="bi bi-calculator"></i> Trial balance</a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newAccountModal"><i class="bi bi-plus-lg"></i> New account</button>
     </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <strong>Success!</strong> @TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <strong>Error:</strong> @TempData["Error"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-<!-- Filter by Type -->
-<div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-body p-2 d-flex gap-2 flex-wrap align-items-center">
-        <span class="small fw-bold text-secondary ps-2">Filter by Class:</span>
-        <a asp-action="ChartOfAccounts" class="btn btn-sm @(!selectedType.HasValue ? "btn-dark" : "btn-light border")">All Accounts</a>
-        <a asp-action="ChartOfAccounts" asp-route-type="Asset" class="btn btn-sm @(selectedType == AashanaFashion.Models.AccountType.Asset ? "btn-primary" : "btn-light border")">Assets</a>
-        <a asp-action="ChartOfAccounts" asp-route-type="Liability" class="btn btn-sm @(selectedType == AashanaFashion.Models.AccountType.Liability ? "btn-danger" : "btn-light border")">Liabilities</a>
-        <a asp-action="ChartOfAccounts" asp-route-type="Equity" class="btn btn-sm @(selectedType == AashanaFashion.Models.AccountType.Equity ? "btn-info" : "btn-light border")">Equity</a>
-        <a asp-action="ChartOfAccounts" asp-route-type="Income" class="btn btn-sm @(selectedType == AashanaFashion.Models.AccountType.Income ? "btn-success" : "btn-light border")">Income</a>
-        <a asp-action="ChartOfAccounts" asp-route-type="Expense" class="btn btn-sm @(selectedType == AashanaFashion.Models.AccountType.Expense ? "btn-warning" : "btn-light border")">Expenses</a>
-    </div>
+<div class="segmented mb-4" role="tablist" aria-label="Filter by account class">
+    <a asp-action="ChartOfAccounts" class="segment @(!selectedType.HasValue ? "active" : "")">All accounts</a>
+    @foreach (var (t, label) in new[] { (AashanaFashion.Models.AccountType.Asset, "Assets"), (AashanaFashion.Models.AccountType.Liability, "Liabilities"), (AashanaFashion.Models.AccountType.Equity, "Equity"), (AashanaFashion.Models.AccountType.Income, "Income"), (AashanaFashion.Models.AccountType.Expense, "Expenses") })
+    {
+        <a asp-action="ChartOfAccounts" asp-route-type="@t" class="segment @(selectedType == t ? "active" : "")">@label</a>
+    }
 </div>
 
-<!-- Accounts Table Grouped by Type -->
-@{
-    var groups = Model.GroupBy(a => a.Type).OrderBy(g => g.Key);
+@if (!groups.Any())
+{
+    <div class="table-card">
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-diagram-3"></i></div>
+            <div class="es-title">No accounts found</div>
+            <p>Create a ledger account to start posting journal entries.</p>
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#newAccountModal">New account</button>
+        </div>
+    </div>
 }
 
 @foreach (var grp in groups)
 {
-    string headerBadgeClass = grp.Key switch
-    {
-        AashanaFashion.Models.AccountType.Asset => "bg-primary-subtle text-primary border-primary",
-        AashanaFashion.Models.AccountType.Liability => "bg-danger-subtle text-danger border-danger",
-        AashanaFashion.Models.AccountType.Equity => "bg-info-subtle text-info border-info",
-        AashanaFashion.Models.AccountType.Income => "bg-success-subtle text-success border-success",
-        _ => "bg-warning-subtle text-warning border-warning"
-    };
-
-    <div class="card border-0 shadow-sm rounded-3 mb-4">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
-                <span class="badge @headerBadgeClass px-2 py-1 fs-6">@grp.Key</span>
-                <span>Accounts</span>
-            </h6>
-            <span class="text-muted small">@grp.Count() account(s)</span>
+    <div class="table-card mb-4">
+        <div class="data-card-header">
+            <div class="data-card-title d-flex align-items-center gap-2">
+                <span class="af-badge @TypeBadge(grp.Key)">@grp.Key</span> Accounts
+            </div>
+            <span class="text-xs text-muted">@grp.Count() @(grp.Count() == 1 ? "account" : "accounts")</span>
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light small text-uppercase">
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
                     <tr>
-                        <th style="width: 120px;">Code</th>
-                        <th>Account Name</th>
+                        <th style="width: 110px;">Code</th>
+                        <th>Account</th>
                         <th>Classification</th>
-                        <th class="text-end">Total Debit (₹)</th>
-                        <th class="text-end">Total Credit (₹)</th>
-                        <th class="text-end">Net Balance (₹)</th>
-                        <th class="text-center" style="width: 140px;">Ledger</th>
+                        <th class="text-end">Total debit</th>
+                        <th class="text-end">Total credit</th>
+                        <th class="text-end">Net balance</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -92,9 +66,8 @@
                         var hasBal = balances.TryGetValue(acc.Id, out var bal);
                         decimal dr = hasBal ? bal.TotalDebit : 0m;
                         decimal cr = hasBal ? bal.TotalCredit : 0m;
-                        decimal net = 0m;
-                        string balLabel = "";
-
+                        decimal net;
+                        string balLabel;
                         if (acc.Type == AashanaFashion.Models.AccountType.Asset || acc.Type == AashanaFashion.Models.AccountType.Expense)
                         {
                             net = dr - cr;
@@ -107,30 +80,24 @@
                         }
 
                         <tr>
-                            <td><span class="font-monospace fw-bold text-dark">@acc.Code</span></td>
+                            <td><a asp-action="GeneralLedger" asp-route-accountId="@acc.Id" class="mono-id">@acc.Code</a></td>
                             <td>
-                                <strong class="text-dark">@acc.Name</strong>
-                                @if (acc.IsSystemAccount)
+                                <a asp-action="GeneralLedger" asp-route-accountId="@acc.Id" class="cell-title text-reset">@acc.Name</a>
+                                @if (acc.IsSystemAccount || acc.IsReconcilable)
                                 {
-                                    <span class="badge bg-light text-muted border ms-1" style="font-size: 0.65rem;">System</span>
-                                }
-                                @if (acc.IsReconcilable)
-                                {
-                                    <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size: 0.65rem;">Reconcilable</span>
+                                    <span class="cell-sub">@(acc.IsSystemAccount ? "System" : "")@(acc.IsSystemAccount && acc.IsReconcilable ? " · " : "")@(acc.IsReconcilable ? "Reconcilable" : "")</span>
                                 }
                             </td>
-                            <td>
-                                <span class="badge bg-light text-dark border">@acc.Classification</span>
+                            <td><span class="af-badge b-gray">@acc.Classification.Humanize()</span></td>
+                            <td class="cell-num text-muted">@(dr > 0 ? dr.ToString("N2") : "—")</td>
+                            <td class="cell-num text-muted">@(cr > 0 ? cr.ToString("N2") : "—")</td>
+                            <td class="cell-num">
+                                <span class="@(net != 0 ? "text-foreground fw-semibold" : "text-muted")">₹@Math.Abs(net).ToString("N2")</span><span class="dr-cr">@balLabel</span>
                             </td>
-                            <td class="text-end text-muted font-monospace">@dr.ToString("N2")</td>
-                            <td class="text-end text-muted font-monospace">@cr.ToString("N2")</td>
-                            <td class="text-end fw-bold font-monospace @(Math.Abs(net) > 0 ? "text-dark" : "text-muted")">
-                                ₹@Math.Abs(net).ToString("N2") <small class="text-muted fw-normal">@balLabel</small>
-                            </td>
-                            <td class="text-center">
-                                <a asp-action="GeneralLedger" asp-route-accountId="@acc.Id" class="btn btn-sm btn-outline-secondary py-1 px-2">
-                                    📜 View Ledger
-                                </a>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    <a asp-action="GeneralLedger" asp-route-accountId="@acc.Id" class="row-action" title="View ledger" aria-label="View ledger for @acc.Name"><i class="bi bi-journal-text"></i></a>
+                                </div>
                             </td>
                         </tr>
                     }
@@ -140,72 +107,80 @@
     </div>
 }
 
-<!-- Modal for New Account -->
 <div class="modal fade" id="newAccountModal" tabindex="-1" aria-labelledby="newAccountModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content border-0 shadow">
-            <form method="post" asp-action="CreateAccount">
-                @Html.AntiForgeryToken()
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold" id="newAccountModalLabel">+ Create Ledger Account</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold">Account Code</label>
-                        <input type="text" name="Code" class="form-control" placeholder="e.g. 102100 or 608000" required />
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" asp-action="CreateAccount" class="modal-content">
+            @Html.AntiForgeryToken()
+            <div class="modal-header">
+                <h5 class="modal-title" id="newAccountModalLabel">New ledger account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-5">
+                        <label class="form-label" for="accCode">Code <span class="req">*</span></label>
+                        <input type="text" id="accCode" name="Code" class="af-input font-monospace" placeholder="e.g. 102100" required />
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold">Account Name</label>
-                        <input type="text" name="Name" class="form-control" placeholder="e.g. HDFC Current Account" required />
+                    <div class="col-7">
+                        <label class="form-label" for="accName">Name <span class="req">*</span></label>
+                        <input type="text" id="accName" name="Name" class="af-input" placeholder="e.g. HDFC Current Account" required />
                     </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label small fw-bold">Type</label>
-                            <select name="Type" class="form-select">
-                                <option value="Asset">Asset</option>
-                                <option value="Liability">Liability</option>
-                                <option value="Equity">Equity</option>
-                                <option value="Income">Income</option>
-                                <option value="Expense">Expense</option>
-                            </select>
+                    <div class="col-6">
+                        <label class="form-label" for="accType">Type</label>
+                        <select id="accType" name="Type" class="af-input af-select">
+                            <option value="Asset">Asset</option>
+                            <option value="Liability">Liability</option>
+                            <option value="Equity">Equity</option>
+                            <option value="Income">Income</option>
+                            <option value="Expense">Expense</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" for="accClass">Classification</label>
+                        <select id="accClass" name="Classification" class="af-input af-select">
+                            <option value="BankAndCash">Bank &amp; cash</option>
+                            <option value="AccountsReceivable">Accounts receivable</option>
+                            <option value="Inventory">Inventory</option>
+                            <option value="FixedAsset">Fixed asset</option>
+                            <option value="CurrentAsset">Current asset</option>
+                            <option value="AccountsPayable">Accounts payable</option>
+                            <option value="DutiesAndTaxes">Duties &amp; taxes</option>
+                            <option value="CurrentLiability">Current liability</option>
+                            <option value="Equity">Equity</option>
+                            <option value="OperatingRevenue">Operating revenue</option>
+                            <option value="CostOfGoodsSold">Cost of goods sold</option>
+                            <option value="DirectManufacturingExpense">Direct manufacturing</option>
+                            <option value="OperatingExpense">Operating expense</option>
+                            <option value="FinancialExpense">Financial expense</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="accDesc">Description</label>
+                        <textarea id="accDesc" name="Description" class="af-input" rows="2" placeholder="Optional notes…"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="IsReconcilable" value="true" id="isReconcilableCheck" />
+                            <label class="form-check-label" for="isReconcilableCheck">Allow statement / invoice reconciliation</label>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-bold">Classification</label>
-                            <select name="Classification" class="form-select">
-                                <option value="BankAndCash">Bank &amp; Cash</option>
-                                <option value="AccountsReceivable">Accounts Receivable</option>
-                                <option value="Inventory">Inventory</option>
-                                <option value="FixedAsset">Fixed Asset</option>
-                                <option value="CurrentAsset">Current Asset</option>
-                                <option value="AccountsPayable">Accounts Payable</option>
-                                <option value="DutiesAndTaxes">Duties &amp; Taxes</option>
-                                <option value="CurrentLiability">Current Liability</option>
-                                <option value="Equity">Equity</option>
-                                <option value="OperatingRevenue">Operating Revenue</option>
-                                <option value="CostOfGoodsSold">Cost of Goods Sold</option>
-                                <option value="DirectManufacturingExpense">Direct Manufacturing</option>
-                                <option value="OperatingExpense">Operating Expense</option>
-                                <option value="FinancialExpense">Financial Expense</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold">Description / Purpose</label>
-                        <textarea name="Description" class="form-control" rows="2" placeholder="Optional notes..."></textarea>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="IsReconcilable" value="true" id="isReconcilableCheck" />
-                        <label class="form-check-label small" for="isReconcilableCheck">
-                            Allow statement / invoice reconciliation
-                        </label>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary fw-bold">Save Account</button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Save account</button>
+            </div>
+        </form>
     </div>
 </div>
+
+@functions {
+    string TypeBadge(AashanaFashion.Models.AccountType t) => t switch
+    {
+        AashanaFashion.Models.AccountType.Asset => "b-blue",
+        AashanaFashion.Models.AccountType.Liability => "b-orange",
+        AashanaFashion.Models.AccountType.Equity => "b-purple",
+        AashanaFashion.Models.AccountType.Income => "b-green",
+        _ => "b-yellow"
+    };
+}

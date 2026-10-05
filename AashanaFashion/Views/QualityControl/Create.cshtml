@@ -3,44 +3,46 @@
     ViewData["Title"] = "Log Quality Inspection";
 }
 
-<div class="mb-4">
-    <a asp-action="Index" class="text-decoration-none text-muted small">← Back to Quality Dashboard</a>
-    <h2 class="fw-bold mt-1">Log Quality Inspection</h2>
-    <p class="text-muted">Record quality inspection counts, defect details, and assign rework actions.</p>
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Quality dashboard</a>
+        <h1 class="page-title">Log Quality Inspection</h1>
+        <p class="page-sub">Record quality inspection counts, defect details, and assign rework actions.</p>
+    </div>
 </div>
 
 <form asp-action="Create" method="post" id="qcForm">
     @Html.AntiForgeryToken()
 
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+    <div asp-validation-summary="ModelOnly" class="af-alert af-alert-danger"></div>
 
     <div class="row g-4">
         <!-- Main Inspection Details -->
         <div class="col-lg-8">
-            <div class="card border-0 shadow-sm rounded-3 mb-4">
-                <div class="card-header bg-white py-3 border-bottom">
-                    <h5 class="card-title mb-0 fw-bold">📋 Inspection Details</h5>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Inspection Details</h5>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label asp-for="InspectionNumber" class="form-label fw-semibold"></label>
+                            <label asp-for="InspectionNumber" class="form-label"></label>
                             <input asp-for="InspectionNumber" class="form-control" />
-                            <span asp-validation-for="InspectionNumber" class="text-danger small"></span>
+                            <span asp-validation-for="InspectionNumber" class="af-error"></span>
                         </div>
                         <div class="col-md-4">
-                            <label asp-for="InspectionDate" class="form-label fw-semibold"></label>
+                            <label asp-for="InspectionDate" class="form-label"></label>
                             <input asp-for="InspectionDate" class="form-control" />
-                            <span asp-validation-for="InspectionDate" class="text-danger small"></span>
+                            <span asp-validation-for="InspectionDate" class="af-error"></span>
                         </div>
                         <div class="col-md-4">
-                            <label asp-for="InspectorName" class="form-label fw-semibold"></label>
+                            <label asp-for="InspectorName" class="form-label"></label>
                             <input asp-for="InspectorName" class="form-control" />
-                            <span asp-validation-for="InspectorName" class="text-danger small"></span>
+                            <span asp-validation-for="InspectorName" class="af-error"></span>
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="ProductionOrderId" class="form-label fw-semibold">Production Order / Lot</label>
+                            <label asp-for="ProductionOrderId" class="form-label">Production Order / Lot</label>
                             <select asp-for="ProductionOrderId" class="form-select" id="orderSelect" required>
                                 <option value="">-- Select Production Order --</option>
                                 @foreach (var o in (List<AashanaFashion.Models.ProductionOrder>)ViewBag.Orders)
@@ -50,17 +52,17 @@
                                     </option>
                                 }
                             </select>
-                            <span asp-validation-for="ProductionOrderId" class="text-danger small"></span>
+                            <span asp-validation-for="ProductionOrderId" class="af-error"></span>
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="Stage" class="form-label fw-semibold"></label>
+                            <label asp-for="Stage" class="form-label"></label>
                             <select asp-for="Stage" class="form-select" asp-items="Html.GetEnumSelectList<AashanaFashion.Models.QcStage>()"></select>
-                            <span asp-validation-for="Stage" class="text-danger small"></span>
+                            <span asp-validation-for="Stage" class="af-error"></span>
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="VendorId" class="form-label fw-semibold">Assigned Vendor / Job Worker</label>
+                            <label asp-for="VendorId" class="form-label">Assigned Vendor / Job Worker</label>
                             <select asp-for="VendorId" class="form-select">
                                 <option value="">-- None / In-House Production --</option>
                                 @foreach (var v in (List<AashanaFashion.Models.Vendor>)ViewBag.Vendors)
@@ -68,11 +70,11 @@
                                     <option value="@v.Id" selected="@(Model.VendorId == v.Id)">@v.VendorName (@(v.Industry ?? "Vendor"))</option>
                                 }
                             </select>
-                            <span asp-validation-for="VendorId" class="text-danger small"></span>
+                            <span asp-validation-for="VendorId" class="af-error"></span>
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="ProductionEntityId" class="form-label fw-semibold">Component / Serial Piece (Optional)</label>
+                            <label asp-for="ProductionEntityId" class="form-label">Component / Serial Piece (Optional)</label>
                             <select asp-for="ProductionEntityId" class="form-select" id="entitySelect">
                                 <option value="">-- Whole Lot / All Components --</option>
                                 @foreach (var e in (List<AashanaFashion.Models.ProductionEntity>)ViewBag.Entities)
@@ -82,26 +84,26 @@
                                     </option>
                                 }
                             </select>
-                            <span asp-validation-for="ProductionEntityId" class="text-danger small"></span>
+                            <span asp-validation-for="ProductionEntityId" class="af-error"></span>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Itemized Defects Table -->
-            <div class="card border-0 shadow-sm rounded-3 mb-4">
-                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="card-title mb-0 fw-bold">⚠️ Itemized Defect Classification</h5>
-                        <small class="text-muted">Specify reasons for units sent to rework or scrap</small>
+                        <h5 class="card-title mb-0">Itemized Defect Classification</h5>
+                        <small class="card-subtitle d-block mt-1">Specify reasons for units sent to rework or scrap</small>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-danger" id="addDefectRowBtn">
-                        <span class="me-1">➕</span> Add Defect Reason
+                    <button type="button" class="btn btn-sm btn-secondary" id="addDefectRowBtn">
+                        <i class="bi bi-plus-lg"></i> Add defect reason
                     </button>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered align-middle mb-0" id="defectsTable">
+                        <table class="table table-edit align-middle mb-0" id="defectsTable">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 22%;">Defect Category</th>
@@ -127,10 +129,10 @@
                                                 </select>
                                             </td>
                                             <td>
-                                                <input type="text" name="Defects[@i].DefectReason" class="form-control form-select-sm" value="@Model.Defects[i].DefectReason" placeholder="e.g. Loose thread / stain" required />
+                                                <input type="text" name="Defects[@i].DefectReason" class="form-control form-control-sm" value="@Model.Defects[i].DefectReason" placeholder="e.g. Loose thread / stain" required />
                                             </td>
                                             <td>
-                                                <input type="number" name="Defects[@i].Quantity" class="form-control form-select-sm defect-qty" value="@Model.Defects[i].Quantity" min="1" />
+                                                <input type="number" name="Defects[@i].Quantity" class="form-control form-control-sm defect-qty" value="@Model.Defects[i].Quantity" min="1" />
                                             </td>
                                             <td>
                                                 <select name="Defects[@i].Severity" class="form-select form-select-sm">
@@ -149,7 +151,7 @@
                                                 </select>
                                             </td>
                                             <td class="text-center">
-                                                <button type="button" class="btn btn-sm text-danger remove-defect-btn">✕</button>
+                                                <button type="button" class="row-action danger remove-defect-btn" title="Remove" aria-label="Remove"><i class="bi bi-trash"></i></button>
                                             </td>
                                         </tr>
                                     }
@@ -157,8 +159,8 @@
                             </tbody>
                         </table>
                     </div>
-                    <div id="noDefectMsg" class="text-center py-4 text-muted @(Model.Defects != null && Model.Defects.Any() ? "d-none" : "")">
-                        <span>No defects logged yet. Click "Add Defect Reason" if defective or rework units were found.</span>
+                    <div id="noDefectMsg" class="empty-state py-4 @(Model.Defects != null && Model.Defects.Any() ? "d-none" : "")">
+                        <p>No defects logged yet. Use <strong>Add defect reason</strong> if defective or rework units were found.</p>
                     </div>
                 </div>
             </div>
@@ -166,58 +168,52 @@
 
         <!-- Right Side: Quantities Summary & Submission -->
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm rounded-3 mb-4">
-                <div class="card-header bg-white py-3 border-bottom">
-                    <h5 class="card-title mb-0 fw-bold">🔢 Inspection Tally</h5>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Inspection Tally</h5>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label asp-for="TotalInspected" class="form-label fw-semibold">Total Inspected (pcs)</label>
-                        <input asp-for="TotalInspected" class="form-control form-control-lg fw-bold" id="totalInspected" min="1" />
-                        <span asp-validation-for="TotalInspected" class="text-danger small"></span>
+                        <label asp-for="TotalInspected" class="form-label">Total Inspected (pcs)</label>
+                        <input asp-for="TotalInspected" class="form-control fw-semibold" id="totalInspected" min="1" />
+                        <span asp-validation-for="TotalInspected" class="af-error"></span>
                     </div>
 
                     <div class="mb-3">
-                        <label asp-for="TotalPassed" class="form-label fw-semibold text-success">Passed / Accepted (pcs)</label>
-                        <input asp-for="TotalPassed" class="form-control text-success fw-bold" id="totalPassed" min="0" />
-                        <span asp-validation-for="TotalPassed" class="text-danger small"></span>
+                        <label asp-for="TotalPassed" class="form-label"><span class="status-dot success me-1"></span>Passed / accepted (pcs)</label>
+                        <input asp-for="TotalPassed" class="form-control" id="totalPassed" min="0" />
+                        <span asp-validation-for="TotalPassed" class="af-error"></span>
                     </div>
 
                     <div class="mb-3">
-                        <label asp-for="TotalRework" class="form-label fw-semibold text-warning">Sent to Rework / Alteration</label>
-                        <input asp-for="TotalRework" class="form-control text-warning fw-bold" id="totalRework" min="0" />
-                        <span asp-validation-for="TotalRework" class="text-danger small"></span>
+                        <label asp-for="TotalRework" class="form-label"><span class="status-dot warning me-1"></span>Sent to rework / alteration</label>
+                        <input asp-for="TotalRework" class="form-control" id="totalRework" min="0" />
+                        <span asp-validation-for="TotalRework" class="af-error"></span>
                     </div>
 
                     <div class="mb-3">
-                        <label asp-for="TotalScrap" class="form-label fw-semibold text-danger">Scrapped / Damage Loss</label>
-                        <input asp-for="TotalScrap" class="form-control text-danger fw-bold" id="totalScrap" min="0" />
-                        <span asp-validation-for="TotalScrap" class="text-danger small"></span>
+                        <label asp-for="TotalScrap" class="form-label"><span class="status-dot danger me-1"></span>Scrapped / damage loss</label>
+                        <input asp-for="TotalScrap" class="form-control" id="totalScrap" min="0" />
+                        <span asp-validation-for="TotalScrap" class="af-error"></span>
                     </div>
 
-                    <div class="p-3 rounded-3 mb-3 bg-light border" id="validationCard">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="small text-muted">Tally Balance:</span>
-                            <span id="tallyStatus" class="fw-bold small text-success">Balanced</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="small text-muted">Pass Rate:</span>
-                            <span id="passRateBadge" class="fw-bold fs-5 text-success">100%</span>
-                        </div>
+                    <div class="panel-inset" id="validationCard">
+                        <div class="kv-row"><span class="k">Tally balance</span><span id="tallyStatus" class="text-sm fw-medium text-success">Balanced</span></div>
+                        <div class="kv-row"><span class="k">Pass rate</span><span id="passRateBadge" class="fw-semibold text-success">100%</span></div>
                     </div>
 
-                    <div class="mb-3">
-                        <label asp-for="Remarks" class="form-label fw-semibold">Inspector Remarks</label>
-                        <textarea asp-for="Remarks" class="form-control" rows="3" placeholder="Notes on fabric condition, worker feedback, rework instructions..."></textarea>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg fw-bold">💾 Save Quality Inspection</button>
-                        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    <div class="mb-0">
+                        <label asp-for="Remarks" class="form-label">Inspector remarks</label>
+                        <textarea asp-for="Remarks" class="form-control" rows="3" placeholder="Notes on fabric condition, worker feedback, rework instructions…"></textarea>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="form-footer">
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save quality inspection</button>
     </div>
 </form>
 
@@ -247,22 +243,22 @@
                 const passRate = ((passed / inspected) * 100).toFixed(1);
                 $('#passRateBadge').text(passRate + '%');
                 if (passRate >= 95) {
-                    $('#passRateBadge').removeClass().addClass('fw-bold fs-5 text-success');
+                    $('#passRateBadge').removeClass().addClass('fw-semibold text-success');
                 } else if (passRate >= 85) {
-                    $('#passRateBadge').removeClass().addClass('fw-bold fs-5 text-warning');
+                    $('#passRateBadge').removeClass().addClass('fw-semibold text-warning');
                 } else {
-                    $('#passRateBadge').removeClass().addClass('fw-bold fs-5 text-danger');
+                    $('#passRateBadge').removeClass().addClass('fw-semibold text-danger');
                 }
             } else {
                 $('#passRateBadge').text('0%');
             }
 
             if (diff === 0 && inspected > 0) {
-                $('#tallyStatus').html('<span class="text-success">✓ Balanced (' + sum + ' / ' + inspected + ')</span>');
+                $('#tallyStatus').html('<span class="text-success"><i class="bi bi-check2"></i> Balanced (' + sum + ' / ' + inspected + ')</span>');
             } else if (diff > 0) {
-                $('#tallyStatus').html('<span class="text-warning">⚠️ ' + diff + ' pcs unaccounted for</span>');
+                $('#tallyStatus').html('<span class="text-warning"><i class="bi bi-exclamation-triangle"></i> ' + diff + ' pcs unaccounted for</span>');
             } else {
-                $('#tallyStatus').html('<span class="text-danger">❌ Over by ' + Math.abs(diff) + ' pcs</span>');
+                $('#tallyStatus').html('<span class="text-danger"><i class="bi bi-x-circle"></i> Over by ' + Math.abs(diff) + ' pcs</span>');
             }
         }
 
@@ -309,10 +305,10 @@
                         </select>
                     </td>
                     <td>
-                        <input type="text" name="Defects[${defectIndex}].DefectReason" class="form-control form-select-sm" placeholder="e.g. Loose thread / stain" required />
+                        <input type="text" name="Defects[${defectIndex}].DefectReason" class="form-control form-control-sm" placeholder="e.g. Loose thread / stain" required />
                     </td>
                     <td>
-                        <input type="number" name="Defects[${defectIndex}].Quantity" class="form-control form-select-sm defect-qty" value="1" min="1" />
+                        <input type="number" name="Defects[${defectIndex}].Quantity" class="form-control form-control-sm defect-qty" value="1" min="1" />
                     </td>
                     <td>
                         <select name="Defects[${defectIndex}].Severity" class="form-select form-select-sm">
@@ -325,7 +321,7 @@
                         </select>
                     </td>
                     <td class="text-center">
-                        <button type="button" class="btn btn-sm text-danger remove-defect-btn">✕</button>
+                        <button type="button" class="row-action danger remove-defect-btn" title="Remove" aria-label="Remove"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>
             `;
