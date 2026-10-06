@@ -225,12 +225,12 @@ public class CustomerController : Controller
         c.PanNumber = model.PanNumber;
         c.IsActive = model.IsActive;
 
-        c.CustomerCompany = model.CustomerCompany;
-        c.Website = model.Website;
-        c.Industry = model.Industry;
-        c.Reference = model.Reference;
-        c.PartnerId = model.PartnerId;
+        // Credit Limits & Exposure
+        c.PartnerLimit = model.PartnerLimit;
+        c.TotalReceivable = model.TotalReceivable;
+        c.DaysSalesOutstanding = model.DaysSalesOutstanding;
 
+        // Sales & Commercial
         c.Salesperson = model.Salesperson;
         c.AddDesignOnScan = model.AddDesignOnScan;
         c.SalesPaymentTerms = model.SalesPaymentTerms;
@@ -248,45 +248,6 @@ public class CustomerController : Controller
         c.DeliveryMethod = model.DeliveryMethod;
         c.Transporter = model.Transporter;
         c.Distance = model.Distance;
-
-        c.AccountReceivable = model.AccountReceivable;
-        c.AutoPostBills = model.AutoPostBills;
-        c.CustomerInvoices = model.CustomerInvoices;
-        c.InvoiceReport = model.InvoiceReport;
-        c.PeppolId = model.PeppolId;
-        c.FollowUpLevel = model.FollowUpLevel;
-        c.FollowUpStatus = model.FollowUpStatus;
-        c.Reminders = model.Reminders;
-        c.NextReminder = model.NextReminder;
-        c.AccountingResponsible = model.AccountingResponsible;
-        c.JournalItems = model.JournalItems;
-        c.Send = model.Send;
-        c.TotalReceivable = model.TotalReceivable;
-        c.DaysSalesOutstanding = model.DaysSalesOutstanding;
-        c.PartnerLimit = model.PartnerLimit;
-        c.AnalyticDistribution = model.AnalyticDistribution;
-
-        c.BankName = model.BankName;
-        c.AccountNumber = model.AccountNumber;
-        c.IfscCode = model.IfscCode;
-
-        c.SM1Name = model.SM1Name;
-        c.SM1CommissionPct = model.SM1CommissionPct;
-        c.SM2Name = model.SM2Name;
-        c.SM2CommissionPct = model.SM2CommissionPct;
-        c.SM3Name = model.SM3Name;
-        c.SM3CommissionPct = model.SM3CommissionPct;
-        c.CommissionStartDate = model.CommissionStartDate;
-        c.CommissionEndDate = model.CommissionEndDate;
-
-        c.Activation = model.Activation;
-        c.LevelWeight = model.LevelWeight;
-        c.LatestReview = model.LatestReview;
-        c.NextReview = model.NextReview;
-        c.PartnershipDate = model.PartnershipDate;
-        c.GeoLatitude = model.GeoLatitude;
-        c.GeoLongitude = model.GeoLongitude;
-        c.ComputeBasedOnAddress = model.ComputeBasedOnAddress;
 
         return c;
     }
@@ -306,12 +267,12 @@ public class CustomerController : Controller
         PanNumber = c.PanNumber,
         IsActive = c.IsActive,
 
-        CustomerCompany = c.CustomerCompany,
-        Website = c.Website,
-        Industry = c.Industry,
-        Reference = c.Reference,
-        PartnerId = c.PartnerId,
+        // Credit Limits & Exposure
+        PartnerLimit = c.PartnerLimit,
+        TotalReceivable = c.TotalReceivable,
+        DaysSalesOutstanding = c.DaysSalesOutstanding,
 
+        // Sales & Commercial
         Salesperson = c.Salesperson,
         AddDesignOnScan = c.AddDesignOnScan,
         SalesPaymentTerms = c.SalesPaymentTerms,
@@ -322,105 +283,10 @@ public class CustomerController : Controller
         Transporter = c.Transporter,
         Distance = c.Distance,
 
-        AccountReceivable = c.AccountReceivable,
-        AutoPostBills = c.AutoPostBills,
-        CustomerInvoices = c.CustomerInvoices,
-        InvoiceReport = c.InvoiceReport,
-        PeppolId = c.PeppolId,
-        FollowUpLevel = c.FollowUpLevel,
-        FollowUpStatus = c.FollowUpStatus,
-        Reminders = c.Reminders,
-        NextReminder = c.NextReminder,
-        AccountingResponsible = c.AccountingResponsible,
-        JournalItems = c.JournalItems,
-        Send = c.Send,
-        TotalReceivable = c.TotalReceivable,
-        DaysSalesOutstanding = c.DaysSalesOutstanding,
-        PartnerLimit = c.PartnerLimit,
-        AnalyticDistribution = c.AnalyticDistribution,
-
-        BankName = c.BankName,
-        AccountNumber = c.AccountNumber,
-        IfscCode = c.IfscCode,
-
-        SM1Name = c.SM1Name,
-        SM1CommissionPct = c.SM1CommissionPct,
-        SM2Name = c.SM2Name,
-        SM2CommissionPct = c.SM2CommissionPct,
-        SM3Name = c.SM3Name,
-        SM3CommissionPct = c.SM3CommissionPct,
-        CommissionStartDate = c.CommissionStartDate,
-        CommissionEndDate = c.CommissionEndDate,
-
-        Activation = c.Activation,
-        LevelWeight = c.LevelWeight,
-        LatestReview = c.LatestReview,
-        NextReview = c.NextReview,
-        PartnershipDate = c.PartnershipDate,
-        GeoLatitude = c.GeoLatitude,
-        GeoLongitude = c.GeoLongitude,
-        ComputeBasedOnAddress = c.ComputeBasedOnAddress,
+        // Child collections
         Contacts = c.Contacts?.ToList() ?? new(),
         Commissions = c.Commissions?.ToList() ?? new()
     };
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Authorize(Roles = "Admin,Manager")]
-    public async Task<IActionResult> CreatePortalAccess(int customerId, string username, string password)
-    {
-        var customer = await _context.Customers.FindAsync(customerId);
-        if (customer == null) return NotFound();
-
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-        {
-            TempData["Error"] = "Username and password are required for customer portal access.";
-            return RedirectToAction(nameof(Edit), new { id = customerId });
-        }
-
-        username = username.Trim().ToLower();
-
-        // Check if an AppUser already exists for this customer
-        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.CustomerId == customerId);
-        if (existingUser != null)
-        {
-            // Reset existing user credentials
-            existingUser.Username = username;
-            existingUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
-            existingUser.IsActive = true;
-            existingUser.Role = "Customer";
-            await _context.SaveChangesAsync();
-            TempData["Success"] = $"Portal login updated for {customer.CustomerName}. Username: {username}";
-            return RedirectToAction(nameof(Edit), new { id = customerId });
-        }
-
-        // Check if username is taken by someone else
-        var usernameTaken = await _context.Users.AnyAsync(u => u.Username.ToLower() == username);
-        if (usernameTaken)
-        {
-            TempData["Error"] = $"Username '{username}' is already taken. Please choose another username.";
-            return RedirectToAction(nameof(Edit), new { id = customerId });
-        }
-
-        var newUser = new AppUser
-        {
-            TenantId = customer.TenantId,
-            CustomerId = customer.Id,
-            Username = username,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-            Role = "Customer",
-            FirstName = customer.ContactPerson ?? customer.CustomerName,
-            LastName = "",
-            Email = customer.Email,
-            ContactNumber = customer.Phone,
-            IsActive = true
-        };
-
-        _context.Users.Add(newUser);
-        await _context.SaveChangesAsync();
-
-        TempData["Success"] = $"Portal login created for {customer.CustomerName}. Username: {username}";
-        return RedirectToAction(nameof(Edit), new { id = customerId });
-    }
 }
+
 

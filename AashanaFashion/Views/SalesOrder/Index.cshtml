@@ -133,8 +133,15 @@
                                 {
                                     <span class="cell-sub">@o.Challans.Count @(o.Challans.Count == 1 ? "challan" : "challans")</span>
                                 }
+                            <td class="cell-num text-foreground fw-semibold">
+                                <div>₹@o.TotalAmount.ToString("N2")</div>
+                                @if (o.HasAgentDiscount && o.AgentDiscountAmount > 0)
+                                {
+                                    <div class="text-xs text-danger" title="Agent discount deducted from subtotal">
+                                        <i class="bi bi-tag-fill"></i> -₹@o.AgentDiscountAmount.ToString("N0")
+                                    </div>
+                                }
                             </td>
-                            <td class="cell-num text-foreground fw-semibold">₹@o.TotalAmount.ToString("N2")</td>
                             <td>
                                 <span class="af-badge @(o.Status switch {
                                     SalesOrderStatus.Confirmed => "b-blue",

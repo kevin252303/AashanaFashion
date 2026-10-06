@@ -514,6 +514,57 @@ public class DoubleEntryService : IDoubleEntryService
     {
         await EnsureDefaultChartOfAccountsAsync(companyId);
 
+        // Auto set-off 2nd entry in Single Entry approach (both amount and account)
+        var journal = await _context.Journals.FirstOrDefaultAsync(j => j.Id == model.JournalId && j.CompanyId == companyId);
+        if (model.Lines.Count == 2)
+        {
+            var l0 = model.Lines[0];
+            var l1 = model.Lines[1];
+
+            // 1. Auto set-off Amount
+            if (l0.Debit > 0 && l1.Debit == 0 && l1.Credit == 0)
+            {
+                l1.Credit = l0.Debit;
+            }
+            else if (l0.Credit > 0 && l1.Debit == 0 && l1.Credit == 0)
+            {
+                l1.Debit = l0.Credit;
+            }
+
+            // 2. Auto set-off Account
+            if (l1.AccountId <= 0 && l0.AccountId > 0)
+            {
+                int setOffAccId = 0;
+                if (l0.Debit > 0 && journal?.DefaultCreditAccountId.HasValue == true)
+                {
+                    setOffAccId = journal.DefaultCreditAccountId.Value;
+                }
+                else if (l0.Credit > 0 && journal?.DefaultDebitAccountId.HasValue == true)
+                {
+                    setOffAccId = journal.DefaultDebitAccountId.Value;
+                }
+                else if (journal?.DefaultDebitAccountId.HasValue == true)
+                {
+                    setOffAccId = journal.DefaultDebitAccountId.Value;
+                }
+
+                if (setOffAccId == 0 || setOffAccId == l0.AccountId)
+                {
+                    // Fallback to Bank or Cash
+                    var fallbackAcc = await _context.Accounts
+                        .Where(a => a.CompanyId == companyId && a.Id != l0.AccountId && (a.Code == "102000" || a.Code == "101000"))
+                        .OrderBy(a => a.Code)
+                        .FirstOrDefaultAsync();
+                    if (fallbackAcc != null) setOffAccId = fallbackAcc.Id;
+                }
+
+                if (setOffAccId > 0)
+                {
+                    l1.AccountId = setOffAccId;
+                }
+            }
+        }
+
         decimal totalDebit = model.Lines.Sum(l => l.Debit);
         decimal totalCredit = model.Lines.Sum(l => l.Credit);
 
@@ -527,7 +578,6 @@ public class DoubleEntryService : IDoubleEntryService
             return (false, "Journal entry amount must be greater than zero.", null);
         }
 
-        var journal = await _context.Journals.FirstOrDefaultAsync(j => j.Id == model.JournalId && j.CompanyId == companyId);
         if (journal == null)
         {
             return (false, "Selected journal was not found.", null);
@@ -907,6 +957,243 @@ public class DoubleEntryService : IDoubleEntryService
                 Credit = l.Credit,
                 RunningBalance = currentBalance
             });
+        }
+
+        return model;
+    }
+
+    public async Task<PartnerLedgerViewModel> GetCustomerLedgerAsync(int companyId, int customerId, DateTime fromDate, DateTime toDate)
+    {
+        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == customerId);
+        if (customer == null) throw new InvalidOperationException("Customer not found.");
+
+        var end = toDate.Date.AddDays(1).AddSeconds(-1);
+
+        // Precompute opening balance prior to fromDate
+        var priorLines = await _context.JournalEntryLines
+            .Include(l => l.JournalEntry)
+            .Where(l => l.CustomerId == customerId &&
+                        l.JournalEntry!.CompanyId == companyId &&
+                        l.JournalEntry.Status == JournalEntryStatus.Posted &&
+                        l.JournalEntry.Date < fromDate.Date)
+            .ToListAsync();
+
+        decimal openingBalance = priorLines.Sum(l => l.Debit - l.Credit);
+
+        // Fetch period lines
+        var periodLines = await _context.JournalEntryLines
+            .Include(l => l.JournalEntry)
+                .ThenInclude(e => e!.Journal)
+            .Include(l => l.Customer)
+            .Where(l => l.CustomerId == customerId &&
+                        l.JournalEntry!.CompanyId == companyId &&
+                        l.JournalEntry.Status == JournalEntryStatus.Posted &&
+                        l.JournalEntry.Date >= fromDate.Date &&
+                        l.JournalEntry.Date <= end)
+            .OrderBy(l => l.JournalEntry!.Date)
+            .ThenBy(l => l.Id)
+            .ToListAsync();
+
+        var model = new PartnerLedgerViewModel
+        {
+            PartnerType = "Customer",
+            PartnerId = customer.Id,
+            PartnerName = customer.CustomerName,
+            Gstin = customer.GstNumber,
+            Phone = customer.Phone,
+            Email = customer.Email,
+            Address = customer.Address,
+            City = customer.City,
+            CreditLimit = customer.PartnerLimit,
+            FromDate = fromDate,
+            ToDate = toDate,
+            OpeningBalance = openingBalance
+        };
+
+        decimal currentBalance = openingBalance;
+        foreach (var l in periodLines)
+        {
+            currentBalance += (l.Debit - l.Credit);
+
+            model.Rows.Add(new GeneralLedgerRow
+            {
+                Date = l.JournalEntry!.Date,
+                EntryNumber = l.JournalEntry.EntryNumber,
+                EntryId = l.JournalEntry.Id,
+                JournalCode = l.JournalEntry.Journal?.Code ?? "SL",
+                Reference = l.JournalEntry.Reference,
+                PartnerName = customer.CustomerName,
+                Narration = l.Description ?? l.JournalEntry.Narration,
+                Debit = l.Debit,
+                Credit = l.Credit,
+                RunningBalance = currentBalance
+            });
+        }
+
+        return model;
+    }
+
+    public async Task<PartnerLedgerViewModel> GetVendorLedgerAsync(int companyId, int vendorId, DateTime fromDate, DateTime toDate)
+    {
+        var vendor = await _context.Vendors.FirstOrDefaultAsync(v => v.Id == vendorId);
+        if (vendor == null) throw new InvalidOperationException("Vendor not found.");
+
+        var end = toDate.Date.AddDays(1).AddSeconds(-1);
+
+        // Precompute opening balance prior to fromDate (Vendor is Creditor: Credit increases payable, Debit decreases)
+        var priorLines = await _context.JournalEntryLines
+            .Include(l => l.JournalEntry)
+            .Where(l => l.VendorId == vendorId &&
+                        l.JournalEntry!.CompanyId == companyId &&
+                        l.JournalEntry.Status == JournalEntryStatus.Posted &&
+                        l.JournalEntry.Date < fromDate.Date)
+            .ToListAsync();
+
+        decimal openingBalance = priorLines.Sum(l => l.Credit - l.Debit);
+
+        // Fetch period lines
+        var periodLines = await _context.JournalEntryLines
+            .Include(l => l.JournalEntry)
+                .ThenInclude(e => e!.Journal)
+            .Include(l => l.Vendor)
+            .Where(l => l.VendorId == vendorId &&
+                        l.JournalEntry!.CompanyId == companyId &&
+                        l.JournalEntry.Status == JournalEntryStatus.Posted &&
+                        l.JournalEntry.Date >= fromDate.Date &&
+                        l.JournalEntry.Date <= end)
+            .OrderBy(l => l.JournalEntry!.Date)
+            .ThenBy(l => l.Id)
+            .ToListAsync();
+
+        var model = new PartnerLedgerViewModel
+        {
+            PartnerType = "Vendor",
+            PartnerId = vendor.Id,
+            PartnerName = vendor.VendorName,
+            Gstin = vendor.GstNumber,
+            Phone = vendor.Phone,
+            Email = vendor.Email,
+            Address = vendor.Address,
+            City = vendor.City,
+            CreditLimit = vendor.PartnerLimit,
+            FromDate = fromDate,
+            ToDate = toDate,
+            OpeningBalance = openingBalance
+        };
+
+        decimal currentBalance = openingBalance;
+        foreach (var l in periodLines)
+        {
+            currentBalance += (l.Credit - l.Debit);
+
+            model.Rows.Add(new GeneralLedgerRow
+            {
+                Date = l.JournalEntry!.Date,
+                EntryNumber = l.JournalEntry.EntryNumber,
+                EntryId = l.JournalEntry.Id,
+                JournalCode = l.JournalEntry.Journal?.Code ?? "PL",
+                Reference = l.JournalEntry.Reference,
+                PartnerName = vendor.VendorName,
+                Narration = l.Description ?? l.JournalEntry.Narration,
+                Debit = l.Debit,
+                Credit = l.Credit,
+                RunningBalance = currentBalance
+            });
+        }
+
+        return model;
+    }
+
+    public async Task<PartnerLedgerSummaryViewModel> GetPartnerLedgerSummaryAsync(int companyId, string partnerType, DateTime fromDate, DateTime toDate)
+    {
+        var end = toDate.Date.AddDays(1).AddSeconds(-1);
+        var model = new PartnerLedgerSummaryViewModel
+        {
+            PartnerType = partnerType,
+            FromDate = fromDate,
+            ToDate = toDate
+        };
+
+        if (partnerType.Equals("Customer", StringComparison.OrdinalIgnoreCase))
+        {
+            var customers = await _context.Customers
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.CustomerName)
+                .ToListAsync();
+
+            var allLines = await _context.JournalEntryLines
+                .Include(l => l.JournalEntry)
+                .Where(l => l.CustomerId.HasValue &&
+                            l.JournalEntry!.CompanyId == companyId &&
+                            l.JournalEntry.Status == JournalEntryStatus.Posted &&
+                            l.JournalEntry.Date <= end)
+                .ToListAsync();
+
+            foreach (var c in customers)
+            {
+                var cLines = allLines.Where(l => l.CustomerId == c.Id).ToList();
+                decimal opening = cLines.Where(l => l.JournalEntry!.Date < fromDate.Date).Sum(l => l.Debit - l.Credit);
+                decimal periodDr = cLines.Where(l => l.JournalEntry!.Date >= fromDate.Date && l.JournalEntry.Date <= end).Sum(l => l.Debit);
+                decimal periodCr = cLines.Where(l => l.JournalEntry!.Date >= fromDate.Date && l.JournalEntry.Date <= end).Sum(l => l.Credit);
+                decimal closing = opening + periodDr - periodCr;
+
+                // Show if has any opening balance, period activity, or closing balance
+                if (opening != 0 || periodDr != 0 || periodCr != 0 || closing != 0)
+                {
+                    model.Rows.Add(new PartnerLedgerSummaryRow
+                    {
+                        PartnerId = c.Id,
+                        PartnerName = c.CustomerName,
+                        City = c.City,
+                        Phone = c.Phone,
+                        Gstin = c.GstNumber,
+                        OpeningBalance = opening,
+                        TotalDebit = periodDr,
+                        TotalCredit = periodCr,
+                        ClosingBalance = closing
+                    });
+                }
+            }
+        }
+        else
+        {
+            var vendors = await _context.Vendors
+                .Where(v => v.IsActive)
+                .OrderBy(v => v.VendorName)
+                .ToListAsync();
+
+            var allLines = await _context.JournalEntryLines
+                .Include(l => l.JournalEntry)
+                .Where(l => l.VendorId.HasValue &&
+                            l.JournalEntry!.CompanyId == companyId &&
+                            l.JournalEntry.Status == JournalEntryStatus.Posted &&
+                            l.JournalEntry.Date <= end)
+                .ToListAsync();
+
+            foreach (var v in vendors)
+            {
+                var vLines = allLines.Where(l => l.VendorId == v.Id).ToList();
+                decimal opening = vLines.Where(l => l.JournalEntry!.Date < fromDate.Date).Sum(l => l.Credit - l.Debit);
+                decimal periodDr = vLines.Where(l => l.JournalEntry!.Date >= fromDate.Date && l.JournalEntry.Date <= end).Sum(l => l.Debit);
+                decimal periodCr = vLines.Where(l => l.JournalEntry!.Date >= fromDate.Date && l.JournalEntry.Date <= end).Sum(l => l.Credit);
+                decimal closing = opening + periodCr - periodDr;
+
+                if (opening != 0 || periodDr != 0 || periodCr != 0 || closing != 0)
+                {
+                    model.Rows.Add(new PartnerLedgerSummaryRow
+                    {
+                        PartnerId = v.Id,
+                        PartnerName = v.VendorName,
+                        City = v.City,
+                        Phone = v.Phone,
+                        Gstin = v.GstNumber,
+                        OpeningBalance = opening,
+                        TotalDebit = periodDr,
+                        TotalCredit = periodCr,
+                        ClosingBalance = closing
+                    });
+                }
+            }
         }
 
         return model;

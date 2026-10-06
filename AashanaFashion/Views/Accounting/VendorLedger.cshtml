@@ -1,0 +1,193 @@
+@model AashanaFashion.Models.PartnerLedgerViewModel
+@{
+    ViewData["Title"] = $"Vendor Ledger — {Model.PartnerName}";
+    var vendors = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new();
+    int? selectedVendorId = ViewBag.SelectedVendorId;
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="VendorLedger" class="page-back"><i class="bi bi-arrow-left"></i> All vendor ledgers</a>
+        <h1 class="page-title">Vendor ledger</h1>
+        <p class="page-sub">Credits (bills/purchases), debits (payments) and running payable balance.</p>
+    </div>
+    <div class="page-actions d-print-none">
+        <a asp-action="VendorLedger" class="btn btn-secondary"><i class="bi bi-list-ul"></i> All vendors summary</a>
+        <button type="button" class="btn btn-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print ledger</button>
+        <a asp-controller="Vendor" asp-action="Details" asp-route-id="@Model.PartnerId" class="btn btn-secondary"><i class="bi bi-truck"></i> Vendor profile</a>
+    </div>
+</div>
+
+<div class="d-print-none mb-3">
+    <div class="segmented">
+        <a asp-action="GeneralLedger" class="segment"><i class="bi bi-diagram-3"></i> General accounts</a>
+        <a asp-action="CustomerLedger" class="segment"><i class="bi bi-people"></i> Customer ledgers</a>
+        <a asp-action="VendorLedger" asp-route-vendorId="@Model.PartnerId" class="segment active"><i class="bi bi-truck"></i> Vendor ledgers</a>
+    </div>
+</div>
+
+<div class="table-card mb-4 d-print-none">
+    <form method="get" asp-action="VendorLedger" class="table-toolbar align-end">
+        <div class="toolbar-filters align-items-end">
+            <div class="toolbar-field">
+                <label for="vlVendor">Vendor</label>
+                <select id="vlVendor" name="vendorId" class="af-input af-select" onchange="this.form.submit()" style="min-width: 280px;">
+                    <option value="">All vendors summary…</option>
+                    @foreach (var v in vendors)
+                    {
+                        <option value="@v.Id" selected="@(v.Id == selectedVendorId)">@v.VendorName (@(v.City ?? "No City"))</option>
+                    }
+                </select>
+            </div>
+            <div class="toolbar-field">
+                <label for="vlFrom">From</label>
+                <input type="date" id="vlFrom" name="fromDate" value="@ViewBag.FromDate" class="af-input" />
+            </div>
+            <div class="toolbar-field">
+                <label for="vlTo">To</label>
+                <input type="date" id="vlTo" name="toDate" value="@ViewBag.ToDate" class="af-input" />
+            </div>
+        </div>
+        <div class="toolbar-actions">
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-arrow-repeat"></i> Load ledger</button>
+        </div>
+    </form>
+</div>
+
+<div class="data-card mb-4">
+    <div class="data-card-body">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <h2 class="text-section m-0">@Model.PartnerName</h2>
+                    <span class="af-badge b-purple text-2xs">Creditor / Vendor</span>
+                    @if (Model.CreditLimit.HasValue && Model.CreditLimit > 0)
+                    {
+                        <span class="af-badge b-gray text-2xs">Limit: ₹@Model.CreditLimit.Value.ToString("N0")</span>
+                    }
+                </div>
+                <div class="text-xs text-muted d-flex align-items-center gap-3 flex-wrap">
+                    @if (!string.IsNullOrEmpty(Model.Gstin))
+                    {
+                        <span><strong class="text-secondary">GSTIN:</strong> <span class="font-monospace">@Model.Gstin</span></span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Phone))
+                    {
+                        <span><strong class="text-secondary">Phone:</strong> @Model.Phone</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.City))
+                    {
+                        <span><strong class="text-secondary">City:</strong> @Model.City</span>
+                    }
+                </div>
+            </div>
+            <div class="text-end">
+                <span class="text-2xs text-muted text-uppercase d-block fw-semibold">Statement period</span>
+                <span class="text-sm font-monospace text-foreground">@Model.FromDate.ToString("dd MMM yyyy") — @Model.ToDate.ToString("dd MMM yyyy")</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Opening balance</div>
+        <div class="metric-value">₹@Math.Abs(Model.OpeningBalance).ToString("N2")</div>
+        <div class="metric-meta">@(Model.OpeningBalance >= 0 ? "Cr (Payable)" : "Dr (Advance)") at start</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Period purchases (Cr)</div>
+        <div class="metric-value text-primary">₹@Model.TotalCredit.ToString("N2")</div>
+        <div class="metric-meta">bills &amp; POs received</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Period payments (Dr)</div>
+        <div class="metric-value text-success">₹@Model.TotalDebit.ToString("N2")</div>
+        <div class="metric-meta">payments made</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Closing balance</div>
+        <div class="metric-value @(Model.ClosingBalance > 0 ? "text-danger" : "text-success")">₹@Math.Abs(Model.ClosingBalance).ToString("N2")</div>
+        <div class="metric-meta info">@(Model.ClosingBalance >= 0 ? "Cr · Outstanding payable" : "Dr · Advance paid")</div>
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="data-card-header">
+        <div class="data-card-title d-flex align-items-center gap-2">
+            <span>Statement of account</span>
+            <span class="af-badge b-gray text-2xs">@Model.Rows.Count @(Model.Rows.Count == 1 ? "entry" : "entries")</span>
+        </div>
+        <span class="text-xs text-muted">Chronological transactions</span>
+    </div>
+    @if (!Model.Rows.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-truck"></i></div>
+            <div class="es-title">No transactions in this period</div>
+            <p>No purchase bills or vendor payments were recorded between @Model.FromDate.ToString("dd/MM/yyyy") and @Model.ToDate.ToString("dd/MM/yyyy").</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th style="width: 110px;">Date</th>
+                        <th style="width: 140px;">Voucher #</th>
+                        <th style="width: 80px;">Journal</th>
+                        <th style="width: 130px;">Reference</th>
+                        <th>Narration / Particulars</th>
+                        <th style="width: 120px;" class="text-end">Debit / Paid (₹)</th>
+                        <th style="width: 120px;" class="text-end">Credit / Bill (₹)</th>
+                        <th style="width: 140px;" class="text-end">Balance (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="row-muted">
+                        <td class="font-monospace text-muted">@Model.FromDate.ToString("dd/MM/yyyy")</td>
+                        <td colspan="4"><em>Opening balance b/f</em></td>
+                        <td class="cell-num">—</td>
+                        <td class="cell-num">—</td>
+                        <td class="cell-num fw-semibold">
+                            ₹@Math.Abs(Model.OpeningBalance).ToString("N2")
+                            <span class="af-badge @(Model.OpeningBalance >= 0 ? "b-gray" : "b-green") text-2xs ms-1">@(Model.OpeningBalance >= 0 ? "Cr" : "Dr")</span>
+                        </td>
+                    </tr>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td class="font-monospace">@r.Date.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <a asp-action="JournalEntryDetails" asp-route-id="@r.EntryId" class="cell-title font-monospace">@r.EntryNumber</a>
+                            </td>
+                            <td><span class="af-badge b-gray text-2xs">@r.JournalCode</span></td>
+                            <td class="font-monospace text-xs text-muted">@(r.Reference ?? "—")</td>
+                            <td>
+                                <span class="cell-title">@r.Narration</span>
+                            </td>
+                            <td class="cell-num text-success">@(r.Debit > 0 ? $"₹{r.Debit:N2}" : "—")</td>
+                            <td class="cell-num text-primary">@(r.Credit > 0 ? $"₹{r.Credit:N2}" : "—")</td>
+                            <td class="cell-num fw-semibold">
+                                ₹@Math.Abs(r.RunningBalance).ToString("N2")
+                                <span class="af-badge @(r.RunningBalance >= 0 ? "b-amber" : "b-green") text-2xs ms-1">@(r.RunningBalance >= 0 ? "Cr" : "Dr")</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="totals-foot">
+                    <tr>
+                        <td colspan="5" class="text-end">Total for period</td>
+                        <td class="v text-success">₹@Model.TotalDebit.ToString("N2")</td>
+                        <td class="v text-primary">₹@Model.TotalCredit.ToString("N2")</td>
+                        <td class="v">
+                            ₹@Math.Abs(Model.ClosingBalance).ToString("N2")
+                            <span class="af-badge @(Model.ClosingBalance >= 0 ? "b-amber" : "b-green") text-2xs ms-1">@(Model.ClosingBalance >= 0 ? "Cr" : "Dr")</span>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</div>

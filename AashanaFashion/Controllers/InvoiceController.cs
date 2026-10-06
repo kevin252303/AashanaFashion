@@ -27,7 +27,7 @@ public class InvoiceController : Controller
         _companyContext = companyContext;
     }
 
-    public async Task<IActionResult> Index(string? search, InvoicePaymentStatus? status, string? eInvoiceStatus)
+    public async Task<IActionResult> Index(string? search, InvoicePaymentStatus? status, string? eInvoiceStatus, bool? overdueOnly = false)
     {
         var activeCompany = await _companyContext.GetActiveCompanyAsync();
         ViewBag.ActiveCompany = activeCompany;
@@ -54,6 +54,11 @@ public class InvoiceController : Controller
             query = query.Where(i => i.PaymentStatus == status.Value);
         }
 
+        if (overdueOnly == true)
+        {
+            query = query.Where(i => i.DueDate < DateTime.Today && i.PaymentStatus != InvoicePaymentStatus.Paid && i.GrandTotal > i.PaidAmount);
+        }
+
         if (!string.IsNullOrWhiteSpace(eInvoiceStatus))
         {
             if (eInvoiceStatus == "Generated")
@@ -68,16 +73,22 @@ public class InvoiceController : Controller
         var totalInvoiced = allInvoices.Sum(i => i.GrandTotal);
         var totalCollected = allInvoices.Sum(i => i.PaidAmount);
         var outstandingReceivables = allInvoices.Sum(i => i.BalanceDue);
-        var overdueCount = allInvoices.Count(i => i.DueDate < DateTime.Today && i.PaymentStatus != InvoicePaymentStatus.Paid);
+        var overdueInvoices = allInvoices.Where(i => i.IsOverdue).ToList();
+        var overdueCount = overdueInvoices.Count;
+        var maxOverdueDays = overdueInvoices.Any() ? overdueInvoices.Max(i => i.OverdueDays) : 0;
+        var avgOverdueDays = overdueInvoices.Any() ? (int)Math.Round(overdueInvoices.Average(i => i.OverdueDays)) : 0;
         var eInvoiceGeneratedCount = allInvoices.Count(i => i.EInvoiceStatus == "Generated");
 
         ViewBag.TotalInvoiced = totalInvoiced;
         ViewBag.TotalCollected = totalCollected;
         ViewBag.OutstandingReceivables = outstandingReceivables;
         ViewBag.OverdueCount = overdueCount;
+        ViewBag.MaxOverdueDays = maxOverdueDays;
+        ViewBag.AvgOverdueDays = avgOverdueDays;
         ViewBag.EInvoiceGeneratedCount = eInvoiceGeneratedCount;
         ViewBag.Search = search;
         ViewBag.Status = status;
+        ViewBag.OverdueOnly = overdueOnly == true;
         ViewBag.EInvoiceStatus = eInvoiceStatus;
 
         var invoices = await query.OrderByDescending(i => i.InvoiceDate).ThenByDescending(i => i.Id).ToListAsync();
@@ -172,6 +183,7 @@ public class InvoiceController : Controller
                     .Include(i => i.Items)
                     .Where(i => i.SalesOrderId == so.Id && i.PaymentStatus != InvoicePaymentStatus.Cancelled)
                     .ToListAsync();
+
 
                 var activeChallan = selectedChallan ?? orderChallans.FirstOrDefault();
                 if (activeChallan != null)
@@ -442,7 +454,7 @@ public class InvoiceController : Controller
             Recipient = "Accounts & Billing",
             RecipientName = invoice.CustomerName,
             Subject = "Tax Invoice Generated",
-            Body = $"Generated Tax Invoice #{invoice.InvoiceNumber} for ₹{invoice.GrandTotal:N2} (Taxable: ₹{invoice.TaxableAmount:N2}, GST: ₹{(invoice.CgstAmount + invoice.SgstAmount + invoice.IgstAmount):N2}). Due date: {invoice.DueDate:dd MMM yyyy}.",
+            Body = $"Generated Tax Invoice #{invoice.InvoiceNumber} for ₹{invoice.GrandTotal:N2} (Taxable: ₹{invoice.TaxableAmount:N2}, GST: ₹{(invoice.CgstAmount + invoice.SgstAmount + invoice.IgstAmount):N2}). Credit terms: {invoice.CreditPeriodDays} days, Due date: {invoice.DueDate:dd MMM yyyy}. Total days (age): {invoice.TotalDays} · Overdue days: {invoice.OverdueDays}.",
             Status = CommunicationStatus.Sent,
             SentAt = DateTime.Now,
             SentBy = loggedUser
@@ -459,7 +471,7 @@ public class InvoiceController : Controller
                 Recipient = "Accounts & Billing",
                 RecipientName = invoice.CustomerName,
                 Subject = $"Billed Tax Invoice #{invoice.InvoiceNumber}",
-                Body = $"Billed Tax Invoice #{invoice.InvoiceNumber} totaling ₹{invoice.GrandTotal:N2} against this order.",
+                Body = $"Billed Tax Invoice #{invoice.InvoiceNumber} totaling ₹{invoice.GrandTotal:N2} against this order. Total days: {invoice.TotalDays}, Overdue days: {invoice.OverdueDays}.",
                 Status = CommunicationStatus.Sent,
                 SentAt = DateTime.Now,
                 SentBy = loggedUser
@@ -468,7 +480,40 @@ public class InvoiceController : Controller
 
         await _context.SaveChangesAsync();
 
-        TempData["Success"] = $"Tax Invoice {invoice.InvoiceNumber} created successfully.";
+        // Credit Limit Check & Chatter Warning
+        var customer = await _context.Customers.FindAsync(invoice.CustomerId);
+        if (customer != null && customer.PartnerLimit.HasValue && customer.PartnerLimit.Value > 0)
+        {
+            var unpaidTotal = await _context.TaxInvoices
+                .Where(i => i.CustomerId == customer.Id && i.Id != invoice.Id && i.PaymentStatus != InvoicePaymentStatus.Paid && i.PaymentStatus != InvoicePaymentStatus.Cancelled)
+                .SumAsync(i => (decimal?)(i.GrandTotal - i.PaidAmount)) ?? 0m;
+            decimal totalExposure = unpaidTotal + (customer.TotalReceivable ?? 0m) + invoice.GrandTotal;
+            if (totalExposure > customer.PartnerLimit.Value)
+            {
+                decimal excess = totalExposure - customer.PartnerLimit.Value;
+                _context.CommunicationLogs.Add(new CommunicationLog
+                {
+                    DocumentType = "TaxInvoice",
+                    DocumentId = invoice.Id,
+                    DocumentReference = invoice.InvoiceNumber,
+                    Channel = CommunicationChannel.InternalNote,
+                    Recipient = "Credit & Accounts",
+                    RecipientName = customer.CustomerName,
+                    Subject = "Credit Limit Exceeded Warning",
+                    Body = $"⚠ Credit Limit Warning: Invoice #{invoice.InvoiceNumber} (₹{invoice.GrandTotal:N2}) brings customer total exposure to ₹{totalExposure:N2}, exceeding credit limit of ₹{customer.PartnerLimit.Value:N2} by ₹{excess:N2}.",
+                    Status = CommunicationStatus.Sent,
+                    SentAt = DateTime.Now,
+                    SentBy = loggedUser
+                });
+                await _context.SaveChangesAsync();
+                TempData["Warning"] = $"Tax Invoice {invoice.InvoiceNumber} generated, but Customer Credit Limit is exceeded by ₹{excess:N2} (Total Exposure: ₹{totalExposure:N2} / Limit: ₹{customer.PartnerLimit.Value:N2}).";
+            }
+        }
+
+        if (TempData["Warning"] == null)
+        {
+            TempData["Success"] = $"Tax Invoice {invoice.InvoiceNumber} generated successfully. Total credit terms: {invoice.CreditPeriodDays} days · Due date: {invoice.DueDate:dd/MM/yyyy}. Total days: {invoice.TotalDays} · Overdue days: {invoice.OverdueDays}.";
+        }
         return RedirectToAction(nameof(Details), new { id = invoice.Id });
     }
 
@@ -627,6 +672,18 @@ public class InvoiceController : Controller
         string state = customer.State ?? "";
         bool isInterState = !string.IsNullOrEmpty(state) && !state.ToLower().Contains("gujarat") && !state.Contains("24");
 
+        // Credit Limits & Outstanding Exposure
+        var unpaidInvoices = await _context.TaxInvoices
+            .Where(i => i.CustomerId == customerId && i.PaymentStatus != InvoicePaymentStatus.Paid && i.PaymentStatus != InvoicePaymentStatus.Cancelled)
+            .ToListAsync();
+        decimal invoiceOutstanding = unpaidInvoices.Sum(i => i.BalanceDue);
+        decimal openingReceivable = customer.TotalReceivable ?? 0m;
+        decimal totalOutstanding = invoiceOutstanding + openingReceivable;
+        decimal creditLimit = customer.PartnerLimit ?? 0m;
+        decimal availableCredit = creditLimit > 0 ? (creditLimit - totalOutstanding) : 0m;
+        bool hasCreditLimit = creditLimit > 0;
+        bool isOverLimit = hasCreditLimit && totalOutstanding > creditLimit;
+
         return Json(new
         {
             customerName = customer.CustomerName,
@@ -636,7 +693,13 @@ public class InvoiceController : Controller
             shippingAddress = customer.Address ?? "",
             state = state,
             isInterState = isInterState,
-            placeOfSupply = !string.IsNullOrEmpty(state) ? state : "Gujarat (24)"
+            placeOfSupply = !string.IsNullOrEmpty(state) ? state : "Gujarat (24)",
+            creditLimit = creditLimit,
+            currentOutstanding = totalOutstanding,
+            availableCredit = availableCredit,
+            hasCreditLimit = hasCreditLimit,
+            isOverLimit = isOverLimit,
+            daysSalesOutstanding = customer.DaysSalesOutstanding ?? 15
         });
     }
 
@@ -797,6 +860,18 @@ public class InvoiceController : Controller
             basisMsg = $"No delivery challan found for this order (0 pcs delivered). Quantities reflect ordered amount.";
         }
 
+        // Credit Limits & Outstanding Exposure
+        var unpaidInvoices = await _context.TaxInvoices
+            .Where(i => i.CustomerId == so.CustomerId && i.PaymentStatus != InvoicePaymentStatus.Paid && i.PaymentStatus != InvoicePaymentStatus.Cancelled)
+            .ToListAsync();
+        decimal invoiceOutstanding = unpaidInvoices.Sum(i => i.BalanceDue);
+        decimal openingReceivable = so.Customer.TotalReceivable ?? 0m;
+        decimal totalOutstanding = invoiceOutstanding + openingReceivable;
+        decimal creditLimit = so.Customer.PartnerLimit ?? 0m;
+        decimal availableCredit = creditLimit > 0 ? (creditLimit - totalOutstanding) : 0m;
+        bool hasCreditLimit = creditLimit > 0;
+        bool isOverLimit = hasCreditLimit && totalOutstanding > creditLimit;
+
         return Json(new
         {
             salesOrderId = so.Id,
@@ -819,6 +894,15 @@ public class InvoiceController : Controller
             totalOrderedQuantity = totalOrdered,
             totalDeliveredQuantity = totalDeliveredSum,
             invoicingBasisMessage = basisMsg,
+            creditLimit = creditLimit,
+            currentOutstanding = totalOutstanding,
+            availableCredit = availableCredit,
+            hasCreditLimit = hasCreditLimit,
+            isOverLimit = isOverLimit,
+            daysSalesOutstanding = so.Customer.DaysSalesOutstanding ?? 15,
+            hasAgentDiscount = so.HasAgentDiscount,
+            agentDiscountRate = so.AgentDiscountRate,
+            agentDiscountAmount = so.AgentDiscountAmount,
             challans = challanSummaries,
             items = items
         });

@@ -6,7 +6,7 @@ namespace AashanaFashion.Models;
 
 public enum SubscriptionTier
 {
-    [Display(Name = "Free Trial (14 Days)")]
+    [Display(Name = "Standard")]
     FreeTrial,
 
     [Display(Name = "Starter (Small Garment Shop / Job Work)")]

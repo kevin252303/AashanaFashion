@@ -17,13 +17,20 @@ public class SalesOrderController : Controller
     private readonly IEwayBillService _ewayBillService;
     private readonly IConfiguration _config;
     private readonly ICompanyContext _companyContext;
+    private readonly IPricelistService _pricelistService;
 
-    public SalesOrderController(AppDbContext context, IEwayBillService ewayBillService, IConfiguration config, ICompanyContext companyContext)
+    public SalesOrderController(
+        AppDbContext context,
+        IEwayBillService ewayBillService,
+        IConfiguration config,
+        ICompanyContext companyContext,
+        IPricelistService pricelistService)
     {
         _context = context;
         _ewayBillService = ewayBillService;
         _config = config;
         _companyContext = companyContext;
+        _pricelistService = pricelistService;
     }
 
     public async Task<IActionResult> Index(string? search, SalesOrderStatus? status)
@@ -116,6 +123,9 @@ public class SalesOrderController : Controller
             TransporterName = model.TransporterName,
             PaymentTerms = model.PaymentTerms,
             Notes = model.Notes,
+            HasAgentDiscount = model.HasAgentDiscount,
+            AgentDiscountType = model.AgentDiscountType,
+            AgentDiscountRate = model.HasAgentDiscount ? Math.Max(0m, model.AgentDiscountRate) : 0m,
             TransportCharge = model.TransportCharge,
             TransportChargeGST = model.TransportChargeGST,
             RoundOff = model.RoundOff,
@@ -139,13 +149,61 @@ public class SalesOrderController : Controller
             });
         }
 
+        decimal itemsSubtotal = order.Details.Sum(d => d.NetAmount);
+        decimal agentDiscountAmt = 0m;
+        if (order.HasAgentDiscount && order.AgentDiscountRate > 0)
+        {
+            if (order.AgentDiscountType == AgentDiscountType.Percentage)
+            {
+                agentDiscountAmt = Math.Round(itemsSubtotal * (order.AgentDiscountRate / 100m), 2);
+            }
+            else
+            {
+                agentDiscountAmt = Math.Min(itemsSubtotal, Math.Round(order.AgentDiscountRate, 2));
+            }
+        }
+        order.AgentDiscountAmount = agentDiscountAmt;
+
         var effTransport = model.TransportCharge + (model.TransportCharge * model.TransportChargeGST / 100m);
-        order.TotalAmount = order.Details.Sum(d => d.NetAmount) + effTransport + model.RoundOff;
+        order.TotalAmount = (itemsSubtotal - agentDiscountAmt) + effTransport + model.RoundOff;
 
         _context.SalesOrders.Add(order);
         await _context.SaveChangesAsync();
 
-        TempData["Success"] = $"Sales Order '{order.SoNumber}' booked successfully.";
+        // Credit Limit Check & Chatter Logging
+        var customer = await _context.Customers.FindAsync(order.CustomerId);
+        if (customer != null && customer.PartnerLimit.HasValue && customer.PartnerLimit.Value > 0)
+        {
+            var unpaidTotal = await _context.TaxInvoices
+                .Where(i => i.CustomerId == customer.Id && i.PaymentStatus != InvoicePaymentStatus.Paid && i.PaymentStatus != InvoicePaymentStatus.Cancelled)
+                .SumAsync(i => (decimal?)(i.GrandTotal - i.PaidAmount)) ?? 0m;
+            decimal totalExposure = unpaidTotal + (customer.TotalReceivable ?? 0m) + order.TotalAmount;
+            if (totalExposure > customer.PartnerLimit.Value)
+            {
+                decimal excess = totalExposure - customer.PartnerLimit.Value;
+                _context.CommunicationLogs.Add(new CommunicationLog
+                {
+                    DocumentType = "SalesOrder",
+                    DocumentId = order.Id,
+                    DocumentReference = order.SoNumber,
+                    Channel = CommunicationChannel.InternalNote,
+                    Recipient = "Credit & Accounts",
+                    RecipientName = customer.CustomerName,
+                    Subject = "Credit Limit Exceeded Warning",
+                    Body = $"⚠ Credit Limit Warning: Order #{order.SoNumber} (₹{order.TotalAmount:N2}) brings customer exposure to ₹{totalExposure:N2}, exceeding the credit limit of ₹{customer.PartnerLimit.Value:N2} by ₹{excess:N2}.",
+                    Status = CommunicationStatus.Sent,
+                    SentAt = DateTime.Now,
+                    SentBy = User.Identity?.Name ?? "System"
+                });
+                await _context.SaveChangesAsync();
+                TempData["Warning"] = $"Sales Order '{order.SoNumber}' booked, but Customer Credit Limit is exceeded by ₹{excess:N2} (Total Exposure: ₹{totalExposure:N2} / Limit: ₹{customer.PartnerLimit.Value:N2}).";
+            }
+        }
+
+        if (TempData["Warning"] == null)
+        {
+            TempData["Success"] = $"Sales Order '{order.SoNumber}' booked successfully.";
+        }
         return RedirectToAction(nameof(Details), new { id = order.Id });
     }
 
@@ -181,6 +239,10 @@ public class SalesOrderController : Controller
             TransporterName = order.TransporterName,
             PaymentTerms = order.PaymentTerms,
             Notes = order.Notes,
+            HasAgentDiscount = order.HasAgentDiscount,
+            AgentDiscountType = order.AgentDiscountType,
+            AgentDiscountRate = order.AgentDiscountRate,
+            AgentDiscountAmount = order.AgentDiscountAmount,
             TransportCharge = order.TransportCharge,
             TransportChargeGST = order.TransportChargeGST,
             RoundOff = order.RoundOff,
@@ -246,6 +308,9 @@ public class SalesOrderController : Controller
         order.TransporterName = model.TransporterName;
         order.PaymentTerms = model.PaymentTerms;
         order.Notes = model.Notes;
+        order.HasAgentDiscount = model.HasAgentDiscount;
+        order.AgentDiscountType = model.AgentDiscountType;
+        order.AgentDiscountRate = model.HasAgentDiscount ? Math.Max(0m, model.AgentDiscountRate) : 0m;
         order.TransportCharge = model.TransportCharge;
         order.TransportChargeGST = model.TransportChargeGST;
         order.RoundOff = model.RoundOff;
@@ -276,8 +341,23 @@ public class SalesOrderController : Controller
             order.Details.Add(newDetail);
         }
 
+        decimal itemsSubtotal = order.Details.Sum(d => d.NetAmount);
+        decimal agentDiscountAmt = 0m;
+        if (order.HasAgentDiscount && order.AgentDiscountRate > 0)
+        {
+            if (order.AgentDiscountType == AgentDiscountType.Percentage)
+            {
+                agentDiscountAmt = Math.Round(itemsSubtotal * (order.AgentDiscountRate / 100m), 2);
+            }
+            else
+            {
+                agentDiscountAmt = Math.Min(itemsSubtotal, Math.Round(order.AgentDiscountRate, 2));
+            }
+        }
+        order.AgentDiscountAmount = agentDiscountAmt;
+
         var effTransport = model.TransportCharge + (model.TransportCharge * model.TransportChargeGST / 100m);
-        order.TotalAmount = order.Details.Sum(d => d.NetAmount) + effTransport + model.RoundOff;
+        order.TotalAmount = (itemsSubtotal - agentDiscountAmt) + effTransport + model.RoundOff;
 
         await _context.SaveChangesAsync();
         TempData["Success"] = $"Sales Order '{order.SoNumber}' updated.";
@@ -517,6 +597,18 @@ public class SalesOrderController : Controller
         var addressParts = new[] { customer.Address, customer.City, customer.State, customer.PinCode }
             .Where(p => !string.IsNullOrWhiteSpace(p));
 
+        // Credit Limits & Outstanding Exposure
+        var unpaidInvoices = await _context.TaxInvoices
+            .Where(i => i.CustomerId == id && i.PaymentStatus != InvoicePaymentStatus.Paid && i.PaymentStatus != InvoicePaymentStatus.Cancelled)
+            .ToListAsync();
+        decimal invoiceOutstanding = unpaidInvoices.Sum(i => i.BalanceDue);
+        decimal openingReceivable = customer.TotalReceivable ?? 0m;
+        decimal totalOutstanding = invoiceOutstanding + openingReceivable;
+        decimal creditLimit = customer.PartnerLimit ?? 0m;
+        decimal availableCredit = creditLimit > 0 ? (creditLimit - totalOutstanding) : 0m;
+        bool hasCreditLimit = creditLimit > 0;
+        bool isOverLimit = hasCreditLimit && totalOutstanding > creditLimit;
+
         return Json(new
         {
             shippingAddress = string.Join(", ", addressParts),
@@ -526,7 +618,166 @@ public class SalesOrderController : Controller
             phone = customer.Phone ?? "",
             contactPerson = customer.ContactPerson ?? "",
             pricelistId = customer.PricelistId,
-            pricelistName = customer.Pricelist ?? ""
+            pricelistName = customer.Pricelist ?? "",
+            creditLimit = creditLimit,
+            currentOutstanding = totalOutstanding,
+            availableCredit = availableCredit,
+            hasCreditLimit = hasCreditLimit,
+            isOverLimit = isOverLimit,
+            creditPeriodDays = customer.DaysSalesOutstanding ?? 15
+        });
+    }
+
+    [HttpPost]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> ScanBarcode([FromBody] BarcodeScanOrderRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.Code))
+        {
+            return Json(new { success = false, message = "Please scan or enter a barcode / SKU." });
+        }
+
+        var code = request.Code.Trim();
+
+        // 1. Check ReadyProducts (SKU or Barcode)
+        var rp = await _context.ReadyProducts
+            .Include(r => r.Design)
+            .FirstOrDefaultAsync(r => r.Barcode == code || r.Sku == code);
+
+        Design? design = rp?.Design;
+        string? colour = rp?.Colour;
+        string? size = rp?.Size;
+        int stockAvailable = rp?.AvailableQuantity ?? 0;
+        string foundType = "Ready Product";
+
+        // 2. If not found, check ProductionEntities (Garment Piece Tag)
+        if (design == null)
+        {
+            var entity = await _context.ProductionEntities
+                .Include(e => e.ProductionOrder)
+                    .ThenInclude(p => p!.Design)
+                .FirstOrDefaultAsync(e => e.Barcode == code || e.Id.ToString() == code);
+
+            if (entity?.ProductionOrder?.Design != null)
+            {
+                design = entity.ProductionOrder.Design;
+                colour = entity.Colour;
+                size = entity.Size;
+                foundType = "Garment Piece Tag";
+            }
+        }
+
+        // 3. If not found, check Designs directly (Design Number or CommonDNo)
+        if (design == null)
+        {
+            design = await _context.Designs
+                .FirstOrDefaultAsync(d => d.DesignNumber == code || (d.CommonDNo != null && d.CommonDNo == code));
+
+            if (design != null)
+            {
+                foundType = "Design Master";
+            }
+        }
+
+        // 4. If not found, check ProductionOrders by Lot No
+        if (design == null)
+        {
+            var lotNo = code.StartsWith("LOT-", StringComparison.OrdinalIgnoreCase) ? code.Substring(4) : code;
+            var po = await _context.ProductionOrders
+                .Include(p => p.Design)
+                .FirstOrDefaultAsync(p => p.LotNo.ToLower() == lotNo.ToLower());
+
+            if (po?.Design != null)
+            {
+                design = po.Design;
+                foundType = "Lot / Batch";
+            }
+        }
+
+        if (design == null)
+        {
+            return Json(new { success = false, message = $"Barcode / SKU '{code}' not recognized in system." });
+        }
+
+        // Calculate rate & discount using active pricelist
+        decimal unitPrice = design.SalesPrice;
+        decimal discountPct = 0;
+        string? ruleDesc = null;
+
+        try
+        {
+            PricelistCalculationResult plResult;
+            if (request.PricelistId.HasValue && request.PricelistId.Value > 0)
+            {
+                plResult = await _pricelistService.CalculatePriceAsync(
+                    request.PricelistId.Value, design.Id, request.Quantity > 0 ? request.Quantity : 1, DateTime.Today, colour, size);
+                unitPrice = plResult.UnitPrice;
+                discountPct = plResult.DiscountPercentage;
+                ruleDesc = plResult.AppliedRuleDescription;
+            }
+            else if (request.CustomerId.HasValue && request.CustomerId.Value > 0)
+            {
+                plResult = await _pricelistService.CalculateCustomerPriceAsync(
+                    request.CustomerId.Value, design.Id, request.Quantity > 0 ? request.Quantity : 1, DateTime.Today, colour, size);
+                unitPrice = plResult.UnitPrice;
+                discountPct = plResult.DiscountPercentage;
+                ruleDesc = plResult.AppliedRuleDescription;
+            }
+        }
+        catch
+        {
+            unitPrice = design.SalesPrice;
+        }
+
+        // Parse default GST
+        decimal gstPct = 12.0m;
+        if (!string.IsNullOrWhiteSpace(design.SalesTaxes))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(design.SalesTaxes, @"\d+(\.\d+)?");
+            if (match.Success && decimal.TryParse(match.Value, out var g))
+            {
+                gstPct = g;
+            }
+        }
+
+        // If colour or size is null, pick first available from design
+        var coloursList = (design.Colours ?? "")
+            .Split(new[] { ',', ';', '/' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(c => c.Trim())
+            .ToList();
+
+        var sizesList = (design.Sizes ?? "")
+            .Split(new[] { ',', ';', '/' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => s.Trim())
+            .ToList();
+
+        if (string.IsNullOrEmpty(colour) && coloursList.Any())
+        {
+            colour = coloursList.First();
+        }
+
+        if (string.IsNullOrEmpty(size) && sizesList.Any())
+        {
+            size = sizesList.First();
+        }
+
+        return Json(new
+        {
+            success = true,
+            foundType = foundType,
+            designId = design.Id,
+            designNumber = design.DesignNumber,
+            colour = colour ?? "",
+            size = size ?? "",
+            unitPrice = unitPrice,
+            discountPercentage = discountPct,
+            gstPercentage = gstPct,
+            availableStock = stockAvailable,
+            discontinued = design.Discontinued,
+            appliedRule = ruleDesc,
+            message = $"Found {foundType}: {design.DesignNumber}" +
+                      (!string.IsNullOrEmpty(colour) ? $" ({colour} / {size})" : "") +
+                      (stockAvailable > 0 ? $" · {stockAvailable} pcs in stock" : "")
         });
     }
 

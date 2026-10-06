@@ -12,6 +12,7 @@ public class DeveloperAccessFilter : IActionFilter
         "PlatformAdmin",
         "Subscription",
         "Account",
+        "Lead",
         "Home"
     };
 

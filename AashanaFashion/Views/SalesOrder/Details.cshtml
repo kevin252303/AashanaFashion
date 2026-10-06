@@ -129,6 +129,17 @@
                             }
                         </div>
                     </div>
+                    @if (Model.HasAgentDiscount && Model.AgentDiscountAmount > 0)
+                    {
+                        <div style="grid-column: 1 / -1;">
+                            <div class="info-label">Agent discount (whole order)</div>
+                            <div class="info-value">
+                                <span class="af-badge b-purple">
+                                    <i class="bi bi-tag-fill me-1"></i>@(Model.AgentDiscountType == AgentDiscountType.Percentage ? $"{Model.AgentDiscountRate:G29}%" : $"Fixed ₹{Model.AgentDiscountRate:N2}") (-₹@Model.AgentDiscountAmount.ToString("N2"))
+                                </span>
+                            </div>
+                        </div>
+                    }
                     @if (!string.IsNullOrEmpty(Model.Notes))
                     {
                         <div style="grid-column: 1 / -1;">
@@ -190,15 +201,41 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="4" class="text-end">Total</td>
-                    <td class="text-end tabular">@totalOrdered</td>
-                    <td class="text-end tabular text-success">@totalDispatched</td>
-                    <td class="text-end tabular @(totalPending > 0 ? "text-danger" : "text-success")">@totalPending</td>
+                    <td colspan="4" class="text-end fw-semibold">Items Subtotal</td>
+                    <td class="text-end tabular fw-semibold">@totalOrdered</td>
+                    <td class="text-end tabular text-success fw-semibold">@totalDispatched</td>
+                    <td class="text-end tabular @(totalPending > 0 ? "text-danger" : "text-success") fw-semibold">@totalPending</td>
                     <td colspan="3"></td>
-                    <td class="text-end tabular">₹@Model.TotalAmount.ToString("N2")</td>
+                    <td class="text-end tabular fw-semibold">₹@Model.Details.Sum(d => d.NetAmount).ToString("N2")</td>
                 </tr>
             </tfoot>
         </table>
+    </div>
+
+    <div class="row justify-content-end p-3 bg-light border-top m-0">
+        <div class="col-md-5 col-lg-4">
+            <div class="kv-row"><span class="k">Items Subtotal</span><span class="v tabular">₹@Model.Details.Sum(d => d.NetAmount).ToString("N2")</span></div>
+            @if (Model.HasAgentDiscount && Model.AgentDiscountAmount > 0)
+            {
+                <div class="kv-row text-danger">
+                    <span class="k text-danger">
+                        <i class="bi bi-tag-fill me-1"></i>Agent Discount @(Model.AgentDiscountType == AgentDiscountType.Percentage ? $"({Model.AgentDiscountRate:G29}%)" : "(Fixed)")
+                    </span>
+                    <span class="v text-danger tabular fw-semibold">-₹@Model.AgentDiscountAmount.ToString("N2")</span>
+                </div>
+                <div class="kv-row"><span class="k">Net Subtotal</span><span class="v tabular fw-semibold">₹@((Model.Details.Sum(d => d.NetAmount) - Model.AgentDiscountAmount).ToString("N2"))</span></div>
+            }
+            @if (Model.TransportCharge > 0)
+            {
+                var effTransport = Model.TransportCharge + (Model.TransportCharge * Model.TransportChargeGST / 100m);
+                <div class="kv-row"><span class="k">Transport (+@Model.TransportChargeGST% GST)</span><span class="v tabular">₹@effTransport.ToString("N2")</span></div>
+            }
+            @if (Model.RoundOff != 0)
+            {
+                <div class="kv-row"><span class="k">Round Off</span><span class="v tabular">₹@Model.RoundOff.ToString("N2")</span></div>
+            }
+            <div class="bill-total pt-2 mt-2 border-top"><span class="k">Grand Total</span><span class="v">₹@Model.TotalAmount.ToString("N2")</span></div>
+        </div>
     </div>
 </div>
 

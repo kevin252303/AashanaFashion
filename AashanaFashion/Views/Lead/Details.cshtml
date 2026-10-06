@@ -3,7 +3,9 @@
 @using AashanaFashion.Helpers
 
 @{
-    ViewData["Title"] = "Lead " + Model.LeadNumber;
+    var isDeveloper = ViewBag.IsDeveloper as bool? ?? User.IsInRole("Developer");
+    var matchingTenant = ViewBag.MatchingTenant as AashanaFashion.Models.Tenant;
+    ViewData["Title"] = (isDeveloper ? "Client Lead " : "Lead ") + Model.LeadNumber;
     var badgeClass = Model.Stage switch
     {
         LeadStage.New => "b-blue",
@@ -16,18 +18,23 @@
     };
 
     var stageIndex = (int)Model.Stage;
+    var stageLabel = Model.Stage.ToStageDisplay(isDeveloper);
 }
 
 <div class="page-header">
     <div>
-        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> Leads</a>
+        <a asp-action="Index" class="page-back"><i class="bi bi-arrow-left"></i> @(isDeveloper ? "Client Pipeline" : "Leads")</a>
         <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
             <h1 class="page-title">@Model.Title</h1>
             <span class="mono-id">@Model.LeadNumber</span>
-            <span class="af-badge @badgeClass">@Model.Stage.Humanize()</span>
+            <span class="af-badge @badgeClass">@stageLabel</span>
+            @if (isDeveloper && matchingTenant != null)
+            {
+                <span class="af-badge b-green"><i class="bi bi-cloud-check me-1"></i> Provisioned Tenant</span>
+            }
         </div>
         <p class="page-sub">
-            Created on @Model.CreatedDate.ToString("dd MMM yyyy")
+            Registered on @Model.CreatedDate.ToString("dd MMM yyyy")
             @if (Model.AssignedToUser != null)
             {
                 <span> · Assigned to @Model.AssignedToUser.FullName</span>
@@ -41,38 +48,65 @@
     <div class="page-actions">
         @if (!string.IsNullOrEmpty(Model.Phone))
         {
-            <a asp-controller="WhatsApp" asp-action="Lead" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary">
-                <i class="bi bi-whatsapp text-success"></i> WhatsApp prospect
-            </a>
+            var cleanPhone = Model.Phone.Replace("+", "").Replace(" ", "").Replace("-", "");
+            if (isDeveloper)
+            {
+                var waText = Uri.EscapeDataString($"Hello {Model.ContactPerson}, thank you for reaching out to Kriyex Cloud ERP! I'd love to schedule a quick 15-minute walkthrough of the software for {Model.CompanyName ?? "your business"}. When would be convenient for you?");
+                <a href="https://wa.me/@cleanPhone?text=@waText" target="_blank" class="btn btn-secondary">
+                    <i class="bi bi-whatsapp text-success"></i> WhatsApp Demo Invite
+                </a>
+            }
+            else
+            {
+                <a asp-controller="WhatsApp" asp-action="Lead" asp-route-id="@Model.Id" target="_blank" class="btn btn-secondary">
+                    <i class="bi bi-whatsapp text-success"></i> WhatsApp prospect
+                </a>
+            }
         }
+
         <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-secondary">
             <i class="bi bi-pencil"></i> Edit
         </a>
 
-        @if (!Model.CustomerId.HasValue)
+        @if (isDeveloper)
         {
-            <form asp-action="ConvertToCustomer" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Convert this inquiry into a registered customer?')">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-secondary">
-                    <i class="bi bi-person-check"></i> Convert to customer
-                </button>
-            </form>
-        }
-
-        @if (!Model.SalesOrderId.HasValue)
-        {
-            <form asp-action="ConvertToSalesOrder" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Create a draft Sales Order from this inquiry?')">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-bag-plus"></i> Convert to sales order
-                </button>
-            </form>
+            if (matchingTenant != null)
+            {
+                <a asp-controller="PlatformAdmin" asp-action="SwitchToTenant" asp-route-tenantId="@matchingTenant.Id" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-in-right"></i> Open Workspace
+                </a>
+                <a asp-controller="PlatformAdmin" asp-action="Index" class="btn btn-secondary">
+                    <i class="bi bi-gear"></i> Platform Admin
+                </a>
+            }
         }
         else
         {
-            <a asp-controller="SalesOrder" asp-action="Details" asp-route-id="@Model.SalesOrderId.Value" class="btn btn-primary">
-                <i class="bi bi-eye"></i> View sales order
-            </a>
+            @if (!Model.CustomerId.HasValue)
+            {
+                <form asp-action="ConvertToCustomer" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Convert this inquiry into a registered customer?')">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="bi bi-person-check"></i> Convert to customer
+                    </button>
+                </form>
+            }
+
+            @if (!Model.SalesOrderId.HasValue)
+            {
+                <form asp-action="ConvertToSalesOrder" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Create a draft Sales Order from this inquiry?')">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-bag-plus"></i> Convert to sales order
+                    </button>
+                </form>
+            }
+            else
+            {
+                <a asp-controller="SalesOrder" asp-action="Details" asp-route-id="@Model.SalesOrderId.Value" class="btn btn-primary">
+                    <i class="bi bi-eye"></i> View sales order
+                </a>
+            }
         }
     </div>
 </div>
@@ -81,31 +115,31 @@
 <div class="data-card p-3 mb-4">
     <div class="flow">
         <span class="flow-step @(stageIndex > 0 ? "done" : (stageIndex == 0 ? "current" : "locked"))">
-            <span class="flow-num">@(stageIndex > 0 ? "✓" : "1")</span> New inquiry
+            <span class="flow-num">@(stageIndex > 0 ? "✓" : "1")</span> @(isDeveloper ? "New Inbound" : "New inquiry")
         </span>
         <i class="bi bi-chevron-right flow-sep"></i>
         <span class="flow-step @(stageIndex > 1 ? "done" : (stageIndex == 1 ? "current" : "locked"))">
-            <span class="flow-num">@(stageIndex > 1 ? "✓" : "2")</span> Contacted
+            <span class="flow-num">@(stageIndex > 1 ? "✓" : "2")</span> @(isDeveloper ? "Discovery" : "Contacted")
         </span>
         <i class="bi bi-chevron-right flow-sep"></i>
         <span class="flow-step @(stageIndex > 2 ? "done" : (stageIndex == 2 ? "current" : "locked"))">
-            <span class="flow-num">@(stageIndex > 2 ? "✓" : "3")</span> Sample sent
+            <span class="flow-num">@(stageIndex > 2 ? "✓" : "3")</span> @(isDeveloper ? "Product Demo" : "Sample sent")
         </span>
         <i class="bi bi-chevron-right flow-sep"></i>
         <span class="flow-step @(stageIndex > 3 ? "done" : (stageIndex == 3 ? "current" : "locked"))">
-            <span class="flow-num">@(stageIndex > 3 ? "✓" : "4")</span> Quotation sent
+            <span class="flow-num">@(stageIndex > 3 ? "✓" : "4")</span> @(isDeveloper ? "Commercial Proposal" : "Quotation sent")
         </span>
         <i class="bi bi-chevron-right flow-sep"></i>
         @if (Model.Stage == LeadStage.Lost)
         {
             <span class="flow-step current">
-                <span class="flow-num">✕</span> Closed lost
+                <span class="flow-num">✕</span> @(isDeveloper ? "Drop-off / Lost" : "Closed lost")
             </span>
         }
         else
         {
             <span class="flow-step @(Model.Stage == LeadStage.Won ? "done" : "locked")">
-                <span class="flow-num">@(Model.Stage == LeadStage.Won ? "✓" : "5")</span> Won &amp; booked
+                <span class="flow-num">@(Model.Stage == LeadStage.Won ? "✓" : "5")</span> @(isDeveloper ? "Onboarded Client" : "Won & booked")
             </span>
         }
     </div>
@@ -187,41 +221,90 @@
         <!-- Linked Records -->
         <div class="data-card">
             <div class="data-card-header">
-                <div class="data-card-title">Commercial conversions</div>
+                <div class="data-card-title">@(isDeveloper ? "SaaS workspace provisioning" : "Commercial conversions")</div>
             </div>
             <div class="data-card-body">
-                <div class="info-grid cols-2">
-                    <div>
-                        <div class="info-label">Linked customer master</div>
-                        <div class="info-value">
-                            @if (Model.Customer != null)
-                            {
-                                <a asp-controller="Customer" asp-action="Details" asp-route-id="@Model.Customer.Id" class="cell-title">
-                                    <i class="bi bi-person-check text-success"></i> @Model.Customer.CustomerName
-                                </a>
-                            }
-                            else
-                            {
-                                <span class="text-muted">Not converted to customer yet</span>
-                            }
+                @if (isDeveloper)
+                {
+                    if (matchingTenant != null)
+                    {
+                        <div class="info-grid cols-2">
+                            <div>
+                                <div class="info-label">Organization workspace</div>
+                                <div class="info-value">
+                                    <strong>@matchingTenant.BusinessName</strong>
+                                    <div class="text-xs text-secondary mt-1">@($"{matchingTenant.Subdomain}.kriyex.com")</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="info-label">Subscription &amp; status</div>
+                                <div class="info-value d-flex align-items-center gap-2">
+                                    <span class="af-badge b-blue">@matchingTenant.PlanType</span>
+                                    <span class="af-badge b-green">@matchingTenant.Status</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="info-label">Admin account</div>
+                                <div class="info-value">@matchingTenant.AdminEmail</div>
+                            </div>
+                            <div>
+                                <div class="info-label">Created on</div>
+                                <div class="info-value">@matchingTenant.CreatedAt.ToString("dd MMM yyyy")</div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-3 border-top d-flex gap-2">
+                            <a asp-controller="PlatformAdmin" asp-action="SwitchToTenant" asp-route-tenantId="@matchingTenant.Id" class="btn btn-primary btn-sm">
+                                <i class="bi bi-box-arrow-in-right"></i> Log in to workspace
+                            </a>
+                            <a asp-controller="PlatformAdmin" asp-action="Index" class="btn btn-secondary btn-sm">
+                                <i class="bi bi-gear"></i> Platform admin
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="panel-inset p-3 text-center">
+                            <i class="bi bi-cloud-slash text-muted" style="font-size: 1.5rem;"></i>
+                            <div class="text-sm fw-medium mt-1">No SaaS workspace provisioned</div>
+                            <div class="text-xs text-muted mt-1">This lead has not yet registered an automated multi-tenant workspace or is pending provisioning.</div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="info-grid cols-2">
+                        <div>
+                            <div class="info-label">Linked customer master</div>
+                            <div class="info-value">
+                                @if (Model.Customer != null)
+                                {
+                                    <a asp-controller="Customer" asp-action="Details" asp-route-id="@Model.Customer.Id" class="cell-title">
+                                        <i class="bi bi-person-check text-success"></i> @Model.Customer.CustomerName
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Not converted to customer yet</span>
+                                }
+                            </div>
+                        </div>
+                        <div>
+                            <div class="info-label">Linked sales order</div>
+                            <div class="info-value">
+                                @if (Model.SalesOrder != null)
+                                {
+                                    <a asp-controller="SalesOrder" asp-action="Details" asp-route-id="@Model.SalesOrder.Id" class="mono-id">
+                                        <i class="bi bi-bag text-primary"></i> @Model.SalesOrder.SoNumber
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">No sales order created yet</span>
+                                }
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <div class="info-label">Linked sales order</div>
-                        <div class="info-value">
-                            @if (Model.SalesOrder != null)
-                            {
-                                <a asp-controller="SalesOrder" asp-action="Details" asp-route-id="@Model.SalesOrder.Id" class="mono-id">
-                                    <i class="bi bi-bag text-primary"></i> @Model.SalesOrder.SoNumber
-                                </a>
-                            }
-                            else
-                            {
-                                <span class="text-muted">No sales order created yet</span>
-                            }
-                        </div>
-                    </div>
-                </div>
+                }
             </div>
         </div>
     </div>
@@ -230,17 +313,35 @@
     <div class="col-lg-5">
         <div class="data-card mb-4">
             <div class="data-card-header">
-                <div class="data-card-title">Commercial value &amp; targets</div>
+                <div class="data-card-title">@(isDeveloper ? "SaaS revenue &amp; deal metrics" : "Commercial value &amp; targets")</div>
             </div>
             <div class="data-card-body">
-                <div class="kv-row">
-                    <span class="k">Estimated quantity</span>
-                    <span class="v">@(Model.EstimatedQuantity > 0 ? $"{Model.EstimatedQuantity:N0} Pcs" : "—")</span>
-                </div>
-                <div class="kv-row">
-                    <span class="k">Estimated deal value</span>
-                    <span class="v">₹@Model.EstimatedValue.ToString("N2")</span>
-                </div>
+                @if (isDeveloper)
+                {
+                    <div class="kv-row">
+                        <span class="k">Estimated MRR</span>
+                        <span class="v fw-semibold text-primary">₹@Model.EstimatedValue.ToString("N2")/mo</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="k">Annual contract (ARR)</span>
+                        <span class="v">₹@((Model.EstimatedValue * 12).ToString("N2"))/yr</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="k">Estimated user seats</span>
+                        <span class="v">@(Model.EstimatedQuantity > 0 ? $"{Model.EstimatedQuantity:N0} Users" : "—")</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="kv-row">
+                        <span class="k">Estimated quantity</span>
+                        <span class="v">@(Model.EstimatedQuantity > 0 ? $"{Model.EstimatedQuantity:N0} Pcs" : "—")</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="k">Estimated deal value</span>
+                        <span class="v">₹@Model.EstimatedValue.ToString("N2")</span>
+                    </div>
+                }
                 <div class="kv-row">
                     <span class="k">Next follow-up date</span>
                     <span class="v">@(Model.NextFollowUpDate.HasValue ? Model.NextFollowUpDate.Value.ToString("dd MMM yyyy") : "—")</span>
@@ -260,7 +361,7 @@
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="stage" value="@s" />
                                 <button type="submit" class="btn btn-secondary btn-sm">
-                                    Mark as @s.Humanize()
+                                    Mark as @s.ToStageDisplay(isDeveloper)
                                 </button>
                             </form>
                         }
@@ -284,12 +385,22 @@
                     <div class="row g-2">
                         <div class="col-md-5">
                             <select name="activityType" class="af-input af-input-sm af-select" aria-label="Activity type">
-                                <option value="Note">Note</option>
-                                <option value="Call">Call Log</option>
-                                <option value="WhatsApp">WhatsApp Message</option>
-                                <option value="Sample Dispatched">Sample Dispatched</option>
-                                <option value="Quotation Sent">Quotation Sent</option>
-                                <option value="Meeting">Meeting / Visit</option>
+                                @if (ViewBag.ActivityTypes is string[] acts)
+                                {
+                                    foreach (var act in acts)
+                                    {
+                                        <option value="@act">@act</option>
+                                    }
+                                }
+                                else
+                                {
+                                    <option value="Note">Note</option>
+                                    <option value="Call">Call Log</option>
+                                    <option value="WhatsApp">WhatsApp Message</option>
+                                    <option value="Sample Dispatched">Sample Dispatched</option>
+                                    <option value="Quotation Sent">Quotation Sent</option>
+                                    <option value="Meeting">Meeting / Visit</option>
+                                }
                             </select>
                         </div>
                         <div class="col-md-7">

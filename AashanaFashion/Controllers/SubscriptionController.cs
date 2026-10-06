@@ -150,10 +150,7 @@ public class SubscriptionController : Controller
     [AllowAnonymous]
     public IActionResult RegisterTenant()
     {
-        if (User.Identity?.IsAuthenticated == true)
-            return RedirectToAction("Index", "Production");
-
-        return View(new RegisterTenantViewModel());
+        return RedirectToAction("Login", "Account", new { tab = "register" });
     }
 
     // POST: /Subscription/RegisterTenant
@@ -294,7 +291,7 @@ public class SubscriptionController : Controller
             IsEssential = true
         });
 
-        TempData["Success"] = $"Congratulations! '{newTenant.BusinessName}' has been provisioned successfully with 14 days full trial access! Your workspace is live at https://{newTenant.Subdomain}.kriyex.com.";
+        TempData["Success"] = $"Congratulations! '{newTenant.BusinessName}' has been provisioned successfully! Your workspace is live at https://{newTenant.Subdomain}.kriyex.com.";
         return RedirectToAction("Index", "Production");
     }
 }

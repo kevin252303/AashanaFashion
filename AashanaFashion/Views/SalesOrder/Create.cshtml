@@ -48,6 +48,9 @@
                         </option>
                     }
                 </select>
+                <div id="soCustCreditBox" class="mt-1 d-none">
+                    <span id="soCustCreditBadge" class="af-badge b-green" style="font-size: 0.72rem; padding: 2px 6px;"></span>
+                </div>
             </div>
             <div class="col-md-3">
                 <div class="label-row">
@@ -101,6 +104,14 @@
         </div>
     </div>
 
+    <!-- Live Credit Limit Warning Banner -->
+    <div id="soCreditLimitAlert" class="af-alert af-alert-warning mb-4 d-none">
+        <div class="alert-body">
+            <span class="alert-title"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Customer Credit Limit Warning</span>
+            <div id="soCreditLimitAlertMsg" class="text-sm mt-1"></div>
+        </div>
+    </div>
+
     <div class="table-card mb-4">
         <div class="data-card-header">
             <div>
@@ -114,7 +125,39 @@
                 <button type="button" id="addRowBtn" class="btn btn-sm btn-secondary"><i class="bi bi-plus-lg"></i> Add item</button>
             </div>
         </div>
-            <div class="table-scroll">
+
+        <!-- High-Speed Barcode & SKU Scanner Bar -->
+        <div class="p-3 border-bottom bg-light-subtle d-flex align-items-center gap-3 flex-wrap">
+            <div class="input-group" style="max-width: 480px;">
+                <span class="input-group-text bg-white border-end-0 text-primary">
+                    <i class="bi bi-upc-scan fs-5"></i>
+                </span>
+                <input type="text" id="soBarcodeInput" class="form-control border-start-0 font-monospace text-sm" placeholder="Scan barcode, SKU, piece tag, or enter design & press Enter..." autocomplete="off" />
+                <button type="button" id="btnScanBarcode" class="btn btn-primary">
+                    <i class="bi bi-arrow-return-left"></i> Add
+                </button>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <button type="button" id="btnOpenCamScan" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#cameraScanModal" title="Use laptop / phone camera scanner">
+                    <i class="bi bi-camera"></i> Camera scan
+                </button>
+                <div class="form-check form-switch mb-0" title="Keeps cursor focused in barcode box for hands-free scanner guns">
+                    <input class="form-check-input" type="checkbox" id="chkAutoKeepFocus" checked>
+                    <label class="form-check-label text-xs fw-medium" for="chkAutoKeepFocus">Hands-free scan</label>
+                </div>
+                <div class="form-check form-switch mb-0" title="Play sound on barcode scan">
+                    <input class="form-check-input" type="checkbox" id="chkScanAudio" checked>
+                    <label class="form-check-label text-xs fw-medium" for="chkScanAudio"><i class="bi bi-volume-up"></i> Sound</label>
+                </div>
+            </div>
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <span id="scanStatusBadge" class="text-xs fw-medium text-muted">
+                    <i class="bi bi-broadcast text-success me-1"></i> Scanner ready (scan any tag or enter design)
+                </span>
+            </div>
+        </div>
+
+        <div class="table-scroll">
                 <table class="af-table table-edit" id="itemsTable" style="min-width: 1000px;">
                     <thead>
                         <tr>
@@ -178,10 +221,54 @@
         <div class="col-md-6 col-lg-5">
             <div class="data-card">
                 <div class="data-card-header">
-                    <div class="data-card-title">Order total</div>
+                    <div class="data-card-title">Order total &amp; discounts</div>
                 </div>
                 <div class="data-card-body">
-                    <div class="kv-row"><span class="k">Subtotal</span><span class="v" id="subtotalDisplay">₹0.00</span></div>
+                    <div class="kv-row"><span class="k">Items Subtotal</span><span class="v" id="subtotalDisplay">₹0.00</span></div>
+
+                    <!-- Whole Order Agent Discount Toggle & Configuration -->
+                    <div class="panel-inset p-2 my-2 border rounded-2">
+                        <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
+                            <input class="form-check-input" type="checkbox" role="switch" asp-for="HasAgentDiscount" id="chkAgentDiscount" />
+                            <label class="form-check-label fw-semibold text-sm cursor-pointer" for="chkAgentDiscount">
+                                <i class="bi bi-tag text-primary me-1"></i> Agent discount (whole order)
+                            </label>
+                        </div>
+
+                        <div id="agentDiscountBox" class="mt-2 pt-2 border-top @(Model.HasAgentDiscount ? "" : "d-none")">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-5">
+                                    <label class="text-xs text-muted mb-1 d-block" for="agentDiscountType">Type</label>
+                                    <select asp-for="AgentDiscountType" class="af-input af-input-sm af-select" id="agentDiscountType">
+                                        <option value="0">Percentage (%)</option>
+                                        <option value="1">Fixed amount (₹)</option>
+                                    </select>
+                                </div>
+                                <div class="col-7">
+                                    <label class="text-xs text-muted mb-1 d-block" for="agentDiscountRate">Discount value</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text font-monospace text-xs" id="agentDiscountUnit">%</span>
+                                        <input type="number" step="0.01" min="0" asp-for="AgentDiscountRate" class="af-input af-input-sm text-end font-monospace" id="agentDiscountRate" placeholder="0.00" value="@Model.AgentDiscountRate" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-muted mt-1 d-flex justify-content-between align-items-center">
+                                <span>Deducted from subtotal:</span>
+                                <span id="agentDiscountCalcBadge" class="text-danger fw-semibold">-₹0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kv-row text-danger @(Model.HasAgentDiscount ? "" : "d-none")" id="agentDiscountRow">
+                        <span class="k text-danger">Agent discount</span>
+                        <span class="v text-danger tabular fw-semibold" id="agentDiscountDisplay">-₹0.00</span>
+                    </div>
+
+                    <div class="kv-row @(Model.HasAgentDiscount ? "" : "d-none")" id="netSubtotalRow">
+                        <span class="k">Net subtotal</span>
+                        <span class="v tabular fw-semibold" id="netSubtotalDisplay">₹0.00</span>
+                    </div>
+
                     <div class="kv-row align-items-center">
                         <label class="k mb-0" for="transportCharge">Transport charge (₹)</label>
                         <input type="number" step="0.01" min="0" asp-for="TransportCharge" class="af-input af-input-sm text-end" id="transportCharge" style="width: 120px;" value="0" />
@@ -341,6 +428,32 @@
     </div>
 </div>
 
+<!-- Camera Barcode Scan Modal -->
+<div class="modal fade" id="cameraScanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="bi bi-camera text-primary"></i> Scan Barcode with Camera
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-3">
+                <div class="position-relative d-inline-block rounded overflow-hidden border bg-black w-100" style="min-height: 250px; max-height: 340px;">
+                    <video id="cameraVideo" playsinline style="width: 100%; height: 280px; object-fit: cover;"></video>
+                    <div id="cameraReticle" class="position-absolute top-50 start-50 translate-middle border border-2 border-danger rounded" style="width: 75%; height: 50%; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.4);">
+                        <div class="position-absolute top-50 start-0 w-100 border-top border-danger" style="opacity: 0.7;"></div>
+                    </div>
+                </div>
+                <div id="cameraStatusText" class="mt-2 text-xs text-muted">Point camera at barcode or QR code on garment tag</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Datalists for Colours and Sizes -->
 <datalist id="coloursList">
     @foreach (var c in colours) { <option value="@c.ColourName" /> }
@@ -378,6 +491,32 @@ document.addEventListener('DOMContentLoaded', function () {
     const transportChargeInput = document.getElementById('transportCharge');
     const transportGSTInput = document.getElementById('transportGST');
     const roundOffInput = document.getElementById('roundOff');
+
+    const chkAgentDiscount = document.getElementById('chkAgentDiscount');
+    const agentDiscountBox = document.getElementById('agentDiscountBox');
+    const agentDiscountRow = document.getElementById('agentDiscountRow');
+    const netSubtotalRow = document.getElementById('netSubtotalRow');
+    const agentDiscountTypeSelect = document.getElementById('agentDiscountType');
+    const agentDiscountRateInput = document.getElementById('agentDiscountRate');
+    const agentDiscountUnit = document.getElementById('agentDiscountUnit');
+    const agentDiscountCalcBadge = document.getElementById('agentDiscountCalcBadge');
+    const agentDiscountDisplay = document.getElementById('agentDiscountDisplay');
+    const netSubtotalDisplay = document.getElementById('netSubtotalDisplay');
+
+    chkAgentDiscount?.addEventListener('change', function () {
+        const checked = this.checked;
+        if (agentDiscountBox) agentDiscountBox.classList.toggle('d-none', !checked);
+        if (agentDiscountRow) agentDiscountRow.classList.toggle('d-none', !checked);
+        if (netSubtotalRow) netSubtotalRow.classList.toggle('d-none', !checked);
+        recalc();
+    });
+
+    agentDiscountTypeSelect?.addEventListener('change', function () {
+        if (agentDiscountUnit) agentDiscountUnit.textContent = this.value === "1" ? "₹" : "%";
+        recalc();
+    });
+
+    agentDiscountRateInput?.addEventListener('input', recalc);
 
     const designOptions = document.getElementById('designOptionsTemplate').innerHTML;
 
@@ -430,7 +569,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // Customer autofill & Pricelist sync
     customerSelect?.addEventListener('change', function () {
         const id = this.value;
+        const creditBox = document.getElementById('soCustCreditBox');
         if (!id) {
+            window.customerCreditData = null;
+            if (creditBox) creditBox.classList.add('d-none');
+            document.getElementById('soCreditLimitAlert')?.classList.add('d-none');
             if (soPricelistSelect) soPricelistSelect.value = '';
             updateEditButtonVisibility();
             applyPricelistToAllRows();
@@ -448,6 +591,17 @@ document.addEventListener('DOMContentLoaded', function () {
                         soPricelistSelect.value = data.pricelistId;
                     }
                     updateEditButtonVisibility();
+                }
+
+                // Credit Limit handling
+                if (data.hasCreditLimit) {
+                    window.customerCreditData = data;
+                    if (creditBox) creditBox.classList.remove('d-none');
+                    evaluateCreditLimit(getCurrentGrandTotal());
+                } else {
+                    window.customerCreditData = null;
+                    if (creditBox) creditBox.classList.add('d-none');
+                    document.getElementById('soCreditLimitAlert')?.classList.add('d-none');
                 }
 
                 // Re-evaluate existing rows against pricelist
@@ -664,11 +818,74 @@ document.addEventListener('DOMContentLoaded', function () {
             subtotal += net;
         });
 
+        // Whole Order Agent Discount calculation & deduction
+        const hasAgentDisc = chkAgentDiscount?.checked || false;
+        const discType = agentDiscountTypeSelect?.value || "0";
+        const discRate = parseFloat(agentDiscountRateInput?.value) || 0;
+
+        let agentDiscAmt = 0;
+        if (hasAgentDisc && discRate > 0) {
+            if (discType === "0") {
+                agentDiscAmt = subtotal * (discRate / 100);
+            } else {
+                agentDiscAmt = Math.min(subtotal, discRate);
+            }
+        }
+
+        const netSubtotal = Math.max(0, subtotal - agentDiscAmt);
+
+        if (agentDiscountCalcBadge) agentDiscountCalcBadge.textContent = '-' + fmt(agentDiscAmt);
+        if (agentDiscountDisplay) agentDiscountDisplay.textContent = '-' + fmt(agentDiscAmt);
+        if (netSubtotalDisplay) netSubtotalDisplay.textContent = fmt(netSubtotal);
+
+        const tc = parseFloat(transportChargeInput?.value) || 0;
+        const tg = parseFloat(transportGSTInput?.value) || 0;
+        const effTransport = tc + (tc * tg / 100);
         const ro = parseFloat(roundOffInput?.value) || 0;
-        const grandTotal = subtotal + ro;
+        const grandTotal = netSubtotal + effTransport + ro;
 
         if (subtotalDisplay) subtotalDisplay.textContent = fmt(subtotal);
         if (grandTotalDisplay) grandTotalDisplay.textContent = fmt(grandTotal);
+        evaluateCreditLimit(grandTotal);
+    }
+
+    function getCurrentGrandTotal() {
+        let raw = grandTotalDisplay?.textContent || "0";
+        return parseFloat(raw.replace(/[^0-9.]/g, '')) || 0;
+    }
+
+    function evaluateCreditLimit(orderTotal) {
+        const alertBox = document.getElementById('soCreditLimitAlert');
+        const alertMsg = document.getElementById('soCreditLimitAlertMsg');
+        const badge = document.getElementById('soCustCreditBadge');
+
+        if (!window.customerCreditData || !window.customerCreditData.hasCreditLimit) {
+            if (alertBox) alertBox.classList.add('d-none');
+            return;
+        }
+
+        const limit = window.customerCreditData.creditLimit;
+        const currentOut = window.customerCreditData.currentOutstanding;
+        const totalExposure = currentOut + (orderTotal || 0);
+
+        if (totalExposure > limit) {
+            const excess = totalExposure - limit;
+            if (alertBox && alertMsg) {
+                alertMsg.innerHTML = `Customer credit limit is <strong>₹${limit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong> · Current outstanding is <strong>₹${currentOut.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong> · Order total is <strong>₹${(orderTotal||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>.<br/>Total customer exposure will reach <strong>₹${totalExposure.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>, <span class="text-danger fw-semibold">exceeding the credit limit by ₹${excess.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>.`;
+                alertBox.classList.remove('d-none');
+            }
+            if (badge) {
+                badge.className = 'af-badge b-red';
+                badge.innerHTML = `<i class="bi bi-shield-exclamation me-1"></i>Credit Limit: ₹${limit.toLocaleString('en-IN', {maximumFractionDigits: 0})} (Exceeded by ₹${excess.toLocaleString('en-IN', {maximumFractionDigits: 0})})`;
+            }
+        } else {
+            const remaining = limit - totalExposure;
+            if (alertBox) alertBox.classList.add('d-none');
+            if (badge) {
+                badge.className = 'af-badge b-green';
+                badge.innerHTML = `<i class="bi bi-shield-check me-1"></i>Credit Limit: ₹${limit.toLocaleString('en-IN', {maximumFractionDigits: 0})} (Available: ₹${remaining.toLocaleString('en-IN', {maximumFractionDigits: 0})})`;
+            }
+        }
     }
 
     function checkDiscontinuedStatus(row) {
@@ -798,5 +1015,262 @@ document.addEventListener('DOMContentLoaded', function () {
 
     updateEditButtonVisibility();
     recalc();
+
+    // ——— Audio Synthesizer for Barcode Gun Feedback ———
+    let audioCtx = null;
+    function playScanBeep(success) {
+        if (!document.getElementById('chkScanAudio')?.checked) return;
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (success) {
+                // High dual chime
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                osc.frequency.setValueAtTime(1320, audioCtx.currentTime + 0.06); // E6
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.14);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } else {
+                // Low buzz
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, audioCtx.currentTime); // A3
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.28);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            }
+        } catch (e) {
+            console.warn('Audio not available', e);
+        }
+    }
+
+    // ——— Barcode Scanner Logic (USB Gun / Keyboard / Code Lookup) ———
+    const soBarcodeInput = document.getElementById('soBarcodeInput');
+    const btnScanBarcode = document.getElementById('btnScanBarcode');
+    const scanStatusBadge = document.getElementById('scanStatusBadge');
+    const chkAutoKeepFocus = document.getElementById('chkAutoKeepFocus');
+
+    async function performBarcodeScan(rawCode) {
+        const code = (rawCode || soBarcodeInput?.value || '').trim();
+        if (!code) {
+            soBarcodeInput?.focus();
+            return;
+        }
+
+        if (scanStatusBadge) {
+            scanStatusBadge.innerHTML = `<span class="spinner-border spinner-border-sm text-primary me-1"></span> Looking up <strong>${code}</strong>...`;
+        }
+
+        const customerId = customerSelect?.value ? parseInt(customerSelect.value) : null;
+        const pricelistId = getCurrentPricelistId();
+
+        try {
+            const resp = await fetch('/SalesOrder/ScanBarcode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code, customerId: customerId, pricelistId: pricelistId, quantity: 1 })
+            });
+
+            const data = await resp.json();
+
+            if (data && data.success) {
+                playScanBeep(true);
+                applyScannedItemToTable(data);
+                if (scanStatusBadge) {
+                    scanStatusBadge.innerHTML = `<span class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i> ${data.message}</span>`;
+                }
+            } else {
+                playScanBeep(false);
+                if (scanStatusBadge) {
+                    scanStatusBadge.innerHTML = `<span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill me-1"></i> ${data?.message || 'Barcode not found'}</span>`;
+                }
+            }
+        } catch (err) {
+            playScanBeep(false);
+            if (scanStatusBadge) {
+                scanStatusBadge.innerHTML = `<span class="text-danger fw-semibold"><i class="bi bi-x-circle-fill me-1"></i> Scan request failed</span>`;
+            }
+            console.error('Scan error:', err);
+        } finally {
+            if (soBarcodeInput) {
+                soBarcodeInput.value = '';
+                if (chkAutoKeepFocus?.checked) {
+                    soBarcodeInput.focus();
+                }
+            }
+        }
+    }
+
+    function applyScannedItemToTable(data) {
+        const rows = Array.from(itemsBody.querySelectorAll('.item-row'));
+
+        // Check if an existing row matches designId, colour, and size
+        let existingRow = rows.find(r => {
+            const dVal = r.querySelector('.item-design')?.value;
+            const cVal = (r.querySelector('.item-colour')?.value || '').trim().toLowerCase();
+            const sVal = (r.querySelector('.item-size')?.value || '').trim().toLowerCase();
+
+            return parseInt(dVal) === data.designId &&
+                   cVal === (data.colour || '').trim().toLowerCase() &&
+                   sVal === (data.size || '').trim().toLowerCase();
+        });
+
+        if (existingRow) {
+            // INCREMENT QUANTITY!
+            const qtyInput = existingRow.querySelector('.item-qty');
+            const currentQty = parseFloat(qtyInput?.value) || 0;
+            const newQty = currentQty + 1;
+            if (qtyInput) qtyInput.value = newQty;
+
+            // Flash highlight
+            existingRow.classList.add('table-success');
+            setTimeout(() => existingRow.classList.remove('table-success'), 1200);
+
+            applyPricelistToRow(existingRow);
+            recalc();
+            return;
+        }
+
+        // Check if the first row is completely unused/blank
+        let targetRow = null;
+        if (rows.length === 1 && !rows[0].querySelector('.item-design')?.value) {
+            targetRow = rows[0];
+        } else {
+            // Click Add Row to append a clean row
+            addRowBtn?.click();
+            const updatedRows = itemsBody.querySelectorAll('.item-row');
+            targetRow = updatedRows[updatedRows.length - 1];
+        }
+
+        if (!targetRow) return;
+
+        const designSelect = targetRow.querySelector('.item-design');
+        const designNumInput = targetRow.querySelector('.item-design-number');
+        const colourInput = targetRow.querySelector('.item-colour');
+        const sizeInput = targetRow.querySelector('.item-size');
+        const qtyInput = targetRow.querySelector('.item-qty');
+        const rateInput = targetRow.querySelector('.item-rate');
+        const discInput = targetRow.querySelector('.item-disc');
+        const gstInput = targetRow.querySelector('.item-gst');
+
+        if (designSelect) {
+            designSelect.value = data.designId;
+            if (designNumInput) designNumInput.value = data.designNumber;
+        }
+        if (colourInput) colourInput.value = data.colour || '';
+        if (sizeInput) sizeInput.value = data.size || '';
+        if (qtyInput) qtyInput.value = 1;
+        if (rateInput && data.unitPrice > 0) rateInput.value = data.unitPrice.toFixed(2);
+        if (discInput) discInput.value = (data.discountPercentage || 0).toFixed(2);
+        if (gstInput) gstInput.value = (data.gstPercentage || 12).toFixed(2);
+
+        targetRow.classList.add('table-success');
+        setTimeout(() => targetRow.classList.remove('table-success'), 1200);
+
+        checkDiscontinuedStatus(targetRow);
+        recalc();
+    }
+
+    soBarcodeInput?.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performBarcodeScan();
+        }
+    });
+
+    btnScanBarcode?.addEventListener('click', function() {
+        performBarcodeScan();
+    });
+
+    if (chkAutoKeepFocus?.checked) {
+        soBarcodeInput?.focus();
+    }
+
+    // ——— Camera Barcode Scanner via HTML5 BarcodeDetector ———
+    let cameraStream = null;
+    let cameraActive = false;
+    const cameraModal = document.getElementById('cameraScanModal');
+    const cameraVideo = document.getElementById('cameraVideo');
+    const cameraStatusText = document.getElementById('cameraStatusText');
+
+    cameraModal?.addEventListener('shown.bs.modal', async function () {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            if (cameraStatusText) cameraStatusText.textContent = 'Camera API is not supported in this browser.';
+            return;
+        }
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+            });
+            if (cameraVideo) {
+                cameraVideo.srcObject = cameraStream;
+                await cameraVideo.play();
+                cameraActive = true;
+                startCameraDetection();
+            }
+        } catch (err) {
+            if (cameraStatusText) cameraStatusText.textContent = 'Camera permission denied or camera unavailable.';
+            console.error('Camera error', err);
+        }
+    });
+
+    cameraModal?.addEventListener('hidden.bs.modal', function () {
+        cameraActive = false;
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+        }
+        if (chkAutoKeepFocus?.checked) {
+            soBarcodeInput?.focus();
+        }
+    });
+
+    async function startCameraDetection() {
+        if (!('BarcodeDetector' in window)) {
+            if (cameraStatusText) cameraStatusText.textContent = 'Direct camera barcode detection not supported in this browser; please use USB laser scanner or enter code.';
+            return;
+        }
+
+        try {
+            const barcodeDetector = new window.BarcodeDetector({
+                formats: ['code_128', 'qr_code', 'ean_13', 'ean_8', 'code_39', 'upc_a', 'upc_e']
+            });
+
+            async function detectFrame() {
+                if (!cameraActive || !cameraVideo) return;
+                try {
+                    const barcodes = await barcodeDetector.detect(cameraVideo);
+                    if (barcodes && barcodes.length > 0) {
+                        const rawCode = barcodes[0].rawValue;
+                        if (rawCode) {
+                            cameraActive = false;
+                            const modal = bootstrap.Modal.getInstance(cameraModal);
+                            if (modal) modal.hide();
+                            performBarcodeScan(rawCode);
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    // Frame detection skip
+                }
+                if (cameraActive) {
+                    requestAnimationFrame(detectFrame);
+                }
+            }
+
+            detectFrame();
+        } catch (err) {
+            console.warn('BarcodeDetector error', err);
+        }
+    }
 });
 </script>

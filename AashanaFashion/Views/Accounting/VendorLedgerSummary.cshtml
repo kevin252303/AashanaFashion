@@ -1,0 +1,152 @@
+@model AashanaFashion.Models.PartnerLedgerSummaryViewModel
+@{
+    ViewData["Title"] = "Vendor Ledgers Summary";
+    var vendors = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new();
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="GeneralLedger" class="page-back"><i class="bi bi-arrow-left"></i> General accounts</a>
+        <h1 class="page-title">Vendor ledgers summary</h1>
+        <p class="page-sub">Consolidated payable statements for all vendor/supplier accounts.</p>
+    </div>
+    <div class="page-actions d-print-none">
+        <button type="button" class="btn btn-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print report</button>
+        <a asp-action="JournalEntries" class="btn btn-secondary"><i class="bi bi-journal-text"></i> Journal entries</a>
+    </div>
+</div>
+
+<div class="d-print-none mb-3">
+    <div class="segmented">
+        <a asp-action="GeneralLedger" class="segment"><i class="bi bi-diagram-3"></i> General accounts</a>
+        <a asp-action="CustomerLedger" class="segment"><i class="bi bi-people"></i> Customer ledgers</a>
+        <a asp-action="VendorLedger" class="segment active"><i class="bi bi-truck"></i> Vendor ledgers</a>
+    </div>
+</div>
+
+<div class="table-card mb-4 d-print-none">
+    <form method="get" asp-action="VendorLedger" class="table-toolbar align-end">
+        <div class="toolbar-filters align-items-end">
+            <div class="toolbar-field">
+                <label for="vlVendor">Select specific vendor</label>
+                <select id="vlVendor" name="vendorId" class="af-input af-select" onchange="this.form.submit()" style="min-width: 280px;">
+                    <option value="" selected>— All vendors summary —</option>
+                    @foreach (var v in vendors)
+                    {
+                        <option value="@v.Id">@v.VendorName (@(v.City ?? "No City"))</option>
+                    }
+                </select>
+            </div>
+            <div class="toolbar-field">
+                <label for="vlFrom">From</label>
+                <input type="date" id="vlFrom" name="fromDate" value="@ViewBag.FromDate" class="af-input" />
+            </div>
+            <div class="toolbar-field">
+                <label for="vlTo">To</label>
+                <input type="date" id="vlTo" name="toDate" value="@ViewBag.ToDate" class="af-input" />
+            </div>
+        </div>
+        <div class="toolbar-actions">
+            <button type="submit" class="btn btn-secondary"><i class="bi bi-arrow-repeat"></i> Load report</button>
+        </div>
+    </form>
+</div>
+
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Opening payables</div>
+        <div class="metric-value">₹@Model.TotalOpening.ToString("N2")</div>
+        <div class="metric-meta">as of @Model.FromDate.ToString("dd/MM/yyyy")</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Total purchases (Cr)</div>
+        <div class="metric-value text-primary">₹@Model.TotalCredit.ToString("N2")</div>
+        <div class="metric-meta">bills &amp; POs in period</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Total paid (Dr)</div>
+        <div class="metric-value text-success">₹@Model.TotalDebit.ToString("N2")</div>
+        <div class="metric-meta">payments made</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Total closing payable</div>
+        <div class="metric-value @(Model.TotalClosing > 0 ? "text-danger" : "text-success")">₹@Model.TotalClosing.ToString("N2")</div>
+        <div class="metric-meta info">outstanding vendor exposure</div>
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="data-card-header">
+        <div class="data-card-title d-flex align-items-center gap-2">
+            <span>Vendor statements breakdown</span>
+            <span class="af-badge b-gray text-2xs">@Model.Rows.Count @(Model.Rows.Count == 1 ? "vendor" : "vendors")</span>
+        </div>
+        <span class="text-xs text-muted">@Model.FromDate.ToString("dd/MM/yyyy") to @Model.ToDate.ToString("dd/MM/yyyy")</span>
+    </div>
+    @if (!Model.Rows.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-truck"></i></div>
+            <div class="es-title">No vendor transactions found</div>
+            <p>No vendor purchase bills or payment activities were recorded in this period.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th>City / Phone</th>
+                        <th>GSTIN</th>
+                        <th class="text-end">Opening (₹)</th>
+                        <th class="text-end">Purchased / Cr (₹)</th>
+                        <th class="text-end">Paid / Dr (₹)</th>
+                        <th class="text-end">Closing payable (₹)</th>
+                        <th class="text-end d-print-none" style="width: 120px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-action="VendorLedger" asp-route-vendorId="@r.PartnerId" class="cell-title">@r.PartnerName</a>
+                            </td>
+                            <td>
+                                <span class="cell-sub">@(r.City ?? "—") @(!string.IsNullOrEmpty(r.Phone) ? $"· {r.Phone}" : "")</span>
+                            </td>
+                            <td class="font-monospace text-xs text-muted">@(r.Gstin ?? "—")</td>
+                            <td class="cell-num">@(r.OpeningBalance != 0 ? $"₹{r.OpeningBalance:N2}" : "₹0.00")</td>
+                            <td class="cell-num text-primary">@(r.TotalCredit > 0 ? $"₹{r.TotalCredit:N2}" : "—")</td>
+                            <td class="cell-num text-success">@(r.TotalDebit > 0 ? $"₹{r.TotalDebit:N2}" : "—")</td>
+                            <td class="cell-num fw-semibold @(r.ClosingBalance > 0 ? "text-danger" : (r.ClosingBalance < 0 ? "text-success" : ""))">
+                                ₹@Math.Abs(r.ClosingBalance).ToString("N2")
+                                <span class="af-badge @(r.ClosingBalance >= 0 ? "b-amber" : "b-green") text-2xs ms-1">@(r.ClosingBalance >= 0 ? "Cr" : "Dr")</span>
+                            </td>
+                            <td class="text-end d-print-none">
+                                <a asp-action="VendorLedger" asp-route-vendorId="@r.PartnerId" class="btn btn-xs btn-secondary">
+                                    <i class="bi bi-journal-bookmark me-1"></i> Ledger
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="totals-foot">
+                    <tr>
+                        <td colspan="3" class="text-end">Total</td>
+                        <td class="v">₹@Model.TotalOpening.ToString("N2")</td>
+                        <td class="v text-primary">₹@Model.TotalCredit.ToString("N2")</td>
+                        <td class="v text-success">₹@Model.TotalDebit.ToString("N2")</td>
+                        <td class="v @(Model.TotalClosing > 0 ? "text-danger" : "text-success")">
+                            ₹@Math.Abs(Model.TotalClosing).ToString("N2")
+                            <span class="af-badge @(Model.TotalClosing >= 0 ? "b-amber" : "b-green") text-2xs ms-1">@(Model.TotalClosing >= 0 ? "Cr" : "Dr")</span>
+                        </td>
+                        <td class="d-print-none"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</div>
