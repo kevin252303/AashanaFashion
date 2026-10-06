@@ -39,8 +39,9 @@
                         </div>
                         <div class="col-md-4">
                             <label asp-for="DueDate" class="form-label"></label>
-                            <input asp-for="DueDate" class="af-input" />
+                            <input asp-for="DueDate" class="af-input" id="dueDateInput" />
                             <span asp-validation-for="DueDate" class="af-error"></span>
+                            <div class="form-text text-xs text-muted" id="termsCalcBadge"><i class="bi bi-clock me-1"></i>Credit terms: 15 days</div>
                         </div>
 
                         <!-- Sales Order Selector -->
@@ -78,7 +79,10 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="CustomerId" class="form-label">Customer <span class="req">*</span></label>
+                            <label asp-for="CustomerId" class="form-label d-flex justify-content-between align-items-center">
+                                <span>Customer <span class="req">*</span></span>
+                                <span id="invCustCreditBadge" class="af-badge b-green text-2xs d-none" style="font-size: 0.72rem; padding: 2px 6px;"></span>
+                            </label>
                             <select asp-for="CustomerId" class="af-input af-select" id="customerSelect" required>
                                 <option value="">Select customer</option>
                                 @foreach (var c in (List<AashanaFashion.Models.Customer>)ViewBag.Customers)
@@ -154,6 +158,14 @@
                             <input asp-for="EwayBillNumber" class="af-input font-monospace" id="ewayBillNumber" placeholder="12-digit e-way bill" />
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Live Credit Limit Warning Banner -->
+            <div id="invCreditLimitAlert" class="af-alert af-alert-warning mb-4 d-none">
+                <div class="alert-body">
+                    <span class="alert-title"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Customer Credit Limit Warning</span>
+                    <div id="invCreditLimitAlertMsg" class="text-sm mt-1"></div>
                 </div>
             </div>
 
@@ -379,6 +391,35 @@
             $('#sumTaxable').text('₹' + taxable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             $('#sumRoundOff').text('₹' + roundOff.toFixed(2));
             $('#sumGrandTotal').text('₹' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            evaluateInvoiceCreditLimit(grandTotal);
+        }
+
+        function evaluateInvoiceCreditLimit(invTotal) {
+            const alertBox = $('#invCreditLimitAlert');
+            const alertMsg = $('#invCreditLimitAlertMsg');
+            const badge = $('#invCustCreditBadge');
+
+            if (!window.invCustomerCreditData || !window.invCustomerCreditData.hasCreditLimit) {
+                alertBox.addClass('d-none');
+                return;
+            }
+
+            const limit = window.invCustomerCreditData.creditLimit;
+            const currentOut = window.invCustomerCreditData.currentOutstanding;
+            const totalExposure = currentOut + (invTotal || 0);
+
+            if (totalExposure > limit) {
+                const excess = totalExposure - limit;
+                alertMsg.html(`Customer credit limit is <strong>₹${limit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong> · Current outstanding is <strong>₹${currentOut.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong> · Invoice total is <strong>₹${(invTotal||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>.<br/>Total customer exposure will reach <strong>₹${totalExposure.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>, <span class="text-danger fw-semibold">exceeding the credit limit by ₹${excess.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>.`);
+                alertBox.removeClass('d-none');
+                badge.attr('class', 'af-badge b-red text-2xs');
+                badge.html(`<i class="bi bi-shield-exclamation me-1"></i>Limit: ₹${limit.toLocaleString('en-IN', {maximumFractionDigits: 0})} (Exceeded by ₹${excess.toLocaleString('en-IN', {maximumFractionDigits: 0})})`);
+            } else {
+                const remaining = limit - totalExposure;
+                alertBox.addClass('d-none');
+                badge.attr('class', 'af-badge b-green text-2xs');
+                badge.html(`<i class="bi bi-shield-check me-1"></i>Limit: ₹${limit.toLocaleString('en-IN', {maximumFractionDigits: 0})} (Available: ₹${remaining.toLocaleString('en-IN', {maximumFractionDigits: 0})})`);
+            }
         }
 
         $(document).on('input change', '.item-qty, .item-rate, .item-disc, #interStateCheck', recalcInvoice);
@@ -436,7 +477,12 @@
         // Customer change AJAX autofill
         $('#customerSelect').on('change', function () {
             const custId = $(this).val();
-            if (!custId) return;
+            if (!custId) {
+                window.invCustomerCreditData = null;
+                $('#invCustCreditBadge').addClass('d-none');
+                $('#invCreditLimitAlert').addClass('d-none');
+                return;
+            }
 
             $.getJSON('/Invoice/GetCustomerDetails?customerId=' + custId, function (data) {
                 if (data) {
@@ -447,6 +493,16 @@
                     $('#shipAddr').val(data.shippingAddress);
                     $('#placeOfSupply').val(data.placeOfSupply);
                     $('#interStateCheck').prop('checked', data.isInterState).trigger('change');
+
+                    if (data.hasCreditLimit) {
+                        window.invCustomerCreditData = data;
+                        $('#invCustCreditBadge').removeClass('d-none');
+                        recalcInvoice();
+                    } else {
+                        window.invCustomerCreditData = null;
+                        $('#invCustCreditBadge').addClass('d-none');
+                        $('#invCreditLimitAlert').addClass('d-none');
+                    }
                 }
             });
         });
@@ -464,6 +520,15 @@
                 $('#shipAddr').val(data.shippingAddress);
                 $('#placeOfSupply').val(data.placeOfSupply);
                 $('#interStateCheck').prop('checked', data.isInterState).trigger('change');
+
+                if (data.hasCreditLimit) {
+                    window.invCustomerCreditData = data;
+                    $('#invCustCreditBadge').removeClass('d-none');
+                } else {
+                    window.invCustomerCreditData = null;
+                    $('#invCustCreditBadge').addClass('d-none');
+                    $('#invCreditLimitAlert').addClass('d-none');
+                }
             }
 
             // Fill logistics
@@ -593,11 +658,34 @@
             });
         });
 
+        function updateTermsCalc() {
+            const invVal = $('#InvoiceDate').val();
+            const dueVal = $('#dueDateInput').val();
+            const badge = $('#termsCalcBadge');
+            if (!invVal || !dueVal || badge.length === 0) return;
+            const invDate = new Date(invVal);
+            const dueDate = new Date(dueVal);
+            if (!isNaN(invDate.getTime()) && !isNaN(dueDate.getTime())) {
+                const diffTime = dueDate.getTime() - invDate.getTime();
+                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays >= 0) {
+                    badge.html(`<i class="bi bi-calendar-check text-success me-1"></i>Credit terms: <strong>${diffDays} days</strong>`);
+                    badge.attr('class', 'form-text text-xs text-success');
+                } else {
+                    badge.html(`<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>Due date is <strong>${Math.abs(diffDays)} days before</strong> invoice date!`);
+                    badge.attr('class', 'form-text text-xs text-danger');
+                }
+            }
+        }
+
+        $('#InvoiceDate, #dueDateInput').on('change input', updateTermsCalc);
+
         $(document).ready(function () {
             if ($('#itemsBody tr').length === 0) {
                 $('#addItemBtn').trigger('click');
             }
             recalcInvoice();
+            updateTermsCalc();
         });
     </script>
 }

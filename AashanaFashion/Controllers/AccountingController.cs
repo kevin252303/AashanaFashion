@@ -548,6 +548,54 @@ public class AccountingController : Controller
         return View(null);
     }
 
+    // GET: /Accounting/CustomerLedger
+    public async Task<IActionResult> CustomerLedger(int? customerId, DateTime? fromDate, DateTime? toDate)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        var customers = await _context.Customers.Where(c => c.IsActive).OrderBy(c => c.CustomerName).ToListAsync();
+        ViewBag.Customers = customers;
+
+        DateTime start = fromDate ?? new DateTime(DateTime.Today.Year, 1, 1);
+        DateTime end = toDate ?? DateTime.Today;
+
+        ViewBag.FromDate = start.ToString("yyyy-MM-dd");
+        ViewBag.ToDate = end.ToString("yyyy-MM-dd");
+        ViewBag.SelectedCustomerId = customerId;
+
+        if (customerId.HasValue && customerId.Value > 0)
+        {
+            var model = await _doubleEntryService.GetCustomerLedgerAsync(companyId, customerId.Value, start, end);
+            return View("CustomerLedger", model);
+        }
+
+        var summary = await _doubleEntryService.GetPartnerLedgerSummaryAsync(companyId, "Customer", start, end);
+        return View("CustomerLedgerSummary", summary);
+    }
+
+    // GET: /Accounting/VendorLedger
+    public async Task<IActionResult> VendorLedger(int? vendorId, DateTime? fromDate, DateTime? toDate)
+    {
+        int companyId = await _companyContext.GetActiveCompanyIdAsync();
+        var vendors = await _context.Vendors.Where(v => v.IsActive).OrderBy(v => v.VendorName).ToListAsync();
+        ViewBag.Vendors = vendors;
+
+        DateTime start = fromDate ?? new DateTime(DateTime.Today.Year, 1, 1);
+        DateTime end = toDate ?? DateTime.Today;
+
+        ViewBag.FromDate = start.ToString("yyyy-MM-dd");
+        ViewBag.ToDate = end.ToString("yyyy-MM-dd");
+        ViewBag.SelectedVendorId = vendorId;
+
+        if (vendorId.HasValue && vendorId.Value > 0)
+        {
+            var model = await _doubleEntryService.GetVendorLedgerAsync(companyId, vendorId.Value, start, end);
+            return View("VendorLedger", model);
+        }
+
+        var summary = await _doubleEntryService.GetPartnerLedgerSummaryAsync(companyId, "Vendor", start, end);
+        return View("VendorLedgerSummary", summary);
+    }
+
     // POST: /Accounting/SyncHistoricalEntries
     [HttpPost]
     [ValidateAntiForgeryToken]

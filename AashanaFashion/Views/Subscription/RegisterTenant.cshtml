@@ -1,7 +1,7 @@
 @model AashanaFashion.Models.RegisterTenantViewModel
 @{
     Layout = "_LoginLayout";
-    ViewData["Title"] = "Start Free Trial — Kriyex Cloud ERP";
+    ViewData["Title"] = "Register Business — Kriyex Cloud ERP";
 }
 
 <section class="auth-brand">
@@ -11,7 +11,7 @@
     </div>
 
     <div class="auth-pitch">
-        <div class="auth-eyebrow">14-day free trial · no credit card</div>
+        <div class="auth-eyebrow">Cloud ERP · Multi-Tenant Edition</div>
         <h1 class="auth-headline">Put your garment business on Kriyex Cloud.</h1>
         <p class="auth-lede">Production, payroll and GST accounting for textile brands, garment factories and job workers.</p>
         <ul class="auth-features">
@@ -28,8 +28,8 @@
 <main class="auth-main">
     <div class="auth-card auth-card-wide">
         <div class="auth-card-mark brand-mark">KX</div>
-        <h2 class="auth-title">Start your free trial</h2>
-        <p class="auth-sub">Full access for 14 days on .kriyex.com. Pick a plan now — you won’t be charged during the trial.</p>
+        <h2 class="auth-title">Register your business</h2>
+        <p class="auth-sub">Get instant access to your dedicated workspace on .kriyex.com.</p>
 
         <form asp-controller="Subscription" asp-action="RegisterTenant" method="post" id="registerForm">
             @Html.AntiForgeryToken()
@@ -115,7 +115,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-rocket-takeoff"></i> Start 14-day free trial</button>
+            <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-rocket-takeoff"></i> Complete registration</button>
         </form>
 
         <div class="auth-trial">Already have an account? <a asp-controller="Account" asp-action="Login" class="fw-semibold">Sign in</a></div>

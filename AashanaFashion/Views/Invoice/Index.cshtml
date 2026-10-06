@@ -3,7 +3,7 @@
     ViewData["Title"] = "GST Tax Invoices";
     var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
     bool canCreate = role == "Admin" || role == "SuperAdmin" || role == "Manager";
-    bool filtered = !string.IsNullOrEmpty(ViewBag.Search as string) || ViewBag.Status != null || !string.IsNullOrEmpty(ViewBag.EInvoiceStatus as string);
+    bool filtered = !string.IsNullOrEmpty(ViewBag.Search as string) || ViewBag.Status != null || !string.IsNullOrEmpty(ViewBag.EInvoiceStatus as string) || ViewBag.OverdueOnly == true;
 }
 
 <div class="page-header">
@@ -38,8 +38,17 @@
     </div>
     <div class="metric-card">
         <div class="metric-label">Overdue</div>
-        <div class="metric-value">@ViewBag.OverdueCount</div>
-        <div class="metric-meta danger">past due date</div>
+        <div class="metric-value @(ViewBag.OverdueCount > 0 ? "text-danger" : "")">@ViewBag.OverdueCount</div>
+        <div class="metric-meta danger">
+            @if (ViewBag.OverdueCount > 0)
+            {
+                <text>max @ViewBag.MaxOverdueDays d (avg @ViewBag.AvgOverdueDays d overdue)</text>
+            }
+            else
+            {
+                <text>no overdue invoices</text>
+            }
+        </div>
     </div>
     <div class="metric-card">
         <div class="metric-label">e-Invoices</div>
@@ -61,6 +70,10 @@
                 {
                     <option value="@s" selected="@((AashanaFashion.Models.InvoicePaymentStatus?)ViewBag.Status == s)">@s.Humanize()</option>
                 }
+            </select>
+            <select name="overdueOnly" class="af-input af-select" onchange="this.form.submit()" aria-label="Due status">
+                <option value="false" selected="@(ViewBag.OverdueOnly != true)">All due statuses</option>
+                <option value="true" selected="@(ViewBag.OverdueOnly == true)">Overdue only (@ViewBag.OverdueCount)</option>
             </select>
             <select name="eInvoiceStatus" class="af-input af-select" onchange="this.form.submit()" aria-label="e-Invoice status">
                 <option value="">All e-Invoice statuses</option>
@@ -85,8 +98,8 @@
                 <thead>
                     <tr>
                         <th>Invoice</th>
-                        <th>Date</th>
-                        <th>Due</th>
+                        <th>Date &amp; Age</th>
+                        <th>Due &amp; Overdue</th>
                         <th>Customer</th>
                         <th>Supply</th>
                         <th class="text-end">Taxable</th>
@@ -101,7 +114,7 @@
                 <tbody>
                     @foreach (var inv in Model)
                     {
-                        bool isOverdue = inv.DueDate < DateTime.Today && inv.PaymentStatus != AashanaFashion.Models.InvoicePaymentStatus.Paid;
+                        bool isOverdue = inv.IsOverdue;
                         <tr class="@(isOverdue ? "row-danger" : "")">
                             <td>
                                 <a asp-action="Details" asp-route-id="@inv.Id" class="cell-title">@inv.InvoiceNumber</a>
@@ -110,12 +123,23 @@
                                     <span class="cell-sub">SO @inv.SalesOrder?.SoNumber</span>
                                 }
                             </td>
-                            <td class="text-nowrap tabular">@inv.InvoiceDate.ToString("dd/MM/yyyy")</td>
                             <td class="text-nowrap tabular">
-                                <span class="@(isOverdue ? "text-danger fw-semibold" : "")">@inv.DueDate.ToString("dd/MM/yyyy")</span>
+                                <div>@inv.InvoiceDate.ToString("dd/MM/yyyy")</div>
+                                <span class="cell-sub text-muted">@inv.TotalDays d age</span>
+                            </td>
+                            <td class="text-nowrap tabular">
+                                <div class="@(isOverdue ? "text-danger fw-semibold" : "")">@inv.DueDate.ToString("dd/MM/yyyy")</div>
                                 @if (isOverdue)
                                 {
-                                    <span class="cell-sub text-danger">Overdue</span>
+                                    <span class="af-badge b-red mt-1"><i class="bi bi-clock-history"></i> @inv.OverdueDays d overdue</span>
+                                }
+                                else if (inv.BalanceDue > 0)
+                                {
+                                    <span class="cell-sub text-muted">@inv.DaysUntilDue d left</span>
+                                }
+                                else
+                                {
+                                    <span class="cell-sub text-success"><i class="bi bi-check2"></i> Paid</span>
                                 }
                             </td>
                             <td>

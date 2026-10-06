@@ -1,4 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
+using AashanaFashion.Models;
 
 namespace AashanaFashion.Helpers;
 
@@ -28,6 +32,24 @@ public static partial class UiExtensions
         }
 
         return string.Join(' ', words);
+    }
+
+    /// <summary>Maps LeadStage to SaaS Product Owner lifecycle stages for Developer perspective.</summary>
+    public static string ToProductOwnerStageName(this LeadStage stage) => stage switch
+    {
+        LeadStage.New => "New Inbound Client",
+        LeadStage.Contacted => "Discovery & Contacted",
+        LeadStage.SampleSent => "Product Demo Scheduled",
+        LeadStage.QuotationSent => "Commercial Proposal",
+        LeadStage.Won => "Onboarded Client",
+        LeadStage.Lost => "Closed / Drop-off",
+        _ => stage.ToString()
+    };
+
+    /// <summary>Returns stage display name according to user perspective (Product Owner vs Garment Factory).</summary>
+    public static string ToStageDisplay(this LeadStage stage, bool isProductOwner)
+    {
+        return isProductOwner ? stage.ToProductOwnerStageName() : stage.Humanize();
     }
 
     [GeneratedRegex(@"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|\s+")]

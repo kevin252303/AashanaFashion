@@ -30,4 +30,7 @@ public interface IDoubleEntryService
     Task<ProfitAndLossViewModel> GetProfitAndLossAsync(int companyId, DateTime fromDate, DateTime toDate);
     Task<BalanceSheetViewModel> GetBalanceSheetAsync(int companyId, DateTime asOfDate);
     Task<GeneralLedgerAccountViewModel> GetGeneralLedgerAccountAsync(int companyId, int accountId, DateTime fromDate, DateTime toDate);
+    Task<PartnerLedgerViewModel> GetCustomerLedgerAsync(int companyId, int customerId, DateTime fromDate, DateTime toDate);
+    Task<PartnerLedgerViewModel> GetVendorLedgerAsync(int companyId, int vendorId, DateTime fromDate, DateTime toDate);
+    Task<PartnerLedgerSummaryViewModel> GetPartnerLedgerSummaryAsync(int companyId, string partnerType, DateTime fromDate, DateTime toDate);
 }

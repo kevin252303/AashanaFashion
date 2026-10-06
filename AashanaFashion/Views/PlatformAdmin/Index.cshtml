@@ -17,6 +17,7 @@
         <p class="page-sub">Client companies, recurring revenue (MRR / ARR), licence seats and renewals on Kriyex.</p>
     </div>
     <div class="page-actions">
+        <a asp-controller="Lead" asp-action="Index" class="btn btn-secondary"><i class="bi bi-kanban"></i> Client leads pipeline</a>
         <a asp-action="SwitchToDefault" class="btn btn-secondary"><i class="bi bi-house"></i> Reset context</a>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTenantModal"><i class="bi bi-plus-lg"></i> Onboard client</button>
     </div>
@@ -286,7 +287,7 @@
                             <option value="@SubscriptionTier.Growth" selected>Growth (₹6,999/mo)</option>
                             <option value="@SubscriptionTier.Starter">Starter (₹2,499/mo)</option>
                             <option value="@SubscriptionTier.Enterprise">Enterprise (₹18,999/mo)</option>
-                            <option value="@SubscriptionTier.FreeTrial">14-day free trial</option>
+                            <option value="@SubscriptionTier.FreeTrial">Standard plan</option>
                         </select>
                     </div>
                     <div class="col-md-4">

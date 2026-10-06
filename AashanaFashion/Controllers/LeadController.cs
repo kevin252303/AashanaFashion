@@ -1,4 +1,5 @@
 using AashanaFashion.Data;
+using AashanaFashion.Helpers;
 using AashanaFashion.Models;
 using AashanaFashion.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -20,14 +21,60 @@ public class LeadController : Controller
         _companyContext = companyContext;
     }
 
+    private IQueryable<Lead> GetLeadQuery()
+    {
+        if (User.IsInRole("Developer"))
+        {
+            return _context.Leads.IgnoreQueryFilters();
+        }
+        return _context.Leads;
+    }
+
+    private async Task<Lead?> FindLeadAsync(int id)
+    {
+        if (User.IsInRole("Developer"))
+        {
+            return await _context.Leads.IgnoreQueryFilters().FirstOrDefaultAsync(l => l.Id == id);
+        }
+        return await _context.Leads.FindAsync(id);
+    }
+
+    private void SetTempData(string key, string message)
+    {
+        try
+        {
+            if (TempData != null)
+            {
+                TempData[key] = message;
+            }
+        }
+        catch
+        {
+            // Non-blocking in headless environments
+        }
+    }
+
     public async Task<IActionResult> Index(string? search, LeadStage? stage, string? view = "board")
     {
-        var company = await _companyContext.GetActiveCompanyAsync();
-        var query = _context.Leads
+        var isDeveloper = User.IsInRole("Developer");
+        var baseQuery = GetLeadQuery()
             .Include(l => l.AssignedToUser)
-            .Include(l => l.Customer)
-            .Where(l => l.CompanyId == company.Id)
-            .AsQueryable();
+            .Include(l => l.Customer);
+
+        IQueryable<Lead> query;
+        IQueryable<Lead> allLeadsQuery;
+
+        if (isDeveloper)
+        {
+            query = baseQuery;
+            allLeadsQuery = GetLeadQuery();
+        }
+        else
+        {
+            var company = await _companyContext.GetActiveCompanyAsync();
+            query = baseQuery.Where(l => l.CompanyId == company.Id);
+            allLeadsQuery = GetLeadQuery().Where(l => l.CompanyId == company.Id);
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -47,8 +94,25 @@ public class LeadController : Controller
 
         var leads = await query.OrderByDescending(l => l.CreatedDate).ToListAsync();
 
+        var leadTenants = new Dictionary<int, Tenant>();
+        if (isDeveloper)
+        {
+            var allTenants = await _context.Tenants.IgnoreQueryFilters().ToListAsync();
+            foreach (var l in leads)
+            {
+                var matched = allTenants.FirstOrDefault(t =>
+                    (!string.IsNullOrEmpty(l.Email) && string.Equals(t.AdminEmail, l.Email, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(l.CompanyName) && string.Equals(t.BusinessName, l.CompanyName, StringComparison.OrdinalIgnoreCase)));
+                if (matched != null)
+                {
+                    leadTenants[l.Id] = matched;
+                }
+            }
+        }
+        ViewBag.LeadTenants = leadTenants;
+
         // Calculate KPIs
-        var allLeads = await _context.Leads.Where(l => l.CompanyId == company.Id).ToListAsync();
+        var allLeads = await allLeadsQuery.ToListAsync();
         ViewBag.TotalLeads = allLeads.Count;
         ViewBag.PipelineValue = allLeads.Where(l => l.Stage != LeadStage.Lost).Sum(l => l.EstimatedValue);
         ViewBag.WonValue = allLeads.Where(l => l.Stage == LeadStage.Won).Sum(l => l.EstimatedValue);
@@ -57,9 +121,18 @@ public class LeadController : Controller
             ? Math.Round((decimal)allLeads.Count(l => l.Stage == LeadStage.Won) / closedCount * 100, 1)
             : (allLeads.Count > 0 ? Math.Round((decimal)allLeads.Count(l => l.Stage == LeadStage.Won) / allLeads.Count * 100, 1) : 0);
 
+        // Product Owner SaaS specific KPIs
+        ViewBag.PipelineMrr = ViewBag.PipelineValue;
+        ViewBag.WonArr = ((decimal)ViewBag.WonValue) * 12;
+        ViewBag.ActiveInbound = allLeads.Count(l => l.Stage == LeadStage.New);
+        ViewBag.DemoCount = allLeads.Count(l => l.Stage == LeadStage.SampleSent);
+        ViewBag.ProposalCount = allLeads.Count(l => l.Stage == LeadStage.QuotationSent);
+        ViewBag.OnboardedCount = allLeads.Count(l => l.Stage == LeadStage.Won);
+
         ViewBag.Search = search;
         ViewBag.Stage = stage;
         ViewBag.ViewMode = view ?? "board";
+        ViewBag.IsDeveloper = isDeveloper;
 
         return View(leads);
     }
@@ -67,19 +140,31 @@ public class LeadController : Controller
     [HttpGet]
     public async Task<IActionResult> Create()
     {
-        var company = await _companyContext.GetActiveCompanyAsync();
-        var nextNum = await GenerateLeadNumberAsync(company.Id);
+        int targetCompanyId;
+        if (User.IsInRole("Developer"))
+        {
+            var rootCompany = await _context.Companies.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.TenantId == 1)
+                              ?? await _context.Companies.IgnoreQueryFilters().FirstOrDefaultAsync();
+            targetCompanyId = rootCompany?.Id ?? 1;
+        }
+        else
+        {
+            var company = await _companyContext.GetActiveCompanyAsync();
+            targetCompanyId = company.Id;
+        }
+
+        var nextNum = await GenerateLeadNumberAsync(targetCompanyId);
 
         var lead = new Lead
         {
-            CompanyId = company.Id,
+            CompanyId = targetCompanyId,
             LeadNumber = nextNum,
             Stage = LeadStage.New,
             ExpectedCloseDate = DateTime.Today.AddDays(15),
             NextFollowUpDate = DateTime.Today.AddDays(2)
         };
 
-        await PopulateDropDownsAsync(company.Id);
+        await PopulateDropDownsAsync(targetCompanyId);
         return View(lead);
     }
 
@@ -87,12 +172,24 @@ public class LeadController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Lead model)
     {
-        var company = await _companyContext.GetActiveCompanyAsync();
-        model.CompanyId = company.Id;
+        int targetCompanyId;
+        if (User.IsInRole("Developer"))
+        {
+            var rootCompany = await _context.Companies.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.TenantId == 1)
+                              ?? await _context.Companies.IgnoreQueryFilters().FirstOrDefaultAsync();
+            targetCompanyId = rootCompany?.Id ?? 1;
+            model.TenantId = 1;
+        }
+        else
+        {
+            var company = await _companyContext.GetActiveCompanyAsync();
+            targetCompanyId = company.Id;
+        }
+        model.CompanyId = targetCompanyId;
 
         if (string.IsNullOrWhiteSpace(model.LeadNumber))
         {
-            model.LeadNumber = await GenerateLeadNumberAsync(company.Id);
+            model.LeadNumber = await GenerateLeadNumberAsync(targetCompanyId);
         }
 
         if (ModelState.IsValid)
@@ -103,6 +200,7 @@ public class LeadController : Controller
             // Add initial activity
             var activity = new LeadActivity
             {
+                TenantId = model.TenantId > 0 ? model.TenantId : 1,
                 Lead = model,
                 ActivityType = "Note",
                 Description = "Lead created.",
@@ -112,22 +210,21 @@ public class LeadController : Controller
             _context.LeadActivities.Add(activity);
 
             await _context.SaveChangesAsync();
-            TempData["Success"] = $"Lead {model.LeadNumber} created successfully.";
+            SetTempData("Success", $"Lead {model.LeadNumber} created successfully.");
             return RedirectToAction(nameof(Details), new { id = model.Id });
         }
 
-        await PopulateDropDownsAsync(company.Id);
+        await PopulateDropDownsAsync(targetCompanyId);
         return View(model);
     }
 
     [HttpGet]
     public async Task<IActionResult> Edit(int id)
     {
-        var lead = await _context.Leads.FindAsync(id);
+        var lead = await FindLeadAsync(id);
         if (lead == null) return NotFound();
 
-        var company = await _companyContext.GetActiveCompanyAsync();
-        await PopulateDropDownsAsync(company.Id);
+        await PopulateDropDownsAsync(lead.CompanyId);
         return View(lead);
     }
 
@@ -139,7 +236,7 @@ public class LeadController : Controller
 
         if (ModelState.IsValid)
         {
-            var lead = await _context.Leads.FindAsync(id);
+            var lead = await FindLeadAsync(id);
             if (lead == null) return NotFound();
 
             var oldStage = lead.Stage;
@@ -166,6 +263,7 @@ public class LeadController : Controller
             {
                 var stageActivity = new LeadActivity
                 {
+                    TenantId = lead.TenantId,
                     LeadId = lead.Id,
                     ActivityType = "Stage Change",
                     Description = $"Stage changed from {oldStage} to {model.Stage}." + (!string.IsNullOrWhiteSpace(model.LostReason) ? $" Reason: {model.LostReason}" : ""),
@@ -176,19 +274,19 @@ public class LeadController : Controller
             }
 
             await _context.SaveChangesAsync();
-            TempData["Success"] = "Lead updated successfully.";
+            SetTempData("Success", "Lead updated successfully.");
             return RedirectToAction(nameof(Details), new { id = lead.Id });
         }
 
-        var comp = await _companyContext.GetActiveCompanyAsync();
-        await PopulateDropDownsAsync(comp.Id);
+        await PopulateDropDownsAsync(model.CompanyId);
         return View(model);
     }
 
     [HttpGet]
     public async Task<IActionResult> Details(int id)
     {
-        var lead = await _context.Leads
+        var isDeveloper = User.IsInRole("Developer");
+        var lead = await GetLeadQuery()
             .Include(l => l.AssignedToUser)
             .Include(l => l.Customer)
             .Include(l => l.SalesOrder)
@@ -197,14 +295,57 @@ public class LeadController : Controller
 
         if (lead == null) return NotFound();
 
+        Tenant? matchingTenant = null;
+        if (isDeveloper)
+        {
+            matchingTenant = await _context.Tenants.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(t => (!string.IsNullOrEmpty(lead.Email) && t.AdminEmail == lead.Email)
+                    || (!string.IsNullOrEmpty(lead.CompanyName) && t.BusinessName.ToLower() == lead.CompanyName.ToLower()));
+        }
+
+        ViewBag.MatchingTenant = matchingTenant;
+        ViewBag.IsDeveloper = isDeveloper;
+        await PopulateDropDownsAsync(lead.CompanyId);
+
         return View(lead);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> QuickMoveStage(int id, LeadStage stage, string? returnView)
+    {
+        var lead = await FindLeadAsync(id);
+        if (lead == null) return NotFound();
+
+        var oldStage = lead.Stage;
+        lead.Stage = stage;
+        lead.UpdatedDate = DateTime.Now;
+
+        var isDeveloper = User.IsInRole("Developer");
+        var oldName = oldStage.ToStageDisplay(isDeveloper);
+        var newName = stage.ToStageDisplay(isDeveloper);
+
+        var activity = new LeadActivity
+        {
+            TenantId = lead.TenantId,
+            LeadId = lead.Id,
+            ActivityType = "Stage Change",
+            Description = $"Stage moved from {oldName} to {newName}.",
+            ActivityDate = DateTime.Now,
+            CreatedBy = User.Identity?.Name ?? "User"
+        };
+        _context.LeadActivities.Add(activity);
+
+        await _context.SaveChangesAsync();
+        SetTempData("Success", $"Lead {lead.LeadNumber} moved to {newName}.");
+        return RedirectToAction(nameof(Index), new { view = returnView ?? "board" });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateStage(int id, LeadStage stage, string? lostReason)
     {
-        var lead = await _context.Leads.FindAsync(id);
+        var lead = await FindLeadAsync(id);
         if (lead == null) return NotFound();
 
         var oldStage = lead.Stage;
@@ -214,6 +355,7 @@ public class LeadController : Controller
 
         var activity = new LeadActivity
         {
+            TenantId = lead.TenantId,
             LeadId = lead.Id,
             ActivityType = "Stage Change",
             Description = $"Stage moved to {stage}." + (!string.IsNullOrWhiteSpace(lostReason) ? $" Reason: {lostReason}" : ""),
@@ -223,7 +365,7 @@ public class LeadController : Controller
         _context.LeadActivities.Add(activity);
 
         await _context.SaveChangesAsync();
-        TempData["Success"] = $"Lead status updated to {stage}.";
+        SetTempData("Success", $"Lead status updated to {stage}.");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -231,12 +373,12 @@ public class LeadController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ConvertToCustomer(int id)
     {
-        var lead = await _context.Leads.FindAsync(id);
+        var lead = await FindLeadAsync(id);
         if (lead == null) return NotFound();
 
         if (lead.CustomerId.HasValue)
         {
-            TempData["Info"] = "Lead is already linked to a customer.";
+            SetTempData("Info", "Lead is already linked to a customer.");
             return RedirectToAction(nameof(Details), new { id });
         }
 
@@ -275,6 +417,7 @@ public class LeadController : Controller
 
         var activity = new LeadActivity
         {
+            TenantId = lead.TenantId,
             LeadId = lead.Id,
             ActivityType = "Won / Converted",
             Description = $"Converted lead to Customer '{targetCustomer.CustomerName}'.",
@@ -284,7 +427,7 @@ public class LeadController : Controller
         _context.LeadActivities.Add(activity);
 
         await _context.SaveChangesAsync();
-        TempData["Success"] = $"Lead converted to customer '{targetCustomer.CustomerName}' successfully.";
+        SetTempData("Success", $"Lead converted to customer '{targetCustomer.CustomerName}' successfully.");
         return RedirectToAction("Edit", "Customer", new { id = targetCustomer.Id });
     }
 
@@ -292,7 +435,7 @@ public class LeadController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ConvertToSalesOrder(int id)
     {
-        var lead = await _context.Leads
+        var lead = await GetLeadQuery()
             .Include(l => l.Customer)
             .FirstOrDefaultAsync(l => l.Id == id);
 
@@ -300,7 +443,7 @@ public class LeadController : Controller
 
         if (lead.SalesOrderId.HasValue)
         {
-            TempData["Info"] = "Lead is already converted to a Sales Order.";
+            SetTempData("Info", "Lead is already converted to a Sales Order.");
             return RedirectToAction("Details", "SalesOrder", new { id = lead.SalesOrderId.Value });
         }
 
@@ -357,6 +500,7 @@ public class LeadController : Controller
 
         var activity = new LeadActivity
         {
+            TenantId = lead.TenantId,
             LeadId = lead.Id,
             ActivityType = "Won / Converted",
             Description = $"Created Sales Order {salesOrder.SoNumber}.",
@@ -366,7 +510,7 @@ public class LeadController : Controller
         _context.LeadActivities.Add(activity);
 
         await _context.SaveChangesAsync();
-        TempData["Success"] = $"Draft Sales Order {salesOrder.SoNumber} created from lead.";
+        SetTempData("Success", $"Draft Sales Order {salesOrder.SoNumber} created from lead.");
         return RedirectToAction("Edit", "SalesOrder", new { id = salesOrder.Id });
     }
 
@@ -376,15 +520,16 @@ public class LeadController : Controller
     {
         if (string.IsNullOrWhiteSpace(description))
         {
-            TempData["Error"] = "Activity description cannot be empty.";
+            SetTempData("Error", "Activity description cannot be empty.");
             return RedirectToAction(nameof(Details), new { id = leadId });
         }
 
-        var lead = await _context.Leads.FindAsync(leadId);
+        var lead = await FindLeadAsync(leadId);
         if (lead == null) return NotFound();
 
         var activity = new LeadActivity
         {
+            TenantId = lead.TenantId,
             LeadId = lead.Id,
             ActivityType = string.IsNullOrWhiteSpace(activityType) ? "Note" : activityType,
             Description = description.Trim(),
@@ -396,7 +541,7 @@ public class LeadController : Controller
         lead.UpdatedDate = DateTime.Now;
         await _context.SaveChangesAsync();
 
-        TempData["Success"] = "Activity logged successfully.";
+        SetTempData("Success", "Activity logged successfully.");
         return RedirectToAction(nameof(Details), new { id = leadId });
     }
 
@@ -404,13 +549,13 @@ public class LeadController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
-        var lead = await _context.Leads.FindAsync(id);
+        var lead = await FindLeadAsync(id);
         if (lead == null) return NotFound();
 
         _context.Leads.Remove(lead);
         await _context.SaveChangesAsync();
 
-        TempData["Success"] = "Lead deleted successfully.";
+        SetTempData("Success", "Lead deleted successfully.");
         return RedirectToAction(nameof(Index));
     }
 
@@ -418,21 +563,44 @@ public class LeadController : Controller
     {
         var year = DateTime.Now.Year;
         var prefix = $"LD-{year}-";
-        var count = await _context.Leads.CountAsync(l => l.CompanyId == companyId && l.LeadNumber.StartsWith(prefix)) + 1;
+        var count = await _context.Leads.IgnoreQueryFilters().CountAsync(l => l.CompanyId == companyId && l.LeadNumber.StartsWith(prefix)) + 1;
         return $"{prefix}{count:D4}";
     }
 
     private async Task PopulateDropDownsAsync(int companyId)
     {
-        var users = await _context.Users
-            .Where(u => u.IsActive && u.Role != "Developer" && u.Role != "Customer")
+        var isDeveloper = User.IsInRole("Developer");
+        var usersQuery = isDeveloper
+            ? _context.Users.IgnoreQueryFilters()
+            : _context.Users.AsQueryable();
+
+        var users = await usersQuery
+            .Where(u => u.IsActive && u.Role != "Customer")
             .Select(u => new { u.Id, Name = u.FullName })
             .ToListAsync();
         ViewBag.Users = new SelectList(users, "Id", "Name");
 
-        ViewBag.Sources = new SelectList(new[]
+        if (isDeveloper)
         {
-            "Direct Call", "WhatsApp Inquiry", "Website / Portal", "Referral", "Exhibition / Trade Fair", "Instagram / Social Media", "Agent / Broker"
-        });
+            ViewBag.Sources = new SelectList(new[]
+            {
+                "Website Registration", "Inbound Call / WhatsApp", "Product Demo Request", "LinkedIn / Social", "Founder Outreach", "Referral", "Partner / Consultant", "Direct"
+            });
+            ViewBag.ActivityTypes = new[]
+            {
+                "Product Demo", "Discovery Call", "WhatsApp Follow-up", "Commercial Proposal", "Onboarding Check-in", "Feature Request", "Internal Note"
+            };
+        }
+        else
+        {
+            ViewBag.Sources = new SelectList(new[]
+            {
+                "Direct Call", "WhatsApp Inquiry", "Website / Portal", "Referral", "Exhibition / Trade Fair", "Instagram / Social Media", "Agent / Broker"
+            });
+            ViewBag.ActivityTypes = new[]
+            {
+                "Note", "Call", "WhatsApp", "Sample", "Quotation", "Meeting"
+            };
+        }
     }
 }

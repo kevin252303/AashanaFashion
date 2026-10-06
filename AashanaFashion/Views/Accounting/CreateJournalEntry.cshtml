@@ -4,18 +4,21 @@
     var journals = ViewBag.Journals as List<AashanaFashion.Models.Journal> ?? new();
     var accounts = ViewBag.Accounts as List<AashanaFashion.Models.Account> ?? new();
     var customers = ViewBag.Customers as List<AashanaFashion.Models.Customer> ?? new();
+    var vendors = ViewBag.Vendors as List<AashanaFashion.Models.Vendor> ?? new();
+    bool isSingleMode = string.IsNullOrEmpty(Model.EntryMode) || Model.EntryMode.Equals("Single", StringComparison.OrdinalIgnoreCase);
 }
 
 <div class="page-header">
     <div>
         <a asp-action="JournalEntries" class="page-back"><i class="bi bi-arrow-left"></i> Journal entries</a>
         <h1 class="page-title">New journal entry</h1>
-        <p class="page-sub">Post a balanced double-entry voucher with custom debit and credit lines.</p>
+        <p class="page-sub" id="pageHeaderSub">Post a balanced voucher using single entry (auto set-off) or dual entry mode.</p>
     </div>
 </div>
 
 <form method="post" asp-action="CreateJournalEntry" id="jeForm">
     @Html.AntiForgeryToken()
+    <input type="hidden" name="EntryMode" id="entryModeInput" value="@(isSingleMode ? "Single" : "Dual")" />
 
     <div class="data-card mb-4">
         <div class="data-card-header">
@@ -31,7 +34,13 @@
                     <select id="jeJournal" name="JournalId" class="af-input af-select" required>
                         @foreach (var j in journals)
                         {
-                            <option value="@j.Id">@j.Name (@j.Code)</option>
+                            <option value="@j.Id"
+                                    data-code="@j.Code"
+                                    data-type="@j.Type"
+                                    data-debit-acc="@(j.DefaultDebitAccountId ?? 0)"
+                                    data-credit-acc="@(j.DefaultCreditAccountId ?? 0)">
+                                @j.Name (@j.Code)
+                            </option>
                         }
                     </select>
                 </div>
@@ -52,13 +61,46 @@
     </div>
 
     <div class="table-card mb-4">
-        <div class="data-card-header">
+        <div class="data-card-header flex-wrap gap-2">
             <div>
-                <div class="data-card-title">Journal lines</div>
-                <div class="data-card-sub">Total debits must equal total credits. At least two lines.</div>
+                <div class="data-card-title d-flex align-items-center gap-2">
+                    <span>Journal lines</span>
+                    <span class="af-badge b-indigo text-2xs" id="modeBadge">Single entry (Default)</span>
+                </div>
+                <div class="data-card-sub" id="modeSubText">
+                    Single entry approach: 2nd entry (both account &amp; amount) sets off automatically.
+                </div>
             </div>
-            <button type="button" class="btn btn-sm btn-secondary" id="addRowBtn"><i class="bi bi-plus-lg"></i> Add line</button>
+            <div class="d-flex align-items-center gap-2">
+                <div class="segmented" id="entryModeSegmented" role="group" aria-label="Entry approach mode">
+                    <button type="button" class="segment @(isSingleMode ? "active" : "")" id="btnModeSingle" data-mode="Single">
+                        <i class="bi bi-lightning-charge-fill text-warning"></i> Single entry
+                    </button>
+                    <button type="button" class="segment @(!isSingleMode ? "active" : "")" id="btnModeDual" data-mode="Dual">
+                        <i class="bi bi-sliders"></i> Dual entry
+                    </button>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary @(isSingleMode ? "d-none" : "")" id="addRowBtn">
+                    <i class="bi bi-plus-lg"></i> Add line
+                </button>
+            </div>
         </div>
+
+        <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2 @(isSingleMode ? "" : "d-none")" id="singleEntryBanner">
+            <div class="d-flex align-items-center gap-2">
+                <span class="af-badge b-green"><i class="bi bi-magic me-1"></i>Auto set-off active</span>
+                <span class="text-sm text-secondary">
+                    Enter primary account &amp; amount in <strong>Line 1</strong>. The second account and amount in <strong>Line 2</strong> are <strong>automatically set off</strong>.
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2" id="swapDrCrBtn" title="Swap Debit and Credit on primary line">
+                    <i class="bi bi-arrow-left-right me-1"></i> Swap Dr / Cr
+                </button>
+                <span class="af-badge b-green" id="syncStatusBadge"><i class="bi bi-check-circle-fill me-1"></i>Auto-balanced</span>
+            </div>
+        </div>
+
         <div class="table-scroll">
             <table class="af-table table-edit" id="linesTable" style="min-width: 900px;">
                 <thead>
@@ -72,57 +114,111 @@
                     </tr>
                 </thead>
                 <tbody id="linesBody">
-                    <tr class="line-row">
+                    <tr class="line-row" id="row0">
                         <td>
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="af-badge b-gray text-2xs" id="row0Badge">1st Entry · Primary</span>
+                            </div>
                             <select name="Lines[0].AccountId" class="af-input af-input-sm af-select account-select" required aria-label="Account">
-                                <option value="">Select account…</option>
+                                <option value="">Select primary account…</option>
                                 @foreach (var a in accounts)
                                 {
-                                    <option value="@a.Id">@a.Code — @a.Name (@a.Type)</option>
+                                    <option value="@a.Id" data-code="@a.Code" data-type="@a.Type">@a.Code — @a.Name (@a.Type)</option>
                                 }
                             </select>
                         </td>
                         <td>
+                            <div class="mb-1 d-none d-md-block" style="height: 18px;"></div>
                             <select name="Lines[0].CustomerId" class="af-input af-input-sm af-select" aria-label="Partner">
                                 <option value="">None</option>
-                                <optgroup label="Customers">
-                                    @foreach (var c in customers)
-                                    {
-                                        <option value="@c.Id">@c.CustomerName</option>
-                                    }
-                                </optgroup>
-                            </select>
-                        </td>
-                        <td><input type="text" name="Lines[0].Description" class="af-input af-input-sm" placeholder="Line note…" aria-label="Description" /></td>
-                        <td><input type="number" step="0.01" min="0" name="Lines[0].Debit" class="af-input af-input-sm text-end debit-input" value="0.00" aria-label="Debit" /></td>
-                        <td><input type="number" step="0.01" min="0" name="Lines[0].Credit" class="af-input af-input-sm text-end credit-input" value="0.00" aria-label="Credit" /></td>
-                        <td class="text-center"><button type="button" class="row-action danger remove-row" title="Remove line" aria-label="Remove line"><i class="bi bi-trash"></i></button></td>
-                    </tr>
-                    <tr class="line-row">
-                        <td>
-                            <select name="Lines[1].AccountId" class="af-input af-input-sm af-select account-select" required aria-label="Account">
-                                <option value="">Select account…</option>
-                                @foreach (var a in accounts)
+                                @if (customers.Any())
                                 {
-                                    <option value="@a.Id">@a.Code — @a.Name (@a.Type)</option>
+                                    <optgroup label="Customers">
+                                        @foreach (var c in customers)
+                                        {
+                                            <option value="@c.Id">@c.CustomerName</option>
+                                        }
+                                    </optgroup>
+                                }
+                                @if (vendors.Any())
+                                {
+                                    <optgroup label="Vendors">
+                                        @foreach (var v in vendors)
+                                        {
+                                            <option value="@v.Id">@v.VendorName (Vendor)</option>
+                                        }
+                                    </optgroup>
                                 }
                             </select>
                         </td>
                         <td>
-                            <select name="Lines[1].CustomerId" class="af-input af-input-sm af-select" aria-label="Partner">
-                                <option value="">None</option>
-                                <optgroup label="Customers">
-                                    @foreach (var c in customers)
-                                    {
-                                        <option value="@c.Id">@c.CustomerName</option>
-                                    }
-                                </optgroup>
+                            <div class="mb-1 d-none d-md-block" style="height: 18px;"></div>
+                            <input type="text" name="Lines[0].Description" class="af-input af-input-sm" placeholder="Line note…" aria-label="Description" />
+                        </td>
+                        <td>
+                            <div class="mb-1 d-none d-md-block" style="height: 18px;"></div>
+                            <input type="number" step="0.01" min="0" name="Lines[0].Debit" class="af-input af-input-sm text-end debit-input" value="0.00" aria-label="Debit" />
+                        </td>
+                        <td>
+                            <div class="mb-1 d-none d-md-block" style="height: 18px;"></div>
+                            <input type="number" step="0.01" min="0" name="Lines[0].Credit" class="af-input af-input-sm text-end credit-input" value="0.00" aria-label="Credit" />
+                        </td>
+                        <td class="text-center align-middle">
+                            <span class="text-muted text-xs d-block" title="Primary entry"><i class="bi bi-record-circle text-primary"></i></span>
+                        </td>
+                    </tr>
+                    <tr class="line-row" id="row1">
+                        <td>
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="af-badge b-green text-2xs" id="row1Badge"><i class="bi bi-magic me-1"></i>2nd Entry · Auto set-off</span>
+                            </div>
+                            <select name="Lines[1].AccountId" class="af-input af-input-sm af-select account-select" required aria-label="Account">
+                                <option value="">Auto set-off account…</option>
+                                @foreach (var a in accounts)
+                                {
+                                    <option value="@a.Id" data-code="@a.Code" data-type="@a.Type">@a.Code — @a.Name (@a.Type)</option>
+                                }
                             </select>
                         </td>
-                        <td><input type="text" name="Lines[1].Description" class="af-input af-input-sm" placeholder="Line note…" aria-label="Description" /></td>
-                        <td><input type="number" step="0.01" min="0" name="Lines[1].Debit" class="af-input af-input-sm text-end debit-input" value="0.00" aria-label="Debit" /></td>
-                        <td><input type="number" step="0.01" min="0" name="Lines[1].Credit" class="af-input af-input-sm text-end credit-input" value="0.00" aria-label="Credit" /></td>
-                        <td class="text-center"><button type="button" class="row-action danger remove-row" title="Remove line" aria-label="Remove line"><i class="bi bi-trash"></i></button></td>
+                        <td>
+                            <div class="mb-1 d-none d-md-block" style="height: 18px;"></div>
+                            <select name="Lines[1].CustomerId" class="af-input af-input-sm af-select" aria-label="Partner">
+                                <option value="">None</option>
+                                @if (customers.Any())
+                                {
+                                    <optgroup label="Customers">
+                                        @foreach (var c in customers)
+                                        {
+                                            <option value="@c.Id">@c.CustomerName</option>
+                                        }
+                                    </optgroup>
+                                }
+                                @if (vendors.Any())
+                                {
+                                    <optgroup label="Vendors">
+                                        @foreach (var v in vendors)
+                                        {
+                                            <option value="@v.Id">@v.VendorName (Vendor)</option>
+                                        }
+                                    </optgroup>
+                                }
+                            </select>
+                        </td>
+                        <td>
+                            <div class="mb-1 d-none d-md-block" style="height: 18px;"></div>
+                            <input type="text" name="Lines[1].Description" class="af-input af-input-sm" placeholder="Set-off note…" aria-label="Description" />
+                        </td>
+                        <td>
+                            <div class="mb-1 d-none d-md-block" style="height: 18px;"></div>
+                            <input type="number" step="0.01" min="0" name="Lines[1].Debit" class="af-input af-input-sm text-end debit-input" value="0.00" aria-label="Debit" />
+                        </td>
+                        <td>
+                            <div class="mb-1 d-none d-md-block" style="height: 18px;"></div>
+                            <input type="number" step="0.01" min="0" name="Lines[1].Credit" class="af-input af-input-sm text-end credit-input" value="0.00" aria-label="Credit" />
+                        </td>
+                        <td class="text-center align-middle" id="row1ActionCell">
+                            <span class="text-muted text-xs d-block" id="row1LockIcon" title="Second entry sets off automatically"><i class="bi bi-lock-fill text-muted"></i></span>
+                        </td>
                     </tr>
                 </tbody>
                 <tfoot class="totals-foot">
@@ -151,10 +247,22 @@
 @section Scripts {
     <script>
         (function () {
+            var currentMode = '@(isSingleMode ? "Single" : "Dual")';
             var rowIndex = 2;
             var tbody = document.getElementById('linesBody');
             var submitBtn = document.getElementById('submitBtn');
             var diffCell = document.getElementById('diffCell');
+            var entryModeInput = document.getElementById('entryModeInput');
+            var btnModeSingle = document.getElementById('btnModeSingle');
+            var btnModeDual = document.getElementById('btnModeDual');
+            var addRowBtn = document.getElementById('addRowBtn');
+            var singleEntryBanner = document.getElementById('singleEntryBanner');
+            var modeBadge = document.getElementById('modeBadge');
+            var modeSubText = document.getElementById('modeSubText');
+            var row1Badge = document.getElementById('row1Badge');
+            var row1ActionCell = document.getElementById('row1ActionCell');
+            var swapDrCrBtn = document.getElementById('swapDrCrBtn');
+            var jeJournal = document.getElementById('jeJournal');
 
             function fmt(n) { return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
@@ -165,7 +273,155 @@
                 diffCell.replaceChildren(span);
             }
 
+            function determineSetOffAccount(row0AccId, isDebit) {
+                if (!jeJournal) return 0;
+                var opt = jeJournal.options[jeJournal.selectedIndex];
+                if (!opt) return 0;
+
+                var debAcc = parseInt(opt.getAttribute('data-debit-acc')) || 0;
+                var credAcc = parseInt(opt.getAttribute('data-credit-acc')) || 0;
+
+                var candidateId = 0;
+                if (isDebit) {
+                    // Line 0 is Debited -> Counter Line 1 is Credited
+                    candidateId = (credAcc > 0 && credAcc !== row0AccId) ? credAcc : debAcc;
+                } else {
+                    // Line 0 is Credited -> Counter Line 1 is Debited
+                    candidateId = (debAcc > 0 && debAcc !== row0AccId) ? debAcc : credAcc;
+                }
+
+                // If candidateId matches row0AccId or is 0, find a sensible fallback (Bank 102000 or Cash 101000)
+                if (!candidateId || candidateId === row0AccId) {
+                    var row0Select = tbody.querySelector('#row0 .account-select');
+                    var r0Opt = row0Select ? row0Select.options[row0Select.selectedIndex] : null;
+                    var r0Code = r0Opt ? r0Opt.getAttribute('data-code') : '';
+
+                    var bankOpt = tbody.querySelector('#row1 .account-select option[data-code="102000"]');
+                    var cashOpt = tbody.querySelector('#row1 .account-select option[data-code="101000"]');
+
+                    if (r0Code === '102000' && cashOpt) {
+                        candidateId = parseInt(cashOpt.value);
+                    } else if (bankOpt && r0Code !== '102000') {
+                        candidateId = parseInt(bankOpt.value);
+                    } else if (cashOpt) {
+                        candidateId = parseInt(cashOpt.value);
+                    }
+                }
+
+                return candidateId;
+            }
+
+            function syncSingleEntry() {
+                if (currentMode !== 'Single') return;
+
+                var row0 = document.getElementById('row0');
+                var row1 = document.getElementById('row1');
+                if (!row0 || !row1) return;
+
+                var r0Dr = parseFloat(row0.querySelector('.debit-input').value) || 0;
+                var r0Cr = parseFloat(row0.querySelector('.credit-input').value) || 0;
+                var r0AccSelect = row0.querySelector('.account-select');
+                var r0AccId = parseInt(r0AccSelect.value) || 0;
+
+                var r1AccSelect = row1.querySelector('.account-select');
+                var r1Dr = row1.querySelector('.debit-input');
+                var r1Cr = row1.querySelector('.credit-input');
+
+                var isDebit = r0Dr > 0 || (r0Dr === 0 && r0Cr === 0);
+
+                // 1. Auto set-off Amount: counter row balances primary row
+                if (r0Dr > 0) {
+                    r1Cr.value = r0Dr.toFixed(2);
+                    r1Dr.value = '0.00';
+                } else if (r0Cr > 0) {
+                    r1Dr.value = r0Cr.toFixed(2);
+                    r1Cr.value = '0.00';
+                } else {
+                    r1Dr.value = '0.00';
+                    r1Cr.value = '0.00';
+                }
+
+                // 2. Auto set-off Account: automatically select second account
+                var setOffAccId = determineSetOffAccount(r0AccId, isDebit);
+                if (setOffAccId && setOffAccId > 0) {
+                    r1AccSelect.value = setOffAccId;
+                    var chosenOpt = r1AccSelect.querySelector('option[value="' + setOffAccId + '"]');
+                    var fullText = chosenOpt ? chosenOpt.textContent.trim() : 'Auto set-off';
+                    if (row1Badge) {
+                        row1Badge.className = 'af-badge b-green text-2xs';
+                        row1Badge.innerHTML = '<i class="bi bi-magic me-1"></i>2nd Entry · Auto set-off: ' + (fullText.length > 28 ? fullText.substring(0, 28) + '…' : fullText);
+                    }
+                }
+            }
+
+            function applyModeUI() {
+                var row1 = document.getElementById('row1');
+                if (!row1) return;
+                var row1Dr = row1.querySelector('.debit-input');
+                var row1Cr = row1.querySelector('.credit-input');
+
+                if (currentMode === 'Single') {
+                    entryModeInput.value = 'Single';
+                    btnModeSingle.classList.add('active');
+                    btnModeDual.classList.remove('active');
+                    addRowBtn.classList.add('d-none');
+                    singleEntryBanner.classList.remove('d-none');
+                    modeBadge.className = 'af-badge b-indigo text-2xs';
+                    modeBadge.textContent = 'Single entry (Default)';
+                    modeSubText.textContent = 'Single entry approach: 2nd entry (both account & amount) sets off automatically.';
+
+                    if (row1Dr && row1Cr) {
+                        row1Dr.readOnly = true;
+                        row1Cr.readOnly = true;
+                        row1Dr.classList.add('bg-light', 'text-muted');
+                        row1Cr.classList.add('bg-light', 'text-muted');
+                    }
+
+                    if (row1ActionCell) {
+                        row1ActionCell.innerHTML = '<span class="text-muted text-xs d-block" id="row1LockIcon" title="Second entry sets off automatically"><i class="bi bi-lock-fill text-muted"></i></span>';
+                    }
+
+                    // Prune rows beyond 2 in Single mode
+                    var rows = tbody.querySelectorAll('.line-row');
+                    for (var i = 2; i < rows.length; i++) {
+                        rows[i].remove();
+                    }
+
+                    syncSingleEntry();
+                } else {
+                    entryModeInput.value = 'Dual';
+                    btnModeDual.classList.add('active');
+                    btnModeSingle.classList.remove('active');
+                    addRowBtn.classList.remove('d-none');
+                    singleEntryBanner.classList.add('d-none');
+                    modeBadge.className = 'af-badge b-gray text-2xs';
+                    modeBadge.textContent = 'Dual entry (Manual)';
+                    modeSubText.textContent = 'Dual entry approach: total debits must equal total credits across all manual lines.';
+
+                    if (row1Badge) {
+                        row1Badge.className = 'af-badge b-gray text-2xs';
+                        row1Badge.textContent = '2nd Entry · Manual';
+                    }
+
+                    if (row1Dr && row1Cr) {
+                        row1Dr.readOnly = false;
+                        row1Cr.readOnly = false;
+                        row1Dr.classList.remove('bg-light', 'text-muted');
+                        row1Cr.classList.remove('bg-light', 'text-muted');
+                    }
+
+                    if (row1ActionCell) {
+                        row1ActionCell.innerHTML = '<button type="button" class="row-action danger remove-row" title="Remove line" aria-label="Remove line"><i class="bi bi-trash"></i></button>';
+                    }
+                }
+                calcTotals();
+            }
+
             function calcTotals() {
+                if (currentMode === 'Single') {
+                    syncSingleEntry();
+                }
+
                 var totalDr = 0, totalCr = 0;
                 document.querySelectorAll('.debit-input').forEach(function (i) { totalDr += parseFloat(i.value) || 0; });
                 document.querySelectorAll('.credit-input').forEach(function (i) { totalCr += parseFloat(i.value) || 0; });
@@ -173,19 +429,92 @@
                 document.getElementById('totalCreditCell').textContent = fmt(totalCr);
 
                 var diff = Math.abs(totalDr - totalCr);
-                if (diff < 0.01 && totalDr > 0) {
+
+                // Validation checks
+                var accountsValid = true;
+                var selects = tbody.querySelectorAll('.account-select');
+                selects.forEach(function (s) {
+                    if (!s.value) accountsValid = false;
+                });
+
+                if (currentMode === 'Single' && selects.length >= 2) {
+                    if (selects[0].value && selects[1].value && selects[0].value === selects[1].value) {
+                        badge('b-amber', 'Same account on Dr and Cr');
+                        submitBtn.disabled = true;
+                        return;
+                    }
+                }
+
+                if (diff < 0.01 && totalDr > 0 && accountsValid) {
                     badge('b-green', 'Balanced');
                     submitBtn.disabled = false;
+                } else if (diff < 0.01 && totalDr > 0 && !accountsValid) {
+                    badge('b-amber', 'Select account');
+                    submitBtn.disabled = true;
+                } else if (totalDr === 0 && totalCr === 0) {
+                    badge('b-gray', '₹0.00');
+                    submitBtn.disabled = true;
                 } else {
                     badge('b-red', 'Out of balance · ' + fmt(diff));
                     submitBtn.disabled = true;
                 }
             }
 
+            // Primary line amount listener
             tbody.addEventListener('input', function (e) {
-                if (e.target.classList.contains('debit-input') || e.target.classList.contains('credit-input')) calcTotals();
+                var target = e.target;
+                if (!target.classList.contains('debit-input') && !target.classList.contains('credit-input')) return;
+
+                if (currentMode === 'Single') {
+                    var row0 = document.getElementById('row0');
+                    if (row0 && row0.contains(target)) {
+                        var val = parseFloat(target.value) || 0;
+                        if (target.classList.contains('debit-input') && val > 0) {
+                            row0.querySelector('.credit-input').value = '0.00';
+                        } else if (target.classList.contains('credit-input') && val > 0) {
+                            row0.querySelector('.debit-input').value = '0.00';
+                        }
+                    }
+                }
+
+                calcTotals();
             });
 
+            // Account selection listener
+            tbody.addEventListener('change', function (e) {
+                if (e.target.classList.contains('account-select')) {
+                    if (currentMode === 'Single' && e.target.closest('#row0')) {
+                        syncSingleEntry();
+                    }
+                    calcTotals();
+                }
+            });
+
+            // Journal change updates set-off account automatically
+            if (jeJournal) {
+                jeJournal.addEventListener('change', function () {
+                    if (currentMode === 'Single') {
+                        syncSingleEntry();
+                    }
+                    calcTotals();
+                });
+            }
+
+            // Swap Dr / Cr button on primary entry
+            if (swapDrCrBtn) {
+                swapDrCrBtn.addEventListener('click', function () {
+                    var row0 = document.getElementById('row0');
+                    if (!row0) return;
+                    var drInput = row0.querySelector('.debit-input');
+                    var crInput = row0.querySelector('.credit-input');
+                    var tmp = drInput.value;
+                    drInput.value = crInput.value;
+                    crInput.value = tmp;
+                    calcTotals();
+                });
+            }
+
+            // Remove line (Dual mode)
             tbody.addEventListener('click', function (e) {
                 var btn = e.target.closest('.remove-row');
                 if (!btn) return;
@@ -197,21 +526,52 @@
                 calcTotals();
             });
 
-            document.getElementById('addRowBtn').addEventListener('click', function () {
+            // Add line (Dual mode)
+            addRowBtn.addEventListener('click', function () {
                 var newRow = tbody.querySelector('.line-row').cloneNode(true);
+                newRow.removeAttribute('id');
+                var badgeEl = newRow.querySelector('#row0Badge, #row1Badge');
+                if (badgeEl) {
+                    badgeEl.className = 'af-badge b-gray text-2xs';
+                    badgeEl.textContent = 'Line ' + (tbody.querySelectorAll('.line-row').length + 1);
+                }
+                var actCell = newRow.querySelector('td:last-child');
+                if (actCell) {
+                    actCell.innerHTML = '<button type="button" class="row-action danger remove-row" title="Remove line" aria-label="Remove line"><i class="bi bi-trash"></i></button>';
+                }
                 newRow.querySelectorAll('input, select').forEach(function (el) {
                     var name = el.getAttribute('name');
                     if (name) el.setAttribute('name', name.replace(/\[\d+\]/, '[' + rowIndex + ']'));
-                    if (el.classList.contains('debit-input') || el.classList.contains('credit-input')) el.value = '0.00';
-                    else if (el.tagName === 'INPUT') el.value = '';
-                    else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+                    if (el.classList.contains('debit-input') || el.classList.contains('credit-input')) {
+                        el.value = '0.00';
+                        el.readOnly = false;
+                        el.classList.remove('bg-light', 'text-muted');
+                    } else if (el.tagName === 'INPUT') {
+                        el.value = '';
+                    } else if (el.tagName === 'SELECT') {
+                        el.selectedIndex = 0;
+                    }
                 });
                 tbody.appendChild(newRow);
                 rowIndex++;
                 calcTotals();
             });
 
-            calcTotals();
+            // Segmented mode toggle events
+            btnModeSingle.addEventListener('click', function () {
+                if (currentMode === 'Single') return;
+                currentMode = 'Single';
+                applyModeUI();
+            });
+
+            btnModeDual.addEventListener('click', function () {
+                if (currentMode === 'Dual') return;
+                currentMode = 'Dual';
+                applyModeUI();
+            });
+
+            // Initialize mode
+            applyModeUI();
         })();
     </script>
 }

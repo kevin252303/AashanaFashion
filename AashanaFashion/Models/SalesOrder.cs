@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AashanaFashion.Models;
 
@@ -36,6 +37,17 @@ public class SalesOrder : IMustHaveTenant
     [DataType(DataType.MultilineText)]
     public string? Notes { get; set; }
 
+    // ——— Whole Order Agent Discount ———
+    public bool HasAgentDiscount { get; set; } = false;
+
+    public AgentDiscountType AgentDiscountType { get; set; } = AgentDiscountType.Percentage;
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal AgentDiscountRate { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal AgentDiscountAmount { get; set; }
+
     [DataType(DataType.Currency)]
     public decimal TransportCharge { get; set; }
 
@@ -63,3 +75,13 @@ public enum SalesOrderStatus
     Dispatched,
     Cancelled
 }
+
+public enum AgentDiscountType
+{
+    [Display(Name = "Percentage (%)")]
+    Percentage = 0,
+
+    [Display(Name = "Fixed Amount (₹)")]
+    Amount = 1
+}
+

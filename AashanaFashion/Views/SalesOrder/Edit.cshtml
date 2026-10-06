@@ -194,10 +194,54 @@
         <div class="col-md-6 col-lg-5">
             <div class="data-card">
                 <div class="data-card-header">
-                    <div class="data-card-title">Order total</div>
+                    <div class="data-card-title">Order total &amp; discounts</div>
                 </div>
                 <div class="data-card-body">
-                    <div class="kv-row"><span class="k">Subtotal</span><span class="v" id="subtotalDisplay">₹0.00</span></div>
+                    <div class="kv-row"><span class="k">Items Subtotal</span><span class="v" id="subtotalDisplay">₹0.00</span></div>
+
+                    <!-- Whole Order Agent Discount Toggle & Configuration -->
+                    <div class="panel-inset p-2 my-2 border rounded-2">
+                        <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
+                            <input class="form-check-input" type="checkbox" role="switch" asp-for="HasAgentDiscount" id="chkAgentDiscount" />
+                            <label class="form-check-label fw-semibold text-sm cursor-pointer" for="chkAgentDiscount">
+                                <i class="bi bi-tag text-primary me-1"></i> Agent discount (whole order)
+                            </label>
+                        </div>
+
+                        <div id="agentDiscountBox" class="mt-2 pt-2 border-top @(Model.HasAgentDiscount ? "" : "d-none")">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-5">
+                                    <label class="text-xs text-muted mb-1 d-block" for="agentDiscountType">Type</label>
+                                    <select asp-for="AgentDiscountType" class="af-input af-input-sm af-select" id="agentDiscountType">
+                                        <option value="0" selected="@((int)Model.AgentDiscountType == 0 ? "selected" : null)">Percentage (%)</option>
+                                        <option value="1" selected="@((int)Model.AgentDiscountType == 1 ? "selected" : null)">Fixed amount (₹)</option>
+                                    </select>
+                                </div>
+                                <div class="col-7">
+                                    <label class="text-xs text-muted mb-1 d-block" for="agentDiscountRate">Discount value</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text font-monospace text-xs" id="agentDiscountUnit">@((int)Model.AgentDiscountType == 1 ? "₹" : "%")</span>
+                                        <input type="number" step="0.01" min="0" asp-for="AgentDiscountRate" class="af-input af-input-sm text-end font-monospace" id="agentDiscountRate" placeholder="0.00" value="@Model.AgentDiscountRate" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-muted mt-1 d-flex justify-content-between align-items-center">
+                                <span>Deducted from subtotal:</span>
+                                <span id="agentDiscountCalcBadge" class="text-danger fw-semibold">-₹@Model.AgentDiscountAmount.ToString("N2")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kv-row text-danger @(Model.HasAgentDiscount ? "" : "d-none")" id="agentDiscountRow">
+                        <span class="k text-danger">Agent discount</span>
+                        <span class="v text-danger tabular fw-semibold" id="agentDiscountDisplay">-₹@Model.AgentDiscountAmount.ToString("N2")</span>
+                    </div>
+
+                    <div class="kv-row @(Model.HasAgentDiscount ? "" : "d-none")" id="netSubtotalRow">
+                        <span class="k">Net subtotal</span>
+                        <span class="v tabular fw-semibold" id="netSubtotalDisplay">₹0.00</span>
+                    </div>
+
                     <div class="kv-row align-items-center">
                         <label class="k mb-0" for="transportCharge">Transport charge (₹)</label>
                         <input type="number" step="0.01" min="0" asp-for="TransportCharge" class="af-input af-input-sm text-end" id="transportCharge" style="width: 120px;" value="@Model.TransportCharge" />
@@ -393,6 +437,32 @@ document.addEventListener('DOMContentLoaded', function () {
     const transportChargeInput = document.getElementById('transportCharge');
     const transportGSTInput = document.getElementById('transportGST');
     const roundOffInput = document.getElementById('roundOff');
+
+    const chkAgentDiscount = document.getElementById('chkAgentDiscount');
+    const agentDiscountBox = document.getElementById('agentDiscountBox');
+    const agentDiscountRow = document.getElementById('agentDiscountRow');
+    const netSubtotalRow = document.getElementById('netSubtotalRow');
+    const agentDiscountTypeSelect = document.getElementById('agentDiscountType');
+    const agentDiscountRateInput = document.getElementById('agentDiscountRate');
+    const agentDiscountUnit = document.getElementById('agentDiscountUnit');
+    const agentDiscountCalcBadge = document.getElementById('agentDiscountCalcBadge');
+    const agentDiscountDisplay = document.getElementById('agentDiscountDisplay');
+    const netSubtotalDisplay = document.getElementById('netSubtotalDisplay');
+
+    chkAgentDiscount?.addEventListener('change', function () {
+        const checked = this.checked;
+        if (agentDiscountBox) agentDiscountBox.classList.toggle('d-none', !checked);
+        if (agentDiscountRow) agentDiscountRow.classList.toggle('d-none', !checked);
+        if (netSubtotalRow) netSubtotalRow.classList.toggle('d-none', !checked);
+        recalc();
+    });
+
+    agentDiscountTypeSelect?.addEventListener('change', function () {
+        if (agentDiscountUnit) agentDiscountUnit.textContent = this.value === "1" ? "₹" : "%";
+        recalc();
+    });
+
+    agentDiscountRateInput?.addEventListener('input', recalc);
 
     const designOptions = document.getElementById('designOptionsTemplate').innerHTML;
 
@@ -671,8 +741,31 @@ document.addEventListener('DOMContentLoaded', function () {
             subtotal += net;
         });
 
+        // Whole Order Agent Discount calculation & deduction
+        const hasAgentDisc = chkAgentDiscount?.checked || false;
+        const discType = agentDiscountTypeSelect?.value || "0";
+        const discRate = parseFloat(agentDiscountRateInput?.value) || 0;
+
+        let agentDiscAmt = 0;
+        if (hasAgentDisc && discRate > 0) {
+            if (discType === "0") {
+                agentDiscAmt = subtotal * (discRate / 100);
+            } else {
+                agentDiscAmt = Math.min(subtotal, discRate);
+            }
+        }
+
+        const netSubtotal = Math.max(0, subtotal - agentDiscAmt);
+
+        if (agentDiscountCalcBadge) agentDiscountCalcBadge.textContent = '-' + fmt(agentDiscAmt);
+        if (agentDiscountDisplay) agentDiscountDisplay.textContent = '-' + fmt(agentDiscAmt);
+        if (netSubtotalDisplay) netSubtotalDisplay.textContent = fmt(netSubtotal);
+
+        const tc = parseFloat(transportChargeInput?.value) || 0;
+        const tg = parseFloat(transportGSTInput?.value) || 0;
+        const effTransport = tc + (tc * tg / 100);
         const ro = parseFloat(roundOffInput?.value) || 0;
-        const grandTotal = subtotal + ro;
+        const grandTotal = netSubtotal + effTransport + ro;
 
         if (subtotalDisplay) subtotalDisplay.textContent = fmt(subtotal);
         if (grandTotalDisplay) grandTotalDisplay.textContent = fmt(grandTotal);

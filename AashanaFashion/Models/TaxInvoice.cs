@@ -118,6 +118,24 @@ public class TaxInvoice : IMustHaveTenant
 
     public InvoicePaymentStatus PaymentStatus { get; set; } = InvoicePaymentStatus.Unpaid;
 
+    // Aging & Due Analysis Helpers (Computed on-the-fly)
+    [NotMapped]
+    public int TotalDays => Math.Max(0, (DateTime.Today - InvoiceDate.Date).Days);
+
+    [NotMapped]
+    public int CreditPeriodDays => Math.Max(0, (DueDate.Date - InvoiceDate.Date).Days);
+
+    [NotMapped]
+    public int DaysUntilDue => (DueDate.Date - DateTime.Today).Days;
+
+    [NotMapped]
+    public int OverdueDays => (PaymentStatus == InvoicePaymentStatus.Paid || BalanceDue <= 0 || DateTime.Today <= DueDate.Date)
+        ? 0
+        : (DateTime.Today - DueDate.Date).Days;
+
+    [NotMapped]
+    public bool IsOverdue => OverdueDays > 0;
+
     // Bank Details for NEFT/RTGS payments
     [StringLength(100)]
     public string BankName { get; set; } = "State Bank of India";

@@ -95,8 +95,25 @@
                             <td>
                                 <a asp-controller="Invoice" asp-action="Print" asp-route-id="@inv.Id" target="_blank" class="mono-id">@inv.InvoiceNumber</a>
                             </td>
-                            <td>@inv.InvoiceDate.ToString("dd MMM yyyy")</td>
-                            <td>@inv.DueDate.ToString("dd MMM yyyy")</td>
+                            <td>
+                                <div>@inv.InvoiceDate.ToString("dd MMM yyyy")</div>
+                                <span class="cell-sub text-muted">@inv.TotalDays d age</span>
+                            </td>
+                            <td>
+                                <div class="@(isOverdue ? "text-danger fw-semibold" : "")">@inv.DueDate.ToString("dd MMM yyyy")</div>
+                                @if (isOverdue)
+                                {
+                                    <span class="cell-sub text-danger"><i class="bi bi-clock-history"></i> @inv.OverdueDays d overdue</span>
+                                }
+                                else if (!isPaid)
+                                {
+                                    <span class="cell-sub text-muted">@inv.DaysUntilDue d left</span>
+                                }
+                                else
+                                {
+                                    <span class="cell-sub text-success">Settled</span>
+                                }
+                            </td>
                             <td><span class="af-badge @badgeClass">@statusText</span></td>
                             <td class="cell-num">₹@inv.GrandTotal.ToString("N2")</td>
                             <td class="cell-num text-success">₹@inv.PaidAmount.ToString("N2")</td>

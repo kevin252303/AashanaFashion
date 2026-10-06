@@ -79,6 +79,10 @@
                                 {
                                     <span class="cell-sub"><i class="bi bi-tag"></i> @item.Pricelist</span>
                                 }
+                                @if (item.PartnerLimit.HasValue && item.PartnerLimit.Value > 0)
+                                {
+                                    <span class="cell-sub text-muted"><i class="bi bi-shield-check"></i> Limit: ₹@item.PartnerLimit.Value.ToString("N0")</span>
+                                }
                             </td>
                             <td><span class="font-monospace text-xs">@item.GstNumber</span></td>
                             <td>@item.ContactPerson</td>
@@ -94,6 +98,7 @@
                                 @if (canEdit || canDelete)
                                 {
                                     <div class="row-actions">
+                                        <a asp-controller="Accounting" asp-action="CustomerLedger" asp-route-customerId="@item.Id" class="row-action" title="Customer ledger" aria-label="Customer ledger"><i class="bi bi-journal-bookmark"></i></a>
                                         @if (canEdit)
                                         {
                                             <a asp-action="Edit" asp-route-id="@item.Id" class="row-action" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>

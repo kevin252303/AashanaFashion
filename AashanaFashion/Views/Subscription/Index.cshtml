@@ -36,7 +36,7 @@
     <div class="metric-card">
         <div class="metric-label">Days remaining</div>
         <div class="metric-value @(Model.DaysRemaining <= 5 ? "text-danger" : "")">@Model.DaysRemaining</div>
-        <div class="metric-meta @(Model.DaysRemaining <= 5 ? "danger" : "")">@(Model.IsTrial ? "14-day free trial" : "active subscription")</div>
+        <div class="metric-meta @(Model.DaysRemaining <= 5 ? "danger" : "")">@(Model.IsTrial ? "standard plan" : "active subscription")</div>
     </div>
     <div class="metric-card">
         <div class="metric-label">Estimated monthly fee</div>

@@ -291,6 +291,51 @@ public class GeneralLedgerAccountViewModel
     public decimal ClosingBalance => Rows.Any() ? Rows.Last().RunningBalance : OpeningBalance;
 }
 
+public class PartnerLedgerViewModel
+{
+    public string PartnerType { get; set; } = "Customer"; // "Customer" or "Vendor"
+    public int PartnerId { get; set; }
+    public string PartnerName { get; set; } = string.Empty;
+    public string? Gstin { get; set; }
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? Address { get; set; }
+    public string? City { get; set; }
+    public decimal? CreditLimit { get; set; }
+    public DateTime FromDate { get; set; }
+    public DateTime ToDate { get; set; }
+    public decimal OpeningBalance { get; set; }
+    public List<GeneralLedgerRow> Rows { get; set; } = new();
+    public decimal TotalDebit => Rows.Sum(r => r.Debit);
+    public decimal TotalCredit => Rows.Sum(r => r.Credit);
+    public decimal ClosingBalance => Rows.Any() ? Rows.Last().RunningBalance : OpeningBalance;
+}
+
+public class PartnerLedgerSummaryRow
+{
+    public int PartnerId { get; set; }
+    public string PartnerName { get; set; } = string.Empty;
+    public string? City { get; set; }
+    public string? Phone { get; set; }
+    public string? Gstin { get; set; }
+    public decimal OpeningBalance { get; set; }
+    public decimal TotalDebit { get; set; }
+    public decimal TotalCredit { get; set; }
+    public decimal ClosingBalance { get; set; }
+}
+
+public class PartnerLedgerSummaryViewModel
+{
+    public string PartnerType { get; set; } = "Customer"; // "Customer" or "Vendor"
+    public DateTime FromDate { get; set; }
+    public DateTime ToDate { get; set; }
+    public List<PartnerLedgerSummaryRow> Rows { get; set; } = new();
+    public decimal TotalOpening => Rows.Sum(r => r.OpeningBalance);
+    public decimal TotalDebit => Rows.Sum(r => r.TotalDebit);
+    public decimal TotalCredit => Rows.Sum(r => r.TotalCredit);
+    public decimal TotalClosing => Rows.Sum(r => r.ClosingBalance);
+}
+
 public class CreateJournalEntryViewModel
 {
     [Required]
@@ -305,6 +350,8 @@ public class CreateJournalEntryViewModel
     [Required]
     [StringLength(500)]
     public string Narration { get; set; } = string.Empty;
+
+    public string EntryMode { get; set; } = "Single";
 
     public List<CreateJournalLineItem> Lines { get; set; } = new();
 }

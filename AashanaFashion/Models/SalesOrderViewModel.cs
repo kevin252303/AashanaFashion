@@ -36,10 +36,20 @@ public class SalesOrderViewModel
 
     public decimal RoundOff { get; set; }
 
+    // ——— Whole Order Agent Discount ———
+    public bool HasAgentDiscount { get; set; } = false;
+
+    public AgentDiscountType AgentDiscountType { get; set; } = AgentDiscountType.Percentage;
+
+    public decimal AgentDiscountRate { get; set; }
+
+    public decimal AgentDiscountAmount { get; set; }
+
     public decimal TotalAmount { get; set; }
 
     public List<SalesOrderDetailViewModel> Details { get; set; } = new();
 }
+
 
 public class SalesOrderDetailViewModel
 {
@@ -112,4 +122,12 @@ public class CreateChallanItemViewModel
     public int PendingQuantity { get; set; }
     public int DispatchQuantity { get; set; }
     public string? Remarks { get; set; }
+}
+
+public class BarcodeScanOrderRequest
+{
+    public string Code { get; set; } = string.Empty;
+    public int? CustomerId { get; set; }
+    public int? PricelistId { get; set; }
+    public decimal Quantity { get; set; } = 1;
 }

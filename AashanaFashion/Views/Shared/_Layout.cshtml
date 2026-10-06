@@ -89,6 +89,13 @@
                     <i class="bi bi-cloud"></i><span>Subscription Quotas</span>
                 </a>
 
+                <div class="sb-section" style="color: #64748b;">CRM &amp; Sales</div>
+
+                <a class="sb-link @Active(ctrl == "Lead")"
+                   asp-controller="Lead" asp-action="Index">
+                    <i class="bi bi-kanban"></i><span>Client Lead Pipeline</span>
+                </a>
+
                 <div class="sb-section" style="color: #64748b;">Tenant Management</div>
 
                 <a class="sb-link" href="@Url.Action("Index", "PlatformAdmin")#onboardSection">
@@ -396,7 +403,8 @@
                             <i class="bi bi-journal-text"></i><span>Accounting</span><i class="bi bi-chevron-down sb-chevron"></i>
                         </button>
                         <div class="sb-sub">
-                            <a class="sb-sublink @Active(ctrl == "Accounting" && action is "ChartOfAccounts" or "GeneralLedger")" asp-controller="Accounting" asp-action="ChartOfAccounts">Chart of Accounts</a>
+                            <a class="sb-sublink @Active(ctrl == "Accounting" && action == "ChartOfAccounts")" asp-controller="Accounting" asp-action="ChartOfAccounts">Chart of Accounts</a>
+                            <a class="sb-sublink @Active(ctrl == "Accounting" && action is "GeneralLedger" or "CustomerLedger" or "VendorLedger")" asp-controller="Accounting" asp-action="GeneralLedger">General &amp; Partner Ledgers</a>
                             <a class="sb-sublink @Active(ctrl == "Accounting" && action is "JournalEntries" or "CreateJournalEntry" or "JournalEntryDetails")" asp-controller="Accounting" asp-action="JournalEntries">Journal Entries</a>
                             <a class="sb-sublink @Active(ctrl == "Accounting" && action == "TrialBalance")" asp-controller="Accounting" asp-action="TrialBalance">Trial Balance</a>
                             <a class="sb-sublink @Active(ctrl == "Accounting" && action == "ProfitAndLoss")" asp-controller="Accounting" asp-action="ProfitAndLoss">Profit &amp; Loss</a>

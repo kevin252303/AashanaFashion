@@ -1,7 +1,24 @@
-@model AashanaFashion.Models.LoginViewModel
+@model AashanaFashion.Models.AuthViewModel
 @{
     Layout = "_LoginLayout";
-    ViewData["Title"] = "Sign In";
+    bool isRegister = string.Equals(Model.ActiveTab, "register", StringComparison.OrdinalIgnoreCase);
+    ViewData["Title"] = isRegister ? "Register Business" : "Sign In";
+
+    var loginErrors = ViewData.ModelState
+        .Where(kvp => string.IsNullOrEmpty(kvp.Key) || kvp.Key.StartsWith("Login", StringComparison.OrdinalIgnoreCase))
+        .SelectMany(kvp => kvp.Value?.Errors ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.ModelBinding.ModelError>())
+        .Select(e => e.ErrorMessage)
+        .Where(msg => !string.IsNullOrWhiteSpace(msg))
+        .Distinct()
+        .ToList();
+
+    var registerErrors = ViewData.ModelState
+        .Where(kvp => string.IsNullOrEmpty(kvp.Key) || kvp.Key.StartsWith("Register", StringComparison.OrdinalIgnoreCase))
+        .SelectMany(kvp => kvp.Value?.Errors ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.ModelBinding.ModelError>())
+        .Select(e => e.ErrorMessage)
+        .Where(msg => !string.IsNullOrWhiteSpace(msg))
+        .Distinct()
+        .ToList();
 }
 
 <section class="auth-brand">
@@ -11,75 +28,271 @@
     </div>
 
     <div class="auth-pitch">
-        <div class="auth-eyebrow">Production System</div>
+        <div class="auth-eyebrow">Production &amp; ERP Cloud</div>
         <h1 class="auth-headline">Every lot, every stage, in one place.</h1>
-        <p class="auth-lede">Manage production orders, track fabric through each process, and keep your team, stock and billing in sync.</p>
+        <p class="auth-lede">Manage production orders, track fabric through each process, and keep your team, inventory, ledgers and billing in sync.</p>
         <ul class="auth-features">
-            <li><i class="bi bi-diagram-3"></i> Real-time production order tracking</li>
-            <li><i class="bi bi-shield-check"></i> Role-based access control</li>
-            <li><i class="bi bi-check2-square"></i> Stage-wise verification workflow</li>
-            <li><i class="bi bi-people"></i> Team, attendance &amp; payroll</li>
+            <li><i class="bi bi-diagram-3"></i> Real-time production order &amp; lot tracking</li>
+            <li><i class="bi bi-receipt"></i> GST invoicing, delivery challans &amp; billing</li>
+            <li><i class="bi bi-journal-text"></i> Double-entry accounting &amp; party ledgers</li>
+            <li><i class="bi bi-people"></i> Factory attendance, payroll &amp; job slips</li>
         </ul>
     </div>
 
-    <div class="auth-legal">© @DateTime.Now.Year Kriyex · Production Management System</div>
+    <div class="auth-legal">© @DateTime.Now.Year Kriyex · Cloud ERP System</div>
 </section>
 
 <main class="auth-main">
-    <div class="auth-card">
+    <div class="auth-card @(isRegister ? "auth-card-wide" : "")" id="authCard">
         <div class="auth-card-mark brand-mark">KX</div>
-        <h2 class="auth-title">Sign in</h2>
-        <p class="auth-sub">Welcome back. Enter your details to continue.</p>
 
-        <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post">
-            @Html.AntiForgeryToken()
-
-            @if (!ViewData.ModelState.IsValid)
-            {
-                <div class="af-alert af-alert-danger" role="alert">
-                    <div class="alert-body">
-                        @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-                        {
-                            <div>@err.ErrorMessage</div>
-                        }
-                    </div>
-                </div>
-            }
-
-            <div class="auth-field">
-                <label asp-for="Username" class="af-label">Username</label>
-                <div class="search-field">
-                    <i class="bi bi-person"></i>
-                    <input asp-for="Username" class="af-input" placeholder="Enter your username" autocomplete="username" autofocus />
-                </div>
-            </div>
-
-            <div class="auth-field">
-                <label asp-for="Password" class="af-label">Password</label>
-                <div class="auth-pw search-field">
-                    <i class="bi bi-lock"></i>
-                    <input asp-for="Password" class="af-input" id="pwInput" placeholder="Enter your password" autocomplete="current-password" />
-                    <button type="button" id="togglePw" class="pw-toggle" aria-label="Show password"><i class="bi bi-eye"></i></button>
-                </div>
-            </div>
-
-            <div class="form-check mb-4">
-                <input asp-for="RememberMe" type="checkbox" class="form-check-input" id="rememberMe" />
-                <label class="form-check-label" for="rememberMe">Keep me signed in</label>
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-lg w-100">Sign in</button>
-        </form>
-
-        <div class="auth-trial">
-            New garment business?
-            <a asp-controller="Subscription" asp-action="RegisterTenant" class="fw-semibold">Start 14-day free trial on Kriyex <i class="bi bi-arrow-right"></i></a>
+        <!-- Unified Tab Switcher -->
+        <div class="auth-tabs" role="tablist" aria-label="Sign in or Register">
+            <button type="button" class="auth-tab-btn @(!isRegister ? "active" : "")" id="tabBtnLogin" onclick="switchAuthTab('login')" role="tab" aria-selected="@(!isRegister ? "true" : "false")">
+                <i class="bi bi-box-arrow-in-right"></i> Sign in
+            </button>
+            <button type="button" class="auth-tab-btn @(isRegister ? "active" : "")" id="tabBtnRegister" onclick="switchAuthTab('register')" role="tab" aria-selected="@(isRegister ? "true" : "false")">
+                <i class="bi bi-person-plus"></i> Register
+            </button>
         </div>
 
-        <div class="auth-foot">Need access? Ask your administrator to create an account.</div>
+        <!-- ==================== SIGN IN PANEL ==================== -->
+        <div id="panelLogin" style="@(isRegister ? "display: none;" : "")">
+            <h2 class="auth-title">Sign in</h2>
+            <p class="auth-sub">Welcome back. Enter your credentials to continue.</p>
+
+            <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" id="loginForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ActiveTab" value="login" />
+
+                @if (loginErrors.Any() && !isRegister)
+                {
+                    <div class="af-alert af-alert-danger mb-3" role="alert">
+                        <div class="alert-body">
+                            @foreach (var err in loginErrors)
+                            {
+                                <div>@err</div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="auth-field">
+                    <label asp-for="Login.Username" class="af-label">Username</label>
+                    <div class="search-field">
+                        <i class="bi bi-person"></i>
+                        <input asp-for="Login.Username" class="af-input" placeholder="Enter your username" autocomplete="username" />
+                    </div>
+                    <span asp-validation-for="Login.Username" class="af-error"></span>
+                </div>
+
+                <div class="auth-field">
+                    <label asp-for="Login.Password" class="af-label">Password</label>
+                    <div class="auth-pw search-field">
+                        <i class="bi bi-lock"></i>
+                        <input asp-for="Login.Password" class="af-input" id="pwInputLogin" placeholder="Enter your password" autocomplete="current-password" />
+                        <button type="button" class="pw-toggle" onclick="togglePasswordVisibility('pwInputLogin', this)" aria-label="Show password"><i class="bi bi-eye"></i></button>
+                    </div>
+                    <span asp-validation-for="Login.Password" class="af-error"></span>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input asp-for="Login.RememberMe" type="checkbox" class="form-check-input" id="rememberMe" />
+                    <label class="form-check-label" for="rememberMe">Keep me signed in</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-box-arrow-in-right"></i> Sign in</button>
+            </form>
+
+            <div class="auth-trial">
+                New garment business?
+                <a href="javascript:void(0)" onclick="switchAuthTab('register')" class="fw-semibold">Register your company <i class="bi bi-arrow-right"></i></a>
+            </div>
+
+            <div class="auth-foot">Need access? Ask your administrator to create an account.</div>
+        </div>
+
+        <!-- ==================== REGISTER CLIENT PANEL ==================== -->
+        <div id="panelRegister" style="@(!isRegister ? "display: none;" : "")">
+            <h2 class="auth-title">Register business</h2>
+            <p class="auth-sub">Enter your basic client details. All fields are mandatory.</p>
+
+            <form asp-action="Register" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" id="registerForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ActiveTab" value="register" />
+
+                @if (registerErrors.Any() && isRegister)
+                {
+                    <div class="af-alert af-alert-danger mb-3" role="alert">
+                        <div class="alert-body">
+                            @foreach (var err in registerErrors)
+                            {
+                                <div>@err</div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="row g-3">
+                    <div class="col-md-6 auth-field">
+                        <label asp-for="Register.FullName" class="af-label">Client Name <span class="text-danger">*</span></label>
+                        <div class="search-field">
+                            <i class="bi bi-person"></i>
+                            <input asp-for="Register.FullName" class="af-input" placeholder="e.g. Rajesh Shah" required />
+                        </div>
+                        <span asp-validation-for="Register.FullName" class="af-error"></span>
+                    </div>
+
+                    <div class="col-md-6 auth-field">
+                        <label asp-for="Register.BusinessName" class="af-label">Business / Company Name <span class="text-danger">*</span></label>
+                        <div class="search-field">
+                            <i class="bi bi-building"></i>
+                            <input asp-for="Register.BusinessName" class="af-input" placeholder="e.g. Surat Creations Pvt Ltd" required />
+                        </div>
+                        <span asp-validation-for="Register.BusinessName" class="af-error"></span>
+                    </div>
+
+                    <div class="col-md-6 auth-field">
+                        <label asp-for="Register.Email" class="af-label">Email Address <span class="text-danger">*</span></label>
+                        <div class="search-field">
+                            <i class="bi bi-envelope"></i>
+                            <input asp-for="Register.Email" type="email" class="af-input" placeholder="name@business.com" required />
+                        </div>
+                        <span asp-validation-for="Register.Email" class="af-error"></span>
+                    </div>
+
+                    <div class="col-md-6 auth-field">
+                        <label asp-for="Register.Phone" class="af-label">Phone Number <span class="text-danger">*</span></label>
+                        <div class="search-field">
+                            <i class="bi bi-telephone"></i>
+                            <input asp-for="Register.Phone" type="tel" class="af-input" placeholder="+91 98765 43210" required />
+                        </div>
+                        <span asp-validation-for="Register.Phone" class="af-error"></span>
+                    </div>
+
+                    <div class="col-md-6 auth-field">
+                        <label asp-for="Register.City" class="af-label">City <span class="text-danger">*</span></label>
+                        <div class="search-field">
+                            <i class="bi bi-geo-alt"></i>
+                            <input asp-for="Register.City" class="af-input" placeholder="e.g. Surat" required />
+                        </div>
+                        <span asp-validation-for="Register.City" class="af-error"></span>
+                    </div>
+
+                    <div class="col-md-6 auth-field">
+                        <label asp-for="Register.State" class="af-label">State <span class="text-danger">*</span></label>
+                        <div class="search-field">
+                            <i class="bi bi-map"></i>
+                            <input asp-for="Register.State" class="af-input" placeholder="e.g. Gujarat" required />
+                        </div>
+                        <span asp-validation-for="Register.State" class="af-error"></span>
+                    </div>
+
+                    <div class="col-md-12 auth-field">
+                        <label asp-for="Register.Username" class="af-label">Desired Username <span class="text-danger">*</span></label>
+                        <div class="search-field">
+                            <i class="bi bi-person-badge"></i>
+                            <input asp-for="Register.Username" class="af-input font-monospace" placeholder="e.g. rajesh_admin" autocomplete="username" required />
+                        </div>
+                        <span asp-validation-for="Register.Username" class="af-error"></span>
+                    </div>
+
+                    <div class="col-md-6 auth-field">
+                        <label asp-for="Register.Password" class="af-label">Password <span class="text-danger">*</span></label>
+                        <div class="auth-pw search-field">
+                            <i class="bi bi-lock"></i>
+                            <input asp-for="Register.Password" class="af-input" id="pwInputReg" placeholder="Minimum 6 characters" autocomplete="new-password" required />
+                            <button type="button" class="pw-toggle" onclick="togglePasswordVisibility('pwInputReg', this)" aria-label="Show password"><i class="bi bi-eye"></i></button>
+                        </div>
+                        <span asp-validation-for="Register.Password" class="af-error"></span>
+                    </div>
+
+                    <div class="col-md-6 auth-field">
+                        <label asp-for="Register.ConfirmPassword" class="af-label">Confirm Password <span class="text-danger">*</span></label>
+                        <div class="auth-pw search-field">
+                            <i class="bi bi-lock-fill"></i>
+                            <input asp-for="Register.ConfirmPassword" class="af-input" id="pwInputConfirm" placeholder="Re-enter password" autocomplete="new-password" required />
+                            <button type="button" class="pw-toggle" onclick="togglePasswordVisibility('pwInputConfirm', this)" aria-label="Show password"><i class="bi bi-eye"></i></button>
+                        </div>
+                        <span asp-validation-for="Register.ConfirmPassword" class="af-error"></span>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-check-circle"></i> Complete registration
+                    </button>
+                </div>
+            </form>
+
+            <div class="auth-trial">
+                Already registered?
+                <a href="javascript:void(0)" onclick="switchAuthTab('login')" class="fw-semibold">Sign in to your account <i class="bi bi-arrow-right"></i></a>
+            </div>
+
+            <div class="auth-foot">By registering, your business workspace and admin login will be provisioned immediately.</div>
+        </div>
     </div>
 </main>
 
 @section Scripts {
-    <script src="~/js/login.js"></script>
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function switchAuthTab(tab) {
+            const isReg = (tab === 'register');
+            const card = document.getElementById('authCard');
+            const panelLogin = document.getElementById('panelLogin');
+            const panelRegister = document.getElementById('panelRegister');
+            const btnLogin = document.getElementById('tabBtnLogin');
+            const btnRegister = document.getElementById('tabBtnRegister');
+
+            if (isReg) {
+                card.classList.add('auth-card-wide');
+                panelLogin.style.display = 'none';
+                panelRegister.style.display = 'block';
+                btnRegister.classList.add('active');
+                btnRegister.setAttribute('aria-selected', 'true');
+                btnLogin.classList.remove('active');
+                btnLogin.setAttribute('aria-selected', 'false');
+                window.history.replaceState(null, '', '?tab=register');
+            } else {
+                card.classList.remove('auth-card-wide');
+                panelRegister.style.display = 'none';
+                panelLogin.style.display = 'block';
+                btnLogin.classList.add('active');
+                btnLogin.setAttribute('aria-selected', 'true');
+                btnRegister.classList.remove('active');
+                btnRegister.setAttribute('aria-selected', 'false');
+                window.history.replaceState(null, '', '?tab=login');
+            }
+        }
+
+        function togglePasswordVisibility(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                if (icon) {
+                    icon.classList.remove('bi-eye');
+                    icon.classList.add('bi-eye-slash');
+                }
+            } else {
+                input.type = 'password';
+                if (icon) {
+                    icon.classList.remove('bi-eye-slash');
+                    icon.classList.add('bi-eye');
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            const hash = window.location.hash;
+            if (tabParam === 'register' || hash === '#register') {
+                switchAuthTab('register');
+            }
+        });
+    </script>
 }
