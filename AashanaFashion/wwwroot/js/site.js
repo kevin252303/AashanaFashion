@@ -4,16 +4,58 @@
 
     var sidebar = document.getElementById('sidebar');
 
+    function isDesktop() {
+        return window.innerWidth >= 992;
+    }
+
+    function initSidebarState() {
+        if (!sidebar) return;
+        if (isDesktop()) {
+            var isPinned = localStorage.getItem('sidebar_pinned') === 'true';
+            document.body.classList.toggle('sidebar-pinned', isPinned);
+        } else {
+            document.body.classList.remove('sidebar-pinned');
+        }
+
+        // Add title to links for quick tooltip in collapsed rail mode
+        document.querySelectorAll('.sb-link').forEach(function (link) {
+            if (!link.getAttribute('title')) {
+                var span = link.querySelector('span');
+                if (span && span.textContent.trim()) {
+                    link.setAttribute('title', span.textContent.trim());
+                }
+            }
+        });
+    }
+
     function setSidebar(open) {
         if (!sidebar) return;
         sidebar.classList.toggle('open', open);
         document.body.style.overflow = open ? 'hidden' : '';
     }
 
+    // Initialize on load and resize
+    initSidebarState();
+    window.addEventListener('resize', function () {
+        if (!isDesktop() && document.body.classList.contains('sidebar-pinned')) {
+            document.body.classList.remove('sidebar-pinned');
+        } else if (isDesktop()) {
+            var isPinned = localStorage.getItem('sidebar_pinned') === 'true';
+            document.body.classList.toggle('sidebar-pinned', isPinned);
+        }
+    });
+
     document.addEventListener('click', function (e) {
-        // Mobile drawer
-        if (e.target.closest('[data-sidebar-toggle]')) {
-            setSidebar(!(sidebar && sidebar.classList.contains('open')));
+        // Toggle (desktop pin/unpin or mobile drawer)
+        var toggleBtn = e.target.closest('[data-sidebar-toggle]');
+        if (toggleBtn) {
+            if (isDesktop()) {
+                var pinned = !document.body.classList.contains('sidebar-pinned');
+                document.body.classList.toggle('sidebar-pinned', pinned);
+                localStorage.setItem('sidebar_pinned', pinned ? 'true' : 'false');
+            } else {
+                setSidebar(!(sidebar && sidebar.classList.contains('open')));
+            }
             return;
         }
         if (e.target.closest('[data-sidebar-close]')) {

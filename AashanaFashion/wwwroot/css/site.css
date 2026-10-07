@@ -104,6 +104,7 @@
 
     /* Shell */
     --sidebar-w: 248px;
+    --sidebar-collapsed-w: 64px;
     --topbar-h:  56px;
 
     /* Legacy aliases (older views reference these) */
@@ -286,7 +287,7 @@ button:focus:not(:focus-visible) { outline: none; }
     border-right: 1px solid var(--border);
     display: flex; flex-direction: column;
     z-index: 1040;
-    transition: transform .2s ease;
+    transition: width .22s cubic-bezier(0.4, 0, 0.2, 1), transform .2s ease, box-shadow .22s ease;
 }
 .sidebar-brand {
     height: var(--topbar-h);
@@ -400,6 +401,7 @@ button:focus:not(:focus-visible) { outline: none; }
     display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
     padding: 0 var(--space-6);
     z-index: 1030;
+    transition: left .22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .topbar-left { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
 .topbar-right { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; }
@@ -445,8 +447,118 @@ button:focus:not(:focus-visible) { outline: none; }
 .u-role { font-size: var(--text-xs); color: var(--muted); }
 
 /* Main area */
-.main-wrap { margin-left: var(--sidebar-w); padding-top: var(--topbar-h); min-height: 100vh; }
+.main-wrap { margin-left: var(--sidebar-w); padding-top: var(--topbar-h); min-height: 100vh; transition: margin-left .22s cubic-bezier(0.4, 0, 0.2, 1); }
 .page-body { padding: var(--space-6); max-width: 1680px; }
+
+/* ── DESKTOP SIDEBAR HOVER EXPAND / COLLAPSE ──────────────────────────── */
+@media (min-width: 992px) {
+    :root {
+        --sidebar-current-w: var(--sidebar-collapsed-w);
+    }
+    body.sidebar-pinned {
+        --sidebar-current-w: var(--sidebar-w);
+    }
+
+    .sidebar {
+        width: var(--sidebar-current-w);
+        overflow: hidden;
+    }
+
+    .topbar {
+        left: var(--sidebar-current-w);
+    }
+    .topbar .topbar-toggle {
+        display: inline-flex;
+    }
+
+    .main-wrap {
+        margin-left: var(--sidebar-current-w);
+    }
+
+    /* Expand sidebar on hover when unpinned */
+    body:not(.sidebar-pinned) .sidebar:hover {
+        width: var(--sidebar-w);
+        box-shadow: 6px 0 24px rgba(15, 23, 42, 0.14);
+        z-index: 1045;
+    }
+
+    /* Collapsed state styling when NOT hovered and NOT pinned */
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sidebar-brand {
+        padding: 0;
+        justify-content: center;
+        gap: 0;
+    }
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .brand-name,
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .brand-sub {
+        display: none !important;
+    }
+
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sidebar-nav {
+        padding: var(--space-3) 8px var(--space-4);
+        overflow-x: hidden;
+        scrollbar-width: none;
+    }
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sidebar-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sb-section {
+        font-size: 0;
+        height: 1px;
+        background: var(--border);
+        margin: 10px 4px;
+        padding: 0;
+        overflow: hidden;
+    }
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sb-section:first-child {
+        display: none;
+    }
+
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sb-link {
+        padding: 8px 0;
+        justify-content: center;
+        gap: 0;
+        min-height: 38px;
+    }
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sb-link > .bi {
+        font-size: 18px;
+        width: auto;
+        margin: 0;
+    }
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sb-link > span,
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sb-link .sb-chevron {
+        display: none !important;
+    }
+
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sb-sub {
+        display: none !important;
+    }
+
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sidebar-footer {
+        padding: var(--space-2) 0;
+        justify-content: center;
+    }
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sidebar-footer > span:first-child {
+        display: none !important;
+    }
+    body:not(.sidebar-pinned) .sidebar:not(:hover) .sidebar-footer .af-badge {
+        font-size: 9px;
+        padding: 2px 4px;
+        max-width: 52px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Prevent awkward text-wrapping during hover transition */
+    .sidebar .brand-name,
+    .sidebar .brand-sub,
+    .sidebar .sb-link > span,
+    .sidebar .sb-section,
+    .sidebar .sb-chevron,
+    .sidebar .sidebar-footer > span {
+        white-space: nowrap;
+    }
+}
 
 /* Page header — title, description, primary actions */
 .page-header {
