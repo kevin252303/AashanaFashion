@@ -703,7 +703,8 @@ public static class DataVerificationRunner
             var einvSvc = scope.ServiceProvider.GetRequiredService<IEInvoiceService>();
             var cfg = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             var compCtx = scope.ServiceProvider.GetRequiredService<ICompanyContext>();
-            var invCtrl = new InvoiceController(db, ewaySvc, einvSvc, cfg, compCtx);
+            var docNumSvc = scope.ServiceProvider.GetRequiredService<IDocumentNumberService>();
+            var invCtrl = new InvoiceController(db, ewaySvc, einvSvc, cfg, compCtx, docNumSvc);
 
             var actionResult = await invCtrl.Create(salesOrder.Id, challan.Id) as ViewResult;
             Assert(actionResult != null, "Invoice Create GET returns ViewResult");

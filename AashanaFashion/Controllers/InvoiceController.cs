@@ -17,14 +17,16 @@ public class InvoiceController : Controller
     private readonly IEInvoiceService _eInvoiceService;
     private readonly IConfiguration _config;
     private readonly ICompanyContext _companyContext;
+    private readonly IDocumentNumberService _documentNumberService;
 
-    public InvoiceController(AppDbContext context, IEwayBillService ewayBillService, IEInvoiceService eInvoiceService, IConfiguration config, ICompanyContext companyContext)
+    public InvoiceController(AppDbContext context, IEwayBillService ewayBillService, IEInvoiceService eInvoiceService, IConfiguration config, ICompanyContext companyContext, IDocumentNumberService documentNumberService)
     {
         _context = context;
         _ewayBillService = ewayBillService;
         _eInvoiceService = eInvoiceService;
         _config = config;
         _companyContext = companyContext;
+        _documentNumberService = documentNumberService;
     }
 
     public async Task<IActionResult> Index(string? search, InvoicePaymentStatus? status, string? eInvoiceStatus, bool? overdueOnly = false)
@@ -1413,21 +1415,7 @@ public class InvoiceController : Controller
 
     private async Task<string> GenerateNextInvoiceNumberAsync(Company? company = null)
     {
-        company ??= await _companyContext.GetActiveCompanyAsync();
-        var prefix = $"{company.InvoicePrefix}{DateTime.Now:yyyyMM}-";
-        var last = await _context.TaxInvoices
-            .Where(i => i.CompanyId == company.Id && i.InvoiceNumber.StartsWith(prefix))
-            .OrderByDescending(i => i.InvoiceNumber)
-            .FirstOrDefaultAsync();
-
-        int nextSeq = 1;
-        if (last != null && last.InvoiceNumber.Length >= prefix.Length + 4)
-        {
-            var seqStr = last.InvoiceNumber.Substring(prefix.Length);
-            if (int.TryParse(seqStr, out int cur)) nextSeq = cur + 1;
-        }
-
-        return $"{prefix}{nextSeq:D4}";
+        return await _documentNumberService.GenerateInvoiceNumberAsync(company);
     }
 
     private async Task<string> GenerateNextReceiptNumberAsync(int? companyId = null)

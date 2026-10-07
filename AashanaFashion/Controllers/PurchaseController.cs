@@ -13,11 +13,13 @@ public class PurchaseController : Controller
 {
     private readonly AppDbContext _context;
     private readonly ICompanyContext _companyContext;
+    private readonly IDocumentNumberService _documentNumberService;
 
-    public PurchaseController(AppDbContext context, ICompanyContext companyContext)
+    public PurchaseController(AppDbContext context, ICompanyContext companyContext, IDocumentNumberService documentNumberService)
     {
         _context = context;
         _companyContext = companyContext;
+        _documentNumberService = documentNumberService;
     }
 
     [PermissionAuthorize("Purchase", "CanView")]
@@ -443,20 +445,6 @@ public class PurchaseController : Controller
 
     private async Task<string> GeneratePoNumber(Company? company = null)
     {
-        company ??= await _companyContext.GetActiveCompanyAsync();
-        var prefix = !string.IsNullOrWhiteSpace(company.PurchaseOrderPrefix) ? company.PurchaseOrderPrefix : "PO-";
-        var lastPo = await _context.PurchaseOrders
-            .Where(p => p.CompanyId == company.Id && p.PoNumber.StartsWith(prefix))
-            .OrderByDescending(p => p.Id)
-            .Select(p => p.PoNumber)
-            .FirstOrDefaultAsync();
-
-        if (lastPo == null) return $"{prefix}0001";
-
-        var numPart = lastPo.Substring(prefix.Length);
-        if (int.TryParse(numPart, out int lastNum))
-            return $"{prefix}{(lastNum + 1):D4}";
-
-        return $"{prefix}0001";
+        return await _documentNumberService.GeneratePurchaseOrderNumberAsync(company);
     }
 }

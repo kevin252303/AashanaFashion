@@ -932,8 +932,11 @@ namespace AashanaFashion.Data
                     BankIfsc = "HDFC0001234",
                     BankBranch = "Ring Road Branch, Surat",
                     InvoicePrefix = "INV-",
+                    InvoiceNumberFormat = "{PREFIX}{YYYY}{MM}-{0000}",
                     SalesOrderPrefix = "SO-",
+                    SalesOrderNumberFormat = "{PREFIX}{YYYY}-{0000}",
                     PurchaseOrderPrefix = "PO-",
+                    PurchaseOrderNumberFormat = "{PREFIX}{0000}",
                     IsActive = true,
                     IsDefault = true,
                     CreatedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Unspecified)

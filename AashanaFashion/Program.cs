@@ -40,6 +40,7 @@ builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICommunicationService, CommunicationService>();
 builder.Services.AddScoped<IBankPayoutService, BankPayoutService>();
+builder.Services.AddScoped<IDocumentNumberService, DocumentNumberService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

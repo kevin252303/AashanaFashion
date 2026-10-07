@@ -12,11 +12,13 @@ public class CompanyController : Controller
 {
     private readonly AppDbContext _context;
     private readonly ICompanyContext _companyContext;
+    private readonly IDocumentNumberService _documentNumberService;
 
-    public CompanyController(AppDbContext context, ICompanyContext companyContext)
+    public CompanyController(AppDbContext context, ICompanyContext companyContext, IDocumentNumberService documentNumberService)
     {
         _context = context;
         _companyContext = companyContext;
+        _documentNumberService = documentNumberService;
     }
 
     [HttpGet]
@@ -65,8 +67,11 @@ public class CompanyController : Controller
             State = "Gujarat",
             City = "Surat",
             InvoicePrefix = "INV-",
+            InvoiceNumberFormat = "{PREFIX}{YYYY}{MM}-{0000}",
             SalesOrderPrefix = "SO-",
-            PurchaseOrderPrefix = "PO-"
+            SalesOrderNumberFormat = "{PREFIX}{YYYY}-{0000}",
+            PurchaseOrderPrefix = "PO-",
+            PurchaseOrderNumberFormat = "{PREFIX}{0000}"
         };
         return View(model);
     }
@@ -104,8 +109,11 @@ public class CompanyController : Controller
         model.BankIfsc = model.BankIfsc?.Trim().ToUpper();
         model.BankBranch = model.BankBranch?.Trim();
         model.InvoicePrefix = string.IsNullOrWhiteSpace(model.InvoicePrefix) ? $"INV-{model.CompanyCode}-" : model.InvoicePrefix.Trim();
+        model.InvoiceNumberFormat = string.IsNullOrWhiteSpace(model.InvoiceNumberFormat) ? "{PREFIX}{YYYY}{MM}-{0000}" : model.InvoiceNumberFormat.Trim();
         model.SalesOrderPrefix = string.IsNullOrWhiteSpace(model.SalesOrderPrefix) ? $"SO-{model.CompanyCode}-" : model.SalesOrderPrefix.Trim();
+        model.SalesOrderNumberFormat = string.IsNullOrWhiteSpace(model.SalesOrderNumberFormat) ? "{PREFIX}{YYYY}-{0000}" : model.SalesOrderNumberFormat.Trim();
         model.PurchaseOrderPrefix = string.IsNullOrWhiteSpace(model.PurchaseOrderPrefix) ? $"PO-{model.CompanyCode}-" : model.PurchaseOrderPrefix.Trim();
+        model.PurchaseOrderNumberFormat = string.IsNullOrWhiteSpace(model.PurchaseOrderNumberFormat) ? "{PREFIX}{0000}" : model.PurchaseOrderNumberFormat.Trim();
         model.CreatedDate = DateTime.Now;
 
         if (model.IsDefault)
@@ -169,8 +177,11 @@ public class CompanyController : Controller
         existing.BankIfsc = model.BankIfsc?.Trim().ToUpper();
         existing.BankBranch = model.BankBranch?.Trim();
         existing.InvoicePrefix = model.InvoicePrefix?.Trim() ?? "INV-";
+        existing.InvoiceNumberFormat = string.IsNullOrWhiteSpace(model.InvoiceNumberFormat) ? "{PREFIX}{YYYY}{MM}-{0000}" : model.InvoiceNumberFormat.Trim();
         existing.SalesOrderPrefix = model.SalesOrderPrefix?.Trim() ?? "SO-";
+        existing.SalesOrderNumberFormat = string.IsNullOrWhiteSpace(model.SalesOrderNumberFormat) ? "{PREFIX}{YYYY}-{0000}" : model.SalesOrderNumberFormat.Trim();
         existing.PurchaseOrderPrefix = model.PurchaseOrderPrefix?.Trim() ?? "PO-";
+        existing.PurchaseOrderNumberFormat = string.IsNullOrWhiteSpace(model.PurchaseOrderNumberFormat) ? "{PREFIX}{0000}" : model.PurchaseOrderNumberFormat.Trim();
         existing.IsActive = model.IsActive;
 
         if (model.IsDefault && !existing.IsDefault)
@@ -184,6 +195,13 @@ public class CompanyController : Controller
 
         TempData["Success"] = $"Company \"{existing.CompanyName}\" updated successfully.";
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public IActionResult PreviewDocumentFormat(string? format, string? prefix, string? companyCode)
+    {
+        var preview = _documentNumberService.PreviewFormat(format, prefix, companyCode);
+        return Json(new { success = true, preview });
     }
 
     [Authorize(Roles = "Admin,SuperAdmin")]

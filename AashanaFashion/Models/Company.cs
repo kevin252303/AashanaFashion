@@ -80,18 +80,30 @@ public class Company : IMustHaveTenant
     [Display(Name = "Authorized Signatory")]
     public string? AuthorizedSignatory { get; set; } = "Authorized Signatory";
 
-    // Numbering Prefixes
+    // Numbering Prefixes & Formats
     [StringLength(20)]
     [Display(Name = "Invoice Prefix")]
     public string InvoicePrefix { get; set; } = "INV-";
+
+    [StringLength(60)]
+    [Display(Name = "Invoice Number Format")]
+    public string InvoiceNumberFormat { get; set; } = "{PREFIX}{YYYY}{MM}-{0000}";
 
     [StringLength(20)]
     [Display(Name = "Sales Order Prefix")]
     public string SalesOrderPrefix { get; set; } = "SO-";
 
+    [StringLength(60)]
+    [Display(Name = "Sales Order Number Format")]
+    public string SalesOrderNumberFormat { get; set; } = "{PREFIX}{YYYY}-{0000}";
+
     [StringLength(20)]
     [Display(Name = "Purchase Order Prefix")]
     public string PurchaseOrderPrefix { get; set; } = "PO-";
+
+    [StringLength(60)]
+    [Display(Name = "Purchase Order Number Format")]
+    public string PurchaseOrderNumberFormat { get; set; } = "{PREFIX}{0000}";
 
     [Display(Name = "Active")]
     public bool IsActive { get; set; } = true;

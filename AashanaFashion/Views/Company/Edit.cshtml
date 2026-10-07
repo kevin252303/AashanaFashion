@@ -133,25 +133,118 @@
                 </div>
             </div>
 
+            <!-- Numbering & Document Formats -->
             <div class="data-card mb-4">
-                <div class="data-card-header">
-                    <span class="data-card-title"><i class="bi bi-hash"></i> Document Sequence Prefixes & Status</span>
+                <div class="data-card-header d-flex justify-content-between align-items-center">
+                    <span class="data-card-title"><i class="bi bi-hash"></i> Document Numbering &amp; Sequence Formats</span>
+                    <button type="button" class="btn btn-ghost btn-sm text-xs" data-bs-toggle="collapse" data-bs-target="#tokenHelperCollapse" aria-expanded="false">
+                        <i class="bi bi-info-circle"></i> Available tokens
+                    </button>
                 </div>
                 <div class="data-card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label asp-for="InvoicePrefix" class="form-label">Tax Invoice Prefix</label>
-                            <input asp-for="InvoicePrefix" class="form-control font-monospace text-uppercase" />
-                            <div class="form-text">e.g. AF/26-27/ or INV-</div>
+                    <!-- Collapsible Token Helper -->
+                    <div class="collapse mb-3" id="tokenHelperCollapse">
+                        <div class="p-3 bg-light rounded border text-xs">
+                            <div class="fw-semibold mb-2 text-dark">Supported pattern tokens:</div>
+                            <div class="row g-2">
+                                <div class="col-md-3"><code class="text-primary">{PREFIX}</code> — Prefix set in field below</div>
+                                <div class="col-md-3"><code class="text-primary">{FY}</code> — Indian FY short (e.g. <code>26-27</code>)</div>
+                                <div class="col-md-3"><code class="text-primary">{FY4}</code> — Full FY (e.g. <code>2026-2027</code>)</div>
+                                <div class="col-md-3"><code class="text-primary">{YYYY}</code> — 4-digit Year (e.g. <code>2026</code>)</div>
+                                <div class="col-md-3"><code class="text-primary">{YY}</code> — 2-digit Year (e.g. <code>26</code>)</div>
+                                <div class="col-md-3"><code class="text-primary">{MM}</code> — 2-digit Month (e.g. <code>10</code>)</div>
+                                <div class="col-md-3"><code class="text-primary">{DD}</code> — 2-digit Day (e.g. <code>07</code>)</div>
+                                <div class="col-md-3"><code class="text-primary">{COMP}</code> — Company Code (e.g. <code>AF</code>)</div>
+                                <div class="col-md-6"><code class="text-primary">{0000}</code> or <code class="text-primary">{SEQ}</code> — Sequential counter padded to 4 digits (auto-resets per FY or Year/Month)</div>
+                                <div class="col-md-6"><code class="text-primary">{00000}</code> — 5-digit sequential counter (e.g. <code>00001</code>)</div>
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <label asp-for="SalesOrderPrefix" class="form-label">Sales Order Prefix</label>
-                            <input asp-for="SalesOrderPrefix" class="form-control font-monospace text-uppercase" />
+                    </div>
+
+                    <!-- Tax Invoice Numbering -->
+                    <div class="border rounded p-3 mb-3 bg-surface">
+                        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                            <label class="form-label fw-semibold mb-0"><i class="bi bi-receipt me-1"></i>Tax invoice numbering</label>
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="text-xs text-muted">Preview:</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-xs" id="invoicePreview">...</span>
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <label asp-for="PurchaseOrderPrefix" class="form-label">Purchase Order Prefix</label>
-                            <input asp-for="PurchaseOrderPrefix" class="form-control font-monospace text-uppercase" />
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label asp-for="InvoicePrefix" class="form-label text-xs text-muted mb-1">Prefix</label>
+                                <input asp-for="InvoicePrefix" id="invoicePrefixInput" class="form-control form-control-sm font-monospace text-uppercase" placeholder="e.g. AF/ or INV-" />
+                            </div>
+                            <div class="col-md-8">
+                                <label asp-for="InvoiceNumberFormat" class="form-label text-xs text-muted mb-1">Pattern format</label>
+                                <input asp-for="InvoiceNumberFormat" id="invoiceFormatInput" class="form-control form-control-sm font-monospace" placeholder="{PREFIX}/{FY}/{0000}" />
+                            </div>
                         </div>
+                        <div class="d-flex align-items-center gap-1 mt-2 flex-wrap">
+                            <span class="text-2xs text-muted me-1">Presets:</span>
+                            <button type="button" class="btn btn-ghost btn-xs text-xs format-preset-btn" data-target="#invoiceFormatInput" data-format="{PREFIX}/{FY}/{0000}">GST FY: <code>{PREFIX}/{FY}/{0000}</code></button>
+                            <button type="button" class="btn btn-ghost btn-xs text-xs format-preset-btn" data-target="#invoiceFormatInput" data-format="{PREFIX}{YYYY}{MM}-{0000}">Year-Month: <code>{PREFIX}{YYYY}{MM}-{0000}</code></button>
+                            <button type="button" class="btn btn-ghost btn-xs text-xs format-preset-btn" data-target="#invoiceFormatInput" data-format="{PREFIX}/{YYYY}/{0000}">Calendar Year: <code>{PREFIX}/{YYYY}/{0000}</code></button>
+                            <button type="button" class="btn btn-ghost btn-xs text-xs format-preset-btn" data-target="#invoiceFormatInput" data-format="{PREFIX}{0000}">Sequential: <code>{PREFIX}{0000}</code></button>
+                        </div>
+                    </div>
+
+                    <!-- Sales Order Numbering -->
+                    <div class="border rounded p-3 mb-3 bg-surface">
+                        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                            <label class="form-label fw-semibold mb-0"><i class="bi bi-cart-check me-1"></i>Sales order numbering</label>
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="text-xs text-muted">Preview:</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-xs" id="salesOrderPreview">...</span>
+                            </div>
+                        </div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label asp-for="SalesOrderPrefix" class="form-label text-xs text-muted mb-1">Prefix</label>
+                                <input asp-for="SalesOrderPrefix" id="soPrefixInput" class="form-control form-control-sm font-monospace text-uppercase" placeholder="e.g. SO/ or SO-" />
+                            </div>
+                            <div class="col-md-8">
+                                <label asp-for="SalesOrderNumberFormat" class="form-label text-xs text-muted mb-1">Pattern format</label>
+                                <input asp-for="SalesOrderNumberFormat" id="soFormatInput" class="form-control form-control-sm font-monospace" placeholder="{PREFIX}{YYYY}-{0000}" />
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-1 mt-2 flex-wrap">
+                            <span class="text-2xs text-muted me-1">Presets:</span>
+                            <button type="button" class="btn btn-ghost btn-xs text-xs format-preset-btn" data-target="#soFormatInput" data-format="{PREFIX}/{FY}/{0000}">GST FY: <code>{PREFIX}/{FY}/{0000}</code></button>
+                            <button type="button" class="btn btn-ghost btn-xs text-xs format-preset-btn" data-target="#soFormatInput" data-format="{PREFIX}{YYYY}-{0000}">Calendar Year: <code>{PREFIX}{YYYY}-{0000}</code></button>
+                            <button type="button" class="btn btn-ghost btn-xs text-xs format-preset-btn" data-target="#soFormatInput" data-format="{PREFIX}{0000}">Sequential: <code>{PREFIX}{0000}</code></button>
+                        </div>
+                    </div>
+
+                    <!-- Purchase Order Numbering -->
+                    <div class="border rounded p-3 mb-3 bg-surface">
+                        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                            <label class="form-label fw-semibold mb-0"><i class="bi bi-bag-check me-1"></i>Purchase order numbering</label>
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="text-xs text-muted">Preview:</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-xs" id="purchaseOrderPreview">...</span>
+                            </div>
+                        </div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label asp-for="PurchaseOrderPrefix" class="form-label text-xs text-muted mb-1">Prefix</label>
+                                <input asp-for="PurchaseOrderPrefix" id="poPrefixInput" class="form-control form-control-sm font-monospace text-uppercase" placeholder="e.g. PO/ or PO-" />
+                            </div>
+                            <div class="col-md-8">
+                                <label asp-for="PurchaseOrderNumberFormat" class="form-label text-xs text-muted mb-1">Pattern format</label>
+                                <input asp-for="PurchaseOrderNumberFormat" id="poFormatInput" class="form-control form-control-sm font-monospace" placeholder="{PREFIX}{0000}" />
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-1 mt-2 flex-wrap">
+                            <span class="text-2xs text-muted me-1">Presets:</span>
+                            <button type="button" class="btn btn-ghost btn-xs text-xs format-preset-btn" data-target="#poFormatInput" data-format="{PREFIX}/{FY}/{0000}">GST FY: <code>{PREFIX}/{FY}/{0000}</code></button>
+                            <button type="button" class="btn btn-ghost btn-xs text-xs format-preset-btn" data-target="#poFormatInput" data-format="{PREFIX}{YYYY}-{0000}">Calendar Year: <code>{PREFIX}{YYYY}-{0000}</code></button>
+                            <button type="button" class="btn btn-ghost btn-xs text-xs format-preset-btn" data-target="#poFormatInput" data-format="{PREFIX}{0000}">Sequential: <code>{PREFIX}{0000}</code></button>
+                        </div>
+                    </div>
+
+                    <!-- Company Status -->
+                    <div class="row g-3 pt-2">
                         <div class="col-md-6">
                             <div class="form-check form-switch">
                                 <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveCheck">
@@ -186,5 +279,92 @@
             fetchBtn: '#btnFetchCompanyIfsc',
             statusContainer: '#companyIfscStatus'
         });
+
+        function evaluateDocPreview(format, prefix, code) {
+            format = (format || '{PREFIX}{0000}').trim();
+            prefix = prefix || '';
+            code = code || '';
+            var d = new Date();
+            var month = d.getMonth() + 1;
+            var year = d.getFullYear();
+
+            var startYear = month >= 4 ? year : year - 1;
+            var endYear = startYear + 1;
+            var fy2 = String(startYear % 100).padStart(2, '0') + '-' + String(endYear % 100).padStart(2, '0');
+            var fy4 = startYear + '-' + endYear;
+
+            var mm = String(month).padStart(2, '0');
+            var dd = String(d.getDate()).padStart(2, '0');
+            var yyyy = String(year);
+            var yy = String(year % 100).padStart(2, '0');
+
+            var res = format
+                .replace(/\{PREFIX\}/gi, prefix)
+                .replace(/\{COMPANY\}|\{COMP\}/gi, code)
+                .replace(/\{FYFULL\}|\{FY4\}/gi, fy4)
+                .replace(/\{FY\}/gi, fy2)
+                .replace(/\{YYYY\}/gi, yyyy)
+                .replace(/\{YY\}/gi, yy)
+                .replace(/\{MM\}/gi, mm)
+                .replace(/\{DD\}/gi, dd);
+
+            var seqMatched = false;
+            res = res.replace(/\{(0+|SEQ(?::?\d*)?)\}/gi, function (match, p1) {
+                seqMatched = true;
+                if (p1.startsWith('0')) {
+                    return '1'.padStart(p1.length, '0');
+                } else {
+                    var digits = p1.replace(/\D/g, '');
+                    var pad = parseInt(digits, 10) || 4;
+                    return '1'.padStart(pad, '0');
+                }
+            });
+
+            if (!seqMatched) {
+                res += '0001';
+            }
+
+            return res;
+        }
+
+        function updateAllPreviews() {
+            var code = document.querySelector('[name="CompanyCode"]')?.value || '';
+
+            var invPrefix = document.getElementById('invoicePrefixInput')?.value || '';
+            var invFormat = document.getElementById('invoiceFormatInput')?.value || '';
+            var invEl = document.getElementById('invoicePreview');
+            if (invEl) invEl.textContent = evaluateDocPreview(invFormat, invPrefix, code);
+
+            var soPrefix = document.getElementById('soPrefixInput')?.value || '';
+            var soFormat = document.getElementById('soFormatInput')?.value || '';
+            var soEl = document.getElementById('salesOrderPreview');
+            if (soEl) soEl.textContent = evaluateDocPreview(soFormat, soPrefix, code);
+
+            var poPrefix = document.getElementById('poPrefixInput')?.value || '';
+            var poFormat = document.getElementById('poFormatInput')?.value || '';
+            var poEl = document.getElementById('purchaseOrderPreview');
+            if (poEl) poEl.textContent = evaluateDocPreview(poFormat, poPrefix, code);
+        }
+
+        ['invoicePrefixInput', 'invoiceFormatInput', 'soPrefixInput', 'soFormatInput', 'poPrefixInput', 'poFormatInput'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('input', updateAllPreviews);
+        });
+        var compCode = document.querySelector('[name="CompanyCode"]');
+        if (compCode) compCode.addEventListener('input', updateAllPreviews);
+
+        document.querySelectorAll('.format-preset-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var targetId = btn.dataset.target;
+                var format = btn.dataset.format;
+                var input = document.querySelector(targetId);
+                if (input) {
+                    input.value = format;
+                    updateAllPreviews();
+                }
+            });
+        });
+
+        updateAllPreviews();
     </script>
 }

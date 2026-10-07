@@ -18,19 +18,22 @@ public class SalesOrderController : Controller
     private readonly IConfiguration _config;
     private readonly ICompanyContext _companyContext;
     private readonly IPricelistService _pricelistService;
+    private readonly IDocumentNumberService _documentNumberService;
 
     public SalesOrderController(
         AppDbContext context,
         IEwayBillService ewayBillService,
         IConfiguration config,
         ICompanyContext companyContext,
-        IPricelistService pricelistService)
+        IPricelistService pricelistService,
+        IDocumentNumberService documentNumberService)
     {
         _context = context;
         _ewayBillService = ewayBillService;
         _config = config;
         _companyContext = companyContext;
         _pricelistService = pricelistService;
+        _documentNumberService = documentNumberService;
     }
 
     public async Task<IActionResult> Index(string? search, SalesOrderStatus? status)
@@ -783,11 +786,7 @@ public class SalesOrderController : Controller
 
     private async Task<string> GenerateSoNumber(Company? company = null)
     {
-        company ??= await _companyContext.GetActiveCompanyAsync();
-        var year = DateTime.Now.Year;
-        var prefix = !string.IsNullOrWhiteSpace(company.SalesOrderPrefix) ? company.SalesOrderPrefix : $"SO-{year}-";
-        var count = await _context.SalesOrders.CountAsync(s => s.CompanyId == company.Id && s.SoNumber.StartsWith(prefix));
-        return $"{prefix}{(count + 1):D4}";
+        return await _documentNumberService.GenerateSalesOrderNumberAsync(company);
     }
 
     private async Task<string> GenerateChallanNumber()
