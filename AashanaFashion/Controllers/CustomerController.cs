@@ -249,6 +249,12 @@ public class CustomerController : Controller
         c.Transporter = model.Transporter;
         c.Distance = model.Distance;
 
+        // Bank Details
+        c.BankName = model.BankName;
+        c.AccountNumber = model.AccountNumber;
+        c.IfscCode = model.IfscCode;
+        c.BankBranch = model.BankBranch;
+
         return c;
     }
 
@@ -282,6 +288,12 @@ public class CustomerController : Controller
         DeliveryMethod = c.DeliveryMethod,
         Transporter = c.Transporter,
         Distance = c.Distance,
+
+        // Bank Details
+        BankName = c.BankName,
+        AccountNumber = c.AccountNumber,
+        IfscCode = c.IfscCode,
+        BankBranch = c.BankBranch,
 
         // Child collections
         Contacts = c.Contacts?.ToList() ?? new(),

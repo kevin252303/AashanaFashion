@@ -126,6 +126,9 @@ public class BankPaymentBatchItem : IMustHaveTenant
     [StringLength(100)]
     public string? BankName { get; set; }
 
+    [StringLength(100)]
+    public string? BankBranch { get; set; }
+
     [Column(TypeName = "decimal(18,2)")]
     public decimal Amount { get; set; }
 
@@ -166,6 +169,7 @@ public class PendingPayableItemViewModel
     public int? BeneficiaryId { get; set; }
     public string BeneficiaryName { get; set; } = string.Empty;
     public string? BankName { get; set; }
+    public string? BankBranch { get; set; }
     public string? AccountNumber { get; set; }
     public string? IfscCode { get; set; }
     public string? Email { get; set; }

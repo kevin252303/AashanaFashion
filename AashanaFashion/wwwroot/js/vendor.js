@@ -77,4 +77,15 @@ $(document).ready(function () {
 
     // Initial reindex to ensure contiguous indices
     reindexContactRows();
+
+    // Bank IFSC lookup for Vendor
+    if (typeof initIfscLookup === 'function') {
+        initIfscLookup({
+            ifscInput: '#vendorIfscInput',
+            bankNameInput: '#vendorBankName',
+            branchInput: '#vendorBankBranch',
+            fetchBtn: '#btnFetchVendorIfsc',
+            statusContainer: '#vendorIfscStatus'
+        });
+    }
 });

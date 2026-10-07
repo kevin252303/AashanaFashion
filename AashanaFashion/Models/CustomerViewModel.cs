@@ -59,6 +59,7 @@ public class CustomerViewModel
     public string? BankName { get; set; }
     public string? AccountNumber { get; set; }
     public string? IfscCode { get; set; }
+    public string? BankBranch { get; set; }
 
     // Commission
     public string? SM1Name { get; set; }

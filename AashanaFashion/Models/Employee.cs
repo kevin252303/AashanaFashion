@@ -83,6 +83,10 @@ namespace AashanaFashion.Models
         public string? BankIFSC { get; set; }
 
         [StringLength(100)]
+        [Display(Name = "Branch Name")]
+        public string? BankBranch { get; set; }
+
+        [StringLength(100)]
         [Display(Name = "UPI ID / PhonePe / GPay")]
         public string? UpiId { get; set; }
 

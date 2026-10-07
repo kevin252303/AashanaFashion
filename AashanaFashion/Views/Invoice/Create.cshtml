@@ -278,20 +278,26 @@
                 <div class="data-card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label asp-for="BankName" class="form-label"></label>
-                            <input asp-for="BankName" class="af-input" />
+                            <label asp-for="BankIfsc" class="form-label">IFSC Code</label>
+                            <div class="input-group">
+                                <input asp-for="BankIfsc" id="invoiceIfscInput" class="af-input font-monospace text-uppercase" maxlength="11" />
+                                <button type="button" class="btn btn-secondary btn-sm" id="btnFetchInvoiceIfsc" title="Fetch bank and branch from IFSC" aria-label="Fetch bank and branch">
+                                    <i class="bi bi-search"></i> Fetch
+                                </button>
+                            </div>
+                            <div id="invoiceIfscStatus" class="text-xs mt-1" style="display:none;"></div>
                         </div>
                         <div class="col-md-6">
-                            <label asp-for="BankAccountNumber" class="form-label"></label>
+                            <label asp-for="BankName" class="form-label">Bank Name</label>
+                            <input asp-for="BankName" id="invoiceBankName" class="af-input" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BankBranch" class="form-label">Branch Name</label>
+                            <input asp-for="BankBranch" id="invoiceBankBranch" class="af-input" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BankAccountNumber" class="form-label">Account Number</label>
                             <input asp-for="BankAccountNumber" class="af-input font-monospace" />
-                        </div>
-                        <div class="col-md-6">
-                            <label asp-for="BankIfsc" class="form-label"></label>
-                            <input asp-for="BankIfsc" class="af-input font-monospace" />
-                        </div>
-                        <div class="col-md-6">
-                            <label asp-for="BankBranch" class="form-label"></label>
-                            <input asp-for="BankBranch" class="af-input" />
                         </div>
                         <div class="col-12">
                             <label asp-for="TermsAndConditions" class="form-label"></label>
@@ -686,6 +692,14 @@
             }
             recalcInvoice();
             updateTermsCalc();
+
+            initIfscLookup({
+                ifscInput: '#invoiceIfscInput',
+                bankNameInput: '#invoiceBankName',
+                branchInput: '#invoiceBankBranch',
+                fetchBtn: '#btnFetchInvoiceIfsc',
+                statusContainer: '#invoiceIfscStatus'
+            });
         });
     </script>
 }

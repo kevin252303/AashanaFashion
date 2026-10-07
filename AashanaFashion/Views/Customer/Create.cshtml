@@ -256,6 +256,41 @@
                         </div>
                     </div>
 
+                    <!-- SECTION 3B: BANK ACCOUNTS -->
+                    <div class="form-section-title">Bank Accounts</div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="IfscCode" class="af-label">IFSC Code</label>
+                                <div class="input-group">
+                                    <input asp-for="IfscCode" id="customerIfscInput" class="af-input text-uppercase font-monospace" placeholder="e.g. HDFC0001234" maxlength="11" />
+                                    <button type="button" class="btn btn-secondary btn-sm" id="btnFetchCustomerIfsc" title="Fetch bank and branch from IFSC" aria-label="Fetch bank and branch">
+                                        <i class="bi bi-search"></i> Fetch
+                                    </button>
+                                </div>
+                                <div id="customerIfscStatus" class="text-xs mt-1" style="display:none;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="BankName" class="af-label">Bank Name</label>
+                                <input asp-for="BankName" id="customerBankName" class="af-input" placeholder="Bank name" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="BankBranch" class="af-label">Branch Name</label>
+                                <input asp-for="BankBranch" id="customerBankBranch" class="af-input" placeholder="Branch name" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="af-form-group">
+                                <label asp-for="AccountNumber" class="af-label">Account Number</label>
+                                <input asp-for="AccountNumber" class="af-input font-monospace" placeholder="A/C number" />
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- SECTION 4: SALESMAN COMMISSION RULES -->
                     <div class="form-section-title">Salesman Commission Rules</div>
                     <div class="grid-actions">

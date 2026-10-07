@@ -103,23 +103,29 @@
                 </div>
                 <div class="data-card-body">
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label asp-for="BankIfsc" class="form-label">IFSC Code</label>
+                            <div class="input-group">
+                                <input asp-for="BankIfsc" id="companyIfscInput" class="form-control text-uppercase font-monospace" maxlength="11" />
+                                <button type="button" class="btn btn-secondary btn-sm" id="btnFetchCompanyIfsc" title="Fetch bank and branch from IFSC" aria-label="Fetch bank and branch">
+                                    <i class="bi bi-search"></i> Fetch
+                                </button>
+                            </div>
+                            <div id="companyIfscStatus" class="text-xs mt-1" style="display:none;"></div>
+                        </div>
+                        <div class="col-md-4">
                             <label asp-for="BankName" class="form-label">Bank Name</label>
-                            <input asp-for="BankName" class="form-control" />
+                            <input asp-for="BankName" id="companyBankName" class="form-control" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="BankBranch" class="form-label">Branch Name</label>
+                            <input asp-for="BankBranch" id="companyBankBranch" class="form-control" />
                         </div>
                         <div class="col-md-6">
                             <label asp-for="BankAccountNumber" class="form-label">Account Number</label>
                             <input asp-for="BankAccountNumber" class="form-control font-monospace" />
                         </div>
-                        <div class="col-md-4">
-                            <label asp-for="BankIfsc" class="form-label">IFSC Code</label>
-                            <input asp-for="BankIfsc" class="form-control text-uppercase font-monospace" />
-                        </div>
-                        <div class="col-md-4">
-                            <label asp-for="BankBranch" class="form-label">Branch Name</label>
-                            <input asp-for="BankBranch" class="form-control" />
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label asp-for="UpiId" class="form-label">UPI ID / VPA</label>
                             <input asp-for="UpiId" class="form-control font-monospace" />
                         </div>
@@ -169,3 +175,16 @@
         </form>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        initIfscLookup({
+            ifscInput: '#companyIfscInput',
+            bankNameInput: '#companyBankName',
+            branchInput: '#companyBankBranch',
+            fetchBtn: '#btnFetchCompanyIfsc',
+            statusContainer: '#companyIfscStatus'
+        });
+    </script>
+}

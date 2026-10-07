@@ -200,4 +200,15 @@ $(document).ready(function () {
     // Initial reindex to ensure contiguous indices
     reindexContactRows();
     reindexCommissionRows();
+
+    // Bank IFSC lookup for Customer
+    if (typeof initIfscLookup === 'function') {
+        initIfscLookup({
+            ifscInput: '#customerIfscInput',
+            bankNameInput: '#customerBankName',
+            branchInput: '#customerBankBranch',
+            fetchBtn: '#btnFetchCustomerIfsc',
+            statusContainer: '#customerIfscStatus'
+        });
+    }
 });

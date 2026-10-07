@@ -63,6 +63,7 @@ public class Customer : IMustHaveTenant
     public string? BankName { get; set; }
     public string? AccountNumber { get; set; }
     public string? IfscCode { get; set; }
+    public string? BankBranch { get; set; }
 
     // ——— Commission Structure ———
     public string? SM1Name { get; set; }

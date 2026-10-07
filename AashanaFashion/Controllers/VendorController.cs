@@ -202,6 +202,7 @@ public class VendorController : Controller
         v.BankName = model.BankName;
         v.AccountNumber = model.AccountNumber;
         v.IfscCode = model.IfscCode;
+        v.BankBranch = model.BankBranch;
 
         v.SM1Name = model.SM1Name;
         v.SM1CommissionPct = model.SM1CommissionPct;
@@ -270,6 +271,7 @@ public class VendorController : Controller
         BankName = v.BankName,
         AccountNumber = v.AccountNumber,
         IfscCode = v.IfscCode,
+        BankBranch = v.BankBranch,
 
         SM1Name = v.SM1Name,
         SM1CommissionPct = v.SM1CommissionPct,

@@ -215,7 +215,17 @@
                             <span class="font-monospace">@item.AccountNumber</span>
                             @if (!string.IsNullOrEmpty(item.BankName))
                             {
-                                <div class="text-xs text-muted">@item.BankName</div>
+                                <div class="text-xs text-muted">
+                                    @item.BankName
+                                    @if (!string.IsNullOrEmpty(item.BankBranch))
+                                    {
+                                        <span> &bull; @item.BankBranch</span>
+                                    }
+                                </div>
+                            }
+                            else if (!string.IsNullOrEmpty(item.BankBranch))
+                            {
+                                <div class="text-xs text-muted">@item.BankBranch</div>
                             }
                         </td>
                         <td>

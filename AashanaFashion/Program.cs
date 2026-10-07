@@ -22,7 +22,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString(activeConnection)));
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<IGstVerificationService, GstVerificationService>();
+builder.Services.AddHttpClient<IBankLookupService, BankLookupService>();
 builder.Services.AddScoped<IEwayBillService, EwayBillService>();
 builder.Services.AddScoped<IPricelistService, PricelistService>();
 builder.Services.AddScoped<IReadyInventoryService, ReadyInventoryService>();
