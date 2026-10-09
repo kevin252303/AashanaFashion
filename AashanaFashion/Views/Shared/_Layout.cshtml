@@ -14,11 +14,13 @@
 <body>
 
 @inject AashanaFashion.Services.ICompanyContext CompanyContext
+@inject AashanaFashion.Services.ITenantContext TenantContext
 
 @if (User.Identity?.IsAuthenticated == true)
 {
     var activeCompany = await CompanyContext.GetActiveCompanyAsync();
     var userCompanies = await CompanyContext.GetAllowedCompaniesAsync();
+    var currentTenant = await TenantContext.GetCurrentTenantAsync();
     var role     = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
     var fullName = User.FindFirst("FullName")?.Value ?? User.Identity.Name ?? "";
     var initials = string.Concat(fullName.Split(' ').Take(2).Select(w => w.Length > 0 ? w[0].ToString() : "")).ToUpper();
@@ -27,6 +29,19 @@
 
     bool isSuperAdmin = role == "SuperAdmin";
     bool isAdmin      = role == "Admin" || isSuperAdmin;
+
+    // Tenant module access flags
+    bool hasSales      = currentTenant?.HasModule(AashanaFashion.Models.AppModules.Sales) ?? true;
+    bool hasPurchase   = currentTenant?.HasModule(AashanaFashion.Models.AppModules.Purchase) ?? true;
+    bool hasCrm        = currentTenant?.HasModule(AashanaFashion.Models.AppModules.Crm) ?? true;
+    bool hasMasters    = currentTenant?.HasModule(AashanaFashion.Models.AppModules.Masters) ?? true;
+    bool hasInventory  = currentTenant?.HasModule(AashanaFashion.Models.AppModules.Inventory) ?? true;
+    bool hasJobWork    = currentTenant?.HasModule(AashanaFashion.Models.AppModules.JobWork) ?? true;
+    bool hasProduction = currentTenant?.HasModule(AashanaFashion.Models.AppModules.Production) ?? true;
+    bool hasQc         = currentTenant?.HasModule(AashanaFashion.Models.AppModules.QualityControl) ?? true;
+    bool hasBarcode    = currentTenant?.HasModule(AashanaFashion.Models.AppModules.Barcode) ?? true;
+    bool hasHr         = currentTenant?.HasModule(AashanaFashion.Models.AppModules.Hr) ?? true;
+    bool hasAccounting = currentTenant?.HasModule(AashanaFashion.Models.AppModules.Accounting) ?? true;
 
     // Permission helpers — check claims for custom roles
     bool canViewDesign      = isAdmin || User.HasClaim("Permission.DesignMaster.CanView",    "true");
@@ -79,7 +94,7 @@
             <nav class="sidebar-nav">
                 <div class="sb-section" style="color: #64748b;">SaaS Operations</div>
 
-                <a class="sb-link @Active(ctrl == "PlatformAdmin")"
+                <a class="sb-link @Active(ctrl == "PlatformAdmin" && action == "Index")"
                    asp-controller="PlatformAdmin" asp-action="Index">
                     <i class="bi bi-shield-check"></i><span>SaaS Client Operations</span>
                 </a>
@@ -273,57 +288,72 @@
             </a>
 
             <nav class="sidebar-nav">
-                <div class="sb-section">Sales &amp; CRM</div>
-
-                <a class="sb-link @Active(ctrl == "Lead")" asp-controller="Lead" asp-action="Index">
-                    <i class="bi bi-funnel"></i><span>Leads &amp; CRM</span>
-                </a>
-
-                <a class="sb-link @Active(ctrl == "SalesOrder")" asp-controller="SalesOrder" asp-action="Index">
-                    <i class="bi bi-bag"></i><span>Sales Orders</span>
-                </a>
-
-                @if (canViewPurchase)
+                @if (hasCrm || hasSales || (hasPurchase && canViewPurchase))
                 {
-                    <a class="sb-link @Active(ctrl == "Purchase")" asp-controller="Purchase" asp-action="Index">
-                        <i class="bi bi-cart3"></i><span>Purchase Orders</span>
-                    </a>
+                    <div class="sb-section">Sales &amp; CRM</div>
+
+                    @if (hasCrm)
+                    {
+                        <a class="sb-link @Active(ctrl == "Lead")" asp-controller="Lead" asp-action="Index">
+                            <i class="bi bi-funnel"></i><span>Leads &amp; CRM</span>
+                        </a>
+                    }
+
+                    @if (hasSales)
+                    {
+                        <a class="sb-link @Active(ctrl == "SalesOrder")" asp-controller="SalesOrder" asp-action="Index">
+                            <i class="bi bi-bag"></i><span>Sales Orders</span>
+                        </a>
+                    }
+
+                    @if (hasPurchase && canViewPurchase)
+                    {
+                        <a class="sb-link @Active(ctrl == "Purchase")" asp-controller="Purchase" asp-action="Index">
+                            <i class="bi bi-cart3"></i><span>Purchase Orders</span>
+                        </a>
+                    }
                 }
 
-                @if (canViewDesign || canViewVendor || canViewCustomer || isAdmin)
+                @if ((hasMasters || hasInventory) && (canViewDesign || canViewVendor || canViewCustomer || isAdmin))
                 {
                     <div class="@Group(inMasters)">
                         <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inMasters ? "true" : "false")">
                             <i class="bi bi-database"></i><span>Admin Master</span><i class="bi bi-chevron-down sb-chevron"></i>
                         </button>
                         <div class="sb-sub">
-                            @if (canViewDesign)
+                            @if (hasMasters && canViewDesign)
                             {
                                 <a class="sb-sublink @Active(ctrl == "Design")" asp-controller="Design" asp-action="Index">Product Master</a>
                                 <a class="sb-sublink @Active(ctrl == "Archive")" asp-controller="Archive" asp-action="Index">Archive (Discontinued)</a>
                                 <a class="sb-sublink @Active(ctrl == "Category")" asp-controller="Category" asp-action="Index">Category Master</a>
                             }
-                            @if (canViewCustomer)
+                            @if (hasMasters && canViewCustomer)
                             {
                                 <a class="sb-sublink @Active(ctrl == "Customer")" asp-controller="Customer" asp-action="Index">Customer Master</a>
                             }
-                            @if (isAdmin || canViewCustomer || canViewDesign)
+                            @if (hasMasters && (isAdmin || canViewCustomer || canViewDesign))
                             {
                                 <a class="sb-sublink @Active(ctrl == "Pricelist")" asp-controller="Pricelist" asp-action="Index">Pricelist Master</a>
                             }
-                            @if (canViewVendor)
+                            @if (hasMasters && canViewVendor)
                             {
                                 <a class="sb-sublink @Active(ctrl == "Vendor")" asp-controller="Vendor" asp-action="Index">Vendor Master</a>
                             }
-                            <a class="sb-sublink @Active(ctrl == "ReadyProduct" && action == "Index")" asp-controller="ReadyProduct" asp-action="Index">Ready Product Stock</a>
-                            <a class="sb-sublink @Active(ctrl == "ReadyProduct" && action == "Outward")" asp-controller="ReadyProduct" asp-action="Outward">Outward Dispatch</a>
-                            <a class="sb-sublink @Active(ctrl == "ReadyProduct" && action == "Ledger")" asp-controller="ReadyProduct" asp-action="Ledger">Ready Stock Ledger</a>
-                            <a class="sb-sublink @Active(ctrl == "RawMaterial" && (action == "Index" || action == "InOut" || action == "AdjustStock"))" asp-controller="RawMaterial" asp-action="Index">Inventory &amp; Stock</a>
-                            <a class="sb-sublink @Active(ctrl == "RawMaterial" && action == "Ledger")" asp-controller="RawMaterial" asp-action="Ledger">Stock Ledger</a>
-                            <a class="sb-sublink @Active(ctrl == "Colour")" asp-controller="Colour" asp-action="Index">Colour Master</a>
-                            <a class="sb-sublink @Active(ctrl == "Size")" asp-controller="Size" asp-action="Index">Size Master</a>
-                            <a class="sb-sublink @Active(ctrl == "ProcessMaster")" asp-controller="ProcessMaster" asp-action="Index">Process Master</a>
-                            @if (isAdmin)
+                            @if (hasInventory)
+                            {
+                                <a class="sb-sublink @Active(ctrl == "ReadyProduct" && action == "Index")" asp-controller="ReadyProduct" asp-action="Index">Ready Product Stock</a>
+                                <a class="sb-sublink @Active(ctrl == "ReadyProduct" && action == "Outward")" asp-controller="ReadyProduct" asp-action="Outward">Outward Dispatch</a>
+                                <a class="sb-sublink @Active(ctrl == "ReadyProduct" && action == "Ledger")" asp-controller="ReadyProduct" asp-action="Ledger">Ready Stock Ledger</a>
+                                <a class="sb-sublink @Active(ctrl == "RawMaterial" && (action == "Index" || action == "InOut" || action == "AdjustStock"))" asp-controller="RawMaterial" asp-action="Index">Inventory &amp; Stock</a>
+                                <a class="sb-sublink @Active(ctrl == "RawMaterial" && action == "Ledger")" asp-controller="RawMaterial" asp-action="Ledger">Stock Ledger</a>
+                            }
+                            @if (hasMasters)
+                            {
+                                <a class="sb-sublink @Active(ctrl == "Colour")" asp-controller="Colour" asp-action="Index">Colour Master</a>
+                                <a class="sb-sublink @Active(ctrl == "Size")" asp-controller="Size" asp-action="Index">Size Master</a>
+                                <a class="sb-sublink @Active(ctrl == "ProcessMaster")" asp-controller="ProcessMaster" asp-action="Index">Process Master</a>
+                            }
+                            @if (hasMasters && isAdmin)
                             {
                                 <a class="sb-sublink @Active(ctrl == "Company")" asp-controller="Company" asp-action="Index">Company Master</a>
                             }
@@ -331,7 +361,7 @@
                     </div>
                 }
 
-                @if (role == "Admin" || role == "Manager")
+                @if (hasJobWork && (role == "Admin" || role == "Manager"))
                 {
                     <div class="@Group(inJobWork)">
                         <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inJobWork ? "true" : "false")">
@@ -344,21 +374,33 @@
                     </div>
                 }
 
-                <div class="sb-section">Production</div>
-                <div class="@Group(inProduction)">
-                    <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inProduction ? "true" : "false")">
-                        <i class="bi bi-boxes"></i><span>Production Work</span><i class="bi bi-chevron-down sb-chevron"></i>
-                    </button>
-                    <div class="sb-sub">
-                        <a class="sb-sublink @Active(ctrl == "PMS" && action == "Index")" asp-controller="PMS" asp-action="Index">Dashboard (WIP)</a>
-                        <a class="sb-sublink @Active(ctrl == "Production")" asp-controller="Production" asp-action="Index">Order Lots (Plans)</a>
-                        <a class="sb-sublink @Active(ctrl == "JobSlip")" asp-controller="JobSlip" asp-action="Index">Job Slips (Challans)</a>
-                        <a class="sb-sublink @Active(ctrl == "PMS" && (action == "ProcessTracking" || action == "ProductionEntities"))" asp-controller="PMS" asp-action="ProcessTracking">Process &amp; Piece Tracking</a>
-                        <a class="sb-sublink @Active(ctrl == "QualityControl")" asp-controller="QualityControl" asp-action="Index">Quality Control (QC)</a>
-                        <a class="sb-sublink @Active(ctrl == "Barcode" && action == "Scanner")" asp-controller="Barcode" asp-action="Scanner">Barcode Scanner</a>
-                        <a class="sb-sublink @Active(ctrl == "Barcode" && action == "ConfigureTag")" asp-controller="Barcode" asp-action="ConfigureTag">Configure Barcode Tag</a>
+                @if (hasProduction || hasQc || hasBarcode)
+                {
+                    <div class="sb-section">Production</div>
+                    <div class="@Group(inProduction)">
+                        <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inProduction ? "true" : "false")">
+                            <i class="bi bi-boxes"></i><span>Production Work</span><i class="bi bi-chevron-down sb-chevron"></i>
+                        </button>
+                        <div class="sb-sub">
+                            @if (hasProduction)
+                            {
+                                <a class="sb-sublink @Active(ctrl == "PMS" && action == "Index")" asp-controller="PMS" asp-action="Index">Dashboard (WIP)</a>
+                                <a class="sb-sublink @Active(ctrl == "Production")" asp-controller="Production" asp-action="Index">Order Lots (Plans)</a>
+                                <a class="sb-sublink @Active(ctrl == "JobSlip")" asp-controller="JobSlip" asp-action="Index">Job Slips (Challans)</a>
+                                <a class="sb-sublink @Active(ctrl == "PMS" && (action == "ProcessTracking" || action == "ProductionEntities"))" asp-controller="PMS" asp-action="ProcessTracking">Process &amp; Piece Tracking</a>
+                            }
+                            @if (hasQc)
+                            {
+                                <a class="sb-sublink @Active(ctrl == "QualityControl")" asp-controller="QualityControl" asp-action="Index">Quality Control (QC)</a>
+                            }
+                            @if (hasBarcode)
+                            {
+                                <a class="sb-sublink @Active(ctrl == "Barcode" && action == "Scanner")" asp-controller="Barcode" asp-action="Scanner">Barcode Scanner</a>
+                                <a class="sb-sublink @Active(ctrl == "Barcode" && action == "ConfigureTag")" asp-controller="Barcode" asp-action="ConfigureTag">Configure Barcode Tag</a>
+                            }
+                        </div>
                     </div>
-                </div>
+                }
 
                 @if (canViewUserMgmt)
                 {
@@ -377,22 +419,25 @@
                     </div>
                 }
 
-                <div class="sb-section">HR &amp; Payroll</div>
-                <div class="@Group(inHr)">
-                    <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inHr ? "true" : "false")">
-                        <i class="bi bi-person-badge"></i><span>Attendance &amp; HR</span><i class="bi bi-chevron-down sb-chevron"></i>
-                    </button>
-                    <div class="sb-sub">
-                        <a class="sb-sublink @Active(ctrl == "Attendance" && action == "Kiosk")" asp-controller="Attendance" asp-action="Kiosk">Face Scanner Kiosk</a>
-                        <a class="sb-sublink @Active(ctrl == "Attendance" && action == "Index")" asp-controller="Attendance" asp-action="Index">Daily Register</a>
-                        <a class="sb-sublink @Active(ctrl == "Attendance" && action == "MonthlyReport")" asp-controller="Attendance" asp-action="MonthlyReport">Attendance Grid</a>
-                        <a class="sb-sublink @Active(ctrl == "Employee")" asp-controller="Employee" asp-action="Index">Employees</a>
-                        <a class="sb-sublink @Active(ctrl == "Salary")" asp-controller="Salary" asp-action="Index">Salary &amp; Payroll</a>
-                        <a class="sb-sublink @Active(ctrl == "BiometricDevice")" asp-controller="BiometricDevice" asp-action="Index">Biometric Terminals</a>
+                @if (hasHr)
+                {
+                    <div class="sb-section">HR &amp; Payroll</div>
+                    <div class="@Group(inHr)">
+                        <button type="button" class="sb-link" data-sb-toggle aria-expanded="@(inHr ? "true" : "false")">
+                            <i class="bi bi-person-badge"></i><span>Attendance &amp; HR</span><i class="bi bi-chevron-down sb-chevron"></i>
+                        </button>
+                        <div class="sb-sub">
+                            <a class="sb-sublink @Active(ctrl == "Attendance" && action == "Kiosk")" asp-controller="Attendance" asp-action="Kiosk">Face Scanner Kiosk</a>
+                            <a class="sb-sublink @Active(ctrl == "Attendance" && action == "Index")" asp-controller="Attendance" asp-action="Index">Daily Register</a>
+                            <a class="sb-sublink @Active(ctrl == "Attendance" && action == "MonthlyReport")" asp-controller="Attendance" asp-action="MonthlyReport">Attendance Grid</a>
+                            <a class="sb-sublink @Active(ctrl == "Employee")" asp-controller="Employee" asp-action="Index">Employees</a>
+                            <a class="sb-sublink @Active(ctrl == "Salary")" asp-controller="Salary" asp-action="Index">Salary &amp; Payroll</a>
+                            <a class="sb-sublink @Active(ctrl == "BiometricDevice")" asp-controller="BiometricDevice" asp-action="Index">Biometric Terminals</a>
+                        </div>
                     </div>
-                </div>
+                }
 
-                @if (canViewFinance)
+                @if (hasAccounting && canViewFinance)
                 {
                     <div class="sb-section">Finance &amp; Accounts</div>
                     <a class="sb-link @Active(ctrl == "Invoice")" asp-controller="Invoice" asp-action="Index">

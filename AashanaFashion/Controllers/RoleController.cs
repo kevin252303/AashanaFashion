@@ -40,7 +40,9 @@ namespace AashanaFashion.Controllers
 
         public async Task<IActionResult> Index(string? search, bool? activeOnly)
         {
-            var query = _context.UserRoles.Include(r => r.Permissions).AsQueryable();
+            var query = _context.UserRoles.Include(r => r.Permissions)
+                .Where(r => r.RoleName != "Developer")
+                .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -67,6 +69,12 @@ namespace AashanaFashion.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(UserRole model)
         {
+            if (string.Equals(model.RoleName?.Trim(), "Developer", StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError("RoleName", "Developer is a reserved system role and cannot be configured.");
+                return View(model);
+            }
+
             if (!ModelState.IsValid) return View(model);
 
             if (await _context.UserRoles.AnyAsync(r => r.RoleName == model.RoleName))
@@ -86,7 +94,7 @@ namespace AashanaFashion.Controllers
         public async Task<IActionResult> Edit(int id)
         {
             var role = await _context.UserRoles.FindAsync(id);
-            if (role == null) return NotFound();
+            if (role == null || role.RoleName == "Developer") return NotFound();
             return View(role);
         }
 
@@ -94,7 +102,16 @@ namespace AashanaFashion.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(UserRole model)
         {
+            if (string.Equals(model.RoleName?.Trim(), "Developer", StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError("RoleName", "Developer is a reserved system role and cannot be configured.");
+                return View(model);
+            }
+
             if (!ModelState.IsValid) return View(model);
+
+            var existingRole = await _context.UserRoles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == model.Id);
+            if (existingRole == null || existingRole.RoleName == "Developer") return NotFound();
 
             if (await _context.UserRoles.AnyAsync(r => r.RoleName == model.RoleName && r.Id != model.Id))
             {
@@ -113,7 +130,7 @@ namespace AashanaFashion.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var role = await _context.UserRoles.FindAsync(id);
-            if (role != null)
+            if (role != null && role.RoleName != "Developer")
             {
                 _context.UserRoles.Remove(role);
                 await _context.SaveChangesAsync();
@@ -126,7 +143,7 @@ namespace AashanaFashion.Controllers
         public async Task<IActionResult> Permissions(int id)
         {
             var role = await _context.UserRoles.Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == id);
-            if (role == null) return NotFound();
+            if (role == null || role.RoleName == "Developer") return NotFound();
 
             var vm = new RolePermissionViewModel
             {
@@ -155,7 +172,7 @@ namespace AashanaFashion.Controllers
         public async Task<IActionResult> Permissions(RolePermissionViewModel vm)
         {
             var role = await _context.UserRoles.Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == vm.UserRoleId);
-            if (role == null) return NotFound();
+            if (role == null || role.RoleName == "Developer") return NotFound();
 
             // Remove existing and replace
             _context.RolePermissions.RemoveRange(role.Permissions);

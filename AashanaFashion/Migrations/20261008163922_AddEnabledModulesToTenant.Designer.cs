@@ -4,6 +4,7 @@ using AashanaFashion.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AashanaFashion.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261008163922_AddEnabledModulesToTenant")]
+    partial class AddEnabledModulesToTenant
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4019,85 +4022,6 @@ namespace AashanaFashion.Migrations
                     b.ToTable("Sizes");
                 });
 
-            modelBuilder.Entity("AashanaFashion.Models.SubscriptionPlan", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("int");
-
-                    b.Property<string>("EnabledModules")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<decimal>("ExtraDeskSeatPriceMonthly")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("FiveYearlyPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("IncludedDeskSeats")
-                        .HasColumnType("int");
-
-                    b.Property<int>("IncludedFloorWorkers")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsPopular")
-                        .HasColumnType("bit");
-
-                    b.Property<decimal>("MonthlyPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<decimal>("ThreeYearlyPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("WorkerSlab100To200Price")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("WorkerSlab10To50Price")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("WorkerSlab200PlusPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("WorkerSlab50To100Price")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("YearlyPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("SubscriptionPlans");
-                });
-
             modelBuilder.Entity("AashanaFashion.Models.TaxInvoice", b =>
                 {
                     b.Property<int>("Id")
@@ -4391,11 +4315,6 @@ namespace AashanaFashion.Migrations
                     b.Property<int>("AllowedErpSeats")
                         .HasColumnType("int");
 
-                    b.Property<string>("BillingCycle")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
                     b.Property<string>("BusinessName")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -4408,24 +4327,10 @@ namespace AashanaFashion.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("DeskSeatBillingBasis")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal>("DeskSeatDiscountPercent")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("DeskSeatPricePerUser")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("EnabledModules")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
-
-                    b.Property<decimal>("FloorWorkersPriceYearly")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -4448,26 +4353,13 @@ namespace AashanaFashion.Migrations
                     b.Property<DateTime?>("SubscriptionEndsAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("SubscriptionPlanId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("TotalContractAmount")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<DateTime>("TrialEndsAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("WorkerSlab")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Subdomain")
                         .IsUnique();
-
-                    b.HasIndex("SubscriptionPlanId");
 
                     b.ToTable("Tenants");
 
@@ -4477,21 +4369,14 @@ namespace AashanaFashion.Migrations
                             Id = 1,
                             AllowedEmployeeRecords = 50,
                             AllowedErpSeats = 10,
-                            BillingCycle = "Monthly",
                             BusinessName = "Aashana Fashion",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DeskSeatBillingBasis = "PerMonth",
-                            DeskSeatDiscountPercent = 0m,
-                            DeskSeatPricePerUser = 500m,
                             EnabledModules = "Sales,Purchase,CRM,Masters,Inventory,JobWork,Production,QualityControl,Barcode,HR,Accounting,CustomerPortal",
-                            FloorWorkersPriceYearly = 0m,
                             IsActive = true,
                             PlanType = 2,
                             Status = 0,
                             Subdomain = "default",
-                            TotalContractAmount = 0m,
-                            TrialEndsAt = new DateTime(2099, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            WorkerSlab = "10-50"
+                            TrialEndsAt = new DateTime(2099, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
                 });
 
@@ -5816,15 +5701,6 @@ namespace AashanaFashion.Migrations
                     b.Navigation("Design");
 
                     b.Navigation("TaxInvoice");
-                });
-
-            modelBuilder.Entity("AashanaFashion.Models.Tenant", b =>
-                {
-                    b.HasOne("AashanaFashion.Models.SubscriptionPlan", "SubscriptionPlan")
-                        .WithMany()
-                        .HasForeignKey("SubscriptionPlanId");
-
-                    b.Navigation("SubscriptionPlan");
                 });
 
             modelBuilder.Entity("AashanaFashion.Models.UserCompany", b =>

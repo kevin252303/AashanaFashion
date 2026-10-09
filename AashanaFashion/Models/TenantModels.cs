@@ -54,6 +54,31 @@ public class Tenant
 
     public SubscriptionTier PlanType { get; set; } = SubscriptionTier.Growth;
 
+    public int? SubscriptionPlanId { get; set; }
+    [ForeignKey("SubscriptionPlanId")]
+    public virtual SubscriptionPlan? SubscriptionPlan { get; set; }
+
+    [StringLength(50)]
+    public string BillingCycle { get; set; } = "Monthly"; // "Monthly", "Yearly", "ThreeYears", "FiveYears"
+
+    [StringLength(20)]
+    public string DeskSeatBillingBasis { get; set; } = "PerMonth"; // "PerMonth", "PerYear"
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal DeskSeatPricePerUser { get; set; } = 500m;
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal DeskSeatDiscountPercent { get; set; } = 0m;
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal FloorWorkersPriceYearly { get; set; } = 0m;
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal TotalContractAmount { get; set; } = 0m;
+
+    [StringLength(50)]
+    public string WorkerSlab { get; set; } = "10-50"; // "10-50", "50-100", "100-200", "200+"
+
     public TenantStatus Status { get; set; } = TenantStatus.Active;
 
     // ERP Web Portal Users Quota (e.g. 10 Users)
@@ -75,9 +100,34 @@ public class Tenant
     [StringLength(500)]
     public string? CustomConnectionString { get; set; } // For Enterprise dedicated DB support
 
+    /// <summary>
+    /// Comma-separated list of enabled module keys (e.g. "Sales,Purchase,Accounting").
+    /// If empty or null, all modules are enabled by default for backwards compatibility.
+    /// </summary>
+    [StringLength(1000)]
+    public string EnabledModules { get; set; } = string.Empty;
+
     public bool IsActive { get; set; } = true;
 
     public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+    public bool HasModule(string moduleKey)
+    {
+        if (string.IsNullOrWhiteSpace(EnabledModules) || EnabledModules.Trim() == "*")
+            return true;
+
+        var list = EnabledModules.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return list.Contains(moduleKey, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public List<string> GetEnabledModuleList()
+    {
+        if (string.IsNullOrWhiteSpace(EnabledModules) || EnabledModules.Trim() == "*")
+        {
+            return AppModules.All.Select(m => m.Key).ToList();
+        }
+        return EnabledModules.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+    }
 }
 
 public class SubscriptionDashboardViewModel
@@ -157,6 +207,7 @@ public class TenantSummaryItem
     public bool IsExpired => DaysLeft <= 0 && Tenant.Status != TenantStatus.Cancelled;
     public int TotalInvoicesCount { get; set; }
     public int TotalOrdersCount { get; set; }
+    public int EnabledModulesCount => Tenant.GetEnabledModuleList().Count;
 }
 
 public class PlatformDashboardViewModel

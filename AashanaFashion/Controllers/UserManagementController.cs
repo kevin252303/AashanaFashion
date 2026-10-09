@@ -17,7 +17,7 @@ namespace AashanaFashion.Controllers
         // GET: /UserManagement — all authenticated roles can view
         public async Task<IActionResult> Index(string? search, string? role, bool? activeOnly)
         {
-            var query = _context.Users.AsQueryable();
+            var query = _context.Users.Where(u => u.Role != "Developer").AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -43,7 +43,7 @@ namespace AashanaFashion.Controllers
 
             var users = await query.ToListAsync();
             var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
-            var activeErpCount = await _context.Users.CountAsync(u => u.IsActive);
+            var activeErpCount = await _context.Users.CountAsync(u => u.IsActive && u.Role != "Developer");
             var allowedErpSeats = tenant?.AllowedErpSeats ?? 10;
 
             ViewBag.ActiveErpSeats = activeErpCount;
@@ -51,8 +51,8 @@ namespace AashanaFashion.Controllers
             ViewBag.SeatsRemaining = Math.Max(0, allowedErpSeats - activeErpCount);
             ViewBag.IsQuotaFull = activeErpCount >= allowedErpSeats;
 
-            ViewBag.UserRoles = await _context.UserRoles.ToDictionaryAsync(r => r.RoleName, r => r.Id);
-            ViewBag.Roles = await _context.UserRoles.Where(r => r.IsActive).Select(r => r.RoleName).Distinct().OrderBy(r => r).ToListAsync();
+            ViewBag.UserRoles = await _context.UserRoles.Where(r => r.RoleName != "Developer").ToDictionaryAsync(r => r.RoleName, r => r.Id);
+            ViewBag.Roles = await _context.UserRoles.Where(r => r.IsActive && r.RoleName != "Developer").Select(r => r.RoleName).Distinct().OrderBy(r => r).ToListAsync();
             ViewBag.Search = search;
             ViewBag.SelectedRole = role;
             ViewBag.ActiveOnly = activeOnly ?? false;
@@ -65,7 +65,7 @@ namespace AashanaFashion.Controllers
         public async Task<IActionResult> Create()
         {
             var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
-            var activeCount = await _context.Users.CountAsync(u => u.IsActive);
+            var activeCount = await _context.Users.CountAsync(u => u.IsActive && u.Role != "Developer");
             var allowedSeats = tenant?.AllowedErpSeats ?? 10;
 
             if (activeCount >= allowedSeats)
@@ -74,7 +74,7 @@ namespace AashanaFashion.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var roles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
+            var roles = await _context.UserRoles.Where(r => r.IsActive && r.RoleName != "Developer").OrderBy(r => r.RoleName).ToListAsync();
             return View(new UserFormViewModel { AvailableRoles = roles });
         }
 
@@ -85,13 +85,20 @@ namespace AashanaFashion.Controllers
         public async Task<IActionResult> Create(UserFormViewModel model)
         {
             var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
-            var activeCount = await _context.Users.CountAsync(u => u.IsActive);
+            var activeCount = await _context.Users.CountAsync(u => u.IsActive && u.Role != "Developer");
             var allowedSeats = tenant?.AllowedErpSeats ?? 10;
 
             if (activeCount >= allowedSeats)
             {
                 ModelState.AddModelError(string.Empty, $"Cannot create user: ERP User Seats quota reached ({activeCount}/{allowedSeats} seats used). Please purchase additional desk user seats in the Subscription module.");
-                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive && r.RoleName != "Developer").OrderBy(r => r.RoleName).ToListAsync();
+                return View(model);
+            }
+
+            if (string.Equals(model.Role?.Trim(), "Developer", StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError("Role", "Developer is a reserved system role and cannot be assigned.");
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive && r.RoleName != "Developer").OrderBy(r => r.RoleName).ToListAsync();
                 return View(model);
             }
 
@@ -100,14 +107,14 @@ namespace AashanaFashion.Controllers
 
             if (!ModelState.IsValid)
             {
-                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive && r.RoleName != "Developer").OrderBy(r => r.RoleName).ToListAsync();
                 return View(model);
             }
 
             if (await _context.Users.AnyAsync(u => u.Username == model.Username))
             {
                 ModelState.AddModelError("Username", "Username already exists.");
-                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive && r.RoleName != "Developer").OrderBy(r => r.RoleName).ToListAsync();
                 return View(model);
             }
 
@@ -137,9 +144,9 @@ namespace AashanaFashion.Controllers
         public async Task<IActionResult> Edit(int id)
         {
             var user = await _context.Users.FindAsync(id);
-            if (user == null) return NotFound();
+            if (user == null || user.Role == "Developer") return NotFound();
 
-            var roles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
+            var roles = await _context.UserRoles.Where(r => r.IsActive && r.RoleName != "Developer").OrderBy(r => r.RoleName).ToListAsync();
             return View(new UserFormViewModel
             {
                 Id = user.Id,
@@ -163,19 +170,26 @@ namespace AashanaFashion.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(UserFormViewModel model)
         {
+            if (string.Equals(model.Role?.Trim(), "Developer", StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError("Role", "Developer is a reserved system role and cannot be assigned.");
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive && r.RoleName != "Developer").OrderBy(r => r.RoleName).ToListAsync();
+                return View(model);
+            }
+
             if (!ModelState.IsValid)
             {
-                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive && r.RoleName != "Developer").OrderBy(r => r.RoleName).ToListAsync();
                 return View(model);
             }
 
             var user = await _context.Users.FindAsync(model.Id);
-            if (user == null) return NotFound();
+            if (user == null || user.Role == "Developer") return NotFound();
 
             if (await _context.Users.AnyAsync(u => u.Username == model.Username && u.Id != model.Id))
             {
                 ModelState.AddModelError("Username", "Username already taken.");
-                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive).OrderBy(r => r.RoleName).ToListAsync();
+                model.AvailableRoles = await _context.UserRoles.Where(r => r.IsActive && r.RoleName != "Developer").OrderBy(r => r.RoleName).ToListAsync();
                 return View(model);
             }
 
@@ -212,7 +226,7 @@ namespace AashanaFashion.Controllers
             }
 
             var user = await _context.Users.FindAsync(id);
-            if (user != null)
+            if (user != null && user.Role != "Developer")
             {
                 _context.Users.Remove(user);
                 await _context.SaveChangesAsync();
@@ -228,12 +242,12 @@ namespace AashanaFashion.Controllers
         public async Task<IActionResult> ToggleActive(int id)
         {
             var user = await _context.Users.FindAsync(id);
-            if (user != null)
+            if (user != null && user.Role != "Developer")
             {
                 if (!user.IsActive)
                 {
                     var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == _context.CurrentTenantId);
-                    var activeCount = await _context.Users.CountAsync(u => u.IsActive);
+                    var activeCount = await _context.Users.CountAsync(u => u.IsActive && u.Role != "Developer");
                     var allowedSeats = tenant?.AllowedErpSeats ?? 10;
                     if (activeCount >= allowedSeats)
                     {

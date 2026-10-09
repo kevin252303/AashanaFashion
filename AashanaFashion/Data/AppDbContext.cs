@@ -88,6 +88,7 @@ namespace AashanaFashion.Data
         public DbSet<BankPaymentBatch> BankPaymentBatches { get; set; }
         public DbSet<BankPaymentBatchItem> BankPaymentBatchItems { get; set; }
         public DbSet<CommunicationLog> CommunicationLogs { get; set; }
+        public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -899,6 +900,7 @@ namespace AashanaFashion.Data
                     AllowedErpSeats = 10,
                     AllowedEmployeeRecords = 50,
                     TrialEndsAt = new DateTime(2099, 1, 1),
+                    EnabledModules = AppModules.AllModulesCommaSeparated,
                     IsActive = true,
                     CreatedAt = new DateTime(2026, 1, 1)
                 });

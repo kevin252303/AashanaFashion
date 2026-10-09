@@ -146,6 +146,19 @@ public class SubscriptionController : Controller
         return View();
     }
 
+    // GET: /Subscription/ModuleRestricted
+    public async Task<IActionResult> ModuleRestricted(string? module)
+    {
+        var tenant = await _tenantContext.GetCurrentTenantAsync();
+        var modDef = AppModules.All.FirstOrDefault(m => string.Equals(m.Key, module, StringComparison.OrdinalIgnoreCase));
+        ViewBag.ModuleKey = module;
+        ViewBag.ModuleName = modDef?.Name ?? module ?? "Requested feature";
+        ViewBag.ModuleDescription = modDef?.Description ?? "This functional module is not activated on your organization's subscription plan.";
+        ViewBag.ModuleIcon = modDef?.Icon ?? "bi-lock";
+        ViewBag.TenantName = tenant?.BusinessName ?? "Your Organization";
+        return View();
+    }
+
     // GET: /Subscription/RegisterTenant (Public Self-Service Sign-up)
     [AllowAnonymous]
     public IActionResult RegisterTenant()

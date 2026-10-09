@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add<AashanaFashion.Authorization.DeveloperAccessFilter>();
+    options.Filters.Add<AashanaFashion.Services.TenantModuleAuthorizationFilter>();
 });
 
 builder.Services.AddDataProtection()
@@ -108,9 +109,20 @@ using (var scope = app.Services.CreateScope())
         "UserManagement", "Role", "ProcessMaster", "GstReturn"
     };
 
+    // Ensure Developer role is never present in UserRoles (reserved for Developer platform login only)
+    var legacyDevRole = db.UserRoles.Include(r => r.Permissions).FirstOrDefault(x => x.RoleName == "Developer");
+    if (legacyDevRole != null)
+    {
+        if (legacyDevRole.Permissions != null && legacyDevRole.Permissions.Any())
+        {
+            db.RolePermissions.RemoveRange(legacyDevRole.Permissions);
+        }
+        db.UserRoles.Remove(legacyDevRole);
+        db.SaveChanges();
+    }
+
     var standardRoles = new[]
     {
-        new { Name = "Developer",    Desc = "SaaS Platform Owner with exclusive access to SaaS infrastructure, billing, and tenant management" },
         new { Name = "SuperAdmin",   Desc = "Super Administrator with full unrestricted access across all systems" },
         new { Name = "Admin",        Desc = "Company Administrator with full operational & management access" },
         new { Name = "System Admin", Desc = "System Administrator with specialized financial & accounting access" },
@@ -168,13 +180,6 @@ using (var scope = app.Services.CreateScope())
                 {
                     canView = false;
                 }
-            }
-            else if (r.Name == "Developer")
-            {
-                canView = false;
-                canCreate = false;
-                canEdit = false;
-                canDelete = false;
             }
             else if (r.Name == "Viewer")
             {
@@ -717,6 +722,106 @@ using (var scope = app.Services.CreateScope())
             });
         }
     }
+
+    // Seed default subscription plans (Starter, Growth, Enterprise) with desk seat durations and worker slabs
+    if (!db.SubscriptionPlans.Any())
+    {
+        var defaultPlans = new List<SubscriptionPlan>
+        {
+            new()
+            {
+                Name = "Starter",
+                Code = "STARTER",
+                Description = "Entry-level package for small garment units, boutique apparel shops, and job workers.",
+                IncludedDeskSeats = 5,
+                MonthlyPrice = 2499m,
+                YearlyPrice = 24990m,
+                ThreeYearlyPrice = 67490m,
+                FiveYearlyPrice = 99990m,
+                ExtraDeskSeatPriceMonthly = 399m,
+                WorkerSlab10To50Price = 999m,
+                WorkerSlab50To100Price = 1799m,
+                WorkerSlab100To200Price = 2999m,
+                WorkerSlab200PlusPrice = 4499m,
+                IncludedFloorWorkers = 50,
+                EnabledModules = "*",
+                IsActive = true,
+                IsPopular = false,
+                DisplayOrder = 1,
+                CreatedAt = DateTime.Now
+            },
+            new()
+            {
+                Name = "Growth",
+                Code = "GROWTH",
+                Description = "Comprehensive ERP suite for growing garment manufacturers, multi-line stitching units, and apparel brands.",
+                IncludedDeskSeats = 15,
+                MonthlyPrice = 6999m,
+                YearlyPrice = 69990m,
+                ThreeYearlyPrice = 188990m,
+                FiveYearlyPrice = 279990m,
+                ExtraDeskSeatPriceMonthly = 399m,
+                WorkerSlab10To50Price = 1499m,
+                WorkerSlab50To100Price = 2499m,
+                WorkerSlab100To200Price = 3999m,
+                WorkerSlab200PlusPrice = 5999m,
+                IncludedFloorWorkers = 100,
+                EnabledModules = "*",
+                IsActive = true,
+                IsPopular = true,
+                DisplayOrder = 2,
+                CreatedAt = DateTime.Now
+            },
+            new()
+            {
+                Name = "Enterprise",
+                Code = "ENTERPRISE",
+                Description = "Full-capacity manufacturing solution for textile mills, multi-branch factories, and large-scale apparel exporters.",
+                IncludedDeskSeats = 50,
+                MonthlyPrice = 18999m,
+                YearlyPrice = 189990m,
+                ThreeYearlyPrice = 512990m,
+                FiveYearlyPrice = 759990m,
+                ExtraDeskSeatPriceMonthly = 299m,
+                WorkerSlab10To50Price = 2499m,
+                WorkerSlab50To100Price = 3999m,
+                WorkerSlab100To200Price = 5999m,
+                WorkerSlab200PlusPrice = 8999m,
+                IncludedFloorWorkers = 200,
+                EnabledModules = "*",
+                IsActive = true,
+                IsPopular = false,
+                DisplayOrder = 3,
+                CreatedAt = DateTime.Now
+            }
+        };
+
+        db.SubscriptionPlans.AddRange(defaultPlans);
+        db.SaveChanges();
+
+        // Link existing tenants to their corresponding plan
+        var unassignedTenants = db.Tenants.IgnoreQueryFilters().Where(t => t.SubscriptionPlanId == null).ToList();
+        foreach (var ut in unassignedTenants)
+        {
+            var match = ut.PlanType switch
+            {
+                SubscriptionTier.Starter => defaultPlans.First(p => p.Code == "STARTER"),
+                SubscriptionTier.Enterprise => defaultPlans.First(p => p.Code == "ENTERPRISE"),
+                _ => defaultPlans.First(p => p.Code == "GROWTH")
+            };
+            ut.SubscriptionPlanId = match.Id;
+            ut.BillingCycle = "Monthly";
+            ut.WorkerSlab = ut.AllowedEmployeeRecords switch
+            {
+                > 200 => "200+",
+                > 100 => "100-200",
+                > 50 => "50-100",
+                _ => "10-50"
+            };
+        }
+        db.SaveChanges();
+    }
+
     db.SaveChanges();
 }
 

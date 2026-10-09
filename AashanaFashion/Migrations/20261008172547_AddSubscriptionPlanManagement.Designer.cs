@@ -4,6 +4,7 @@ using AashanaFashion.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AashanaFashion.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261008172547_AddSubscriptionPlanManagement")]
+    partial class AddSubscriptionPlanManagement
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4408,24 +4411,10 @@ namespace AashanaFashion.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("DeskSeatBillingBasis")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal>("DeskSeatDiscountPercent")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("DeskSeatPricePerUser")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("EnabledModules")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
-
-                    b.Property<decimal>("FloorWorkersPriceYearly")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -4450,9 +4439,6 @@ namespace AashanaFashion.Migrations
 
                     b.Property<int?>("SubscriptionPlanId")
                         .HasColumnType("int");
-
-                    b.Property<decimal>("TotalContractAmount")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("TrialEndsAt")
                         .HasColumnType("datetime2");
@@ -4480,16 +4466,11 @@ namespace AashanaFashion.Migrations
                             BillingCycle = "Monthly",
                             BusinessName = "Aashana Fashion",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DeskSeatBillingBasis = "PerMonth",
-                            DeskSeatDiscountPercent = 0m,
-                            DeskSeatPricePerUser = 500m,
                             EnabledModules = "Sales,Purchase,CRM,Masters,Inventory,JobWork,Production,QualityControl,Barcode,HR,Accounting,CustomerPortal",
-                            FloorWorkersPriceYearly = 0m,
                             IsActive = true,
                             PlanType = 2,
                             Status = 0,
                             Subdomain = "default",
-                            TotalContractAmount = 0m,
                             TrialEndsAt = new DateTime(2099, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             WorkerSlab = "10-50"
                         });

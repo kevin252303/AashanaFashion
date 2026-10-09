@@ -1,0 +1,495 @@
+@model List<AashanaFashion.Models.SubscriptionPlan>
+@{
+    ViewData["Title"] = "Subscription Plans";
+    var tenantCounts = ViewBag.TenantCounts as Dictionary<int, int> ?? new Dictionary<int, int>();
+    int totalAssigned = tenantCounts.Values.Sum();
+}
+
+<div class="page-header">
+    <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h1 class="page-title">Subscription plans</h1>
+            <span class="af-badge b-indigo"><i class="bi bi-tag"></i> SaaS Pricing</span>
+        </div>
+        <p class="page-sub">Configure billing durations for desk seats (monthly, yearly, 3-yearly, 5-yearly) and factory floor worker capacity slabs.</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Index" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Client operations</a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPlanModal"><i class="bi bi-plus-lg"></i> Add plan</button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="af-alert af-alert-success mb-3"><div class="alert-body">@TempData["Success"]</div></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="af-alert af-alert-danger mb-3"><div class="alert-body">@TempData["Error"]</div></div>
+}
+
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total plans</div>
+        <div class="metric-value">@Model.Count</div>
+        <div class="metric-meta">@Model.Count(p => p.IsActive) active · @Model.Count(p => !p.IsActive) inactive</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Assigned clients</div>
+        <div class="metric-value">@totalAssigned</div>
+        <div class="metric-meta">tenants subscribed to active plans</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Desk seat durations</div>
+        <div class="metric-value">4 <span class="metric-suffix">cycles</span></div>
+        <div class="metric-meta">Monthly · Yearly · 3-Yearly · 5-Yearly</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Worker slabs</div>
+        <div class="metric-value">4 <span class="metric-suffix">brackets</span></div>
+        <div class="metric-meta">10–50 · 50–100 · 100–200 · 200+ workers</div>
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="table-toolbar">
+        <div class="toolbar-filters">
+            <span class="text-sm fw-semibold text-foreground"><i class="bi bi-layers me-1 text-primary"></i> Configured pricing packages</span>
+        </div>
+        <div class="toolbar-actions">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#newPlanModal">
+                <i class="bi bi-plus-lg"></i> New plan
+            </button>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="es-icon"><i class="bi bi-tag"></i></div>
+            <div class="es-title">No subscription plans yet</div>
+            <p>Create your first subscription plan to offer desk seats and floor worker capacity packages to client tenants.</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPlanModal">Add plan</button>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="af-table">
+                <thead>
+                    <tr>
+                        <th>Plan</th>
+                        <th>Desk seats</th>
+                        <th>Monthly</th>
+                        <th>Yearly (1 yr)</th>
+                        <th>3-Yearly</th>
+                        <th>5-Yearly</th>
+                        <th>Worker slabs (10-50 / 50-100 / 100-200 / 200+)</th>
+                        <th>Clients</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var plan in Model)
+                    {
+                        var assignedCount = tenantCounts.TryGetValue(plan.Id, out var c) ? c : 0;
+                        <tr class="@(!plan.IsActive ? "row-muted" : "")">
+                            <td>
+                                <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                                    <span class="cell-title">@plan.Name</span>
+                                    @if (plan.IsPopular)
+                                    {
+                                        <span class="af-badge b-purple">Popular</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrEmpty(plan.Description))
+                                {
+                                    <span class="cell-sub">@plan.Description</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="cell-title tabular">@plan.IncludedDeskSeats seats</span>
+                                <span class="cell-sub tabular">+₹@plan.ExtraDeskSeatPriceMonthly.ToString("N0")/extra seat</span>
+                            </td>
+                            <td>
+                                <span class="cell-title tabular">₹@plan.MonthlyPrice.ToString("N0")</span>
+                                <span class="cell-sub">per month</span>
+                            </td>
+                            <td>
+                                <span class="cell-title tabular text-success">₹@plan.YearlyPrice.ToString("N0")</span>
+                                <span class="cell-sub tabular">~₹@((plan.YearlyPrice / 12m).ToString("N0"))/mo</span>
+                            </td>
+                            <td>
+                                <span class="cell-title tabular">₹@plan.ThreeYearlyPrice.ToString("N0")</span>
+                                <span class="cell-sub tabular">~₹@((plan.ThreeYearlyPrice / 36m).ToString("N0"))/mo</span>
+                            </td>
+                            <td>
+                                <span class="cell-title tabular">₹@plan.FiveYearlyPrice.ToString("N0")</span>
+                                <span class="cell-sub tabular">~₹@((plan.FiveYearlyPrice / 60m).ToString("N0"))/mo</span>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column gap-0.5 text-xs tabular">
+                                    <div><span class="text-muted">10–50:</span> <strong>₹@plan.WorkerSlab10To50Price.ToString("N0")</strong></div>
+                                    <div><span class="text-muted">50–100:</span> <strong>₹@plan.WorkerSlab50To100Price.ToString("N0")</strong></div>
+                                    <div><span class="text-muted">100–200:</span> <strong>₹@plan.WorkerSlab100To200Price.ToString("N0")</strong></div>
+                                    <div><span class="text-muted">200+:</span> <strong>₹@plan.WorkerSlab200PlusPrice.ToString("N0")</strong></div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="af-badge @(assignedCount > 0 ? "b-blue" : "b-gray")">@assignedCount @(assignedCount == 1 ? "tenant" : "tenants")</span>
+                            </td>
+                            <td>
+                                <span class="af-badge @(plan.IsActive ? "b-green" : "b-gray")">@(plan.IsActive ? "Active" : "Inactive")</span>
+                            </td>
+                            <td class="cell-actions">
+                                <div class="row-actions">
+                                    <button type="button" class="row-action" data-bs-toggle="modal" data-bs-target="#editPlanModal_@plan.Id" title="Edit plan" aria-label="Edit @plan.Name"><i class="bi bi-pencil"></i></button>
+                                    <form asp-action="TogglePlanActive" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@plan.Id" />
+                                        <button type="submit" class="row-action @(plan.IsActive ? "warning" : "success")" title="@(plan.IsActive ? "Deactivate plan" : "Activate plan")" aria-label="@(plan.IsActive ? "Deactivate" : "Activate") @plan.Name">
+                                            <i class="bi @(plan.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                        </button>
+                                    </form>
+                                    @if (assignedCount == 0)
+                                    {
+                                        <form asp-action="DeletePlan" method="post" class="d-inline" onsubmit="return confirm('Delete plan \'@plan.Name\'?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@plan.Id" />
+                                            <button type="submit" class="row-action danger" title="Delete plan" aria-label="Delete @plan.Name"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing <strong>@Model.Count</strong> @(Model.Count == 1 ? "subscription plan" : "subscription plans")</span>
+        </div>
+    }
+</div>
+
+<!-- Modal: New Plan -->
+<div class="modal fade" id="newPlanModal" tabindex="-1" aria-labelledby="newPlanTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <form asp-action="CreatePlan" method="post" class="modal-content">
+            @Html.AntiForgeryToken()
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="newPlanTitle">Add subscription plan</h5>
+                    <div class="text-xs text-muted">Configure desk seat pricing durations and floor worker capacity slabs.</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Section 1: Basic Plan Information -->
+                <div class="section-label mb-2">Plan details</div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="npName">Plan name <span class="req">*</span></label>
+                        <input type="text" id="npName" name="name" class="af-input" placeholder="e.g. Starter, Growth, Enterprise" required />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="npCode">Plan code</label>
+                        <input type="text" id="npCode" name="code" class="af-input font-monospace text-uppercase" placeholder="GROWTH" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="npDeskSeats">Included desk seats <span class="req">*</span></label>
+                        <input type="number" id="npDeskSeats" name="includedDeskSeats" class="af-input" value="10" min="1" max="1000" required />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="npDesc">Description</label>
+                        <input type="text" id="npDesc" name="description" class="af-input" placeholder="e.g. Ideal for garment manufacturers with up to 100 stitching workers" />
+                    </div>
+                </div>
+
+                <!-- Section 2: Desk Seat Pricing Durations -->
+                <div class="section-label mb-2 d-flex align-items-center gap-1">
+                    <i class="bi bi-display text-primary"></i>
+                    <span>Desk seat pricing (durations)</span>
+                </div>
+                <div class="row g-3 mb-3 p-3 bg-surface border rounded">
+                    <div class="col-md-3 col-6">
+                        <label class="form-label" for="npMonthly">Monthly price (₹) <span class="req">*</span></label>
+                        <input type="number" id="npMonthly" name="monthlyPrice" class="af-input" value="4999" min="0" step="1" required />
+                        <div class="form-text">Per month cycle</div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label" for="npYearly">Yearly (1 yr) price (₹) <span class="req">*</span></label>
+                        <input type="number" id="npYearly" name="yearlyPrice" class="af-input" value="49990" min="0" step="1" required />
+                        <div class="form-text">1-year prepayment</div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label" for="npThreeYearly">3-Yearly price (₹) <span class="req">*</span></label>
+                        <input type="number" id="npThreeYearly" name="threeYearlyPrice" class="af-input" value="134990" min="0" step="1" required />
+                        <div class="form-text">3-year contract</div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label" for="npFiveYearly">5-Yearly price (₹) <span class="req">*</span></label>
+                        <input type="number" id="npFiveYearly" name="fiveYearlyPrice" class="af-input" value="199990" min="0" step="1" required />
+                        <div class="form-text">5-year contract</div>
+                    </div>
+                    <div class="col-md-6 col-12">
+                        <label class="form-label" for="npExtraSeat">Extra desk seat price monthly (₹)</label>
+                        <input type="number" id="npExtraSeat" name="extraDeskSeatPriceMonthly" class="af-input" value="399" min="0" step="1" />
+                        <div class="form-text">For add-on web portal seats above included count.</div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Floor Workers Slabs Pricing -->
+                <div class="section-label mb-2 d-flex align-items-center gap-1">
+                    <i class="bi bi-people text-primary"></i>
+                    <span>Floor workers slabs</span>
+                </div>
+                <div class="row g-3 mb-3 p-3 bg-surface border rounded">
+                    <div class="col-md-3 col-6">
+                        <label class="form-label" for="npSlab1">10 – 50 workers (₹) <span class="req">*</span></label>
+                        <input type="number" id="npSlab1" name="workerSlab10To50Price" class="af-input" value="999" min="0" step="1" required />
+                        <div class="form-text">Tier 1 bracket</div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label" for="npSlab2">50 – 100 workers (₹) <span class="req">*</span></label>
+                        <input type="number" id="npSlab2" name="workerSlab50To100Price" class="af-input" value="1999" min="0" step="1" required />
+                        <div class="form-text">Tier 2 bracket</div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label" for="npSlab3">100 – 200 workers (₹) <span class="req">*</span></label>
+                        <input type="number" id="npSlab3" name="workerSlab100To200Price" class="af-input" value="3499" min="0" step="1" required />
+                        <div class="form-text">Tier 3 bracket</div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label" for="npSlab4">200+ workers (₹) <span class="req">*</span></label>
+                        <input type="number" id="npSlab4" name="workerSlab200PlusPrice" class="af-input" value="4999" min="0" step="1" required />
+                        <div class="form-text">Enterprise bracket</div>
+                    </div>
+                    <div class="col-md-6 col-12">
+                        <label class="form-label" for="npIncWorkers">Included floor workers</label>
+                        <input type="number" id="npIncWorkers" name="includedFloorWorkers" class="af-input" value="50" min="0" step="10" />
+                        <div class="form-text">Default floor worker capacity assigned with this plan.</div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Module-Wise Access Defaults -->
+                <div class="section-label mb-2 d-flex justify-content-between align-items-center">
+                    <span>Default functional modules</span>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-xs btn-ghost text-xs" onclick="setNewPlanModules('all')">Select all</button>
+                        <button type="button" class="btn btn-xs btn-ghost text-xs text-danger" onclick="setNewPlanModules('none')">Clear</button>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    @foreach (var mod in AppModules.All)
+                    {
+                        <div class="col-md-4 col-sm-6">
+                            <label class="d-flex align-items-start gap-2 p-2 border rounded bg-surface text-xs mb-0 cursor-pointer h-100">
+                                <div class="form-check form-switch mt-0.5">
+                                    <input class="form-check-input new-plan-mod" type="checkbox" name="selectedModules" value="@mod.Key" id="npMod_@mod.Key" checked />
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="fw-semibold text-xs text-foreground"><i class="bi @mod.Icon me-1 text-primary"></i>@mod.Name</div>
+                                </div>
+                            </label>
+                        </div>
+                    }
+                </div>
+
+                <!-- Section 5: Badges & Display Options -->
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" role="switch" name="isPopular" value="true" id="npPopular" />
+                            <label class="form-check-label fw-semibold text-xs" for="npPopular">Mark as "Popular" badge</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" role="switch" name="isActive" value="true" id="npActive" checked />
+                            <label class="form-check-label fw-semibold text-xs" for="npActive">Plan is active &amp; available for assignment</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Create plan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modals: Edit Plan for each plan -->
+@foreach (var plan in Model)
+{
+    var enabledList = !string.IsNullOrWhiteSpace(plan.EnabledModules) && plan.EnabledModules != "*"
+        ? plan.EnabledModules.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+        : AppModules.All.Select(m => m.Key).ToList();
+
+    <div class="modal fade" id="editPlanModal_@plan.Id" tabindex="-1" aria-labelledby="editPlanTitle_@plan.Id" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <form asp-action="EditPlan" method="post" class="modal-content">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@plan.Id" />
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="editPlanTitle_@plan.Id">Edit plan — @plan.Name</h5>
+                        <div class="text-xs text-muted">Update desk seat duration rates, floor worker slabs, and default quotas.</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Section 1: Basic Plan Information -->
+                    <div class="section-label mb-2">Plan details</div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="epName_@plan.Id">Plan name <span class="req">*</span></label>
+                            <input type="text" id="epName_@plan.Id" name="name" class="af-input" value="@plan.Name" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="epCode_@plan.Id">Plan code</label>
+                            <input type="text" id="epCode_@plan.Id" name="code" class="af-input font-monospace text-uppercase" value="@plan.Code" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="epDeskSeats_@plan.Id">Included desk seats <span class="req">*</span></label>
+                            <input type="number" id="epDeskSeats_@plan.Id" name="includedDeskSeats" class="af-input" value="@plan.IncludedDeskSeats" min="1" max="1000" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="epDesc_@plan.Id">Description</label>
+                            <input type="text" id="epDesc_@plan.Id" name="description" class="af-input" value="@plan.Description" />
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Desk Seat Pricing Durations -->
+                    <div class="section-label mb-2 d-flex align-items-center gap-1">
+                        <i class="bi bi-display text-primary"></i>
+                        <span>Desk seat pricing (durations)</span>
+                    </div>
+                    <div class="row g-3 mb-3 p-3 bg-surface border rounded">
+                        <div class="col-md-3 col-6">
+                            <label class="form-label" for="epMonthly_@plan.Id">Monthly price (₹) <span class="req">*</span></label>
+                            <input type="number" id="epMonthly_@plan.Id" name="monthlyPrice" class="af-input" value="@plan.MonthlyPrice" min="0" step="1" required />
+                            <div class="form-text">Per month cycle</div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label" for="epYearly_@plan.Id">Yearly (1 yr) price (₹) <span class="req">*</span></label>
+                            <input type="number" id="epYearly_@plan.Id" name="yearlyPrice" class="af-input" value="@plan.YearlyPrice" min="0" step="1" required />
+                            <div class="form-text">1-year prepayment</div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label" for="epThreeYearly_@plan.Id">3-Yearly price (₹) <span class="req">*</span></label>
+                            <input type="number" id="epThreeYearly_@plan.Id" name="threeYearlyPrice" class="af-input" value="@plan.ThreeYearlyPrice" min="0" step="1" required />
+                            <div class="form-text">3-year contract</div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label" for="epFiveYearly_@plan.Id">5-Yearly price (₹) <span class="req">*</span></label>
+                            <input type="number" id="epFiveYearly_@plan.Id" name="fiveYearlyPrice" class="af-input" value="@plan.FiveYearlyPrice" min="0" step="1" required />
+                            <div class="form-text">5-year contract</div>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <label class="form-label" for="epExtraSeat_@plan.Id">Extra desk seat price monthly (₹)</label>
+                            <input type="number" id="epExtraSeat_@plan.Id" name="extraDeskSeatPriceMonthly" class="af-input" value="@plan.ExtraDeskSeatPriceMonthly" min="0" step="1" />
+                            <div class="form-text">For add-on web portal seats above included count.</div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Floor Workers Slabs Pricing -->
+                    <div class="section-label mb-2 d-flex align-items-center gap-1">
+                        <i class="bi bi-people text-primary"></i>
+                        <span>Floor workers slabs</span>
+                    </div>
+                    <div class="row g-3 mb-3 p-3 bg-surface border rounded">
+                        <div class="col-md-3 col-6">
+                            <label class="form-label" for="epSlab1_@plan.Id">10 – 50 workers (₹) <span class="req">*</span></label>
+                            <input type="number" id="epSlab1_@plan.Id" name="workerSlab10To50Price" class="af-input" value="@plan.WorkerSlab10To50Price" min="0" step="1" required />
+                            <div class="form-text">Tier 1 bracket</div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label" for="epSlab2_@plan.Id">50 – 100 workers (₹) <span class="req">*</span></label>
+                            <input type="number" id="epSlab2_@plan.Id" name="workerSlab50To100Price" class="af-input" value="@plan.WorkerSlab50To100Price" min="0" step="1" required />
+                            <div class="form-text">Tier 2 bracket</div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label" for="epSlab3_@plan.Id">100 – 200 workers (₹) <span class="req">*</span></label>
+                            <input type="number" id="epSlab3_@plan.Id" name="workerSlab100To200Price" class="af-input" value="@plan.WorkerSlab100To200Price" min="0" step="1" required />
+                            <div class="form-text">Tier 3 bracket</div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label" for="epSlab4_@plan.Id">200+ workers (₹) <span class="req">*</span></label>
+                            <input type="number" id="epSlab4_@plan.Id" name="workerSlab200PlusPrice" class="af-input" value="@plan.WorkerSlab200PlusPrice" min="0" step="1" required />
+                            <div class="form-text">Enterprise bracket</div>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <label class="form-label" for="epIncWorkers_@plan.Id">Included floor workers</label>
+                            <input type="number" id="epIncWorkers_@plan.Id" name="includedFloorWorkers" class="af-input" value="@plan.IncludedFloorWorkers" min="0" step="10" />
+                            <div class="form-text">Default floor worker capacity assigned with this plan.</div>
+                        </div>
+                    </div>
+
+                    <!-- Section 4: Module-Wise Access Defaults -->
+                    <div class="section-label mb-2 d-flex justify-content-between align-items-center">
+                        <span>Default functional modules</span>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-xs btn-ghost text-xs" onclick="setEditPlanModules('@plan.Id', 'all')">Select all</button>
+                            <button type="button" class="btn btn-xs btn-ghost text-xs text-danger" onclick="setEditPlanModules('@plan.Id', 'none')">Clear</button>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        @foreach (var mod in AppModules.All)
+                        {
+                            bool isEnabled = enabledList.Contains(mod.Key, StringComparer.OrdinalIgnoreCase);
+                            <div class="col-md-4 col-sm-6">
+                                <label class="d-flex align-items-start gap-2 p-2 border rounded bg-surface text-xs mb-0 cursor-pointer h-100">
+                                    <div class="form-check form-switch mt-0.5">
+                                        <input class="form-check-input edit-plan-mod-@plan.Id" type="checkbox" name="selectedModules" value="@mod.Key" id="epMod_@(plan.Id)_@mod.Key" @(isEnabled ? "checked" : "") />
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="fw-semibold text-xs text-foreground"><i class="bi @mod.Icon me-1 text-primary"></i>@mod.Name</div>
+                                    </div>
+                                </label>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Section 5: Badges & Display Options -->
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" role="switch" name="isPopular" value="true" id="epPopular_@plan.Id" @(plan.IsPopular ? "checked" : "") />
+                                <label class="form-check-label fw-semibold text-xs" for="epPopular_@plan.Id">Mark as "Popular" badge</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" role="switch" name="isActive" value="true" id="epActive_@plan.Id" @(plan.IsActive ? "checked" : "") />
+                                <label class="form-check-label fw-semibold text-xs" for="epActive_@plan.Id">Plan is active &amp; available for assignment</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        function setNewPlanModules(action) {
+            document.querySelectorAll('.new-plan-mod').forEach(cb => {
+                cb.checked = (action === 'all');
+            });
+        }
+
+        function setEditPlanModules(planId, action) {
+            document.querySelectorAll('.edit-plan-mod-' + planId).forEach(cb => {
+                cb.checked = (action === 'all');
+            });
+        }
+    </script>
+}

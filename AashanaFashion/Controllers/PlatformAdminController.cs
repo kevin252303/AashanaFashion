@@ -31,9 +31,12 @@ public class PlatformAdminController : Controller
     }
 
     // GET: /PlatformAdmin
-    public async Task<IActionResult> Index(string? search, SubscriptionTier? planFilter, TenantStatus? statusFilter, bool? expiringSoonOnly)
+    public async Task<IActionResult> Index(string? search, string? cycleFilter, TenantStatus? statusFilter, bool? expiringSoonOnly)
     {
-        var tenants = await _context.Tenants.IgnoreQueryFilters().OrderByDescending(t => t.Id).ToListAsync();
+        var tenants = await _context.Tenants.IgnoreQueryFilters()
+            .Include(t => t.SubscriptionPlan)
+            .OrderByDescending(t => t.Id)
+            .ToListAsync();
 
         var summaryItems = new List<TenantSummaryItem>();
         decimal totalMrr = 0m;
@@ -89,24 +92,25 @@ public class PlatformAdminController : Controller
             if (isExpiringSoon) expiringCount++;
 
             // Calculate MRR per tenant
-            decimal basePrice = t.PlanType switch
+            decimal tenantMrr = 0m;
+            if (t.Status == TenantStatus.Active)
             {
-                SubscriptionTier.FreeTrial => 0m,
-                SubscriptionTier.Starter => 2499m,
-                SubscriptionTier.Growth => 6999m,
-                SubscriptionTier.Enterprise => 18999m,
-                _ => 6999m
-            };
-
-            int baseErp = t.PlanType == SubscriptionTier.Starter ? 5 : (t.PlanType == SubscriptionTier.Enterprise ? 50 : 15);
-            int baseWorkers = t.PlanType == SubscriptionTier.Starter ? 25 : (t.PlanType == SubscriptionTier.Enterprise ? 500 : 100);
-
-            int extraSeats = Math.Max(0, t.AllowedErpSeats - baseErp);
-            int extraWorkers = Math.Max(0, t.AllowedEmployeeRecords - baseWorkers);
-
-            decimal extraSeatsCost = extraSeats * 399m;
-            decimal extraWorkersCost = (decimal)Math.Ceiling(extraWorkers / 25.0) * 499m;
-            decimal tenantMrr = t.Status == TenantStatus.Active ? (basePrice + extraSeatsCost + extraWorkersCost) : 0m;
+                if (t.DeskSeatPricePerUser > 0 || t.FloorWorkersPriceYearly > 0)
+                {
+                    decimal deskRate = t.DeskSeatBillingBasis == "PerYear"
+                        ? (t.DeskSeatPricePerUser / 12m)
+                        : t.DeskSeatPricePerUser;
+                    decimal discount = t.DeskSeatDiscountPercent; // 0, 5, or 12
+                    decimal deskNetMonthly = (t.AllowedErpSeats * deskRate) * (1m - (discount / 100m));
+                    decimal floorMonthly = t.FloorWorkersPriceYearly / 12m;
+                    tenantMrr = deskNetMonthly + floorMonthly;
+                }
+                else
+                {
+                    // Fallback for legacy tenants
+                    tenantMrr = (t.AllowedErpSeats * 500m) + (t.AllowedEmployeeRecords * 30m);
+                }
+            }
 
             totalMrr += tenantMrr;
             totalErpAllocated += t.AllowedErpSeats;
@@ -140,9 +144,9 @@ public class PlatformAdminController : Controller
                 (x.Tenant.Phone != null && x.Tenant.Phone.Contains(s)));
         }
 
-        if (planFilter.HasValue)
+        if (!string.IsNullOrWhiteSpace(cycleFilter))
         {
-            filteredList = filteredList.Where(x => x.Tenant.PlanType == planFilter.Value);
+            filteredList = filteredList.Where(x => x.Tenant.BillingCycle == cycleFilter);
         }
 
         if (statusFilter.HasValue)
@@ -171,7 +175,7 @@ public class PlatformAdminController : Controller
         };
 
         ViewBag.Search = search;
-        ViewBag.PlanFilter = planFilter;
+        ViewBag.CycleFilter = cycleFilter;
         ViewBag.StatusFilter = statusFilter;
         ViewBag.ExpiringSoonOnly = expiringSoonOnly ?? false;
 
@@ -208,19 +212,59 @@ public class PlatformAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateTenant(
         int tenantId,
-        SubscriptionTier plan,
         TenantStatus status,
         int allowedErpSeats,
+        decimal deskSeatPricePerUser,
+        string deskSeatBillingBasis,
+        string deskSeatDuration,
         int allowedEmployeeRecords,
+        decimal floorWorkersPriceYearly,
         DateTime? subscriptionEndsAt)
     {
         var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == tenantId);
         if (tenant == null) return NotFound();
 
-        tenant.PlanType = plan;
+        decimal discountPct = deskSeatDuration switch
+        {
+            "ThreeYears" => 5m,
+            "FiveYears" => 12m,
+            _ => 0m
+        };
+
+        int months = deskSeatDuration switch
+        {
+            "Yearly" => 12,
+            "ThreeYears" => 36,
+            "FiveYears" => 60,
+            _ => 1
+        };
+
+        decimal deskMonthlyRate = deskSeatBillingBasis == "PerYear"
+            ? (deskSeatPricePerUser / 12m)
+            : deskSeatPricePerUser;
+
+        decimal baseDeskTotal = Math.Max(1, allowedErpSeats) * Math.Max(0, deskMonthlyRate) * months;
+        decimal deskDiscount = baseDeskTotal * (discountPct / 100m);
+        decimal deskNetTotal = baseDeskTotal - deskDiscount;
+
+        int floorYears = deskSeatDuration switch
+        {
+            "ThreeYears" => 3,
+            "FiveYears" => 5,
+            _ => 1
+        };
+        decimal floorTotal = Math.Max(0, floorWorkersPriceYearly) * floorYears;
+
         tenant.Status = status;
         tenant.AllowedErpSeats = Math.Max(1, allowedErpSeats);
         tenant.AllowedEmployeeRecords = Math.Max(0, allowedEmployeeRecords);
+        tenant.DeskSeatPricePerUser = Math.Max(0, deskSeatPricePerUser);
+        tenant.DeskSeatBillingBasis = deskSeatBillingBasis == "PerYear" ? "PerYear" : "PerMonth";
+        tenant.BillingCycle = deskSeatDuration;
+        tenant.DeskSeatDiscountPercent = discountPct;
+        tenant.FloorWorkersPriceYearly = Math.Max(0, floorWorkersPriceYearly);
+        tenant.TotalContractAmount = deskNetTotal + floorTotal;
+
         if (subscriptionEndsAt.HasValue)
         {
             tenant.SubscriptionEndsAt = subscriptionEndsAt.Value;
@@ -229,7 +273,8 @@ public class PlatformAdminController : Controller
         _context.Tenants.Update(tenant);
         await _context.SaveChangesAsync();
 
-        TempData["Success"] = $"Tenant '{tenant.BusinessName}' updated: Plan {plan}, Status {status}, {allowedErpSeats} ERP Seats, {allowedEmployeeRecords} Workers.";
+        var rateBasisLabel = tenant.DeskSeatBillingBasis == "PerYear" ? "yr" : "mo";
+        TempData["Success"] = $"Tenant '{tenant.BusinessName}' updated: {allowedErpSeats} Desk Seats @ ₹{deskSeatPricePerUser:N0}/{rateBasisLabel} ({deskSeatDuration}), {allowedEmployeeRecords} Floor Workers (₹{floorWorkersPriceYearly:N0}/yr).";
         return RedirectToAction(nameof(Index));
     }
 
@@ -287,20 +332,42 @@ public class PlatformAdminController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    // POST: /PlatformAdmin/UpdateTenantModules
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateTenantModules(int tenantId, List<string>? selectedModules)
+    {
+        var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == tenantId);
+        if (tenant == null) return NotFound();
+
+        selectedModules ??= new List<string>();
+        tenant.EnabledModules = string.Join(",", selectedModules.Distinct(StringComparer.OrdinalIgnoreCase));
+
+        _context.Tenants.Update(tenant);
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = $"Module access updated for '{tenant.BusinessName}': {selectedModules.Count} of {AppModules.All.Count} modules enabled.";
+        return RedirectToAction(nameof(Index));
+    }
+
     // POST: /PlatformAdmin/CreateTenant
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateTenant(
         string businessName,
         string subdomain,
-        SubscriptionTier planType,
         int allowedErpSeats,
+        decimal deskSeatPricePerUser,
+        string deskSeatBillingBasis,
+        string deskSeatDuration,
         int allowedEmployeeRecords,
+        decimal floorWorkersPriceYearly,
         string adminFullName,
         string adminEmail,
         string adminUsername,
         string adminPassword,
-        string? phone)
+        string? phone,
+        List<string>? selectedModules = null)
     {
         var cleanSubdomain = subdomain.Trim().ToLowerInvariant()
             .Replace("https://", "")
@@ -315,18 +382,68 @@ public class PlatformAdminController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        var modulesList = (selectedModules != null && selectedModules.Any())
+            ? selectedModules
+            : AppModules.All.Select(m => m.Key).ToList();
+
+        decimal discountPct = deskSeatDuration switch
+        {
+            "ThreeYears" => 5m,
+            "FiveYears" => 12m,
+            _ => 0m
+        };
+
+        int months = deskSeatDuration switch
+        {
+            "Yearly" => 12,
+            "ThreeYears" => 36,
+            "FiveYears" => 60,
+            _ => 1
+        };
+
+        DateTime expiryDate = deskSeatDuration switch
+        {
+            "Yearly" => DateTime.Today.AddYears(1),
+            "ThreeYears" => DateTime.Today.AddYears(3),
+            "FiveYears" => DateTime.Today.AddYears(5),
+            _ => DateTime.Today.AddMonths(1)
+        };
+
+        decimal deskMonthlyRate = deskSeatBillingBasis == "PerYear"
+            ? (deskSeatPricePerUser / 12m)
+            : deskSeatPricePerUser;
+
+        decimal baseDeskTotal = Math.Max(1, allowedErpSeats) * Math.Max(0, deskMonthlyRate) * months;
+        decimal deskDiscount = baseDeskTotal * (discountPct / 100m);
+        decimal deskNetTotal = baseDeskTotal - deskDiscount;
+
+        int floorYears = deskSeatDuration switch
+        {
+            "ThreeYears" => 3,
+            "FiveYears" => 5,
+            _ => 1
+        };
+        decimal floorTotal = Math.Max(0, floorWorkersPriceYearly) * floorYears;
+
         var newTenant = new Tenant
         {
             Subdomain = cleanSubdomain,
             BusinessName = businessName.Trim(),
-            PlanType = planType,
+            PlanType = SubscriptionTier.Growth,
             Status = TenantStatus.Active,
             AllowedErpSeats = Math.Max(1, allowedErpSeats),
             AllowedEmployeeRecords = Math.Max(0, allowedEmployeeRecords),
+            DeskSeatPricePerUser = Math.Max(0, deskSeatPricePerUser),
+            DeskSeatBillingBasis = deskSeatBillingBasis == "PerYear" ? "PerYear" : "PerMonth",
+            BillingCycle = deskSeatDuration,
+            DeskSeatDiscountPercent = discountPct,
+            FloorWorkersPriceYearly = Math.Max(0, floorWorkersPriceYearly),
+            TotalContractAmount = deskNetTotal + floorTotal,
             TrialEndsAt = DateTime.Today.AddDays(14),
-            SubscriptionEndsAt = DateTime.Today.AddDays(30),
+            SubscriptionEndsAt = expiryDate,
             AdminEmail = adminEmail.Trim(),
             Phone = phone?.Trim(),
+            EnabledModules = string.Join(",", modulesList),
             IsActive = true,
             CreatedAt = DateTime.Now
         };
@@ -381,5 +498,180 @@ public class PlatformAdminController : Controller
 
         TempData["Success"] = $"Client organization '{newTenant.BusinessName}' created successfully! Workspace URL: https://{newTenant.Subdomain}.kriyex.com (Admin login: {adminUsername.Trim()})";
         return RedirectToAction(nameof(Index));
+    }
+
+    // ==========================================
+    // SUBSCRIPTION PLANS MANAGEMENT
+    // ==========================================
+
+    // GET: /PlatformAdmin/Plans
+    public async Task<IActionResult> Plans()
+    {
+        var plans = await _context.SubscriptionPlans
+            .OrderBy(p => p.DisplayOrder)
+            .ThenBy(p => p.Id)
+            .ToListAsync();
+
+        var tenantCounts = await _context.Tenants.IgnoreQueryFilters()
+            .Where(t => t.SubscriptionPlanId.HasValue)
+            .GroupBy(t => t.SubscriptionPlanId!.Value)
+            .Select(g => new { PlanId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.PlanId, x => x.Count);
+
+        ViewBag.TenantCounts = tenantCounts;
+        return View(plans);
+    }
+
+    // POST: /PlatformAdmin/CreatePlan
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreatePlan(
+        string name,
+        string? code,
+        string? description,
+        int includedDeskSeats,
+        decimal monthlyPrice,
+        decimal yearlyPrice,
+        decimal threeYearlyPrice,
+        decimal fiveYearlyPrice,
+        decimal extraDeskSeatPriceMonthly,
+        decimal workerSlab10To50Price,
+        decimal workerSlab50To100Price,
+        decimal workerSlab100To200Price,
+        decimal workerSlab200PlusPrice,
+        int includedFloorWorkers,
+        bool isPopular,
+        bool isActive,
+        List<string>? selectedModules)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            TempData["Error"] = "Plan name is required.";
+            return RedirectToAction(nameof(Plans));
+        }
+
+        var modulesStr = (selectedModules != null && selectedModules.Any())
+            ? string.Join(",", selectedModules.Distinct(StringComparer.OrdinalIgnoreCase))
+            : "*";
+
+        var plan = new SubscriptionPlan
+        {
+            Name = name.Trim(),
+            Code = string.IsNullOrWhiteSpace(code) ? name.Trim().ToUpper().Replace(" ", "_") : code.Trim().ToUpper(),
+            Description = description?.Trim(),
+            IncludedDeskSeats = Math.Max(1, includedDeskSeats),
+            MonthlyPrice = Math.Max(0, monthlyPrice),
+            YearlyPrice = Math.Max(0, yearlyPrice),
+            ThreeYearlyPrice = Math.Max(0, threeYearlyPrice),
+            FiveYearlyPrice = Math.Max(0, fiveYearlyPrice),
+            ExtraDeskSeatPriceMonthly = Math.Max(0, extraDeskSeatPriceMonthly),
+            WorkerSlab10To50Price = Math.Max(0, workerSlab10To50Price),
+            WorkerSlab50To100Price = Math.Max(0, workerSlab50To100Price),
+            WorkerSlab100To200Price = Math.Max(0, workerSlab100To200Price),
+            WorkerSlab200PlusPrice = Math.Max(0, workerSlab200PlusPrice),
+            IncludedFloorWorkers = Math.Max(0, includedFloorWorkers),
+            EnabledModules = modulesStr,
+            IsPopular = isPopular,
+            IsActive = isActive,
+            CreatedAt = DateTime.Now
+        };
+
+        _context.SubscriptionPlans.Add(plan);
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = $"Subscription plan '{plan.Name}' created successfully.";
+        return RedirectToAction(nameof(Plans));
+    }
+
+    // POST: /PlatformAdmin/EditPlan
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditPlan(
+        int id,
+        string name,
+        string? code,
+        string? description,
+        int includedDeskSeats,
+        decimal monthlyPrice,
+        decimal yearlyPrice,
+        decimal threeYearlyPrice,
+        decimal fiveYearlyPrice,
+        decimal extraDeskSeatPriceMonthly,
+        decimal workerSlab10To50Price,
+        decimal workerSlab50To100Price,
+        decimal workerSlab100To200Price,
+        decimal workerSlab200PlusPrice,
+        int includedFloorWorkers,
+        bool isPopular,
+        bool isActive,
+        List<string>? selectedModules)
+    {
+        var plan = await _context.SubscriptionPlans.FindAsync(id);
+        if (plan == null) return NotFound();
+
+        plan.Name = name.Trim();
+        plan.Code = string.IsNullOrWhiteSpace(code) ? name.Trim().ToUpper().Replace(" ", "_") : code.Trim().ToUpper();
+        plan.Description = description?.Trim();
+        plan.IncludedDeskSeats = Math.Max(1, includedDeskSeats);
+        plan.MonthlyPrice = Math.Max(0, monthlyPrice);
+        plan.YearlyPrice = Math.Max(0, yearlyPrice);
+        plan.ThreeYearlyPrice = Math.Max(0, threeYearlyPrice);
+        plan.FiveYearlyPrice = Math.Max(0, fiveYearlyPrice);
+        plan.ExtraDeskSeatPriceMonthly = Math.Max(0, extraDeskSeatPriceMonthly);
+        plan.WorkerSlab10To50Price = Math.Max(0, workerSlab10To50Price);
+        plan.WorkerSlab50To100Price = Math.Max(0, workerSlab50To100Price);
+        plan.WorkerSlab100To200Price = Math.Max(0, workerSlab100To200Price);
+        plan.WorkerSlab200PlusPrice = Math.Max(0, workerSlab200PlusPrice);
+        plan.IncludedFloorWorkers = Math.Max(0, includedFloorWorkers);
+        plan.EnabledModules = (selectedModules != null && selectedModules.Any())
+            ? string.Join(",", selectedModules.Distinct(StringComparer.OrdinalIgnoreCase))
+            : "*";
+        plan.IsPopular = isPopular;
+        plan.IsActive = isActive;
+        plan.UpdatedAt = DateTime.Now;
+
+        _context.SubscriptionPlans.Update(plan);
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = $"Subscription plan '{plan.Name}' updated successfully.";
+        return RedirectToAction(nameof(Plans));
+    }
+
+    // POST: /PlatformAdmin/TogglePlanActive
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TogglePlanActive(int id)
+    {
+        var plan = await _context.SubscriptionPlans.FindAsync(id);
+        if (plan == null) return NotFound();
+
+        plan.IsActive = !plan.IsActive;
+        plan.UpdatedAt = DateTime.Now;
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = $"Plan '{plan.Name}' is now {(plan.IsActive ? "Active" : "Inactive")}.";
+        return RedirectToAction(nameof(Plans));
+    }
+
+    // POST: /PlatformAdmin/DeletePlan
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeletePlan(int id)
+    {
+        var plan = await _context.SubscriptionPlans.FindAsync(id);
+        if (plan == null) return NotFound();
+
+        bool inUse = await _context.Tenants.IgnoreQueryFilters().AnyAsync(t => t.SubscriptionPlanId == id);
+        if (inUse)
+        {
+            TempData["Error"] = $"Cannot delete plan '{plan.Name}' because it is assigned to one or more client tenants. You can deactivate it instead.";
+            return RedirectToAction(nameof(Plans));
+        }
+
+        _context.SubscriptionPlans.Remove(plan);
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = $"Subscription plan '{plan.Name}' deleted.";
+        return RedirectToAction(nameof(Plans));
     }
 }

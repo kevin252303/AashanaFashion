@@ -2,10 +2,10 @@
 @{
     ViewData["Title"] = "SaaS Client Operations";
     var search = ViewBag.Search as string;
-    var planFilter = ViewBag.PlanFilter as SubscriptionTier?;
+    var cycleFilter = ViewBag.CycleFilter as string;
     var statusFilter = ViewBag.StatusFilter as TenantStatus?;
     var expiringOnly = (bool)(ViewBag.ExpiringSoonOnly ?? false);
-    bool filtered = !string.IsNullOrWhiteSpace(search) || planFilter.HasValue || statusFilter.HasValue || expiringOnly;
+    bool filtered = !string.IsNullOrWhiteSpace(search) || !string.IsNullOrWhiteSpace(cycleFilter) || statusFilter.HasValue || expiringOnly;
 }
 
 <div class="page-header">
@@ -75,12 +75,12 @@
                 <i class="bi bi-search"></i>
                 <input type="text" name="search" class="af-input" placeholder="Business, subdomain, email, phone…" value="@search" />
             </div>
-            <select name="planFilter" class="af-input af-select" aria-label="Plan">
-                <option value="">All plans</option>
-                <option value="@SubscriptionTier.Starter" selected="@(planFilter == SubscriptionTier.Starter)">Starter</option>
-                <option value="@SubscriptionTier.Growth" selected="@(planFilter == SubscriptionTier.Growth)">Growth</option>
-                <option value="@SubscriptionTier.Enterprise" selected="@(planFilter == SubscriptionTier.Enterprise)">Enterprise</option>
-                <option value="@SubscriptionTier.FreeTrial" selected="@(planFilter == SubscriptionTier.FreeTrial)">Free trial</option>
+            <select name="cycleFilter" class="af-input af-select" aria-label="Billing cycle">
+                <option value="">All durations</option>
+                <option value="Monthly" selected="@(cycleFilter == "Monthly")">Monthly (1 mo)</option>
+                <option value="Yearly" selected="@(cycleFilter == "Yearly")">Yearly (1 yr)</option>
+                <option value="ThreeYears" selected="@(cycleFilter == "ThreeYears")">3 Years (5% off)</option>
+                <option value="FiveYears" selected="@(cycleFilter == "FiveYears")">5 Years (12% off)</option>
             </select>
             <select name="statusFilter" class="af-input af-select" aria-label="Status">
                 <option value="">All statuses</option>
@@ -127,10 +127,10 @@
                     <tr>
                         <th>Client</th>
                         <th>Subdomain</th>
-                        <th>Plan</th>
-                        <th>Status</th>
                         <th>Desk seats</th>
                         <th>Floor workers</th>
+                        <th>Billing &amp; MRR</th>
+                        <th>Status</th>
                         <th>Activity</th>
                         <th>Expires</th>
                         <th class="text-end">Actions</th>
@@ -156,19 +156,59 @@
                                 </div>
                                 <span class="cell-sub font-monospace" style="font-size:0.72rem;">@(t.Subdomain).kriyex.com</span>
                             </td>
+                            <td style="min-width: 140px;">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <span class="text-xs fw-semibold text-foreground tabular">@item.ActiveErpUsers / @t.AllowedErpSeats seats</span>
+                                    <span class="cell-sub tabular">
+                                        @if (t.DeskSeatBillingBasis == "PerYear")
+                                        {
+                                            <span>₹@t.DeskSeatPricePerUser.ToString("N0")/yr</span>
+                                        }
+                                        else
+                                        {
+                                            <span>₹@t.DeskSeatPricePerUser.ToString("N0")/mo</span>
+                                        }
+                                    </span>
+                                </div>
+                                <div class="af-progress mt-1" style="max-width: 110px;"><div class="af-progress-bar @(seatPct >= 90 ? "bg-danger" : "")" style="width: @seatPct%;"></div></div>
+                                <div class="mt-1">
+                                    @if (t.BillingCycle == "FiveYears" || t.BillingCycle == "FiveYearly")
+                                    {
+                                        <span class="af-badge b-green">5 Years · 12% off</span>
+                                    }
+                                    else if (t.BillingCycle == "ThreeYears" || t.BillingCycle == "ThreeYearly")
+                                    {
+                                        <span class="af-badge b-purple">3 Years · 5% off</span>
+                                    }
+                                    else if (t.BillingCycle == "Yearly")
+                                    {
+                                        <span class="af-badge b-indigo">Yearly (1 yr)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="af-badge b-blue">Monthly</span>
+                                    }
+                                </div>
+                            </td>
+                            <td style="min-width: 130px;">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <span class="text-xs fw-semibold text-foreground tabular">@item.ActiveEmployees / @t.AllowedEmployeeRecords</span>
+                                    <span class="cell-sub tabular">₹@t.FloorWorkersPriceYearly.ToString("N0")/yr</span>
+                                </div>
+                                <div class="af-progress mt-1" style="max-width: 110px;"><div class="af-progress-bar @(empPct >= 90 ? "bg-danger" : "bg-success")" style="width: @empPct%;"></div></div>
+                                <div class="cell-sub text-2xs mt-1">Billed yearly</div>
+                            </td>
                             <td>
-                                <span class="af-badge @PlanBadge(t.PlanType)">@t.PlanType.Humanize()</span>
-                                <span class="cell-sub tabular">₹@item.MonthlyRevenue.ToString("N0")/mo</span>
+                                <div class="fw-semibold text-xs text-foreground tabular">₹@item.MonthlyRevenue.ToString("N0")/mo <span class="text-2xs text-muted fw-normal">MRR</span></div>
+                                @if (t.TotalContractAmount > 0)
+                                {
+                                    <div class="cell-sub tabular">Contract: ₹@t.TotalContractAmount.ToString("N0")</div>
+                                }
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#modulesModal_@t.Id" class="text-decoration-none mt-1 d-inline-block" title="Manage module access">
+                                    <span class="af-badge b-gray" style="font-size: 0.68rem;"><i class="bi bi-grid-3x3-gap"></i> @item.EnabledModulesCount/@AppModules.All.Count modules</span>
+                                </a>
                             </td>
                             <td><span class="af-badge @StatusBadge(t.Status)">@t.Status.Humanize()</span></td>
-                            <td style="min-width: 110px;">
-                                <span class="text-xs text-foreground tabular">@item.ActiveErpUsers / @t.AllowedErpSeats</span>
-                                <div class="af-progress mt-1" style="max-width: 90px;"><div class="af-progress-bar @(seatPct >= 90 ? "bg-danger" : "")" style="width: @seatPct%;"></div></div>
-                            </td>
-                            <td style="min-width: 110px;">
-                                <span class="text-xs text-foreground tabular">@item.ActiveEmployees / @t.AllowedEmployeeRecords</span>
-                                <div class="af-progress mt-1" style="max-width: 90px;"><div class="af-progress-bar @(empPct >= 90 ? "bg-danger" : "bg-success")" style="width: @empPct%;"></div></div>
-                            </td>
                             <td class="text-xs text-muted text-nowrap">@item.TotalOrdersCount lots<br />@item.TotalInvoicesCount invoices</td>
                             <td class="text-nowrap">
                                 <span class="@(item.IsExpiringSoon ? "text-danger fw-semibold" : item.IsExpired ? "text-muted" : "text-foreground")">@(item.DaysLeft > 0 ? $"{item.DaysLeft} days left" : "Expired")</span>
@@ -183,7 +223,8 @@
                                         <button type="submit" class="btn btn-sm btn-secondary me-1" title="Extend by 30 days">+30 d</button>
                                     </form>
                                     <a asp-action="SwitchToTenant" asp-route-tenantId="@t.Id" class="row-action" title="View client workspace" aria-label="View @t.BusinessName workspace"><i class="bi bi-eye"></i></a>
-                                    <button type="button" class="row-action" data-bs-toggle="modal" data-bs-target="#editTenantModal_@t.Id" title="Edit plan &amp; quotas" aria-label="Edit plan and quotas for @t.BusinessName"><i class="bi bi-sliders"></i></button>
+                                    <button type="button" class="row-action" data-bs-toggle="modal" data-bs-target="#modulesModal_@t.Id" title="Configure module-wise access" aria-label="Configure module access for @t.BusinessName"><i class="bi bi-grid-3x3-gap"></i></button>
+                                    <button type="button" class="row-action" data-bs-toggle="modal" data-bs-target="#editTenantModal_@t.Id" title="Edit terms &amp; quotas" aria-label="Edit pricing and quotas for @t.BusinessName"><i class="bi bi-sliders"></i></button>
                                     <form asp-action="ToggleSuspend" method="post" onsubmit="return confirm('@(active ? "Suspend" : "Reactivate") this client?');">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="tenantId" value="@t.Id" />
@@ -206,27 +247,21 @@
 {
     var t = item.Tenant;
     <div class="modal fade" id="editTenantModal_@t.Id" tabindex="-1" aria-labelledby="editTenantTitle_@t.Id" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <form asp-action="UpdateTenant" method="post" class="modal-content">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="tenantId" value="@t.Id" />
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editTenantTitle_@t.Id">Manage @t.BusinessName</h5>
+                    <div>
+                        <h5 class="modal-title" id="editTenantTitle_@t.Id">Manage client terms — @t.BusinessName</h5>
+                        <div class="text-xs text-muted">Workspace: <code class="text-primary font-monospace">@(t.Subdomain).kriyex.com</code></div>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row g-3">
-                        <div class="col-6">
-                            <label class="form-label" for="plan_@t.Id">Plan</label>
-                            <select id="plan_@t.Id" name="plan" class="af-input af-select">
-                                <option value="@SubscriptionTier.Starter" selected="@(t.PlanType == SubscriptionTier.Starter)">Starter (₹2,499/mo)</option>
-                                <option value="@SubscriptionTier.Growth" selected="@(t.PlanType == SubscriptionTier.Growth)">Growth (₹6,999/mo)</option>
-                                <option value="@SubscriptionTier.Enterprise" selected="@(t.PlanType == SubscriptionTier.Enterprise)">Enterprise (₹18,999/mo)</option>
-                                <option value="@SubscriptionTier.FreeTrial" selected="@(t.PlanType == SubscriptionTier.FreeTrial)">Free trial</option>
-                            </select>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="status_@t.Id">Account status</label>
+                        <div class="col-md-6 col-12">
+                            <label class="form-label" for="status_@t.Id">Account status <span class="req">*</span></label>
                             <select id="status_@t.Id" name="status" class="af-input af-select">
                                 <option value="@TenantStatus.Active" selected="@(t.Status == TenantStatus.Active)">Active</option>
                                 <option value="@TenantStatus.Suspended" selected="@(t.Status == TenantStatus.Suspended)">Suspended</option>
@@ -234,25 +269,144 @@
                                 <option value="@TenantStatus.Cancelled" selected="@(t.Status == TenantStatus.Cancelled)">Cancelled</option>
                             </select>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label" for="seats_@t.Id">Desk seats <span class="req">*</span></label>
-                            <input type="number" id="seats_@t.Id" name="allowedErpSeats" class="af-input" value="@t.AllowedErpSeats" min="1" max="1000" required />
-                            <div class="form-text">Web portal logins.</div>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="workers_@t.Id">Floor workers <span class="req">*</span></label>
-                            <input type="number" id="workers_@t.Id" name="allowedEmployeeRecords" class="af-input" value="@t.AllowedEmployeeRecords" min="0" max="10000" step="10" required />
-                            <div class="form-text">Face / biometric staff.</div>
-                        </div>
-                        <div class="col-12">
+                        <div class="col-md-6 col-12">
                             <label class="form-label" for="ends_@t.Id">Subscription expiry</label>
                             <input type="date" id="ends_@t.Id" name="subscriptionEndsAt" class="af-input" value="@((t.SubscriptionEndsAt ?? t.TrialEndsAt).ToString("yyyy-MM-dd"))" />
+                        </div>
+
+                        <div class="col-12 mt-2">
+                            <div class="section-label mb-2">Desk seats subscription</div>
+                        </div>
+                        <div class="col-md-3 col-12">
+                            <label class="form-label" for="seats_@t.Id">No. desk seats <span class="req">*</span></label>
+                            <input type="number" id="seats_@t.Id" name="allowedErpSeats" class="af-input" value="@t.AllowedErpSeats" min="1" max="1000" required oninput="recalcEditModal('@t.Id')" />
+                            <div class="form-text">Portal user logins.</div>
+                        </div>
+                        <div class="col-md-3 col-12">
+                            <label class="form-label" for="basis_@t.Id">Rate type <span class="req">*</span></label>
+                            <select id="basis_@t.Id" name="deskSeatBillingBasis" class="af-input af-select" onchange="onRateBasisChanged('@t.Id')">
+                                <option value="PerMonth" selected="@(t.DeskSeatBillingBasis != "PerYear")">Per user / month (₹)</option>
+                                <option value="PerYear" selected="@(t.DeskSeatBillingBasis == "PerYear")">Per user / year (₹)</option>
+                            </select>
+                            <div class="form-text">Select monthly or yearly.</div>
+                        </div>
+                        <div class="col-md-3 col-12">
+                            <label class="form-label" for="deskPrice_@t.Id" id="priceLabel_@t.Id">@(t.DeskSeatBillingBasis == "PerYear" ? "Price per user / year (₹)" : "Price per user / month (₹)") <span class="req">*</span></label>
+                            <input type="number" id="deskPrice_@t.Id" name="deskSeatPricePerUser" class="af-input" value="@(t.DeskSeatPricePerUser > 0 ? t.DeskSeatPricePerUser : (t.DeskSeatBillingBasis == "PerYear" ? 6000 : 500))" min="0" step="10" required oninput="recalcEditModal('@t.Id')" />
+                            <div class="form-text" id="priceHelp_@t.Id">@(t.DeskSeatBillingBasis == "PerYear" ? "Annual fee per seat." : "Monthly fee per seat.")</div>
+                        </div>
+                        <div class="col-md-3 col-12">
+                            <label class="form-label" for="dur_@t.Id">Desk seat duration <span class="req">*</span></label>
+                            <select id="dur_@t.Id" name="deskSeatDuration" class="af-input af-select" onchange="recalcEditModal('@t.Id')">
+                                <option value="Monthly" selected="@(t.BillingCycle == "Monthly")">Monthly (1 mo — 0% off)</option>
+                                <option value="Yearly" selected="@(t.BillingCycle == "Yearly")">Yearly (1 yr — 0% off)</option>
+                                <option value="ThreeYears" selected="@(t.BillingCycle == "ThreeYears" || t.BillingCycle == "ThreeYearly")">3 Years (3 yrs — 5% off)</option>
+                                <option value="FiveYears" selected="@(t.BillingCycle == "FiveYears" || t.BillingCycle == "FiveYearly")">5 Years (5 yrs — 12% off)</option>
+                            </select>
+                            <div class="form-text">Discount on desk seats.</div>
+                        </div>
+
+                        <div class="col-12 mt-2">
+                            <div class="section-label mb-2">Floor workers subscription</div>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <label class="form-label" for="workers_@t.Id">No. floor workers <span class="req">*</span></label>
+                            <input type="number" id="workers_@t.Id" name="allowedEmployeeRecords" class="af-input" value="@t.AllowedEmployeeRecords" min="0" max="10000" step="10" required />
+                            <div class="form-text">Biometric / face attendance staff.</div>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <label class="form-label" for="floorPrice_@t.Id">Price for floor workers (yearly) (₹) <span class="req">*</span></label>
+                            <input type="number" id="floorPrice_@t.Id" name="floorWorkersPriceYearly" class="af-input" value="@(t.FloorWorkersPriceYearly > 0 ? t.FloorWorkersPriceYearly : 6000)" min="0" step="100" required oninput="recalcEditModal('@t.Id')" />
+                            <div class="form-text">Floor workers subscription is billed yearly.</div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="p-2.5 bg-surface border rounded text-xs" id="editCalcSummary_@t.Id">
+                                <!-- Populated dynamically by recalcEditModal -->
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Save changes</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Save terms</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Module Access Modal for Tenant -->
+    <div class="modal fade" id="modulesModal_@t.Id" tabindex="-1" aria-labelledby="modulesTitle_@t.Id" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <form asp-action="UpdateTenantModules" method="post" class="modal-content" id="moduleForm_@t.Id">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="tenantId" value="@t.Id" />
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="modulesTitle_@t.Id">Module-wise access — @t.BusinessName</h5>
+                        <div class="text-xs text-muted">Workspace: <code class="text-primary font-monospace">@(t.Subdomain).kriyex.com</code> · Configure functional modules enabled for this client organisation.</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Quick Presets -->
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pb-3 mb-3 border-bottom">
+                        <span class="text-xs fw-semibold text-muted">Quick presets:</span>
+                        <div class="d-flex gap-1 flex-wrap">
+                            <button type="button" class="btn btn-xs btn-secondary" onclick="setTenantModules('@t.Id', 'all')">
+                                <i class="bi bi-check-all"></i> All modules
+                            </button>
+                            <button type="button" class="btn btn-xs btn-secondary" onclick="setTenantModules('@t.Id', 'mfg')">
+                                <i class="bi bi-gear"></i> Manufacturing pack
+                            </button>
+                            <button type="button" class="btn btn-xs btn-secondary" onclick="setTenantModules('@t.Id', 'trading')">
+                                <i class="bi bi-receipt"></i> Trading &amp; finance
+                            </button>
+                            <button type="button" class="btn btn-xs btn-ghost text-danger" onclick="setTenantModules('@t.Id', 'none')">
+                                <i class="bi bi-x-circle"></i> Clear all
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Grouped Modules list -->
+                    @{
+                        var groupedModules = AppModules.All.GroupBy(m => m.Group).ToList();
+                    }
+                    @foreach (var grp in groupedModules)
+                    {
+                        <div class="mb-3">
+                            <div class="section-label mb-2 text-2xs text-uppercase text-muted fw-bold">@grp.Key</div>
+                            <div class="row g-2">
+                                @foreach (var mod in grp)
+                                {
+                                    bool isEnabled = t.HasModule(mod.Key);
+                                    <div class="col-md-6">
+                                        <label class="d-flex align-items-start gap-2 p-2 border rounded bg-surface hover-bg-raised cursor-pointer h-100 mb-0">
+                                            <div class="form-check form-switch mt-1">
+                                                <input class="form-check-input mod-cb-@t.Id" type="checkbox" name="selectedModules" value="@mod.Key" id="mod_@(t.Id)_@(mod.Key)" @(isEnabled ? "checked" : "") data-key="@mod.Key" />
+                                            </div>
+                                            <div class="min-w-0 flex-grow-1">
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <i class="bi @mod.Icon text-primary text-xs"></i>
+                                                    <span class="fw-semibold text-xs text-foreground">@mod.Name</span>
+                                                </div>
+                                                <div class="text-2xs text-muted lh-sm mt-0.5">@mod.Description</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <span class="text-xs text-muted" id="moduleCountText_@t.Id">
+                        <strong class="text-foreground">@item.EnabledModulesCount</strong> of @AppModules.All.Count modules active
+                    </span>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Save module access</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -268,7 +422,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="row g-3">
+                <div class="section-label mb-2">Company information</div>
+                <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label" for="ntName">Company / brand name <span class="req">*</span></label>
                         <input type="text" id="ntName" name="businessName" class="af-input" placeholder="e.g. Surat Tex Fab" required />
@@ -281,23 +436,81 @@
                         </div>
                         <div class="form-text" id="ntPreview">Workspace URL: https://[subdomain].kriyex.com</div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="ntPlan">Plan</label>
-                        <select id="ntPlan" name="planType" class="af-input af-select">
-                            <option value="@SubscriptionTier.Growth" selected>Growth (₹6,999/mo)</option>
-                            <option value="@SubscriptionTier.Starter">Starter (₹2,499/mo)</option>
-                            <option value="@SubscriptionTier.Enterprise">Enterprise (₹18,999/mo)</option>
-                            <option value="@SubscriptionTier.FreeTrial">Standard plan</option>
+                </div>
+
+                <div class="section-label mb-2">Desk seats subscription</div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label" for="ntSeats">No. desk seats <span class="req">*</span></label>
+                        <input type="number" id="ntSeats" name="allowedErpSeats" class="af-input" value="10" min="1" max="1000" required oninput="recalcNewTenantModal()" />
+                        <div class="form-text">Portal user logins.</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="ntRateBasis">Rate type <span class="req">*</span></label>
+                        <select id="ntRateBasis" name="deskSeatBillingBasis" class="af-input af-select" onchange="onRateBasisChanged('nt')">
+                            <option value="PerMonth" selected>Per user / month (₹)</option>
+                            <option value="PerYear">Per user / year (₹)</option>
                         </select>
+                        <div class="form-text">Select monthly or yearly.</div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="ntSeats">Desk seats <span class="req">*</span></label>
-                        <input type="number" id="ntSeats" name="allowedErpSeats" class="af-input" value="15" min="1" max="500" required />
+                    <div class="col-md-3">
+                        <label class="form-label" for="ntDeskPrice" id="ntPriceLabel">Price per user / month (₹) <span class="req">*</span></label>
+                        <input type="number" id="ntDeskPrice" name="deskSeatPricePerUser" class="af-input" value="500" min="0" step="10" required oninput="recalcNewTenantModal()" />
+                        <div class="form-text" id="ntPriceHelp">Monthly fee per seat.</div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="ntWorkers">Floor workers <span class="req">*</span></label>
-                        <input type="number" id="ntWorkers" name="allowedEmployeeRecords" class="af-input" value="100" min="0" max="5000" step="25" required />
+                    <div class="col-md-3">
+                        <label class="form-label" for="ntDuration">Desk seat duration <span class="req">*</span></label>
+                        <select id="ntDuration" name="deskSeatDuration" class="af-input af-select" onchange="recalcNewTenantModal()">
+                            <option value="Monthly">Monthly (1 mo — 0% off)</option>
+                            <option value="Yearly" selected>Yearly (1 yr — 0% off)</option>
+                            <option value="ThreeYears">3 Years (3 yrs — 5% off)</option>
+                            <option value="FiveYears">5 Years (5 yrs — 12% off)</option>
+                        </select>
+                        <div class="form-text">5% off for 3 yrs, 12% off for 5 yrs.</div>
                     </div>
+                </div>
+
+                <div class="section-label mb-2">Floor workers subscription</div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="ntWorkers">No. floor workers <span class="req">*</span></label>
+                        <input type="number" id="ntWorkers" name="allowedEmployeeRecords" class="af-input" value="50" min="0" max="10000" step="10" required />
+                        <div class="form-text">Biometric / face attendance staff.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="ntFloorPrice">Price for floor workers (yearly) (₹) <span class="req">*</span></label>
+                        <input type="number" id="ntFloorPrice" name="floorWorkersPriceYearly" class="af-input" value="6000" min="0" step="100" required oninput="recalcNewTenantModal()" />
+                        <div class="form-text">Floor workers subscription is billed yearly.</div>
+                    </div>
+                </div>
+
+                <div class="col-12 mb-3">
+                    <div class="p-3 bg-surface border rounded text-xs" id="ntCalcSummary">
+                        <!-- Populated dynamically by recalcNewTenantModal -->
+                    </div>
+                </div>
+
+                <div class="section-label mt-4 mb-2 d-flex justify-content-between align-items-center">
+                    <span>Module-wise access</span>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-xs btn-ghost text-xs" onclick="setNewTenantModules('all')">Select all</button>
+                        <button type="button" class="btn btn-xs btn-ghost text-xs text-danger" onclick="setNewTenantModules('none')">Clear</button>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    @foreach (var mod in AppModules.All)
+                    {
+                        <div class="col-md-4 col-sm-6">
+                            <label class="d-flex align-items-start gap-2 p-2 border rounded bg-surface text-xs mb-0 cursor-pointer h-100">
+                                <div class="form-check form-switch mt-0.5">
+                                    <input class="form-check-input new-tenant-mod" type="checkbox" name="selectedModules" value="@mod.Key" id="ntMod_@mod.Key" checked />
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="fw-semibold text-xs text-foreground"><i class="bi @mod.Icon me-1 text-primary"></i>@mod.Name</div>
+                                </div>
+                            </label>
+                        </div>
+                    }
                 </div>
 
                 <div class="section-label mt-4 mb-3">Primary admin account</div>
@@ -334,6 +547,46 @@
 
 @section Scripts {
     <script>
+        function setTenantModules(tenantId, preset) {
+            const cbs = document.querySelectorAll('.mod-cb-' + tenantId);
+            cbs.forEach(cb => {
+                const key = cb.dataset.key;
+                if (preset === 'all') {
+                    cb.checked = true;
+                } else if (preset === 'none') {
+                    cb.checked = false;
+                } else if (preset === 'mfg') {
+                    cb.checked = ['Sales', 'Purchase', 'Masters', 'Inventory', 'JobWork', 'Production', 'QualityControl', 'Barcode'].includes(key);
+                } else if (preset === 'trading') {
+                    cb.checked = ['Sales', 'Purchase', 'Masters', 'Inventory', 'Accounting'].includes(key);
+                }
+            });
+            updateModuleCount(tenantId);
+        }
+
+        function updateModuleCount(tenantId) {
+            const checked = document.querySelectorAll('.mod-cb-' + tenantId + ':checked').length;
+            const txt = document.getElementById('moduleCountText_' + tenantId);
+            if (txt) {
+                txt.innerHTML = '<strong class="text-foreground">' + checked + '</strong> of @AppModules.All.Count modules active';
+            }
+        }
+
+        document.querySelectorAll('[class*="mod-cb-"]').forEach(cb => {
+            cb.addEventListener('change', function() {
+                const m = this.className.match(/mod-cb-(\d+)/);
+                if (m && m[1]) {
+                    updateModuleCount(m[1]);
+                }
+            });
+        });
+
+        function setNewTenantModules(action) {
+            document.querySelectorAll('.new-tenant-mod').forEach(cb => {
+                cb.checked = (action === 'all');
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             const biz = document.getElementById('ntName');
             const sub = document.getElementById('ntSub');
@@ -361,7 +614,200 @@
                     preview.textContent = 'Workspace URL: https://' + (val || '[subdomain]') + '.kriyex.com';
                 });
             }
+
+            recalcNewTenantModal();
+
+            // Initialize all edit modals
+            document.querySelectorAll('[id^="editCalcSummary_"]').forEach(el => {
+                const tenantId = el.id.replace('editCalcSummary_', '');
+                recalcEditModal(tenantId);
+            });
         });
+
+        function formatInr(val) {
+            return '₹' + Math.round(val).toLocaleString('en-IN');
+        }
+
+        function onRateBasisChanged(prefix) {
+            const basisSelect = prefix === 'nt' ? document.getElementById('ntRateBasis') : document.getElementById('basis_' + prefix);
+            const priceInput = prefix === 'nt' ? document.getElementById('ntDeskPrice') : document.getElementById('deskPrice_' + prefix);
+            const label = prefix === 'nt' ? document.getElementById('ntPriceLabel') : document.getElementById('priceLabel_' + prefix);
+            const help = prefix === 'nt' ? document.getElementById('ntPriceHelp') : document.getElementById('priceHelp_' + prefix);
+
+            if (!basisSelect || !priceInput) return;
+            const isYearly = basisSelect.value === 'PerYear';
+
+            if (label) {
+                label.innerHTML = (isYearly ? 'Price per user / year (₹)' : 'Price per user / month (₹)') + ' <span class="req">*</span>';
+            }
+            if (help) {
+                help.textContent = isYearly ? 'Annual fee per seat.' : 'Monthly fee per seat.';
+            }
+
+            // Smart rate converter: convert between monthly and yearly amounts smoothly
+            let currentVal = parseFloat(priceInput.value) || 0;
+            if (currentVal > 0) {
+                if (isYearly && currentVal <= 2500) {
+                    priceInput.value = Math.round(currentVal * 12);
+                } else if (!isYearly && currentVal >= 2500) {
+                    priceInput.value = Math.round(currentVal / 12);
+                }
+            }
+
+            if (prefix === 'nt') {
+                recalcNewTenantModal();
+            } else {
+                recalcEditModal(prefix);
+            }
+        }
+
+        function calculateSubscription(seats, pricePerUser, rateBasis, duration, floorWorkersYearly) {
+            seats = Math.max(1, parseInt(seats) || 0);
+            pricePerUser = Math.max(0, parseFloat(pricePerUser) || 0);
+            floorWorkersYearly = Math.max(0, parseFloat(floorWorkersYearly) || 0);
+            const isYearlyRate = rateBasis === 'PerYear';
+
+            let months = 1;
+            let years = 1;
+            let discountPct = 0;
+            let durationLabel = "1 month";
+
+            if (duration === 'FiveYears' || duration === 'FiveYearly') {
+                months = 60;
+                years = 5;
+                discountPct = 12;
+                durationLabel = "5 years";
+            } else if (duration === 'ThreeYears' || duration === 'ThreeYearly') {
+                months = 36;
+                years = 3;
+                discountPct = 5;
+                durationLabel = "3 years";
+            } else if (duration === 'Yearly') {
+                months = 12;
+                years = 1;
+                discountPct = 0;
+                durationLabel = "1 year";
+            } else {
+                months = 1;
+                years = 1;
+                discountPct = 0;
+                durationLabel = "1 month";
+            }
+
+            const monthlyRate = isYearlyRate ? (pricePerUser / 12) : pricePerUser;
+            const baseDesk = seats * monthlyRate * months;
+            const deskDiscount = baseDesk * (discountPct / 100);
+            const netDesk = baseDesk - deskDiscount;
+            const floorTotal = floorWorkersYearly * years;
+            const totalContract = netDesk + floorTotal;
+
+            const deskMonthly = (seats * monthlyRate) * (1 - discountPct / 100);
+            const floorMonthly = floorWorkersYearly / 12;
+            const mrr = deskMonthly + floorMonthly;
+
+            return {
+                seats,
+                pricePerUser,
+                rateBasis,
+                isYearlyRate,
+                monthlyRate,
+                duration,
+                durationLabel,
+                months,
+                years,
+                discountPct,
+                baseDesk,
+                deskDiscount,
+                netDesk,
+                floorWorkersYearly,
+                floorTotal,
+                totalContract,
+                mrr
+            };
+        }
+
+        function renderSummaryHtml(calc, showExpiry) {
+            const discountBadge = calc.discountPct > 0 
+                ? '<span class="af-badge b-green ms-1">' + calc.discountPct + '% discount applied</span>'
+                : '<span class="text-muted ms-1 text-2xs">(0% discount)</span>';
+
+            const discountLine = calc.discountPct > 0
+                ? '<div class="text-success text-2xs mt-0.5">Discount: -' + calc.discountPct + '% (-' + formatInr(calc.deskDiscount) + ') &rarr; Net Desk: <strong>' + formatInr(calc.netDesk) + '</strong></div>'
+                : '';
+
+            let expiryHtml = '';
+            if (showExpiry) {
+                const d = new Date();
+                if (calc.months === 1) {
+                    d.setMonth(d.getMonth() + 1);
+                } else {
+                    d.setFullYear(d.getFullYear() + calc.years);
+                }
+                const expStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                expiryHtml = '<div class="text-muted text-2xs">Estimated validity: <strong class="text-foreground">' + expStr + '</strong> (' + calc.durationLabel + ')</div>';
+            }
+
+            const deskFormulaText = calc.isYearlyRate
+                ? calc.seats + ' seats &times; ' + formatInr(calc.pricePerUser) + '/yr (~' + formatInr(calc.monthlyRate) + '/mo) &times; ' + calc.years + ' yr = <strong>' + formatInr(calc.baseDesk) + '</strong>'
+                : calc.seats + ' seats &times; ' + formatInr(calc.pricePerUser) + '/mo &times; ' + calc.months + ' mo = <strong>' + formatInr(calc.baseDesk) + '</strong>';
+
+            return '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pb-2 mb-2 border-bottom">' +
+                '<div class="fw-semibold text-foreground d-flex align-items-center gap-1">' +
+                    '<i class="bi bi-calculator text-primary"></i> Contract &amp; pricing calculation ' + discountBadge +
+                '</div>' +
+                expiryHtml +
+            '</div>' +
+            '<div class="row g-2">' +
+                '<div class="col-md-6 col-12">' +
+                    '<div class="text-muted text-2xs text-uppercase fw-bold">Desk seats (' + calc.durationLabel + ' · ' + (calc.isYearlyRate ? 'billed yearly' : 'billed monthly') + '):</div>' +
+                    '<div class="text-foreground mt-0.5">' + deskFormulaText + '</div>' +
+                    discountLine +
+                '</div>' +
+                '<div class="col-md-6 col-12">' +
+                    '<div class="text-muted text-2xs text-uppercase fw-bold">Floor workers (' + calc.years + ' yr coverage):</div>' +
+                    '<div class="text-foreground mt-0.5">' + formatInr(calc.floorWorkersYearly) + '/yr &times; ' + calc.years + ' yr = <strong>' + formatInr(calc.floorTotal) + '</strong></div>' +
+                    '<div class="text-muted text-2xs mt-0.5">Billed yearly</div>' +
+                '</div>' +
+                '<div class="col-12 pt-2 border-top d-flex align-items-center justify-content-between flex-wrap gap-2">' +
+                    '<div>' +
+                        '<span class="text-muted">Total contract value: </span>' +
+                        '<strong class="text-foreground font-monospace fs-6">' + formatInr(calc.totalContract) + '</strong>' +
+                    '</div>' +
+                    '<div>' +
+                        '<span class="text-muted">Effective MRR: </span>' +
+                        '<strong class="text-primary font-monospace">' + formatInr(calc.mrr) + '/mo</strong>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function recalcNewTenantModal() {
+            const seats = document.getElementById('ntSeats')?.value || 10;
+            const price = document.getElementById('ntDeskPrice')?.value || 500;
+            const rateBasis = document.getElementById('ntRateBasis')?.value || 'PerMonth';
+            const dur = document.getElementById('ntDuration')?.value || 'Yearly';
+            const floorPrice = document.getElementById('ntFloorPrice')?.value || 6000;
+            const box = document.getElementById('ntCalcSummary');
+
+            if (box) {
+                const calc = calculateSubscription(seats, price, rateBasis, dur, floorPrice);
+                box.innerHTML = renderSummaryHtml(calc, true);
+            }
+        }
+
+        function recalcEditModal(tenantId) {
+            const seats = document.getElementById('seats_' + tenantId)?.value || 1;
+            const price = document.getElementById('deskPrice_' + tenantId)?.value || 0;
+            const rateBasis = document.getElementById('basis_' + tenantId)?.value || 'PerMonth';
+            const dur = document.getElementById('dur_' + tenantId)?.value || 'Monthly';
+            const floorPrice = document.getElementById('floorPrice_' + tenantId)?.value || 0;
+            const box = document.getElementById('editCalcSummary_' + tenantId);
+
+            if (box) {
+                const calc = calculateSubscription(seats, price, rateBasis, dur, floorPrice);
+                box.innerHTML = renderSummaryHtml(calc, false);
+            }
+        }
     </script>
 }
 
